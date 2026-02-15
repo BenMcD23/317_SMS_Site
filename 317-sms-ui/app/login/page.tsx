@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image"; // Import the Next.js Image component
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { signIn } from "next-auth/react";
@@ -7,16 +8,34 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 dark:bg-slate-950">
       <Card className="w-full max-w-sm shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">317 SMS Tools</CardTitle>
-          <CardDescription>
-            Please sign in with your authorised account.
-          </CardDescription>
+        <CardHeader className="text-center space-y-4">
+          {/* Centered Icon */}
+          <div className="flex justify-center">
+            <div className="relative h-32 w-32 overflow-hidden rounded-2xl border-2 border-slate-200 bg-white shadow-md dark:border-slate-800 dark:bg-slate-900">
+                <Image
+                src="/icon.jpg"
+                alt="317 SMS Logo"
+                fill
+                className="object-cover"
+                priority
+                />
+            </div>
+          </div>
+          
+          <div className="space-y-1">
+            <CardTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+              317 SMS Tools
+            </CardTitle>
+            <CardDescription className="text-slate-500 dark:text-slate-400">
+              Please sign in with your authorised account.
+            </CardDescription>
+          </div>
         </CardHeader>
+        
         <CardContent>
           <Button 
             variant="outline" 
-            className="w-full py-6 text-lg transition-all hover:bg-slate-100"
+            className="w-full py-6 text-lg transition-all hover:bg-slate-100 dark:hover:bg-slate-800"
             onClick={() => signIn("google", { redirectTo: "/" })}
           >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
