@@ -1,6 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   return (
@@ -16,7 +17,7 @@ export default function LoginPage() {
           <Button 
             variant="outline" 
             className="w-full py-6 text-lg transition-all hover:bg-slate-100"
-            onClick={() => {/* Trigger OAuth Flow */}}
+            onClick={() => signIn("google", { redirectTo: "/" })}
           >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
               <path
