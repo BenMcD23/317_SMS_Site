@@ -10,7 +10,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">317 SMS Tools</CardTitle>
           <CardDescription>
-            Please sign in with your authorized account.
+            Please sign in with your authorised account.
           </CardDescription>
         </CardHeader>
         <CardContent>
