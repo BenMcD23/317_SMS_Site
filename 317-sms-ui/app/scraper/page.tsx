@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
-const API_BASE = "http://localhost:8000"; // Change in production
+const API_BASE = "http://localhost:8000";
 
 export default function ScraperPage() {
+  const { data: session } = useSession();
+  
   const [logs, setLogs] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -19,20 +23,17 @@ export default function ScraperPage() {
     evtSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-
         if (data.type === "status") {
           if (data.value === "running") {
             setIsRunning(true);
             setLogs((prev) => [...prev, "> Scraper started"]);
           }
-
           if (data.value === "done") {
             setIsRunning(false);
             setLogs((prev) => [...prev, "[SUCCESS] Scraper completed"]);
             evtSource.close();
           }
         }
-
         if (data.type === "error") {
           setIsRunning(false);
           setLogs((prev) => [...prev, `[ERROR] ${data.value}`]);
@@ -45,19 +46,36 @@ export default function ScraperPage() {
   };
 
   const runScraper = async (name: string) => {
+    // 3. Check for token before starting
+    if (!session?.id_token) {
+      toast.error("You must be logged in to run scrapers.");
+      setLogs((prev) => [...prev, "[ERROR] No valid session found."]);
+      return;
+    }
+
     setLogs((prev) => [...prev, `> Starting ${name}...`]);
+    setIsRunning(true);
 
     try {
-      const res = await fetch(`${API_BASE}/run-scraper/${name}`);
+      const res = await fetch(`${API_BASE}/run-scraper/${name}`, {
+        method: "GET",
+        headers: {
+          // 4. Pass the token to FastAPI
+          "Authorization": `Bearer ${session.id_token}`,
+        },
+      });
+
       const data = await res.json();
 
       if (!res.ok) {
-        setLogs((prev) => [...prev, `[ERROR] ${data.detail}`]);
+        setIsRunning(false);
+        setLogs((prev) => [...prev, `[ERROR] ${data.detail || "Server error"}`]);
         return;
       }
 
       connectToStream();
     } catch (err) {
+      setIsRunning(false);
       setLogs((prev) => [...prev, "[ERROR] Could not reach server"]);
     }
   };
