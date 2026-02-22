@@ -136,9 +136,11 @@ export default function SettingsPage() {
             >
               {loading ? "Saving..." : "Save All Credentials"}
             </Button>
-            <Link href="/" className="w-full">
-              <Button variant="outline" className="w-full">Cancel</Button>
-            </Link>
+            <div className="pt-4 border-t">
+              <Link href="/">
+                <Button variant="ghost" className="w-full">← Back to Home</Button>
+              </Link>
+            </div>
           </div>
           
         </CardContent>

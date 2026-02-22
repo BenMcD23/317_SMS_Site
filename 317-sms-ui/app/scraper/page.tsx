@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -133,6 +133,12 @@ export default function ScraperPage() {
           )}
         </ScrollArea>
       </div>
+      <div className="pt-4 border-t">
+        <Link href="/">
+          <Button variant="ghost" className="w-full">← Back to Home</Button>
+        </Link>
+      </div>
+
     </main>
   );
 }
