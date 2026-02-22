@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
-
-const API_BASE = "http://localhost:8000";
+import { API_BASE } from "@/lib/config";
 
 export default function SettingsPage() {
   const { data: session } = useSession();

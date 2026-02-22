@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-
-const API_BASE = "http://localhost:8000";
+import { API_BASE } from "@/lib/config";
 
 export default function ScraperPage() {
   const { data: session } = useSession();
