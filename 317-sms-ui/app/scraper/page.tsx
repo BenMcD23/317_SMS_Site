@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
+import { Info } from "lucide-react";
 
 export default function ScraperPage() {
   const { data: session } = useSession();
@@ -85,60 +86,102 @@ export default function ScraperPage() {
     };
   }, []);
 
+const scraperTools = [
+    {
+      id: "cadet-quali",
+      label: "Cadet Qualification Scraper",
+      description: "Syncs cadet qualifications to the Google Sheet.",
+      variant: "outline" as const,
+    },
+    {
+      id: "cadet-event",
+      label: "Cadet Event Scraper",
+      description: "Extracts attendance lists for currently active SMS events.",
+      variant: "outline" as const,
+    },
+    {
+      id: "317-event",
+      label: "317 Event Scraper",
+      description: "Pulls full event metadata into the local database to power the JI and AO generator.",
+      variant: "outline" as const,
+    },
+    {
+      id: "medical",
+      label: "Medical Scraper",
+      description: "Fetches allergies and dietary requirements for cadets on the squadron nominal roll and syncs to the Google Sheet.",
+      variant: "outline" as const,
+    },
+  ];
+
   return (
     <main className="container max-w-3xl mx-auto py-10 px-4 space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">SMS Scraper Tools</h1>
-        <Badge variant={isRunning ? "destructive" : "secondary"}>
+        <div>
+          <h1 className="text-3xl font-bold">SMS Scraper Tools</h1>
+          <p className="text-muted-foreground mt-1">Select a tool to begin syncing data from Bader.</p>
+        </div>
+        <Badge variant={isRunning ? "destructive" : "secondary"} className="h-fit">
           {isRunning ? "Running..." : "Idle"}
         </Badge>
       </div>
 
-      <div className="grid gap-4">
-        <Button
-          disabled={isRunning}
-          onClick={() => runScraper("cadet-quali")}
-        >
-          Cadet Qualification Scraper
-        </Button>
-
-        <Button
-          variant="outline"
-          disabled={isRunning}
-          onClick={() => runScraper("cadet-event")}
-        >
-          Cadet Event Scraper
-        </Button>
-
-        <Button
-          variant="outline"
-          disabled={isRunning}
-          onClick={() => runScraper("317-event")}
-        >
-          317 Event Scraper
-        </Button>
+      {/* Grid of Scraper Buttons with Info */}
+      <div className="grid gap-6">
+        {scraperTools.map((tool) => (
+          <div key={tool.id} className="flex flex-col space-y-2 p-4 border rounded-xl bg-card hover:bg-accent/5 transition-colors">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg">{tool.label}</h3>
+              <Button
+                variant={tool.variant}
+                disabled={isRunning}
+                onClick={() => runScraper(tool.id)}
+                className="min-w-[140px]"
+              >
+                Run Scraper
+              </Button>
+            </div>
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Info size={16} className="mt-0.5 shrink-0 text-blue-500" />
+              <p>{tool.description}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="mt-10">
-        <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase">
-          Console Output
-        </h3>
+      {/* Console Output Section */}
+      <div className="mt-10 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Console Output
+          </h3>
+          {logs.length > 0 && (
+            <button 
+              onClick={() => setLogs([])}
+              className="text-xs text-muted-foreground hover:text-primary underline"
+            >
+              Clear Logs
+            </button>
+          )}
+        </div>
 
-        <ScrollArea className="h-64 w-full rounded-md border bg-black p-4 font-mono text-sm text-green-500">
+        <ScrollArea className="h-64 w-full rounded-md border bg-black p-4 font-mono text-sm text-green-500 shadow-inner">
           {logs.map((log, i) => (
-            <div key={i}>{log}</div>
+            <div key={i} className="mb-1">
+              <span className="opacity-50 select-none mr-2">[{new Date().toLocaleTimeString()}]</span>
+              {log}
+            </div>
           ))}
           {logs.length === 0 && (
-            <span className="text-gray-600">Waiting for command...</span>
+            <span className="text-gray-600 animate-pulse">_ Waiting for command...</span>
           )}
         </ScrollArea>
       </div>
+
       <div className="pt-4 border-t">
         <Link href="/">
           <Button variant="ghost" className="w-full">← Back to Home</Button>
         </Link>
       </div>
-
     </main>
   );
 }
