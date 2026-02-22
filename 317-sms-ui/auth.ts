@@ -2,7 +2,12 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [Google],
+  providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+  ],
   callbacks: {
     async signIn({ user }) {
       const allowedEmails = [
@@ -17,7 +22,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         "sgt.lloydmorris@317atc.co.uk",
         "sgt.macgregor@317atc.co.uk",
         "si.quick@317atc.co.uk",
-        "tyrell.v@317atc.co.uk"
+        "tyrell.v@317atc.co.uk",
       ];
       if (user.email && allowedEmails.includes(user.email)) {
         return true;
