@@ -9,6 +9,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    async jwt({ token, account }) {
+      // 1. When the user signs in, the 'account' object contains the id_token
+      if (account) {
+        token.id_token = account.id_token
+      }
+      return token
+    },
+    async session({ session, token }) {
+      // 2. Pass the id_token from the JWT into the session object for the frontend
+      session.id_token = token.id_token as string
+      return session
+    },
+
     async signIn({ user }) {
       const allowedEmails = [
         "ci.gill.jl@317atc.co.uk",
@@ -24,10 +37,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         "si.quick@317atc.co.uk",
         "tyrell.v@317atc.co.uk",
       ];
-      if (user.email && allowedEmails.includes(user.email)) {
-        return true;
-      }
-      return false; // Access denied for anyone else
+      return !!(user.email && allowedEmails.includes(user.email));
     },
-  },
+
+    // --- ADD THESE TWO CALLBACKS ---
+    
+    },
 })
