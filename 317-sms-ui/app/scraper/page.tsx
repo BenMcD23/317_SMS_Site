@@ -16,15 +16,26 @@ const SCRAPER_LABELS: Record<string, string> = {
   "medical": "Medical Scraper",
 };
 
+type LogEntry = { text: string; time: string };
+
+const toEntry = (text: string): LogEntry => ({
+  text,
+  time: new Date().toLocaleTimeString(),
+});
+
 export default function ScraperPage() {
   const { data: session } = useSession();
 
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [activeUser, setActiveUser] = useState<string | null>(null);
   const [activeName, setActiveName] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
+
+  const addLog = (text: string) => {
+    setLogs((prev) => [...prev, toEntry(text)]);
+  };
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,31 +55,28 @@ export default function ScraperPage() {
           setIsRunning(true);
           setActiveUser(data.started_by ?? null);
           setActiveName(data.scraper_name ?? null);
-          setLogs((prev) => [
-            ...prev,
-            `> ${SCRAPER_LABELS[data.scraper_name] ?? data.scraper_name} started by ${data.started_by}`,
-          ]);
+          addLog(`> ${SCRAPER_LABELS[data.scraper_name] ?? data.scraper_name} started by ${data.started_by}`);
         }
 
         if (data.type === "status" && data.value === "done") {
           setIsRunning(false);
           setActiveUser(null);
           setActiveName(null);
-          setLogs((prev) => [...prev, "[SUCCESS] Scraper completed"]);
+          addLog("[SUCCESS] Scraper completed");
         }
 
         if (data.type === "error") {
           setIsRunning(false);
           setActiveUser(null);
           setActiveName(null);
-          setLogs((prev) => [...prev, `[ERROR] ${data.value}`]);
+          addLog(`[ERROR] ${data.value}`);
         }
 
         if (data.type === "log") {
-          setLogs((prev) => [...prev, data.value]);
+          addLog(data.value);
         }
       } catch {
-        setLogs((prev) => [...prev, event.data]);
+        addLog(event.data);
       }
     };
 
@@ -84,6 +92,7 @@ export default function ScraperPage() {
   }, []);
 
   // Hydrate on mount — catches tabs that open mid-run
+  // recent_logs from API are plain strings, so convert them
   useEffect(() => {
     fetch(`${API_BASE}/scraper-status`)
       .then((r) => r.json())
@@ -92,7 +101,11 @@ export default function ScraperPage() {
           setIsRunning(true);
           setActiveUser(data.started_by ?? null);
           setActiveName(data.scraper_name ?? null);
-          if (data.recent_logs?.length) setLogs(data.recent_logs);
+          if (data.recent_logs?.length) {
+            setLogs(data.recent_logs.map((l: unknown) =>
+              typeof l === "string" ? toEntry(l) : l as LogEntry
+            ));
+          }
         }
       })
       .catch(() => {});
@@ -114,10 +127,10 @@ export default function ScraperPage() {
 
       if (!res.ok) {
         toast.error(data.detail || "Server error");
-        setLogs((prev) => [...prev, `[ERROR] ${data.detail || "Server error"}`]);
+        addLog(`[ERROR] ${data.detail || "Server error"}`);
       }
     } catch {
-      setLogs((prev) => [...prev, "[ERROR] Could not reach server"]);
+      addLog("[ERROR] Could not reach server");
     }
   };
 
@@ -206,13 +219,13 @@ export default function ScraperPage() {
         <ScrollArea className="h-64 w-full rounded-md border bg-black p-4 font-mono text-sm text-green-400 shadow-inner">
           {logs.map((log, i) => (
             <div key={i} className="mb-1">
-              <span className="opacity-40 select-none mr-2">[{new Date().toLocaleTimeString()}]</span>
+              <span className="opacity-40 select-none mr-2">[{log.time}]</span>
               <span className={
-                log.startsWith("[ERROR]") ? "text-red-400" :
-                log.startsWith("[SUCCESS]") ? "text-emerald-400" :
-                log.startsWith(">") ? "text-yellow-400" : ""
+                log.text.startsWith("[ERROR]") ? "text-red-400" :
+                log.text.startsWith("[SUCCESS]") ? "text-emerald-400" :
+                log.text.startsWith(">") ? "text-yellow-400" : ""
               }>
-                {log}
+                {log.text}
               </span>
             </div>
           ))}
