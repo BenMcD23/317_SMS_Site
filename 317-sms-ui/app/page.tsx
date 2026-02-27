@@ -12,6 +12,7 @@ export default function HomePage() {
   const tools = [
     { title: "JI/AO Generator", desc: "Generate cadet documents", href: "/ji-ao-generator" },
     { title: "SMS Scraper", desc: "Run qualification & event tools", href: "/scraper" },
+    { title: "Programme Updater", desc: "Push the latest programme to the website", href: "/programme-updater" },
     { title: "Settings", desc: "Manage Bader credentials", href: "/settings" },
   ];
 
