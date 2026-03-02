@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -69,6 +72,30 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
+// ─── Dark mode toggle button ──────────────────────────────────────────────────
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch — only render after mount
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div className="h-8 w-8" />;
+
+  return (
+    <button
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      aria-label="Toggle dark mode"
+    >
+      {resolvedTheme === "dark" ? (
+        <Sun className="h-4 w-4" />
+      ) : (
+        <Moon className="h-4 w-4" />
+      )}
+    </button>
+  );
+}
+
 // ─── NavItem component ────────────────────────────────────────────────────────
 function NavItemComponent({
   item,
@@ -87,12 +114,10 @@ function NavItemComponent({
   const isActive = !hasChildren && item.href ? pathname === item.href : false;
 
   const [open, setOpen] = useState(isChildActive);
-
   useEffect(() => {
     if (isChildActive) setOpen(true);
   }, [isChildActive]);
 
-  // ── Group item (has children) ──────────────────────────────────────────────
   if (hasChildren) {
     if (collapsed) {
       return (
@@ -107,7 +132,6 @@ function NavItemComponent({
           >
             <Icon className="h-4 w-4 shrink-0" />
           </button>
-          {/* Flyout tooltip with children */}
           <div className="pointer-events-none absolute left-full top-0 z-50 ml-2 hidden w-44 rounded-md border bg-popover p-1 shadow-md group-hover/tip:pointer-events-auto group-hover/tip:block">
             <p className="mb-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {item.label}
@@ -151,7 +175,6 @@ function NavItemComponent({
           <span className="flex-1 text-left">{item.label}</span>
           {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         </button>
-
         {open && (
           <div className="ml-4 mt-1 space-y-1 border-l pl-3">
             {item.children!.map((child) => {
@@ -180,7 +203,6 @@ function NavItemComponent({
     );
   }
 
-  // ── Leaf item ──────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
       <div className="group/tip relative">
@@ -220,7 +242,7 @@ function NavItemComponent({
   );
 }
 
-// ─── Sidebar content (shared between desktop + mobile drawer) ─────────────────
+// ─── Sidebar content ──────────────────────────────────────────────────────────
 function SidebarContent({
   collapsed,
   onToggleCollapse,
@@ -234,11 +256,10 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Brand + toggle */}
       <div
         className={cn(
           "flex items-center border-b",
-          collapsed ? "justify-center gap-0 px-2 py-4" : "justify-between px-5 py-4"
+          collapsed ? "justify-center px-2 py-4" : "justify-between px-5 py-4"
         )}
       >
         {collapsed ? (
@@ -253,7 +274,7 @@ function SidebarContent({
           onClick={onToggleCollapse}
           className={cn(
             "rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-            collapsed ? "ml-0" : "ml-2"
+            collapsed && "ml-0"
           )}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -265,7 +286,6 @@ function SidebarContent({
         </button>
       </div>
 
-      {/* Nav items */}
       <nav className={cn("flex-1 space-y-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}>
         {NAV_ITEMS.map((item) => (
           <NavItemComponent
@@ -277,7 +297,6 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* User footer */}
       <div className={cn("border-t py-3", collapsed ? "px-2" : "px-4")}>
         {!collapsed && session?.user && (
           <p className="mb-2 truncate text-xs text-muted-foreground">
@@ -285,7 +304,6 @@ function SidebarContent({
             <span className="font-medium text-foreground">{session.user.name}</span>
           </p>
         )}
-
         {collapsed ? (
           <div className="group/tip relative">
             <button
@@ -317,33 +335,25 @@ function SidebarContent({
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
-  // Start collapsed; on mount check if we're on a large screen
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const update = () => {
-      // Expand by default only on large screens
-      if (window.innerWidth >= 768) {
-        setCollapsed(false);
-      } else {
-        setCollapsed(true);
-      }
+      setCollapsed(window.innerWidth < 768);
     };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  // Close mobile drawer on navigation
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ── Desktop sidebar ──────────────────────────────────────────────────── */}
+      {/* Desktop sidebar */}
       <aside
         className={cn(
           "hidden md:flex flex-col shrink-0 border-r bg-background transition-all duration-200 ease-in-out",
@@ -356,13 +366,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
       </aside>
 
-      {/* ── Mobile overlay + drawer ───────────────────────────────────────────── */}
+      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
+
+      {/* Mobile drawer */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-background transition-transform duration-200 ease-in-out md:hidden",
@@ -376,21 +388,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
       </aside>
 
-      {/* ── Main content ─────────────────────────────────────────────────────── */}
+      {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Mobile top bar */}
-        <header className="flex items-center gap-3 border-b bg-background px-4 py-3 md:hidden">
+        {/* Top bar — visible on all screen sizes, contains dark mode toggle */}
+        <header className="flex items-center justify-between border-b bg-background px-4 py-2">
+          {/* Left: hamburger on mobile, empty spacer on desktop */}
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent md:hidden"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-2">
+
+          {/* Centre: brand on mobile */}
+          <div className="flex items-center gap-2 md:hidden">
             <Shield className="h-5 w-5 text-primary" />
             <span className="font-semibold tracking-tight">317 SMS</span>
           </div>
+
+          {/* Invisible spacer so toggle stays right on desktop */}
+          <div className="hidden md:block" />
+
+          {/* Right: dark mode toggle — always visible */}
+          <ThemeToggle />
         </header>
 
         <main className="flex-1 overflow-y-auto bg-muted/30 p-4 md:p-8">{children}</main>
