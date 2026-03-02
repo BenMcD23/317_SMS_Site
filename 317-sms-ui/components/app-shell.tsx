@@ -333,6 +333,8 @@ function SidebarContent({
 }
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
+const NO_SHELL_ROUTES = ["/login"];
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(true);
@@ -350,6 +352,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  // Render bare page with no sidebar/header for auth routes
+  if (NO_SHELL_ROUTES.includes(pathname)) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
