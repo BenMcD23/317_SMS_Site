@@ -94,25 +94,36 @@ function SignatureSection({
   onOverride,
   overrideSignature,
   onClearOverride,
+  showDraw,
+  onSetShowDraw,
 }: {
   savedSignatureUrl: string | null;
   onOverride: (dataUrl: string | null) => void;
   overrideSignature: string | null;
   onClearOverride: () => void;
+  showDraw: boolean;
+  onSetShowDraw: (v: boolean) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasDrawn, setHasDrawn] = useState(false);
-  const [showDraw, setShowDraw] = useState(false);
 
   const getPos = (e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
-    if ("touches" in e) return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e) return {
+      x: (e.touches[0].clientX - rect.left) * scaleX,
+      y: (e.touches[0].clientY - rect.top) * scaleY,
+    };
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
   };
 
   useEffect(() => {
-    if (!showDraw) return;
+    if (!showDraw && savedSignatureUrl) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
@@ -164,7 +175,7 @@ function SignatureSection({
             </Badge>
             <button
               type="button"
-              onClick={() => setShowDraw(true)}
+              onClick={() => onSetShowDraw(true)}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <Pencil className="h-3 w-3" />
@@ -181,7 +192,7 @@ function SignatureSection({
       {savedSignatureUrl && showDraw && (
         <button
           type="button"
-          onClick={() => { setShowDraw(false); onClearOverride(); clearDraw(); }}
+          onClick={() => { onSetShowDraw(false); setHasDrawn(false); onClearOverride(); }}
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
           ← Use saved signature
@@ -255,6 +266,8 @@ export default function LeadershipAssessmentPage() {
   const [assessmentId, setAssessmentId] = useState<number | null>(null);
 
   // Signature state
+  const [showDrawOverride, setShowDrawOverride] = useState(false);
+
   const [savedSignatureUrl, setSavedSignatureUrl] = useState<string | null>(null);
   const [overrideSignature, setOverrideSignature] = useState<string | null>(null);
   const [sigLoading, setSigLoading] = useState(true);
@@ -294,6 +307,7 @@ export default function LeadershipAssessmentPage() {
   const effectiveSignature = overrideSignature ?? savedSignatureB64 ?? null;
 
   const handleReset = () => {
+    setShowDrawOverride(false);
     setForm(initialState());
     setError(null);
     setOverrideSignature(null);
@@ -570,6 +584,8 @@ export default function LeadershipAssessmentPage() {
                 onOverride={setOverrideSignature}
                 overrideSignature={overrideSignature}
                 onClearOverride={() => setOverrideSignature(null)}
+                showDraw={showDrawOverride}
+                onSetShowDraw={setShowDrawOverride}
               />
             )}
           </div>
