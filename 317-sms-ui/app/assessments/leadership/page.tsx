@@ -20,6 +20,8 @@ import {
 import { API_BASE } from "@/lib/config";
 import Link from "next/link";
 
+import { CadetSearchInput } from "@/components/cadet-search"
+
 // ─── Questions ────────────────────────────────────────────────────────────────
 const QUESTIONS = [
   { id: 1, text: 'Did the team leader follow "SMEAC" as a briefing tool?', labels: { 1: "No", 3: "Almost", 5: "Yes" } },
@@ -222,6 +224,7 @@ function SignatureSection({
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 type FormState = {
+  cadetCin: number | null;
   cadetName: string;
   exerciseNo: string;
   exerciseName: string;
@@ -232,6 +235,7 @@ type FormState = {
 };
 
 const initialState = (): FormState => ({
+  cadetCin: null,
   cadetName: "",
   exerciseNo: "",
   exerciseName: "",
@@ -299,8 +303,8 @@ export default function LeadershipAssessmentPage() {
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!form.cadetName || !form.exerciseNo || !form.exerciseName) {
-      setError("Please fill in cadet name, exercise number, and exercise name.");
+    if (!form.cadetCin || !form.exerciseNo || !form.exerciseName) {
+      setError("Please select a cadet from the search results and fill in exercise details.");
       return;
     }
     if (!allAnswered) {
@@ -317,6 +321,7 @@ export default function LeadershipAssessmentPage() {
 
     try {
       const payload = {
+        cadet_cin: form.cadetCin,
         cadet_name: form.cadetName,
         exercise_no: form.exerciseNo,
         exercise_name: form.exerciseName,
@@ -327,7 +332,7 @@ export default function LeadershipAssessmentPage() {
         debriefing_notes: form.debriefingNotes,
       };
 
-      const res = await fetch(`${API_BASE}/assessments/leadership/generate-pdf`, {
+      const res = await fetch(`${API_BASE}/assessments/leadership/add-assessment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -360,21 +365,21 @@ export default function LeadershipAssessmentPage() {
           <p className="text-muted-foreground">Blue Badge — Air Cadet Foundation</p>
         </div>
 
-        <div className="flex flex-col items-center gap-6 rounded-xl border border-green-200 bg-green-50 px-8 py-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
+        <div className="flex flex-col items-center gap-6 rounded-xl border border-green-500/30 bg-green-500/10 px-8 py-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
+            <CheckCircle2 className="h-8 w-8 text-green-500" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-green-900">Assessment Saved</h2>
-            <p className="text-sm text-green-700">
+            <h2 className="text-xl font-semibold text-foreground">Assessment Saved</h2>
+            <p className="text-sm text-muted-foreground">
               {form.cadetName}&apos;s leadership assessment has been recorded successfully.
             </p>
             {assessmentId && (
-              <p className="text-xs text-green-600 mt-1">Assessment ID: #{assessmentId}</p>
+              <p className="text-xs text-muted-foreground mt-1">Assessment ID: #{assessmentId}</p>
             )}
           </div>
 
-          <div className="w-full max-w-xs rounded-lg border border-green-200 bg-white px-4 py-3 text-left text-sm space-y-1.5">
+          <div className="w-full max-w-xs rounded-lg border bg-card px-4 py-3 text-left text-sm space-y-1.5">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Cadet</span>
               <span className="font-medium">{form.cadetName}</span>
@@ -433,13 +438,15 @@ export default function LeadershipAssessmentPage() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="cadetName">Exercise Leader (Cadet Name)</Label>
-            <Input
-              id="cadetName"
-              placeholder="e.g. Cdt Smith"
-              value={form.cadetName}
-              onChange={(e) => setForm((f) => ({ ...f, cadetName: e.target.value }))}
-            />
+            <Label>Exercise Leader (Cadet)</Label>
+              <CadetSearchInput
+                token={session?.id_token ?? null}
+                selectedCin={form.cadetCin}
+                selectedName={form.cadetName}
+                onSelect={(cin, name) =>
+                  setForm((f) => ({ ...f, cadetCin: cin || null, cadetName: name }))
+                }
+              />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="exerciseNo">Exercise No.</Label>
