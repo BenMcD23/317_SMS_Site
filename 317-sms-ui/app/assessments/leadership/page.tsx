@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  Download,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -87,7 +86,7 @@ function ScoreSelector({
   );
 }
 
-// ─── Signature display / fallback draw pad ────────────────────────────────────
+// ─── Signature section ────────────────────────────────────────────────────────
 function SignatureSection({
   savedSignatureUrl,
   onOverride,
@@ -149,7 +148,6 @@ function SignatureSection({
     onOverride(null);
   };
 
-  // Using saved signature from account
   if (savedSignatureUrl && !showDraw) {
     return (
       <div className="space-y-2">
@@ -176,7 +174,6 @@ function SignatureSection({
     );
   }
 
-  // Draw pad (either no saved sig, or user chose to draw)
   return (
     <div className="space-y-1.5">
       {savedSignatureUrl && showDraw && (
@@ -250,36 +247,31 @@ export default function LeadershipAssessmentPage() {
   const [form, setForm] = useState<FormState>(initialState());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [assessmentId, setAssessmentId] = useState<number | null>(null);
 
   // Signature state
   const [savedSignatureUrl, setSavedSignatureUrl] = useState<string | null>(null);
   const [overrideSignature, setOverrideSignature] = useState<string | null>(null);
   const [sigLoading, setSigLoading] = useState(true);
-
-  // The signature to actually send — prefer drawn override, fall back to fetched URL
-  // We need to send the saved one as a fetch-then-base64 if it's being used
   const [savedSignatureB64, setSavedSignatureB64] = useState<string | null>(null);
 
-  // ── Load assessor name + signature from API on mount ──────────────────────
+  // ── Load assessor name + signature ────────────────────────────────────────
   useEffect(() => {
     if (!session?.id_token) return;
 
-    // Pre-fill assessor name from session
     if (session.user?.name) {
       setForm((f) => ({ ...f, assessorName: session.user!.name! }));
     }
 
-    // Fetch signature
     setSigLoading(true);
     fetch(`${API_BASE}/get-signature`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     })
       .then(async (res) => {
-        if (!res.ok) return; // 404 = no signature saved, that's fine
+        if (!res.ok) return;
         const blob = await res.blob();
-        // Object URL for display
         setSavedSignatureUrl(URL.createObjectURL(blob));
-        // Base64 for sending to PDF endpoint
         const reader = new FileReader();
         reader.onloadend = () => setSavedSignatureB64(reader.result as string);
         reader.readAsDataURL(blob);
@@ -295,8 +287,15 @@ export default function LeadershipAssessmentPage() {
   const passed = allAnswered && totalScore >= 30 && !hasOneInCol;
   const completionPct = Math.round((answeredScores.length / QUESTIONS.length) * 100);
 
-  // The signature we'll actually send — drawn override takes priority
   const effectiveSignature = overrideSignature ?? savedSignatureB64 ?? null;
+
+  const handleReset = () => {
+    setForm(initialState());
+    setError(null);
+    setOverrideSignature(null);
+    setSubmitted(false);
+    setAssessmentId(null);
+  };
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -322,38 +321,29 @@ export default function LeadershipAssessmentPage() {
         exercise_no: form.exerciseNo,
         exercise_name: form.exerciseName,
         scores: form.scores,
-        total_score: totalScore,
-        passed,
         assessor_name: form.assessorName,
-        assessor_signature: effectiveSignature, // base64 PNG data URL or null
+        assessor_signature: effectiveSignature,
         date: form.date,
         debriefing_notes: form.debriefingNotes,
       };
 
-      const res = await fetch(
-        `${API_BASE}/assessments/leadership/generate-pdf`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(session?.id_token ? { Authorization: `Bearer ${session.id_token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await fetch(`${API_BASE}/assessments/leadership/generate-pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.id_token ? { Authorization: `Bearer ${session.id_token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
 
       if (!res.ok) {
-        const detail = await res.text();
-        throw new Error(detail || "Failed to generate PDF");
+        const detail = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(detail?.detail || "Failed to save assessment");
       }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `leadership-${form.cadetName.replace(/\s+/g, "-")}-${form.date}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const result = await res.json();
+      setAssessmentId(result.assessment_id);
+      setSubmitted(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -361,6 +351,74 @@ export default function LeadershipAssessmentPage() {
     }
   };
 
+  // ── Success screen ────────────────────────────────────────────────────────
+  if (submitted) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 pb-16">
+        <div>
+          <h1 className="text-3xl font-bold">Leadership Assessment</h1>
+          <p className="text-muted-foreground">Blue Badge — Air Cadet Foundation</p>
+        </div>
+
+        <div className="flex flex-col items-center gap-6 rounded-xl border border-green-200 bg-green-50 px-8 py-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle2 className="h-8 w-8 text-green-600" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-green-900">Assessment Saved</h2>
+            <p className="text-sm text-green-700">
+              {form.cadetName}&apos;s leadership assessment has been recorded successfully.
+            </p>
+            {assessmentId && (
+              <p className="text-xs text-green-600 mt-1">Assessment ID: #{assessmentId}</p>
+            )}
+          </div>
+
+          <div className="w-full max-w-xs rounded-lg border border-green-200 bg-white px-4 py-3 text-left text-sm space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Cadet</span>
+              <span className="font-medium">{form.cadetName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Exercise</span>
+              <span className="font-medium">{form.exerciseName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Score</span>
+              <span className="font-medium">{totalScore} / 50</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Result</span>
+              {passed ? (
+                <Badge className="bg-green-500 text-white hover:bg-green-500 gap-1 text-xs">
+                  <CheckCircle2 className="h-3 w-3" /> PASS
+                </Badge>
+              ) : (
+                <Badge variant="destructive" className="gap-1 text-xs">
+                  <XCircle className="h-3 w-3" /> FAIL
+                </Badge>
+              )}
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Assessor</span>
+              <span className="font-medium">{form.assessorName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Date</span>
+              <span className="font-medium">{form.date}</span>
+            </div>
+          </div>
+
+          <Button onClick={handleReset} variant="outline" className="mt-2">
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Submit Another Assessment
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main form ─────────────────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
       <div>
@@ -509,7 +567,6 @@ export default function LeadershipAssessmentPage() {
             )}
           </div>
 
-          {/* Warning if no signature at all */}
           {!sigLoading && !savedSignatureUrl && !overrideSignature && (
             <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -544,12 +601,12 @@ export default function LeadershipAssessmentPage() {
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
           {loading ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating PDF…</>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
           ) : (
-            <><Download className="mr-2 h-4 w-4" />Generate &amp; Download PDF</>
+            <><CheckCircle2 className="mr-2 h-4 w-4" />Submit Assessment</>
           )}
         </Button>
-        <Button variant="outline" onClick={() => { setForm(initialState()); setError(null); setOverrideSignature(null); }}>
+        <Button variant="outline" onClick={handleReset}>
           Reset
         </Button>
       </div>
