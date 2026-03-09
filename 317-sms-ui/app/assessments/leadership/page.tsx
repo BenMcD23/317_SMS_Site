@@ -21,6 +21,8 @@ import { API_BASE } from "@/lib/config";
 import Link from "next/link";
 
 import { CadetSearchInput } from "@/components/cadet-search"
+import { AssessorCard } from "@/components/assessments/assessor-card";
+
 
 // ─── Questions ────────────────────────────────────────────────────────────────
 const QUESTIONS = [
@@ -540,65 +542,19 @@ export default function LeadershipAssessmentPage() {
       )}
 
       {/* Assessor */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Assessor</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="assessorName">
-                Name
-                {session?.user?.name && (
-                  <span className="ml-2 text-[11px] font-normal text-muted-foreground">(from account)</span>
-                )}
-              </Label>
-              <Input
-                id="assessorName"
-                placeholder="Assessor full name"
-                value={form.assessorName}
-                onChange={(e) => setForm((f) => ({ ...f, assessorName: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Signature</Label>
-            {sigLoading ? (
-              <div className="flex h-14 items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading signature…
-              </div>
-            ) : (
-              <SignatureSection
-                savedSignatureUrl={savedSignatureUrl}
-                onOverride={setOverrideSignature}
-                overrideSignature={overrideSignature}
-                onClearOverride={() => setOverrideSignature(null)}
-                showDraw={showDrawOverride}
-                onSetShowDraw={setShowDrawOverride}
-              />
-            )}
-          </div>
-
-          {!sigLoading && !savedSignatureUrl && !overrideSignature && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              No signature — the PDF will be generated without one. You can draw above or save one in{" "}
-              <Link href="/settings" className="underline">Settings</Link>.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <AssessorCard
+        assessorName={form.assessorName}
+        onAssessorNameChange={(v) => setForm((f) => ({ ...f, assessorName: v }))}
+        date={form.date}
+        onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
+        showNameFromAccount={!!session?.user?.name}
+        sigLoading={sigLoading}
+        savedSignatureUrl={savedSignatureUrl}
+        overrideSignature={overrideSignature}
+        onOverrideSignature={setOverrideSignature}
+        showDraw={showDrawOverride}
+        onSetShowDraw={setShowDrawOverride}
+      />
 
       {/* Debriefing notes */}
       <Card>
