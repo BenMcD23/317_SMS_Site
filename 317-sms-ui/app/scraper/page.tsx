@@ -72,7 +72,7 @@ export default function ScraperPage() {
           addLog(`[ERROR] ${data.value}`);
         }
 
-        if (data.type === "log") {
+        if (data.type === "log" || data.type === "info" || data.type === "warning") {
           addLog(data.value);
         }
       } catch {
@@ -223,6 +223,7 @@ export default function ScraperPage() {
               <span className={
                 log.text.startsWith("[ERROR]") ? "text-red-400" :
                 log.text.startsWith("[SUCCESS]") ? "text-emerald-400" :
+                log.text.startsWith("[WARN]") ? "text-yellow-400" :
                 log.text.startsWith(">") ? "text-yellow-400" : ""
               }>
                 {log.text}
