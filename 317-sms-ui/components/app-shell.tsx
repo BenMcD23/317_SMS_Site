@@ -66,6 +66,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     children: [
       { label: "Cadet Overview", href: "/cadets/overview", icon: Users },
+      { label: "Cadet Assessment Sheets", href: "/cadets/assessments", icon: Calendar },
       { label: "Event List", href: "/cadets/events", icon: Calendar },
     ],
   },
