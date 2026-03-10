@@ -43,11 +43,15 @@ export default function ScraperPage() {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
-  const connectToStream = () => {
-    if (eventSourceRef.current) eventSourceRef.current.close();
+const connectToStream = () => {
+  if (eventSourceRef.current) eventSourceRef.current.close();
+  
+  const token = session?.id_token;
+  const url = token
+    ? `${API_BASE}/scraper-stream?token=${encodeURIComponent(token)}`
+    : `${API_BASE}/scraper-stream`;
 
-    const evtSource = new EventSource(`${API_BASE}/scraper-stream`);
-    eventSourceRef.current = evtSource;
+  const evtSource = new EventSource(url);
 
     evtSource.onmessage = (event) => {
       try {
@@ -89,14 +93,10 @@ export default function ScraperPage() {
   };
 
   useEffect(() => {
-    connectToStream();
-    return () => eventSourceRef.current?.close();
-  }, []);
-
-  // Hydrate on mount — catches tabs that open mid-run
-  // recent_logs from API are plain strings, so convert them
-  useEffect(() => {
-    apiFetch(`${API_BASE}/scraper-status`)
+    if (!session?.id_token) return;
+    apiFetch(`${API_BASE}/scraper-status`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    })
       .then((r) => r.json())
       .then((data) => {
         if (data.running) {
@@ -111,7 +111,7 @@ export default function ScraperPage() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [session?.id_token]);
 
   const runScraper = async (name: string) => {
     if (!session?.id_token) {
