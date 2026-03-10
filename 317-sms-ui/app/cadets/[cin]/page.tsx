@@ -26,7 +26,9 @@ import {
   Plane,
   ChevronRight,
 } from "lucide-react";
+
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -201,7 +203,7 @@ export default function CadetOverviewPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/cadets/${cin}`, {
+      const res = await apiFetch(`${API_BASE}/cadets/${cin}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
@@ -216,7 +218,7 @@ export default function CadetOverviewPage() {
   useEffect(() => { fetchCadet(); }, [token, cin]);
 
   const patchField = async (field: string, value: string) => {
-    const res = await fetch(`${API_BASE}/cadets/${cin}`, {
+    const res = await apiFetch(`${API_BASE}/cadets/${cin}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Upload, Trash2, CheckCircle2 } from "lucide-react";
-import { API_BASE } from "@/lib/config";
 import { cn } from "@/lib/utils";
+
+import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -36,7 +38,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!session?.id_token) return;
 
-    fetch(`${API_BASE}/get-signature`, {
+    apiFetch(`${API_BASE}/get-signature`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (res.ok) {
@@ -77,7 +79,7 @@ export default function SettingsPage() {
       const formData = new FormData();
       formData.append("file", signatureFile);
 
-      const res = await fetch(`${API_BASE}/save-signature`, {
+      const res = await apiFetch(`${API_BASE}/save-signature`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.id_token}` },
         body: formData,
@@ -102,7 +104,7 @@ export default function SettingsPage() {
     if (!session?.id_token) return;
     setSigLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/delete-signature`, {
+      const res = await apiFetch(`${API_BASE}/delete-signature`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${session.id_token}` },
       });
@@ -132,7 +134,7 @@ export default function SettingsPage() {
     }
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/save-credentials`, {
+      const response = await apiFetch(`${API_BASE}/save-credentials`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

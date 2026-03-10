@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 export default function JiGenerator() {
   const [selectedEvent, setSelectedEvent] = useState<string>("");
@@ -14,7 +16,7 @@ export default function JiGenerator() {
 
   // Fetch events on load
   useEffect(() => {
-    fetch(`${API_BASE}/events`)
+    apiFetch(`${API_BASE}/events`)
       .then(res => res.json())
       .then(data => setEvents(data))
       .catch(() => toast.error("Failed to load events"));
@@ -28,7 +30,7 @@ export default function JiGenerator() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/generate-doc/${selectedEvent}/${action}`);
+      const response = await apiFetch(`${API_BASE}/generate-doc/${selectedEvent}/${action}`);
       
       if (!response.ok) throw new Error("Download failed");
 

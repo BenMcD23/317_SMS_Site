@@ -17,7 +17,10 @@ import {
   AlertCircle,
   Pencil,
 } from "lucide-react";
+
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
+
 import Link from "next/link";
 
 import { CadetSearchInput } from "@/components/cadet-search"
@@ -284,7 +287,7 @@ export default function LeadershipAssessmentPage() {
     }
 
     setSigLoading(true);
-    fetch(`${API_BASE}/get-signature`, {
+    apiFetch(`${API_BASE}/get-signature`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     })
       .then(async (res) => {
@@ -348,7 +351,7 @@ export default function LeadershipAssessmentPage() {
         debriefing_notes: form.debriefingNotes,
       };
 
-      const res = await fetch(`${API_BASE}/assessments/leadership/add-assessment`, {
+      const res = await apiFetch(`${API_BASE}/assessments/leadership/add-assessment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

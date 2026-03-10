@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { API_BASE } from "@/lib/config";
 import { Info, User, Loader2 } from "lucide-react";
+
+import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 const SCRAPER_LABELS: Record<string, string> = {
   "cadet-quali": "Cadet Qualification Scraper",
@@ -94,7 +96,7 @@ export default function ScraperPage() {
   // Hydrate on mount — catches tabs that open mid-run
   // recent_logs from API are plain strings, so convert them
   useEffect(() => {
-    fetch(`${API_BASE}/scraper-status`)
+    apiFetch(`${API_BASE}/scraper-status`)
       .then((r) => r.json())
       .then((data) => {
         if (data.running) {
@@ -118,7 +120,7 @@ export default function ScraperPage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/run-scraper/${name}`, {
+      const res = await apiFetch(`${API_BASE}/run-scraper/${name}`, {
         method: "GET",
         headers: { Authorization: `Bearer ${session.id_token}` },
       });

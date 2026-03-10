@@ -3,7 +3,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
+
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 export type CadetResult = {
   cin: number;
@@ -44,7 +46,7 @@ export function CadetSearchInput({
       debounceRef.current = setTimeout(async () => {
         setSearching(true);
         try {
-          const res = await fetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(q)}`, {
+          const res = await apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(q)}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data: CadetResult[] = await res.json();

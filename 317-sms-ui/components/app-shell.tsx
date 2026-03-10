@@ -27,6 +27,7 @@ import {
   Menu,
   Sun,
   Moon,
+  ClipboardCheck,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     children: [
       { label: "Cadet Overview", href: "/cadets/overview", icon: Users },
-      { label: "Cadet Assessment Sheets", href: "/cadets/assessments", icon: Calendar },
+      { label: "Cadet Assessment Sheets", href: "/cadets/assessments", icon: ClipboardCheck },
       { label: "Event List", href: "/cadets/events", icon: Calendar },
     ],
   },

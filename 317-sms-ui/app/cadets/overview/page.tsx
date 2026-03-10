@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Search, ChevronRight, Users } from "lucide-react";
+
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 type Cadet = {
   cin: number;
@@ -43,7 +45,7 @@ export default function CadetsPage() {
   useEffect(() => {
     if (!session?.id_token) return;
     setLoading(true);
-    fetch(`${API_BASE}/cadets`, {
+    apiFetch(`${API_BASE}/cadets`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     })
       .then(async (res) => {

@@ -25,6 +25,7 @@ import {
   Info,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ function AssessmentPdfRow({
     setLoadingPdf(true);
     setPdfError(null);
     try {
-      const res = await fetch(`${API_BASE}/assessments/${assessment.id}/pdf`, {
+      const res = await apiFetch(`${API_BASE}/assessments/${assessment.id}/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to load PDF");
@@ -176,7 +177,7 @@ function AssessmentPdfRow({
     if (!token) return;
     setDeleting(true);
     try {
-      const res = await fetch(`${API_BASE}/assessments/${assessment.id}`, {
+      const res = await apiFetch(`${API_BASE}/assessments/${assessment.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -338,7 +339,7 @@ function UploadButton({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `${API_BASE}/assessments/${cin}/${assessmentType}/upload-qualification`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` } }
       );
@@ -588,7 +589,7 @@ export default function AssessmentsOverviewPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/assessments/overview`, {
+      const res = await apiFetch(`${API_BASE}/assessments/overview`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);

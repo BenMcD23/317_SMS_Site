@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 
 const MONTHS = [
   { label: "January", value: "1" },
@@ -48,7 +50,7 @@ export default function ProgrammeUpdaterPage() {
     setResult(null);
 
     try {
-      const resp = await fetch(
+      const resp = await apiFetch(
         `${API_BASE}/update-programme?month=${month}&year=${year}`,
         {
           method: "POST",
