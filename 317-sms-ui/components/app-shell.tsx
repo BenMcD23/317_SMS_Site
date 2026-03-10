@@ -309,7 +309,7 @@ function SidebarContent({
         {collapsed ? (
           <div className="group/tip relative">
             <button
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => signOut({ callbackUrl: "/login" })}
               className="flex w-full items-center justify-center rounded-md p-2 text-destructive transition-colors hover:bg-destructive/10"
             >
               <LogOut className="h-4 w-4" />
@@ -322,7 +322,7 @@ function SidebarContent({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            onClick={() => signOut({ callbackUrl: "/login" })}
             className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOut className="mr-2 h-4 w-4" />

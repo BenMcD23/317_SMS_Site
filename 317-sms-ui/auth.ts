@@ -1,46 +1,44 @@
 import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
+import { authConfig } from "./auth.config"
+import { google } from "googleapis"
+
+const GROUP_EMAIL = "staff@317atc.co.uk"
+const IMPERSONATE_EMAIL = "ci.mcdonald@317atc.co.uk"
+
+async function isInStaffGroup(userEmail: string): Promise<boolean> {
+  try {
+    const auth = new google.auth.JWT({
+      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+        ?.replace(/^"|"$/g, "")      // strip surrounding quotes if present
+        ?.replace(/\\n/g, "\n"),     // convert literal \n to real newlines
+      scopes: ["https://www.googleapis.com/auth/admin.directory.group.member.readonly"],
+      subject: IMPERSONATE_EMAIL,
+    })
+
+    const admin = google.admin({ version: "directory_v1", auth })
+    await admin.members.get({ groupKey: GROUP_EMAIL, memberKey: userEmail })
+    return true
+  } catch (e: unknown) {
+    console.error("[isInStaffGroup] error:", e)
+    return false
+  }
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
-  ],
+  ...authConfig,
   callbacks: {
     async jwt({ token, account }) {
-      // 1. When the user signs in, the 'account' object contains the id_token
-      if (account) {
-        token.id_token = account.id_token
-      }
+      if (account) token.id_token = account.id_token
       return token
     },
     async session({ session, token }) {
-      // 2. Pass the id_token from the JWT into the session object for the frontend
       session.id_token = token.id_token as string
       return session
     },
-
     async signIn({ user }) {
-      const allowedEmails = [
-        "ci.gill.jl@317atc.co.uk",
-        "fs.gill@317atc.co.uk",
-        "ci.boxall@317atc.co.uk",
-        "ci.catterall@317atc.co.uk",
-        "ci.mcdonald@317atc.co.uk",
-        "ci.stone@317atc.co.uk",
-        "fg.off.barker@317atc.co.uk",
-        "flt.lt.doherty@317atc.co.uk",
-        "sgt.lloydmorris@317atc.co.uk",
-        "sgt.macgregor@317atc.co.uk",
-        "si.quick@317atc.co.uk",
-        "tyrell.v@317atc.co.uk",
-      ];
-      return !!(user.email && allowedEmails.includes(user.email));
+      if (!user.email) return false
+      return await isInStaffGroup(user.email)
     },
-
-    // --- ADD THESE TWO CALLBACKS ---
-    
-    },
+  },
 })
