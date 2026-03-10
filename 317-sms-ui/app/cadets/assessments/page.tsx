@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -21,6 +21,8 @@ import {
   AlertCircle,
   FileText,
   Download,
+  Trash2,
+  Info,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 
@@ -79,19 +81,59 @@ function typeColour(t: string) {
   return TYPE_COLOURS[t] ?? "bg-muted text-muted-foreground border-muted";
 }
 
-// ─── PDF Row ──────────────────────────────────────────────────────────────────
+// ─── Info tooltip ─────────────────────────────────────────────────────────────
+
+function InfoTooltip({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setVisible(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className="text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="More information"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      {visible && (
+        <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-lg border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
+        {text}
+        <div className="absolute -top-1.5 right-2 h-3 w-3 rotate-45 border-t border-l bg-popover" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PDF Row (with delete) ────────────────────────────────────────────────────
 
 function AssessmentPdfRow({
   assessment,
   token,
+  onDeleted,
 }: {
   assessment: AssessmentEntry;
   token: string | null;
+  onDeleted: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const fetchPdf = async (): Promise<string | null> => {
     if (pdfUrl) return pdfUrl;
@@ -128,6 +170,22 @@ function AssessmentPdfRow({
     a.href = url;
     a.download = `assessment_${assessment.id}_${assessment.assessment_type}.pdf`;
     a.click();
+  };
+
+  const handleDelete = async () => {
+    if (!token) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/assessments/${assessment.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      onDeleted(assessment.id);
+    } catch {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
   };
 
   return (
@@ -176,7 +234,7 @@ function AssessmentPdfRow({
           )}
         </div>
 
-        {/* PDF controls */}
+        {/* Controls */}
         <div className="shrink-0 flex items-center gap-1 ml-1">
           <button
             type="button"
@@ -198,6 +256,36 @@ function AssessmentPdfRow({
             )}
             {expanded ? "Hide" : "View"}
           </button>
+
+          {/* Delete */}
+          {confirmDelete ? (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded px-1.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+              >
+                {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Delete assessment"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -269,27 +357,34 @@ function UploadButton({
 
   if (done) {
     return (
-      <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 text-xs">
-        <CheckCircle2 className="h-3 w-3" /> Uploaded
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 text-xs">
+          <CheckCircle2 className="h-3 w-3" /> Uploaded
+        </Badge>
+      </div>
     );
   }
 
   if (!canUpload) {
     return (
-      <Badge variant="outline" className="gap-1.5 text-xs text-muted-foreground">
-        <AlertCircle className="h-3 w-3" />
-        {assessmentType === "leadership" ? "Needs 2 passes" : "Needs 1 pass"}
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        <Badge variant="outline" className="gap-1.5 text-xs text-muted-foreground">
+          <AlertCircle className="h-3 w-3" />
+          {assessmentType === "leadership" ? "Needs 2 passes" : "Needs 1 pass"}
+        </Badge>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button size="sm" onClick={handleUpload} disabled={loading} className="h-7 gap-1.5 text-xs">
-        {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-        Upload
-      </Button>
+      <div className="flex items-center gap-1.5">
+        <Button size="sm" onClick={handleUpload} disabled={loading} className="h-7 gap-1.5 text-xs">
+          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+          Upload
+        </Button>
+        <InfoTooltip text="Uploads the assessment sheets for this qualification to SMS." />
+      </div>
       {error && <p className="text-[11px] text-destructive">{error}</p>}
     </div>
   );
@@ -302,19 +397,19 @@ function AssessmentGroupRow({
   cin,
   token,
   onUploaded,
+  onAssessmentDeleted,
 }: {
   group: AssessmentGroup;
   cin: number;
   token: string | null;
   onUploaded: () => void;
+  onAssessmentDeleted: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      {/* Outer div — never a button, to safely contain buttons inside */}
+    <div className="rounded-lg border bg-card">
       <div className="flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
-        {/* Clickable expand area */}
         <div
           role="button"
           tabIndex={0}
@@ -353,7 +448,6 @@ function AssessmentGroupRow({
           </span>
         </div>
 
-        {/* Upload button — sibling to expand area, not nested inside it */}
         <div className="shrink-0">
           <UploadButton
             cin={cin}
@@ -369,7 +463,12 @@ function AssessmentGroupRow({
       {expanded && (
         <div className="bg-muted/20">
           {group.assessments.map((a) => (
-            <AssessmentPdfRow key={a.id} assessment={a} token={token} />
+            <AssessmentPdfRow
+              key={a.id}
+              assessment={a}
+              token={token}
+              onDeleted={onAssessmentDeleted}
+            />
           ))}
         </div>
       )}
@@ -383,10 +482,12 @@ function CadetAssessmentCard({
   cadet,
   token,
   onUploaded,
+  onAssessmentDeleted,
 }: {
   cadet: CadetAssessments;
   token: string | null;
   onUploaded: () => void;
+  onAssessmentDeleted: (id: number) => void;
 }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(true);
@@ -398,7 +499,6 @@ function CadetAssessmentCard({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
-          {/* Expand toggle — div with role=button */}
           <div
             role="button"
             tabIndex={0}
@@ -443,7 +543,6 @@ function CadetAssessmentCard({
             </span>
           </div>
 
-          {/* View profile — real button, sibling not child of the expand div */}
           <Button
             variant="ghost"
             size="sm"
@@ -464,6 +563,7 @@ function CadetAssessmentCard({
               cin={cadet.cin}
               token={token}
               onUploaded={onUploaded}
+              onAssessmentDeleted={onAssessmentDeleted}
             />
           ))}
         </CardContent>
@@ -498,6 +598,26 @@ export default function AssessmentsOverviewPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Remove a deleted assessment from local state without refetching
+  const handleAssessmentDeleted = (deletedId: number) => {
+    setCadets((prev) =>
+      prev
+        .map((cadet) => ({
+          ...cadet,
+          groups: cadet.groups
+            .map((group) => ({
+              ...group,
+              assessments: group.assessments.filter((a) => a.id !== deletedId),
+              passed_count: group.assessments
+                .filter((a) => a.id !== deletedId && a.passed === true)
+                .length,
+            }))
+            .filter((group) => group.assessments.length > 0),
+        }))
+        .filter((cadet) => cadet.groups.length > 0)
+    );
   };
 
   useEffect(() => {
@@ -602,6 +722,7 @@ export default function AssessmentsOverviewPage() {
             cadet={cadet}
             token={token}
             onUploaded={fetchData}
+            onAssessmentDeleted={handleAssessmentDeleted}
           />
         ))}
     </div>
