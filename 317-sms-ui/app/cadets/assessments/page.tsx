@@ -73,7 +73,7 @@ function typeLabel(t: string) {
 }
 
 const TYPE_COLOURS: Record<string, string> = {
-  leadership: "bg-blue-100 text-blue-700 border-blue-200",
+  "Blue Leadership": "bg-blue-100 text-blue-700 border-blue-200",
   first_aid: "bg-red-100 text-red-700 border-red-200",
   radio: "bg-purple-100 text-purple-700 border-purple-200",
 };
@@ -316,14 +316,14 @@ function AssessmentPdfRow({
 // ─── Upload button ────────────────────────────────────────────────────────────
 
 function UploadButton({
-  cin,
+  assessmentIds,
   assessmentType,
   canUpload,
   uploaded,
   token,
   onUploaded,
 }: {
-  cin: number;
+  assessmentIds: number[];
   assessmentType: string;
   canUpload: boolean;
   uploaded: boolean;
@@ -333,59 +333,126 @@ function UploadButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(uploaded);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const esRef = useRef<EventSource | null>(null);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
 
   const handleUpload = async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
+    setLogs([]);
+    setShowLogs(true);
+
+    // Start SSE stream
+    const es = new EventSource(
+      `${API_BASE}/scraper-stream?token=${token}`
+    );
+    esRef.current = es;
+
+    es.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "info" || msg.type === "warning") {
+          setLogs((prev) => [...prev, msg.value]);
+        }
+        if (msg.type === "status" && msg.value === "done") {
+          setDone(true);
+          setLoading(false);
+          es.close();
+          onUploaded();
+        }
+        if (msg.type === "error") {
+          setError(msg.value);
+          setLoading(false);
+          es.close();
+        }
+      } catch {}
+    };
+    es.onerror = () => {
+      es.close();
+      setLoading(false);
+    };
+
+    // Kick off the scraper
     try {
-      const res = await apiFetch(
-        `${API_BASE}/assessments/${cin}/${assessmentType}/upload-qualification`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await apiFetch(`${API_BASE}/assessments/upload-to-bader`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assessment_ids: assessmentIds }),
+      });
       if (!res.ok) {
         const detail = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(detail?.detail ?? "Upload failed");
       }
-      setDone(true);
-      onUploaded();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed");
-    } finally {
       setLoading(false);
+      es.close();
     }
   };
 
+  // Cleanup on unmount
+  useEffect(() => () => esRef.current?.close(), []);
+
   if (done) {
     return (
-      <div className="flex items-center gap-1.5">
-        <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 text-xs">
-          <CheckCircle2 className="h-3 w-3" /> Uploaded
-        </Badge>
-      </div>
+      <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 text-xs">
+        <CheckCircle2 className="h-3 w-3" /> Uploaded
+      </Badge>
     );
   }
 
   if (!canUpload) {
     return (
-      <div className="flex items-center gap-1.5">
-        <Badge variant="outline" className="gap-1.5 text-xs text-muted-foreground">
-          <AlertCircle className="h-3 w-3" />
-          {assessmentType === "leadership" ? "Needs 2 passes" : "Needs 1 pass"}
-        </Badge>
-      </div>
+      <Badge variant="outline" className="gap-1.5 text-xs text-muted-foreground">
+        <AlertCircle className="h-3 w-3" />
+        {assessmentType === "Blue Leadership" ? "Needs 2 passes" : "Needs 1 pass"}
+      </Badge>
     );
   }
 
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1.5">
-        <Button size="sm" onClick={handleUpload} disabled={loading} className="h-7 gap-1.5 text-xs">
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-          Upload
+        <Button
+          size="sm"
+          onClick={handleUpload}
+          disabled={loading}
+          className="h-7 gap-1.5 text-xs"
+        >
+          {loading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Upload className="h-3 w-3" />
+          )}
+          {loading ? "Uploading…" : "Upload to SMS"}
         </Button>
-        <InfoTooltip text="Uploads the assessment sheets for this qualification to SMS." />
+        <InfoTooltip text="Starts a background scraper that adds this qualification and uploads the assessment PDFs directly to Bader SMS." />
       </div>
+
+      {showLogs && logs.length > 0 && (
+        <div className="w-72 rounded-md border bg-muted/60 p-2 text-[11px] font-mono text-muted-foreground max-h-36 overflow-y-auto">
+          {logs.map((l, i) => (
+            <div key={i} className="leading-5">{l}</div>
+          ))}
+          {loading && (
+            <div className="flex items-center gap-1.5 mt-1 text-primary">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" /> Running…
+            </div>
+          )}
+          <div ref={logsEndRef} />
+        </div>
+      )}
+
       {error && <p className="text-[11px] text-destructive">{error}</p>}
     </div>
   );
@@ -395,13 +462,11 @@ function UploadButton({
 
 function AssessmentGroupRow({
   group,
-  cin,
   token,
   onUploaded,
   onAssessmentDeleted,
 }: {
   group: AssessmentGroup;
-  cin: number;
   token: string | null;
   onUploaded: () => void;
   onAssessmentDeleted: (id: number) => void;
@@ -451,7 +516,7 @@ function AssessmentGroupRow({
 
         <div className="shrink-0">
           <UploadButton
-            cin={cin}
+            assessmentIds={group.assessments.map((a) => a.id)}   // ← all IDs in the group
             assessmentType={group.assessment_type}
             canUpload={group.can_upload}
             uploaded={group.uploaded}
@@ -561,7 +626,6 @@ function CadetAssessmentCard({
             <AssessmentGroupRow
               key={group.assessment_type}
               group={group}
-              cin={cadet.cin}
               token={token}
               onUploaded={onUploaded}
               onAssessmentDeleted={onAssessmentDeleted}
