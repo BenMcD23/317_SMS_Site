@@ -330,6 +330,7 @@ function UploadButton({
   token: string | null;
   onUploaded: () => void;
 }) {
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(uploaded);
@@ -419,6 +420,8 @@ function UploadButton({
       </Badge>
     );
   }
+
+  if (session?.role === "nco") return null;
 
   return (
     <div className="flex flex-col items-end gap-1">

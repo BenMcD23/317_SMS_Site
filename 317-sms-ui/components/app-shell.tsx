@@ -35,11 +35,12 @@ type NavChild = {
   label: string;
   href: string;
   icon: React.ElementType;
+  staffOnly?: boolean;
 };
 
 type NavItem =
-  | { label: string; href: string; icon: React.ElementType; children?: never }
-  | { label: string; href?: never; icon: React.ElementType; children: NavChild[] };
+  | { label: string; href: string; icon: React.ElementType; children?: never; staffOnly?: boolean }
+  | { label: string; href?: never; icon: React.ElementType; children: NavChild[]; staffOnly?: boolean };
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 const NAV_ITEMS: NavItem[] = [
@@ -47,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: "Tools",
     icon: FileText,
+    staffOnly: true,
     children: [
       { label: "JI/AO Generator", href: "/ji-ao-generator", icon: FileText },
       { label: "SMS Scraper", href: "/scraper", icon: MessageSquare },
@@ -66,13 +68,24 @@ const NAV_ITEMS: NavItem[] = [
     label: "Cadets",
     icon: Users,
     children: [
-      { label: "Cadet Overview", href: "/cadets/overview", icon: Users },
+      { label: "Cadet Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
       { label: "Cadet Assessment Sheets", href: "/cadets/assessments", icon: ClipboardCheck },
-      { label: "Event List", href: "/cadets/events", icon: Calendar },
+      { label: "Event List", href: "/cadets/events", icon: Calendar, staffOnly: true },
     ],
   },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
+
+function filterNavItems(items: NavItem[], role: string | undefined): NavItem[] {
+  return items
+    .filter((item) => role === "staff" || !item.staffOnly)
+    .map((item) => {
+      if (!item.children) return item;
+      const children = item.children.filter((c) => role === "staff" || !c.staffOnly);
+      return { ...item, children };
+    })
+    .filter((item) => !item.children || item.children.length > 0) as NavItem[];
+}
 
 // ─── Dark mode toggle button ──────────────────────────────────────────────────
 function ThemeToggle() {
@@ -255,6 +268,7 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const { data: session } = useSession();
+  const visibleNavItems = filterNavItems(NAV_ITEMS, session?.role);
 
   return (
     <div className="flex h-full flex-col">
@@ -289,7 +303,7 @@ function SidebarContent({
       </div>
 
       <nav className={cn("flex-1 space-y-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}>
-        {NAV_ITEMS.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavItemComponent
             key={item.href ?? item.label}
             item={item}

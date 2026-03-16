@@ -271,8 +271,8 @@ export default function SettingsPage() {
         </Card>
       </section>
 
-      {/* ── Bader credentials ─────────────────────────────────────────────────── */}
-      <section className="space-y-3">
+      {/* ── Bader credentials — staff only ────────────────────────────────────── */}
+      {session?.role === "staff" && <section className="space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           <KeyRound className="h-4 w-4" />
           Bader Credentials
@@ -361,7 +361,7 @@ export default function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
-      </section>
+      </section>}
 
     </div>
   );
