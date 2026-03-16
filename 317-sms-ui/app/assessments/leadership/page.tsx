@@ -278,14 +278,33 @@ export default function LeadershipAssessmentPage() {
   const [sigLoading, setSigLoading] = useState(true);
   const [savedSignatureB64, setSavedSignatureB64] = useState<string | null>(null);
 
+  const loadAssessorName = useCallback(async () => {
+    if (!session?.id_token) return;
+    const res = await apiFetch(`${API_BASE}/settings/assessor-name`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    });
+    if (res.ok) {
+      const d = await res.json();
+      const name = d.assessor_name || session.user?.name || "";
+      setForm((f) => ({ ...f, assessorName: name }));
+    }
+  }, [session]);
+
   // ── Load assessor name + signature ────────────────────────────────────────
   useEffect(() => {
     if (!session?.id_token) return;
 
-    if (session.user?.name) {
-      setForm((f) => ({ ...f, assessorName: session.user!.name! }));
-    }
+    // Load assessor name from settings (falls back to Google account name)
+    apiFetch(`${API_BASE}/settings/assessor-name`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    }).then((res) => {
+      if (res.ok) res.json().then((d) => {
+        const name = d.assessor_name || session.user?.name || "";
+        setForm((f) => ({ ...f, assessorName: name }));
+      });
+    });
 
+    // Load signature
     setSigLoading(true);
     apiFetch(`${API_BASE}/get-signature`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
@@ -318,6 +337,7 @@ export default function LeadershipAssessmentPage() {
     setOverrideSignature(null);
     setSubmitted(false);
     setAssessmentId(null);
+    loadAssessorName();
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────
