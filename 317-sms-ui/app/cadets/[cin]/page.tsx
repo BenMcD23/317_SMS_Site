@@ -6,7 +6,6 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -24,7 +23,7 @@ import {
   Award,
   ClipboardList,
   Plane,
-  ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -36,6 +35,7 @@ type Qualification = {
   id: number;
   qualification_name: string;
   achieved_date: string | null;
+  expires_date: string | null;
 };
 
 type CadetEvent = {
@@ -83,6 +83,15 @@ function age(dob: string | null) {
   if (!dob) return null;
   const diff = Date.now() - new Date(dob).getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+}
+
+function expiryStatus(expires_date: string | null): "expired" | "soon" | "ok" | "none" {
+  if (!expires_date) return "none";
+  const d = new Date(expires_date);
+  const now = new Date();
+  if (d < now) return "expired";
+  if (d < new Date(Date.now() + 1000 * 60 * 60 * 24 * 60)) return "soon";
+  return "ok";
 }
 
 // ─── Inline editable field ────────────────────────────────────────────────────
@@ -141,9 +150,16 @@ function EditableField({
               onChange={(e) => setDraft(e.target.value)}
               className="h-8 text-sm"
               autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") handleCancel(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") handleCancel();
+              }}
             />
-            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={handleSave} disabled={saving}>
+            <Button
+              size="icon" variant="ghost"
+              className="h-8 w-8 shrink-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+              onClick={handleSave} disabled={saving}
+            >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             </Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleCancel} disabled={saving}>
@@ -172,7 +188,13 @@ function EditableField({
 
 // ─── Stat pill ────────────────────────────────────────────────────────────────
 
-function StatPill({ label, value, variant = "default" }: { label: string; value: string | number; variant?: "default" | "success" | "muted" }) {
+function StatPill({
+  label, value, variant = "default",
+}: {
+  label: string;
+  value: string | number;
+  variant?: "default" | "success" | "muted";
+}) {
   return (
     <div className={cn(
       "rounded-lg border px-3 py-2 text-center",
@@ -233,8 +255,6 @@ export default function CadetOverviewPage() {
     setCadet((prev) => prev ? { ...prev, [field]: value || null } : prev);
   };
 
-  // ── Loading skeleton ─────────────────────────────────────────────────────
-
   if (loading) {
     return (
       <div className="mx-auto max-w-3xl space-y-6 pb-16">
@@ -259,20 +279,19 @@ export default function CadetOverviewPage() {
     );
   }
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
-
   const passedAssessments = cadet.assessments.filter((a) => a.passed === true).length;
   const attendedEvents = cadet.events.filter((e) => e.attended).length;
   const cadetAge = age(cadet.date_of_birth);
+  const expiredCount = cadet.qualifications.filter(q => expiryStatus(q.expires_date) === "expired").length;
+  const expiringSoonCount = cadet.qualifications.filter(q => expiryStatus(q.expires_date) === "soon").length;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">
-            {cadet.first_name} {cadet.last_name}
-          </h1>
+          <h1 className="text-3xl font-bold">{cadet.first_name} {cadet.last_name}</h1>
           <p className="text-muted-foreground">
             CIN {cadet.cin}
             {cadet.rank && <> · {cadet.rank}</>}
@@ -285,6 +304,21 @@ export default function CadetOverviewPage() {
           </Badge>
         )}
       </div>
+
+      {/* Expiry warning banner */}
+      {(expiredCount > 0 || expiringSoonCount > 0) && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+          <p className="text-sm text-amber-800">
+            {expiredCount > 0 && (
+              <><span className="font-semibold">{expiredCount} qualification{expiredCount !== 1 ? "s" : ""} expired</span>{expiringSoonCount > 0 ? " · " : ""}</>
+            )}
+            {expiringSoonCount > 0 && (
+              <span className="font-semibold">{expiringSoonCount} expiring within 60 days</span>
+            )}
+          </p>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -313,8 +347,7 @@ export default function CadetOverviewPage() {
           />
           <div>
             <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              <Calendar className="h-3 w-3" />
-              Date of Birth
+              <Calendar className="h-3 w-3" /> Date of Birth
             </p>
             <span className="text-sm font-medium">
               {cadet.date_of_birth
@@ -324,22 +357,20 @@ export default function CadetOverviewPage() {
           </div>
           <div>
             <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              <Shield className="h-3 w-3" />
-              Rank
+              <Shield className="h-3 w-3" /> Rank
             </p>
             <span className="text-sm font-medium">{cadet.rank ?? "—"}</span>
           </div>
           <div>
             <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              <Plane className="h-3 w-3" />
-              Flight
+              <Plane className="h-3 w-3" /> Flight
             </p>
             <span className="text-sm font-medium">{cadet.flight ?? "—"}</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Qualifications */}
+      {/* Qualifications table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -350,17 +381,75 @@ export default function CadetOverviewPage() {
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {cadet.qualifications.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">No qualifications recorded.</p>
+            <p className="px-6 py-4 text-sm text-muted-foreground italic">No qualifications recorded.</p>
           ) : (
-            <div className="divide-y">
-              {cadet.qualifications.map((q) => (
-                <div key={q.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-                  <span className="text-sm font-medium">{q.qualification_name}</span>
-                  <span className="text-xs text-muted-foreground">{formatDate(q.achieved_date)}</span>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    <th className="px-6 py-2.5 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Qualification
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                      Date Awarded
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Expires
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {cadet.qualifications.map((q) => {
+                    const status = expiryStatus(q.expires_date);
+                    return (
+                      <tr key={q.id} className={cn(
+                        "transition-colors hover:bg-muted/30",
+                        status === "expired" && "bg-red-50/50",
+                        status === "soon" && "bg-amber-50/50",
+                      )}>
+                        <td className="px-6 py-3 font-medium">{q.qualification_name}</td>
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                          {formatDate(q.achieved_date)}
+                        </td>
+                        <td className={cn(
+                          "px-4 py-3 whitespace-nowrap",
+                          status === "expired" && "text-red-600 font-medium",
+                          status === "soon" && "text-amber-600 font-medium",
+                          status === "ok" && "text-muted-foreground",
+                          status === "none" && "text-muted-foreground",
+                        )}>
+                          {q.expires_date ? formatDate(q.expires_date) : "N/A"}
+                        </td>
+                        <td className="px-4 py-3">
+                          {status === "expired" && (
+                            <Badge className="text-[10px] bg-red-100 text-red-700 border border-red-200 hover:bg-red-100">
+                              Expired
+                            </Badge>
+                          )}
+                          {status === "soon" && (
+                            <Badge className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-100">
+                              Expires soon
+                            </Badge>
+                          )}
+                          {status === "ok" && (
+                            <Badge className="text-[10px] bg-green-100 text-green-700 border border-green-200 hover:bg-green-100">
+                              Valid
+                            </Badge>
+                          )}
+                          {status === "none" && (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
@@ -410,14 +499,10 @@ export default function CadetOverviewPage() {
                       <span className="text-sm font-mono font-semibold">{a.total_score}/50</span>
                     )}
                     {a.passed !== null && (
-                      <Badge
-                        className={cn(
-                          "ml-2 text-[11px]",
-                          a.passed
-                            ? "bg-green-500 text-white hover:bg-green-500"
-                            : "bg-red-500 text-white hover:bg-red-500"
-                        )}
-                      >
+                      <Badge className={cn(
+                        "ml-2 text-[11px]",
+                        a.passed ? "bg-green-500 text-white hover:bg-green-500" : "bg-red-500 text-white hover:bg-red-500"
+                      )}>
                         {a.passed ? "PASS" : "FAIL"}
                       </Badge>
                     )}
@@ -464,6 +549,7 @@ export default function CadetOverviewPage() {
           )}
         </CardContent>
       </Card>
+
     </div>
   );
 }

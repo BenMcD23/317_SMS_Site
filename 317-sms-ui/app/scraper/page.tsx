@@ -52,6 +52,7 @@ const connectToStream = () => {
     : `${API_BASE}/scraper-stream`;
 
   const evtSource = new EventSource(url);
+  eventSourceRef.current = evtSource;
 
     evtSource.onmessage = (event) => {
       try {
@@ -94,6 +95,8 @@ const connectToStream = () => {
 
   useEffect(() => {
     if (!session?.id_token) return;
+
+    // Check initial status
     apiFetch(`${API_BASE}/scraper-status`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     })
@@ -110,7 +113,15 @@ const connectToStream = () => {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        // Connect to stream regardless of running state
+        connectToStream();
+      });
+
+    return () => {
+      eventSourceRef.current?.close();
+    };
   }, [session?.id_token]);
 
   const runScraper = async (name: string) => {
