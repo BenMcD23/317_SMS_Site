@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ import {
   Sun,
   Moon,
   ClipboardCheck,
+  WifiOff,
+  AlertTriangle,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -348,13 +350,51 @@ function SidebarContent({
   );
 }
 
+// ─── API status indicator ─────────────────────────────────────────────────────
+type ApiStatus = "checking" | "ok" | "api-down" | "auth-error";
+
+function ApiStatusBadge({ status }: { status: ApiStatus }) {
+  if (status === "ok" || status === "checking") return null;
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
+        status === "api-down"
+          ? "bg-destructive/10 text-destructive"
+          : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+      )}
+    >
+      {status === "api-down" ? (
+        <>
+          <WifiOff className="h-3.5 w-3.5" />
+          API Offline
+        </>
+      ) : (
+        <>
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Session expired — please&nbsp;
+          <button
+            onClick={() => signIn("google", { callbackUrl: window.location.pathname })}
+            className="underline underline-offset-2"
+          >
+            re-authenticate
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 const NO_SHELL_ROUTES = ["/login"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
 
   useEffect(() => {
     const update = () => {
@@ -368,6 +408,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const token = (session as any)?.id_token as string | undefined;
+    if (!token) return;
+
+    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    fetch(`${API}/health`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        if (res.ok) setApiStatus("ok");
+        else if (res.status === 401 || res.status === 403) setApiStatus("auth-error");
+        else setApiStatus("api-down");
+      })
+      .catch(() => setApiStatus("api-down"));
+  }, [session]);
 
   // Render bare page with no sidebar/header for auth routes
   if (NO_SHELL_ROUTES.includes(pathname)) {
@@ -433,8 +487,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Invisible spacer so toggle stays right on desktop */}
           <div className="hidden md:block" />
 
-          {/* Right: dark mode toggle — always visible */}
-          <ThemeToggle />
+          {/* Right: API status + dark mode toggle */}
+          <div className="flex items-center gap-2">
+            <ApiStatusBadge status={apiStatus} />
+            <ThemeToggle />
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-muted/30 p-4 md:p-8">{children}</main>
