@@ -24,6 +24,7 @@ import {
   ClipboardList,
   Plane,
   AlertTriangle,
+  Ban,
 } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -63,6 +64,7 @@ type CadetDetail = {
   date_of_birth: string | null;
   rank: string | null;
   flight: string | null;
+  banned: boolean;
   qualifications: Qualification[];
   events: CadetEvent[];
   assessments: Assessment[];
@@ -255,6 +257,23 @@ export default function CadetOverviewPage() {
     setCadet((prev) => prev ? { ...prev, [field]: value || null } : prev);
   };
 
+  const [banLoading, setBanLoading] = useState(false);
+  const toggleBan = async () => {
+    if (!cadet || !token) return;
+    setBanLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/cadets/${cin}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ banned: !cadet.banned }),
+      });
+      if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
+      setCadet((prev) => prev ? { ...prev, banned: !prev.banned } : prev);
+    } finally {
+      setBanLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-3xl space-y-6 pb-16">
@@ -298,12 +317,40 @@ export default function CadetOverviewPage() {
             {cadet.flight && <> · {cadet.flight} Flight</>}
           </p>
         </div>
-        {cadet.rank && (
-          <Badge variant="secondary" className="mt-1 shrink-0 text-sm px-3 py-1">
-            {cadet.rank}
-          </Badge>
-        )}
+        <div className="flex shrink-0 items-center gap-2 mt-1">
+          {cadet.rank && (
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              {cadet.rank}
+            </Badge>
+          )}
+          <Button
+            size="sm"
+            variant={cadet.banned ? "destructive" : "outline"}
+            className={cn(
+              "gap-1.5",
+              !cadet.banned && "border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive",
+            )}
+            onClick={toggleBan}
+            disabled={banLoading}
+          >
+            {banLoading
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Ban className="h-3.5 w-3.5" />
+            }
+            {cadet.banned ? "Remove ban" : "Ban from events"}
+          </Button>
+        </div>
       </div>
+
+      {/* Ban warning */}
+      {cadet.banned && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <Ban className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+          <p className="text-sm text-red-800 font-medium">
+            This cadet is currently banned from events.
+          </p>
+        </div>
+      )}
 
       {/* Expiry warning banner */}
       {(expiredCount > 0 || expiringSoonCount > 0) && (

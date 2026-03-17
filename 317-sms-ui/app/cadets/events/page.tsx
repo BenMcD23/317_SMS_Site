@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Search, CalendarDays, Users, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, CalendarDays, Users, ChevronDown, ChevronRight, Ban } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -26,6 +26,14 @@ type CadetEvent = {
   title: string;
   cadet_count: number;
   cadets: EventCadet[];
+};
+
+type BannedCadet = {
+  cin: number;
+  first_name: string;
+  last_name: string;
+  rank: string | null;
+  events: { event_id: number; event_title: string }[];
 };
 
 const FLIGHT_COLOURS: Record<string, string> = {
@@ -115,21 +123,23 @@ export default function CadetEventListPage() {
   const { data: session } = useSession();
 
   const [events, setEvents] = useState<CadetEvent[]>([]);
+  const [bans, setBans] = useState<BannedCadet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!session?.id_token) return;
+    const headers = { Authorization: `Bearer ${session.id_token}` };
     setLoading(true);
-    apiFetch(`${API_BASE}/cadet-events`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
-        return res.json();
+    Promise.all([
+      apiFetch(`${API_BASE}/cadet-events`, { headers }).then((r) => r.json()),
+      apiFetch(`${API_BASE}/bans`, { headers }).then((r) => r.json()),
+    ])
+      .then(([evts, bannedCadets]) => {
+        setEvents(evts);
+        setBans(bannedCadets);
       })
-      .then(setEvents)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [session?.id_token]);
@@ -160,6 +170,32 @@ export default function CadetEventListPage() {
           <CalendarDays className="h-5 w-5 text-primary" />
         </div>
       </div>
+
+      {/* Banned cadets banner */}
+      {bans.length > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-red-800">
+            <Ban className="h-4 w-4 shrink-0" />
+            <p className="text-sm font-semibold">{bans.length} cadet{bans.length !== 1 ? "s" : ""} currently banned from events</p>
+          </div>
+          <div className="space-y-2">
+            {bans.map((b) => (
+              <div key={b.cin} className="rounded-md border border-red-200 bg-white px-3 py-2">
+                <p className="text-sm font-medium text-red-900">
+                  {b.rank ? `${b.rank} ` : ""}{b.first_name} {b.last_name}
+                </p>
+                {b.events.length > 0 ? (
+                  <p className="mt-0.5 text-xs text-red-700">
+                    On: {b.events.map((e) => e.event_title).join(", ")}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-xs text-red-500 italic">Not registered on any events</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
