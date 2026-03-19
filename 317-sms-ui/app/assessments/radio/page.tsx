@@ -62,13 +62,14 @@ function CriterionRow({
   );
 }
 
+const COMMENTS_MAX = 140;
+
 // ─── Form state ───────────────────────────────────────────────────────────────
 type FormState = {
   cadetCin: number | null;
   cadetName: string;
   criteria: Record<string, boolean>;
   cyberSecDate: string;
-  passed: boolean | null;
   comments: string;
   assessorName: string;
   date: string;
@@ -79,7 +80,6 @@ const initialState = (): FormState => ({
   cadetName: "",
   criteria: Object.fromEntries(CRITERIA.map((c) => [c.id, false])),
   cyberSecDate: "",
-  passed: null,
   comments: "",
   assessorName: "",
   date: new Date().toISOString().split("T")[0],
@@ -159,8 +159,12 @@ export default function RadioAssessmentPage() {
       setError("Please select a cadet from the search results.");
       return;
     }
-    if (form.passed === null) {
-      setError("Please select PASS or FAIL.");
+    if (!form.cyberSecDate) {
+      setError("Please enter the Cyber Security video date.");
+      return;
+    }
+    if (!effectiveSignature) {
+      setError("A signature is required. Please draw or use your saved signature.");
       return;
     }
     if (!form.assessorName) {
@@ -177,7 +181,7 @@ export default function RadioAssessmentPage() {
         cadet_name: form.cadetName,
         criteria: form.criteria,
         cyber_sec_date: form.cyberSecDate,
-        passed: form.passed,
+        passed: allChecked,
         comments: form.comments,
         assessor_name: form.assessorName,
         assessor_signature: effectiveSignature,
@@ -242,7 +246,7 @@ export default function RadioAssessmentPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Result</span>
-              {form.passed ? (
+              {allChecked ? (
                 <Badge className="bg-green-500 text-white hover:bg-green-500 gap-1 text-xs">
                   <CheckCircle2 className="h-3 w-3" /> PASS
                 </Badge>
@@ -354,47 +358,41 @@ export default function RadioAssessmentPage() {
         </CardContent>
       </Card>
 
-      {/* Pass / Fail */}
+      {/* Result */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Result</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, passed: true }))}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg border-2 py-3 font-semibold transition-all",
-                form.passed === true
-                  ? "border-green-500 bg-green-500 text-white"
-                  : "border-muted hover:border-green-500/40 hover:bg-green-500/5 text-muted-foreground"
-              )}
-            >
-              <CheckCircle2 className="h-4 w-4" /> PASS
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, passed: false }))}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg border-2 py-3 font-semibold transition-all",
-                form.passed === false
-                  ? "border-red-500 bg-red-500 text-white"
-                  : "border-muted hover:border-red-500/40 hover:bg-red-500/5 text-muted-foreground"
-              )}
-            >
-              <XCircle className="h-4 w-4" /> FAIL
-            </button>
+          <div
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-lg border-2 py-3 font-semibold",
+              allChecked
+                ? "border-green-500 bg-green-500/10 text-green-600"
+                : "border-red-500 bg-red-500/10 text-red-600"
+            )}
+          >
+            {allChecked ? (
+              <><CheckCircle2 className="h-4 w-4" /> PASS — All {CRITERIA.length} criteria initialled</>
+            ) : (
+              <><XCircle className="h-4 w-4" /> FAIL — {CRITERIA.length - checkedCount} criteria remaining</>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="comments">Comments</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="comments">Comments</Label>
+              <span className={cn("text-xs", form.comments.length > COMMENTS_MAX ? "text-destructive" : "text-muted-foreground")}>
+                {form.comments.length} / {COMMENTS_MAX}
+              </span>
+            </div>
             <Textarea
               id="comments"
               placeholder="Enter any comments..."
-              rows={4}
+              rows={3}
+              maxLength={COMMENTS_MAX}
               value={form.comments}
-              onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value.slice(0, COMMENTS_MAX) }))}
             />
           </div>
         </CardContent>
