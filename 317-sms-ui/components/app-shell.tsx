@@ -30,6 +30,8 @@ import {
   ClipboardCheck,
   WifiOff,
   AlertTriangle,
+  Package,
+  ShoppingCart,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -73,6 +75,15 @@ const NAV_ITEMS: NavItem[] = [
       { label: "Cadet Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
       { label: "Cadet Assessment Sheets", href: "/cadets/assessments", icon: ClipboardCheck },
       { label: "Event List", href: "/cadets/events", icon: Calendar, staffOnly: true },
+    ],
+  },
+  {
+    label: "Stores",
+    icon: Package,
+    staffOnly: true,
+    children: [
+      { label: "Stock", href: "/stores/stock", icon: Package },
+      { label: "Orders", href: "/stores/orders", icon: ShoppingCart },
     ],
   },
   { label: "Settings", href: "/settings", icon: Settings },
