@@ -8,7 +8,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { cadetName, needSizing, items } = body;
+  const { cadetName, items } = body;
 
   if (!cadetName || !Array.isArray(items)) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
     id: crypto.randomUUID(),
     cadetName,
     timestamp: new Date().toISOString(),
-    needSizing: !!needSizing,
-    items: items.map((item: { itemType: string; size: string }) => ({
+    items: items.map((item: { itemType: string; size: string; needSizing?: boolean }) => ({
       id: crypto.randomUUID(),
       itemType: item.itemType,
-      size: item.size,
+      size: item.size ?? "",
+      needSizing: !!item.needSizing,
     })),
   };
 

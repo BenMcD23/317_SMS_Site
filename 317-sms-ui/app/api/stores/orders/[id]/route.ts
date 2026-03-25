@@ -14,7 +14,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  data.orders[idx] = { ...data.orders[idx], ...body, id };
+  const patch = { ...body };
+  // Ensure any new items without an id get one assigned
+  if (Array.isArray(patch.items)) {
+    patch.items = patch.items.map((item: { id?: string; itemType: string; size: string; needSizing?: boolean }) => ({
+      needSizing: false,
+      ...item,
+      id: item.id ?? crypto.randomUUID(),
+    }));
+  }
+  data.orders[idx] = { ...data.orders[idx], ...patch, id };
   writeStores(data);
 
   return NextResponse.json(data.orders[idx]);

@@ -11,17 +11,18 @@ export interface OrderItem {
   id: string;
   itemType: string;
   size: string;
+  needSizing: boolean;
 }
 
 export interface Order {
   id: string;
   cadetName: string;
   timestamp: string;
-  needSizing: boolean;
   items: OrderItem[];
 }
 
 export interface StoresData {
+  structure: Record<string, string[]>; // box label → ordered section labels
   stock: StockItem[];
   orders: Order[];
 }
