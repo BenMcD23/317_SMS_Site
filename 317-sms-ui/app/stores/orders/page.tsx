@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Order, OrderItem, StockItem } from "@/lib/stores-types";
+import { CadetSearchInput } from "@/components/cadet-search";
 
 const ITEM_TYPES = [
   "Wedgewood Male",
@@ -53,6 +55,9 @@ function formatTimestamp(ts: string): string {
 }
 
 export default function OrdersPage() {
+  const { data: session } = useSession();
+  const token = (session as { id_token?: string } | null)?.id_token ?? null;
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [stock, setStock] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +66,7 @@ export default function OrdersPage() {
 
   // New order dialog
   const [newOrderOpen, setNewOrderOpen] = useState(false);
+  const [newCadetCin, setNewCadetCin] = useState<number | null>(null);
   const [newCadetName, setNewCadetName] = useState("");
   const [newItems, setNewItems] = useState<DraftItem[]>([emptyDraftItem()]);
   const [submitting, setSubmitting] = useState(false);
@@ -178,6 +184,7 @@ export default function OrdersPage() {
   }
 
   function openNewOrder() {
+    setNewCadetCin(null);
     setNewCadetName("");
     setNewItems([emptyDraftItem()]);
     setNewOrderOpen(true);
@@ -185,13 +192,13 @@ export default function OrdersPage() {
 
   async function handleCreateOrder() {
     const validItems = newItems.filter((i) => i.itemType);
-    if (!newCadetName.trim() || validItems.length === 0) return;
+    if (!newCadetCin || validItems.length === 0) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/stores/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cadetName: newCadetName.trim(), items: validItems }),
+        body: JSON.stringify({ cadetCin: newCadetCin, items: validItems }),
       });
       if (!res.ok) throw new Error("Failed to create order");
       const created = await res.json();
@@ -213,7 +220,6 @@ export default function OrdersPage() {
     if (!addItemDraft.itemType) return;
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    // id will be assigned server-side by the PATCH route
     await patchOrder(orderId, {
       items: [...order.items, addItemDraft as unknown as OrderItem],
     });
@@ -421,10 +427,16 @@ export default function OrdersPage() {
           <DialogHeader><DialogTitle>New Order</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="cadetName">Cadet Name</Label>
-              <Input id="cadetName" value={newCadetName}
-                onChange={(e) => setNewCadetName(e.target.value)}
-                placeholder="e.g. Cdt Smith" />
+              <Label>Cadet</Label>
+              <CadetSearchInput
+                token={token}
+                selectedCin={newCadetCin}
+                selectedName={newCadetName}
+                onSelect={(cin, name) => {
+                  setNewCadetCin(cin || null);
+                  setNewCadetName(name);
+                }}
+              />
             </div>
 
             <div className="space-y-2">
@@ -476,7 +488,7 @@ export default function OrdersPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewOrderOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateOrder}
-              disabled={submitting || !newCadetName.trim() || newItems.filter((i) => i.itemType).length === 0}>
+              disabled={submitting || !newCadetCin || newItems.filter((i) => i.itemType).length === 0}>
               {submitting ? "Creating..." : "Create Order"}
             </Button>
           </DialogFooter>

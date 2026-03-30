@@ -1,34 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readStores, writeStores } from "@/lib/stores-store";
+import { auth } from "@/auth";
+
+const API_BASE = process.env.API_BASE || "http://localhost:8000";
+
+async function getToken(): Promise<string | undefined> {
+  const session = await auth();
+  return (session as { id_token?: string } | null)?.id_token;
+}
 
 export async function GET() {
-  const data = readStores();
-  return NextResponse.json(data.orders);
+  const token = await getToken();
+  const res = await fetch(`${API_BASE}/stores/orders`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return NextResponse.json({ error: "Failed" }, { status: res.status });
+  return NextResponse.json(await res.json());
 }
 
 export async function POST(req: NextRequest) {
+  const token = await getToken();
   const body = await req.json();
-  const { cadetName, items } = body;
-
-  if (!cadetName || !Array.isArray(items)) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
-
-  const data = readStores();
-  const newOrder = {
-    id: crypto.randomUUID(),
-    cadetName,
-    timestamp: new Date().toISOString(),
-    items: items.map((item: { itemType: string; size: string; needSizing?: boolean }) => ({
-      id: crypto.randomUUID(),
-      itemType: item.itemType,
-      size: item.size ?? "",
-      needSizing: !!item.needSizing,
-    })),
-  };
-
-  data.orders.push(newOrder);
-  writeStores(data);
-
-  return NextResponse.json(newOrder, { status: 201 });
+  const res = await fetch(`${API_BASE}/stores/orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return NextResponse.json({ error: "Failed" }, { status: res.status });
+  return NextResponse.json(await res.json(), { status: 201 });
 }

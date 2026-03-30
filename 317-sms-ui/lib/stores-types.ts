@@ -5,6 +5,7 @@ export interface StockItem {
   box: string;      // "A", "B", "C", etc.
   section: string;  // "1", "2", "3", etc.
   quantity: number;
+  gender: string;   // "male" | "female" | "unisex"
 }
 
 export interface OrderItem {
@@ -17,12 +18,7 @@ export interface OrderItem {
 export interface Order {
   id: string;
   cadetName: string;
+  cadetCin: number;
   timestamp: string;
   items: OrderItem[];
-}
-
-export interface StoresData {
-  structure: Record<string, string[]>; // box label → ordered section labels
-  stock: StockItem[];
-  orders: Order[];
 }

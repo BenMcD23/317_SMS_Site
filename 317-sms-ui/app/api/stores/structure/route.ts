@@ -1,65 +1,33 @@
-import { NextResponse } from "next/server";
-import { readStores, writeStores } from "@/lib/stores-store";
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 
-export async function GET() {
-  const data = readStores();
-  return NextResponse.json(data.structure ?? {});
+const API_BASE = process.env.API_BASE || "http://localhost:8000";
+
+async function getToken(): Promise<string | undefined> {
+  const session = await auth();
+  return (session as { id_token?: string } | null)?.id_token;
 }
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const { action, box, section } = body as {
-    action: "add-box" | "delete-box" | "add-section" | "delete-section";
-    box: string;
-    section?: string;
-  };
+export async function GET() {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE}/stores/structure`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return NextResponse.json({ error: "Failed" }, { status: res.status });
+  return NextResponse.json(await res.json());
+}
 
-  const data = readStores();
-  if (!data.structure) data.structure = {};
-
-  if (action === "add-box") {
-    if (!box || data.structure[box] !== undefined) {
-      return NextResponse.json({ error: "Box already exists or invalid name" }, { status: 400 });
-    }
-    data.structure[box] = [];
-    writeStores(data);
-    return NextResponse.json(data.structure);
-  }
-
-  if (action === "delete-box") {
-    if (!box || data.structure[box] === undefined) {
-      return NextResponse.json({ error: "Box not found" }, { status: 404 });
-    }
-    delete data.structure[box];
-    data.stock = data.stock.filter((i) => i.box !== box);
-    writeStores(data);
-    return NextResponse.json(data.structure);
-  }
-
-  if (action === "add-section") {
-    if (!box || !section) {
-      return NextResponse.json({ error: "Box and section required" }, { status: 400 });
-    }
-    if (data.structure[box] === undefined) {
-      return NextResponse.json({ error: "Box not found" }, { status: 404 });
-    }
-    if (data.structure[box].includes(section)) {
-      return NextResponse.json({ error: "Section already exists" }, { status: 400 });
-    }
-    data.structure[box].push(section);
-    writeStores(data);
-    return NextResponse.json(data.structure);
-  }
-
-  if (action === "delete-section") {
-    if (!box || !section || data.structure[box] === undefined) {
-      return NextResponse.json({ error: "Box or section not found" }, { status: 404 });
-    }
-    data.structure[box] = data.structure[box].filter((s) => s !== section);
-    data.stock = data.stock.filter((i) => !(i.box === box && i.section === section));
-    writeStores(data);
-    return NextResponse.json(data.structure);
-  }
-
-  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+export async function POST(req: NextRequest) {
+  const token = await getToken();
+  const body = await req.json();
+  const res = await fetch(`${API_BASE}/stores/structure`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return NextResponse.json({ error: "Failed" }, { status: res.status });
+  return NextResponse.json(await res.json());
 }
