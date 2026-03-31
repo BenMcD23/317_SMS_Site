@@ -1,0 +1,352 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { UserProfileCard } from "@/components/user-profile-card";
+
+type JourneyEntry = {
+  id: number;
+  // Journey details
+  dateOfJourney: string;
+  timeOfDeparture: string;
+  timeOfArrival: string;
+  from: string;
+  to: string;
+  // Passenger/trip info
+  natureOfActivity: string;
+  nameRankNo: string;
+  gbtHotelRef: string;
+  miscExpenses: string;
+  // Travel details
+  numberOfPassengers: string;
+  method: string;
+  mileageClaimed: string;
+};
+
+const defaultEntry = (): JourneyEntry => ({
+  id: Date.now(),
+  dateOfJourney: "",
+  timeOfDeparture: "",
+  timeOfArrival: "",
+  from: "",
+  to: "",
+  natureOfActivity: "",
+  nameRankNo: "",
+  gbtHotelRef: "",
+  miscExpenses: "",
+  numberOfPassengers: "",
+  method: "",
+  mileageClaimed: "",
+});
+
+function EntryCard({
+  entry,
+  index,
+  onUpdate,
+  onRemove,
+  canRemove,
+  homeAddress,
+}: {
+  entry: JourneyEntry;
+  index: number;
+  onUpdate: (id: number, field: keyof JourneyEntry, value: string) => void;
+  onRemove: (id: number) => void;
+  canRemove: boolean;
+  homeAddress: string;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  const set = (field: keyof JourneyEntry) => (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => onUpdate(entry.id, field, e.target.value);
+
+  const hasContent =
+    entry.dateOfJourney || entry.from || entry.to || entry.nameRankNo;
+
+  return (
+    <Card className="border-border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base font-semibold">
+            Entry {index + 1}
+            {hasContent && !collapsed && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                {[entry.dateOfJourney, entry.from && entry.to ? `${entry.from} → ${entry.to}` : ""].filter(Boolean).join(" · ")}
+              </span>
+            )}
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCollapsed((v) => !v)}
+              className="h-8 w-8 p-0"
+            >
+              {collapsed ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronUp className="h-4 w-4" />
+              )}
+            </Button>
+            {canRemove && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onRemove(entry.id)}
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      {!collapsed && (
+        <CardContent className="space-y-6">
+          {/* Journey Details */}
+          <div>
+            <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Journey Details
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={`date-${entry.id}`}>Date of Journey</Label>
+                <Input
+                  id={`date-${entry.id}`}
+                  type="date"
+                  value={entry.dateOfJourney}
+                  onChange={set("dateOfJourney")}
+                />
+                <p className="text-xs text-muted-foreground">DD/MM/YY</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`dep-${entry.id}`}>Time of Departure</Label>
+                <Input
+                  id={`dep-${entry.id}`}
+                  type="time"
+                  value={entry.timeOfDeparture}
+                  onChange={set("timeOfDeparture")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`arr-${entry.id}`}>Time of Arrival</Label>
+                <Input
+                  id={`arr-${entry.id}`}
+                  type="time"
+                  value={entry.timeOfArrival}
+                  onChange={set("timeOfArrival")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor={`from-${entry.id}`}>From</Label>
+                  {homeAddress && (
+                    <button
+                      type="button"
+                      onClick={() => onUpdate(entry.id, "from", homeAddress)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Use home address
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id={`from-${entry.id}`}
+                  placeholder="Departure location"
+                  value={entry.from}
+                  onChange={set("from")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor={`to-${entry.id}`}>To</Label>
+                  {homeAddress && (
+                    <button
+                      type="button"
+                      onClick={() => onUpdate(entry.id, "to", homeAddress)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Use home address
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id={`to-${entry.id}`}
+                  placeholder="Destination"
+                  value={entry.to}
+                  onChange={set("to")}
+                />
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          {/* Trip Information */}
+          <div>
+            <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Trip Information
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor={`nature-${entry.id}`}>
+                  Nature of Activity and SMS Ref
+                </Label>
+                <Textarea
+                  id={`nature-${entry.id}`}
+                  placeholder="e.g. Training camp, SMS-1234"
+                  value={entry.natureOfActivity}
+                  onChange={set("natureOfActivity")}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`nrn-${entry.id}`}>
+                  Name / Rank / No of Passenger(s)
+                </Label>
+                <Textarea
+                  id={`nrn-${entry.id}`}
+                  placeholder="e.g. Cdt Smith J, 1234567"
+                  value={entry.nameRankNo}
+                  onChange={set("nameRankNo")}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`gbt-${entry.id}`}>GBT Hotel Booking Ref</Label>
+                <Textarea
+                  id={`gbt-${entry.id}`}
+                  placeholder="Booking reference"
+                  value={entry.gbtHotelRef}
+                  onChange={set("gbtHotelRef")}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`misc-${entry.id}`}>
+                  Details of any Miscellaneous Expenses
+                </Label>
+                <Textarea
+                  id={`misc-${entry.id}`}
+                  placeholder="Any additional expenses..."
+                  value={entry.miscExpenses}
+                  onChange={set("miscExpenses")}
+                  rows={2}
+                />
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          {/* Travel Details */}
+          <div>
+            <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              Travel Details
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={`pax-${entry.id}`}>Number of Passengers</Label>
+                <Input
+                  id={`pax-${entry.id}`}
+                  type="number"
+                  min="1"
+                  placeholder="0"
+                  value={entry.numberOfPassengers}
+                  onChange={set("numberOfPassengers")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`method-${entry.id}`}>Method</Label>
+                <Input
+                  id={`method-${entry.id}`}
+                  placeholder="e.g. Private car, Rail"
+                  value={entry.method}
+                  onChange={set("method")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`mileage-${entry.id}`}>Mileage Claimed</Label>
+                <Input
+                  id={`mileage-${entry.id}`}
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="0"
+                  value={entry.mileageClaimed}
+                  onChange={set("mileageClaimed")}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+export default function F1771ePage() {
+  const [entries, setEntries] = useState<JourneyEntry[]>([defaultEntry()]);
+  const [homeAddress, setHomeAddress] = useState("");
+
+  const addEntry = () => setEntries((prev) => [...prev, defaultEntry()]);
+
+  const removeEntry = (id: number) =>
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+
+  const updateEntry = (
+    id: number,
+    field: keyof JourneyEntry,
+    value: string
+  ) => {
+    setEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e))
+    );
+  };
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">F1771e Generator</h1>
+        <p className="mt-1 text-muted-foreground">
+          Add journey entries below, then generate the Word document.
+        </p>
+      </div>
+
+      <UserProfileCard onHomeAddressChange={setHomeAddress} />
+
+      <div className="space-y-4">
+        {entries.map((entry, index) => (
+          <EntryCard
+            key={entry.id}
+            entry={entry}
+            index={index}
+            onUpdate={updateEntry}
+            onRemove={removeEntry}
+            canRemove={entries.length > 1}
+            homeAddress={homeAddress}
+          />
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button variant="outline" onClick={addEntry} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Add New Entry
+        </Button>
+
+        <Button disabled className="gap-2">
+          Generate Word Document
+          <span className="text-xs opacity-60">(coming soon)</span>
+        </Button>
+      </div>
+    </div>
+  );
+}

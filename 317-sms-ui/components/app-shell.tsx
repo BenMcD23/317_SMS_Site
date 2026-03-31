@@ -32,6 +32,7 @@ import {
   AlertTriangle,
   Package,
   ShoppingCart,
+  FilePlus2,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -84,6 +85,14 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: "Stock", href: "/stores/stock", icon: Package },
       { label: "Orders", href: "/stores/orders", icon: ShoppingCart },
+    ],
+  },
+  {
+    label: "Form Generators",
+    icon: FilePlus2,
+    staffOnly: true,
+    children: [
+      { label: "F1771e", href: "/form-generators/f1771e", icon: FileText },
     ],
   },
   { label: "Settings", href: "/settings", icon: Settings },
