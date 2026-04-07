@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
-import { UserProfileCard } from "@/components/user-profile-card";
+import { UserProfileCard, type UserProfile } from "@/components/user-profile-card";
 
 type JourneyEntry = {
   id: number;
@@ -306,12 +306,16 @@ function EntryCard({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={`method-${entry.id}`}>Method</Label>
-                <Input
-                  id={`method-${entry.id}`}
-                  placeholder="e.g. Private car, Rail"
-                  value={entry.method}
-                  onChange={set("method")}
-                />
+                <Select value={entry.method} onValueChange={(v) => onUpdate(entry.id, "method", v)}>
+                  <SelectTrigger id={`method-${entry.id}`}>
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["Electric Car","Motor Car","Motorcycle","Public Transport","Taxi","Aircraft","Bicycle"].map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={`mileage-${entry.id}`}>Mileage Claimed</Label>
@@ -348,9 +352,23 @@ function EntryCard({
   );
 }
 
+const REQUIRED_PROFILE_FIELDS: (keyof UserProfile)[] = [
+  "rank", "initials", "surname", "jpa_number", "appointment", "sqn_vgs_no", "wing_ccf", "home_address",
+];
+const REQUIRED_JOURNEY_FIELDS: (keyof JourneyEntry)[] = [
+  "dateOfJourney", "timeOfDeparture", "timeOfArrival", "from", "to", "natureOfActivity", "method", "mileageClaimed",
+];
+const JOURNEY_FIELD_LABELS: Partial<Record<keyof JourneyEntry, string>> = {
+  dateOfJourney: "Date of Journey", timeOfDeparture: "Time of Departure", timeOfArrival: "Time of Arrival",
+  from: "From", to: "To", natureOfActivity: "Nature of Activity", method: "Method", mileageClaimed: "Mileage Claimed",
+};
+
 export default function F1771ePage() {
+  const { data: session } = useSession();
   const [entries, setEntries] = useState<JourneyEntry[]>([defaultEntry()]);
   const [homeAddress, setHomeAddress] = useState("");
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const addEntry = () => setEntries((prev) => [...prev, defaultEntry()]);
 
@@ -367,6 +385,66 @@ export default function F1771ePage() {
     );
   };
 
+  const generateDoc = async () => {
+    if (!session?.id_token) return;
+
+    // Profile validation
+    if (!profile) { toast.error("Profile not loaded yet."); return; }
+    const missingProfile = REQUIRED_PROFILE_FIELDS.filter((k) => !profile[k]);
+    if (missingProfile.length > 0) {
+      toast.error("Complete your profile details before generating.");
+      return;
+    }
+
+    // Journey validation
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      const missing = REQUIRED_JOURNEY_FIELDS.filter((k) => !e[k]);
+      if (missing.length > 0) {
+        const labels = missing.map((k) => JOURNEY_FIELD_LABELS[k] ?? k).join(", ");
+        toast.error(`Entry ${i + 1}: missing ${labels}.`);
+        return;
+      }
+    }
+
+    // Default numberOfPassengers to "0" if blank
+    const journeys = entries.map((e) => ({
+      ...e,
+      numberOfPassengers: e.numberOfPassengers || "0",
+    }));
+
+    setGenerating(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/form-generators/f1771e`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ journeys }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.detail ?? "Failed to generate document.");
+        return;
+      }
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : "F1771e.docx";
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
@@ -376,7 +454,7 @@ export default function F1771ePage() {
         </p>
       </div>
 
-      <UserProfileCard onHomeAddressChange={setHomeAddress} />
+      <UserProfileCard onHomeAddressChange={setHomeAddress} onProfileChange={setProfile} />
 
       <div className="space-y-4">
         {entries.map((entry, index) => (
@@ -398,9 +476,11 @@ export default function F1771ePage() {
           Add New Entry
         </Button>
 
-        <Button disabled className="gap-2">
+        <Button onClick={generateDoc} disabled={generating} className="gap-2">
+          {generating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : null}
           Generate Word Document
-          <span className="text-xs opacity-60">(coming soon)</span>
         </Button>
       </div>
     </div>

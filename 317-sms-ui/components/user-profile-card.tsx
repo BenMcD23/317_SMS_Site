@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, X, Check, Loader2, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 
-type UserProfile = {
+export type UserProfile = {
   rank: string;
   initials: string;
   surname: string;
@@ -63,8 +64,10 @@ function ReadOnlyField({ label, value, multiline }: { label: string; value: stri
 
 export function UserProfileCard({
   onHomeAddressChange,
+  onProfileChange,
 }: {
   onHomeAddressChange?: (address: string) => void;
+  onProfileChange?: (profile: UserProfile) => void;
 } = {}) {
   const { data: session } = useSession();
 
@@ -90,6 +93,7 @@ export function UserProfileCard({
           const merged = { ...empty, ...data };
           setProfile(merged);
           onHomeAddressChange?.(merged.home_address);
+          onProfileChange?.(merged);
         }
       })
       .catch(() => {})
@@ -120,6 +124,7 @@ export function UserProfileCard({
       if (res.ok) {
         setProfile({ ...draft });
         onHomeAddressChange?.(draft.home_address);
+        onProfileChange?.(draft);
         setEditing(false);
         toast.success("Profile updated.");
       } else {
@@ -193,12 +198,25 @@ export function UserProfileCard({
               {FIELD_LABELS.filter(({ key }) => key !== "home_address" && key !== "car_reg").map(({ key, label }) => (
                 <div key={key} className="space-y-1.5">
                   <Label htmlFor={`profile-${key}`}>{label}</Label>
-                  <Input
-                    id={`profile-${key}`}
-                    value={draft[key]}
-                    onChange={setField(key)}
-                    placeholder={label}
-                  />
+                  {key === "rank" ? (
+                    <Select value={draft.rank} onValueChange={(v) => setDraft((d) => ({ ...d, rank: v }))}>
+                      <SelectTrigger id="profile-rank">
+                        <SelectValue placeholder="Select rank" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["Sgt","FS","WO","Plt Off","Fg Off","Flt Lt","Sqn Ldr","Wg Cdr","Gp Capt","Chaplain","CI","CGI","National Chair","Rgnl Chair","Wg Chair","Sqn Chair","Rgnl Treasurer","Wg Treasurer"].map((r) => (
+                          <SelectItem key={r} value={r}>{r}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id={`profile-${key}`}
+                      value={draft[key]}
+                      onChange={setField(key)}
+                      placeholder={label}
+                    />
+                  )}
                 </div>
               ))}
             </div>
