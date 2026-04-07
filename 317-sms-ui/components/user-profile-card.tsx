@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Pencil, X, Check, Loader2, User } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Pencil, X, Check, Loader2, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -17,7 +18,6 @@ type UserProfile = {
   surname: string;
   jpa_number: string;
   appointment: string;
-  no: string;
   sqn_vgs_no: string;
   wing_ccf: string;
   home_address: string;
@@ -30,18 +30,31 @@ const empty: UserProfile = {
   surname: "",
   jpa_number: "",
   appointment: "",
-  no: "",
   sqn_vgs_no: "",
   wing_ccf: "",
   home_address: "",
   car_reg: "",
 };
 
+const FIELD_LABELS: { key: keyof UserProfile; label: string }[] = [
+  { key: "rank",        label: "Rank" },
+  { key: "initials",    label: "Initials" },
+  { key: "surname",     label: "Surname" },
+  { key: "jpa_number",  label: "JPA Number" },
+  { key: "appointment", label: "Appointment" },
+  { key: "sqn_vgs_no",  label: "Sqn / VGS No" },
+  { key: "wing_ccf",    label: "Wing / CCF" },
+  { key: "home_address", label: "Home Address" },
+  { key: "car_reg",     label: "Car Registration" },
+];
+
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="truncate text-sm font-medium">{value || <span className="text-muted-foreground/50">—</span>}</p>
+      <p className="truncate text-sm font-medium">
+        {value || <span className="text-muted-foreground/50">—</span>}
+      </p>
     </div>
   );
 }
@@ -56,9 +69,8 @@ export function UserProfileCard({
   const [profile, setProfile] = useState<UserProfile>(empty);
   const [loading, setLoading] = useState(true);
 
-  // Edit state — only for home_address and car_reg
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({ home_address: "", car_reg: "" });
+  const [draft, setDraft] = useState<UserProfile>(empty);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -82,8 +94,10 @@ export function UserProfileCard({
       .finally(() => setLoading(false));
   }, [session]);
 
+  const missingFields = FIELD_LABELS.filter(({ key }) => !profile[key]);
+
   const startEdit = () => {
-    setDraft({ home_address: profile.home_address, car_reg: profile.car_reg });
+    setDraft({ ...profile });
     setEditing(true);
   };
 
@@ -102,7 +116,7 @@ export function UserProfileCard({
         body: JSON.stringify(draft),
       });
       if (res.ok) {
-        setProfile((p) => ({ ...p, ...draft }));
+        setProfile({ ...draft });
         onHomeAddressChange?.(draft.home_address);
         setEditing(false);
         toast.success("Profile updated.");
@@ -114,6 +128,11 @@ export function UserProfileCard({
     } finally {
       setSaving(false);
     }
+  };
+
+  const setField = (key: keyof UserProfile) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = key === "car_reg" ? e.target.value.toUpperCase() : e.target.value;
+    setDraft((d) => ({ ...d, [key]: value }));
   };
 
   return (
@@ -160,62 +179,71 @@ export function UserProfileCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading profile…
           </div>
-        ) : (
+        ) : editing ? (
           <>
-            {/* ── Non-editable identity fields ──────────────────────────────── */}
-            <div className="rounded-md border bg-muted/30 p-4">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-                <ReadOnlyField label="Rank" value={profile.rank} />
-                <ReadOnlyField label="Initials" value={profile.initials} />
-                <ReadOnlyField label="Surname" value={profile.surname} />
-                <ReadOnlyField label="JPA Number" value={profile.jpa_number} />
-                <ReadOnlyField label="Appointment" value={profile.appointment} />
-                <ReadOnlyField label="No" value={profile.no} />
-                <ReadOnlyField label="Sqn / VGS No" value={profile.sqn_vgs_no} />
-                <ReadOnlyField label="Wing / CCF" value={profile.wing_ccf} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              {FIELD_LABELS.filter(({ key }) => key !== "home_address" && key !== "car_reg").map(({ key, label }) => (
+                <div key={key} className="space-y-1.5">
+                  <Label htmlFor={`profile-${key}`}>{label}</Label>
+                  <Input
+                    id={`profile-${key}`}
+                    value={draft[key]}
+                    onChange={setField(key)}
+                    placeholder={label}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="profile-home_address">Home Address</Label>
+                <Textarea
+                  id="profile-home_address"
+                  value={draft.home_address}
+                  onChange={(e) => setDraft((d) => ({ ...d, home_address: e.target.value }))}
+                  placeholder={"House number and street\nTown, City\nPostcode"}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-car_reg">Car Registration</Label>
+                <Input
+                  id="profile-car_reg"
+                  value={draft.car_reg}
+                  onChange={setField("car_reg")}
+                  placeholder="e.g. AB12 CDE"
+                  className="uppercase"
+                />
               </div>
             </div>
-
-            {/* ── Editable fields ───────────────────────────────────────────── */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {editing ? (
-                <>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="home-address">Home Address</Label>
-                    <Input
-                      id="home-address"
-                      value={draft.home_address}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, home_address: e.target.value }))
-                      }
-                      placeholder="e.g. 1 High Street, Town, AB1 2CD"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="car-reg">Car Registration</Label>
-                    <Input
-                      id="car-reg"
-                      value={draft.car_reg}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, car_reg: e.target.value.toUpperCase() }))
-                      }
-                      placeholder="e.g. AB12 CDE"
-                      className="uppercase"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <ReadOnlyField label="Home Address" value={profile.home_address} />
-                  <ReadOnlyField label="Car Registration" value={profile.car_reg} />
-                </>
-              )}
+          </>
+        ) : (
+          <>
+            {missingFields.length > 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Complete all fields to generate the Word document.{" "}
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="font-medium underline underline-offset-2 hover:no-underline"
+                  >
+                    Fill in missing fields
+                  </button>
+                </span>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+              {FIELD_LABELS.map(({ key, label }) => (
+                <ReadOnlyField key={key} label={label} value={profile[key]} />
+              ))}
             </div>
           </>
         )}
