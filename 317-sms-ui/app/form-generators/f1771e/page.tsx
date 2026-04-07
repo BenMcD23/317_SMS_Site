@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
 import { UserProfileCard } from "@/components/user-profile-card";
 
 type JourneyEntry = {
@@ -60,7 +64,40 @@ function EntryCard({
   canRemove: boolean;
   homeAddress: string;
 }) {
+  const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
+  const [calculatingMileage, setCalculatingMileage] = useState(false);
+
+  const calculateMileage = async () => {
+    if (!entry.from.trim() || !entry.to.trim()) {
+      toast.error("Fill in both From and To addresses first.");
+      return;
+    }
+    if (!session?.id_token) return;
+    setCalculatingMileage(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/form-generators/calculate-mileage`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ from_address: entry.from, to_address: entry.to }),
+      });
+      if (res.ok) {
+        const { miles } = await res.json();
+        onUpdate(entry.id, "mileageClaimed", String(miles));
+        toast.success(`Distance calculated: ${miles} miles`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.detail ?? "Could not calculate distance.");
+      }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setCalculatingMileage(false);
+    }
+  };
 
   const set = (field: keyof JourneyEntry) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -115,7 +152,7 @@ function EntryCard({
             <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
               Journey Details
             </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label htmlFor={`date-${entry.id}`}>Date of Journey</Label>
                 <Input
@@ -144,45 +181,49 @@ function EntryCard({
                   onChange={set("timeOfArrival")}
                 />
               </div>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor={`from-${entry.id}`}>From</Label>
-                  {homeAddress && (
-                    <button
-                      type="button"
-                      onClick={() => onUpdate(entry.id, "from", homeAddress)}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Use home address
-                    </button>
-                  )}
-                </div>
-                <Input
+                <Label htmlFor={`from-${entry.id}`}>From</Label>
+                <Textarea
                   id={`from-${entry.id}`}
-                  placeholder="Departure location"
+                  placeholder={"House number and street\nTown, City\nPostcode"}
                   value={entry.from}
                   onChange={set("from")}
+                  rows={3}
                 />
+                {homeAddress && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onUpdate(entry.id, "from", homeAddress)}
+                    className="w-full"
+                  >
+                    Use home address
+                  </Button>
+                )}
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor={`to-${entry.id}`}>To</Label>
-                  {homeAddress && (
-                    <button
-                      type="button"
-                      onClick={() => onUpdate(entry.id, "to", homeAddress)}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Use home address
-                    </button>
-                  )}
-                </div>
-                <Input
+                <Label htmlFor={`to-${entry.id}`}>To</Label>
+                <Textarea
                   id={`to-${entry.id}`}
-                  placeholder="Destination"
+                  placeholder={"House number and street\nTown, City\nPostcode"}
                   value={entry.to}
                   onChange={set("to")}
+                  rows={3}
                 />
+                {homeAddress && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onUpdate(entry.id, "to", homeAddress)}
+                    className="w-full"
+                  >
+                    Use home address
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -283,6 +324,21 @@ function EntryCard({
                   value={entry.mileageClaimed}
                   onChange={set("mileageClaimed")}
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={calculateMileage}
+                  disabled={calculatingMileage}
+                  className="w-full gap-1.5"
+                >
+                  {calculatingMileage ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Calculator className="h-3.5 w-3.5" />
+                  )}
+                  Calculate Mileage
+                </Button>
               </div>
             </div>
           </div>

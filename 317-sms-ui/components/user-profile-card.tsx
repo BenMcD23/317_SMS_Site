@@ -48,13 +48,15 @@ const FIELD_LABELS: { key: keyof UserProfile; label: string }[] = [
   { key: "car_reg",     label: "Car Registration" },
 ];
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
+function ReadOnlyField({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
   return (
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="truncate text-sm font-medium">
-        {value || <span className="text-muted-foreground/50">—</span>}
-      </p>
+      {value ? (
+        <p className={`text-sm font-medium ${multiline ? "whitespace-pre-wrap" : "truncate"}`}>{value}</p>
+      ) : (
+        <p className="text-sm font-medium"><span className="text-muted-foreground/50">—</span></p>
+      )}
     </div>
   );
 }
@@ -242,7 +244,7 @@ export function UserProfileCard({
             )}
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
               {FIELD_LABELS.map(({ key, label }) => (
-                <ReadOnlyField key={key} label={label} value={profile[key]} />
+                <ReadOnlyField key={key} label={label} value={profile[key]} multiline={key === "home_address"} />
               ))}
             </div>
           </>
