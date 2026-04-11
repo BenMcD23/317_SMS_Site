@@ -3,7 +3,10 @@
 import {
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -42,6 +45,42 @@ interface BoxDetailViewProps {
   editMode: boolean;
 }
 
+/** Drop zone between rows — expands when dragging, highlights when hovered */
+function RowSeparator({
+  id,
+  isOver,
+  isDragging,
+  isNew,
+}: {
+  id: string;
+  isOver: boolean;
+  isDragging: boolean;
+  isNew: boolean;
+}) {
+  const { setNodeRef } = useDroppable({ id });
+
+  if (!isDragging) {
+    return <div ref={setNodeRef} className="h-2" />;
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`my-1 transition-all rounded-md border-2 border-dashed flex items-center justify-center ${
+        isOver
+          ? "h-10 border-primary bg-primary/10"
+          : "h-6 border-primary/25 bg-primary/5"
+      }`}
+    >
+      {isOver && (
+        <span className="text-xs font-medium text-primary">
+          {isNew ? "+ New row" : "Move here"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function BoxDetailView({
   box,
   stock,
@@ -64,6 +103,8 @@ export function BoxDetailView({
   const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>(
     {}
   );
+  const [draggingSection, setDraggingSection] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -111,7 +152,7 @@ export function BoxDetailView({
     } catch {}
   }
 
-  // Move a section up or down to a different row
+  // Move a section to a different row (creates new row if it doesn't exist)
   async function moveSectionToRow(label: string, targetRow: number) {
     if (targetRow < 0) return;
     const section = box.sections.find((s) => s.label === label);
@@ -136,10 +177,33 @@ export function BoxDetailView({
     await commitSections(updated);
   }
 
-  // Within-row drag reorder
+  function handleDragStart(event: DragStartEvent) {
+    setDraggingSection(String(event.active.id));
+  }
+
+  function handleDragOver(event: { over: { id: string | number } | null }) {
+    setDragOverId(event.over ? String(event.over.id) : null);
+  }
+
+  // Within-row drag reorder + cross-row separator drop
   async function handleDragEnd(event: DragEndEvent) {
+    setDraggingSection(null);
+    setDragOverId(null);
+
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over) return;
+
+    // Check for row separator drop (cross-row move / new row)
+    const rowSepMatch = String(over.id).match(/^row-sep-(\d+)$/);
+    if (rowSepMatch) {
+      const afterRowIdx = parseInt(rowSepMatch[1]);
+      const targetRow = afterRowIdx + 1;
+      await moveSectionToRow(String(active.id), targetRow);
+      return;
+    }
+
+    // Within-row sort
+    if (active.id === over.id) return;
 
     const activeLabel = String(active.id);
     const overLabel = String(over.id);
@@ -201,7 +265,6 @@ export function BoxDetailView({
       const newB = Math.max(20, startWidthB - deltaFlex);
       el.removeEventListener("pointermove", onMove);
 
-      // Keep overrides visible until API responds
       setWidthOverrides((prev) => ({
         ...prev,
         [secA.label]: newA,
@@ -254,6 +317,8 @@ export function BoxDetailView({
 
   const topEndLabel = box.topEnd === "left" ? "← Top end" : "Top end →";
   const TopEndIcon = box.topEnd === "left" ? ArrowLeft : ArrowRight;
+
+  const isDraggingSection = draggingSection !== null;
 
   return (
     <div className="space-y-4">
@@ -400,15 +465,21 @@ export function BoxDetailView({
           </div>
 
           {/* Rows */}
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="space-y-2">
-              {rowIndexes.map((rowIdx) => {
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver as never}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-0">
+              {rowIndexes.map((rowIdx, rIdx) => {
                 const rowSections = sectionsByRow(rowIdx);
                 const sectionIds = rowSections.map((s) => s.label);
+                const isLastRow = rIdx === rowIndexes.length - 1;
 
-                return (
+                return [
                   <div
-                    key={rowIdx}
+                    key={`row-${rowIdx}`}
                     data-section-row={rowIdx}
                     className="overflow-x-auto pb-1"
                   >
@@ -483,10 +554,25 @@ export function BoxDetailView({
                         ))}
                       </div>
                     </SortableContext>
-                  </div>
-                );
+                  </div>,
+                  <RowSeparator
+                    key={`sep-${rowIdx}`}
+                    id={`row-sep-${rowIdx}`}
+                    isOver={dragOverId === `row-sep-${rowIdx}`}
+                    isDragging={isDraggingSection}
+                    isNew={isLastRow}
+                  />,
+                ];
               })}
             </div>
+
+            <DragOverlay>
+              {draggingSection && (
+                <div className="rounded-lg border bg-card shadow-lg px-3 py-2 text-sm font-semibold opacity-90 ring-2 ring-primary">
+                  §{draggingSection}
+                </div>
+              )}
+            </DragOverlay>
           </DndContext>
         </div>
       )}

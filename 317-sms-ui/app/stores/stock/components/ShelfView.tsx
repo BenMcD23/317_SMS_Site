@@ -23,13 +23,25 @@ interface ShelfViewProps {
   editMode: boolean;
 }
 
-function DropGap({ id, isOver }: { id: string; isOver: boolean }) {
+function DropGap({
+  id,
+  isOver,
+  isDragging,
+}: {
+  id: string;
+  isOver: boolean;
+  isDragging: boolean;
+}) {
   const { setNodeRef } = useDroppable({ id });
   return (
     <div
       ref={setNodeRef}
       className={`shrink-0 rounded transition-all ${
-        isOver ? "w-10 bg-primary/20" : "w-2"
+        isOver
+          ? "w-16 bg-primary/30 border-2 border-primary/60"
+          : isDragging
+          ? "w-10 bg-primary/5 border border-dashed border-primary/30"
+          : "w-2"
       }`}
     />
   );
@@ -44,6 +56,7 @@ interface ShelfRowProps {
   overId: string | null;
   editMode: boolean;
   onResizeBox: (label: string, newWidth: number) => void;
+  isDragging: boolean;
 }
 
 function ShelfRow({
@@ -55,6 +68,7 @@ function ShelfRow({
   overId,
   editMode,
   onResizeBox,
+  isDragging,
 }: ShelfRowProps) {
   const levelLabels: Record<number, string> = {
     3: "Top shelf",
@@ -66,6 +80,8 @@ function ShelfRow({
   const [localWidths, setLocalWidths] = useState<Record<string, number>>({});
 
   const getWidth = (box: ShelfBox) => localWidths[box.label] ?? box.boxWidth;
+
+  const isTargetLevel = overId?.startsWith(`gap-${level}-`) ?? false;
 
   function startResize(
     e: React.PointerEvent<HTMLDivElement>,
@@ -112,7 +128,15 @@ function ShelfRow({
       <p className="text-xs font-medium text-muted-foreground px-1">
         {levelLabels[level]}
       </p>
-      <div className="relative">
+      <div
+        className={`relative rounded-lg transition-all duration-150 ${
+          isDragging && isTargetLevel
+            ? "ring-2 ring-primary ring-offset-2 bg-primary/5"
+            : isDragging
+            ? "ring-1 ring-border/60"
+            : ""
+        }`}
+      >
         {/* Shelf plank */}
         <div className="absolute bottom-0 left-0 right-0 h-2 rounded bg-border" />
 
@@ -122,6 +146,7 @@ function ShelfRow({
             <DropGap
               id={`gap-${level}-0`}
               isOver={overId === `gap-${level}-0`}
+              isDragging={isDragging}
             />
           )}
 
@@ -161,6 +186,7 @@ function ShelfRow({
                 <DropGap
                   id={`gap-${level}-${idx + 1}`}
                   isOver={overId === `gap-${level}-${idx + 1}`}
+                  isDragging={isDragging}
                 />
               )}
             </div>
@@ -193,6 +219,8 @@ export function ShelfView({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
+
+  const isDragging = activeBox !== null;
 
   const boxesByLevel = (level: 1 | 2 | 3) =>
     structure.boxes
@@ -293,6 +321,7 @@ export function ShelfView({
           overId={overId}
           editMode={editMode}
           onResizeBox={handleResizeBox}
+          isDragging={isDragging}
         />
       ))}
     </div>
