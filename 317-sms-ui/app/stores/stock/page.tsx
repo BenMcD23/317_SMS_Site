@@ -150,7 +150,11 @@ export default function StockPage() {
       });
       if (!res.ok) throw new Error("Failed to add item");
       const created = await res.json();
-      setStock((prev) => [...prev, created]);
+      setStock((prev) =>
+        prev.some((i) => i.id === created.id)
+          ? prev.map((i) => (i.id === created.id ? created : i))
+          : [...prev, created]
+      );
       setAddOpen(false);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -170,7 +174,12 @@ export default function StockPage() {
       });
       if (!res.ok) throw new Error("Failed to update item");
       const updated = await res.json();
-      setStock((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+      // If the edit merged into an existing item, remove the old row and update the target
+      setStock((prev) =>
+        prev
+          .filter((i) => i.id !== editTarget.id || i.id === updated.id)
+          .map((i) => (i.id === updated.id ? updated : i))
+      );
       setEditOpen(false);
       setEditTarget(null);
     } catch (e: unknown) {
