@@ -1,3 +1,23 @@
+export interface BoxSection {
+  label: string;
+  position: number;
+  row: number;
+  sectionWidth: number;
+}
+
+export interface ShelfBox {
+  label: string;
+  shelfLevel: 1 | 2 | 3;
+  shelfPosition: number;
+  boxWidth: number;
+  topEnd: "left" | "right";
+  sections: BoxSection[];
+}
+
+export interface ShelfStructure {
+  boxes: ShelfBox[];
+}
+
 export interface StockItem {
   id: string;
   itemType: string;

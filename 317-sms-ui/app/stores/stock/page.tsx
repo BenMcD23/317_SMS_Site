@@ -1,20 +1,13 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import {
-  Package,
-  Pencil,
-  Trash2,
-  Plus,
-  Search,
-  FolderPlus,
-  X,
-} from "lucide-react";
+import { Package, Plus, Search, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Pencil, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -29,8 +22,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StockItem } from "@/lib/stores-types";
+import { ShelfStructure, ShelfBox, StockItem } from "@/lib/stores-types";
+import { ShelfView } from "./components/ShelfView";
+import { BoxDetailView } from "./components/BoxDetailView";
 
 const ITEM_TYPES = [
   "Wedgewood Male",
@@ -55,14 +49,13 @@ function emptyForm(box = "", section = ""): ItemFormState {
   return { itemType: "", size: "", box, section, quantity: 1 };
 }
 
-type DeleteBoxConfirm = { box: string; stage: 1 | 2 };
-type DeleteSectionConfirm = { box: string; section: string; stage: 1 | 2 };
-
 export default function StockPage() {
-  const [structure, setStructure] = useState<Record<string, string[]>>({});
+  const [shelfStructure, setShelfStructure] = useState<ShelfStructure | null>(null);
   const [stock, setStock] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBoxLabel, setSelectedBoxLabel] = useState<string | null>(null);
+
   const [searchName, setSearchName] = useState("");
   const [searchSize, setSearchSize] = useState("");
 
@@ -74,18 +67,13 @@ export default function StockPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
 
-  // Box management
+  // Box dialogs
   const [addBoxOpen, setAddBoxOpen] = useState(false);
   const [newBoxName, setNewBoxName] = useState("");
-  const [deleteBoxConfirm, setDeleteBoxConfirm] = useState<DeleteBoxConfirm | null>(null);
+  const [deleteBoxConfirm, setDeleteBoxConfirm] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
-  // Section management
-  const [addSectionState, setAddSectionState] = useState<{ box: string; value: string } | null>(null);
-  const [deleteSectionConfirm, setDeleteSectionConfirm] = useState<DeleteSectionConfirm | null>(null);
-
-  useEffect(() => {
-    loadAll();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -98,7 +86,7 @@ export default function StockPage() {
       if (!stockRes.ok || !structRes.ok) throw new Error("Failed to load data");
       const [stockData, structData] = await Promise.all([stockRes.json(), structRes.json()]);
       setStock(stockData);
-      setStructure(structData);
+      setShelfStructure(structData);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -106,10 +94,28 @@ export default function StockPage() {
     }
   }
 
-  const boxes = useMemo(() => Object.keys(structure).sort(), [structure]);
+  // Derived helpers
   const totalCount = stock.reduce((sum, i) => sum + i.quantity, 0);
-
   const isSearching = searchName.trim() !== "";
+
+  const selectedBox: ShelfBox | null = useMemo(
+    () => shelfStructure?.boxes.find((b) => b.label === selectedBoxLabel) ?? null,
+    [shelfStructure, selectedBoxLabel]
+  );
+
+  // Compat map for ItemForm selects: { boxLabel: sectionLabels[] }
+  const structureCompat = useMemo(
+    () =>
+      Object.fromEntries(
+        shelfStructure?.boxes.map((b) => [b.label, b.sections.map((s) => s.label)]) ?? []
+      ),
+    [shelfStructure]
+  );
+
+  const boxLabels = useMemo(
+    () => shelfStructure?.boxes.map((b) => b.label).sort() ?? [],
+    [shelfStructure]
+  );
 
   const searchResults = useMemo(() => {
     if (!searchName.trim()) return [];
@@ -121,10 +127,6 @@ export default function StockPage() {
         (size === "" || i.size.toLowerCase().includes(size))
     );
   }, [searchName, searchSize, stock]);
-
-  function getItemsForBoxSection(box: string, section: string) {
-    return stock.filter((i) => i.box === box && i.section === section);
-  }
 
   // ── Item CRUD ──────────────────────────────────────────────────────────────
 
@@ -174,7 +176,6 @@ export default function StockPage() {
       });
       if (!res.ok) throw new Error("Failed to update item");
       const updated = await res.json();
-      // If the edit merged into an existing item, remove the old row and update the target
       setStock((prev) =>
         prev
           .filter((i) => i.id !== editTarget.id || i.id === updated.id)
@@ -204,7 +205,7 @@ export default function StockPage() {
 
   async function handleAddBox() {
     const name = newBoxName.trim().toUpperCase();
-    if (!name || structure[name] !== undefined) return;
+    if (!name || structureCompat[name] !== undefined) return;
     try {
       const res = await fetch("/api/stores/structure", {
         method: "POST",
@@ -212,7 +213,7 @@ export default function StockPage() {
         body: JSON.stringify({ action: "add-box", box: name }),
       });
       if (!res.ok) throw new Error("Failed to add box");
-      setStructure(await res.json());
+      setShelfStructure(await res.json());
       setAddBoxOpen(false);
       setNewBoxName("");
     } catch (e: unknown) {
@@ -228,9 +229,9 @@ export default function StockPage() {
         body: JSON.stringify({ action: "delete-box", box }),
       });
       if (!res.ok) throw new Error("Failed to delete box");
-      setStructure(await res.json());
+      setShelfStructure(await res.json());
       setStock((prev) => prev.filter((i) => i.box !== box));
-      setDeleteBoxConfirm(null);
+      setSelectedBoxLabel(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
@@ -248,8 +249,7 @@ export default function StockPage() {
         body: JSON.stringify({ action: "add-section", box, section: name }),
       });
       if (!res.ok) throw new Error("Failed to add section");
-      setStructure(await res.json());
-      setAddSectionState(null);
+      setShelfStructure(await res.json());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
@@ -263,9 +263,8 @@ export default function StockPage() {
         body: JSON.stringify({ action: "delete-section", box, section }),
       });
       if (!res.ok) throw new Error("Failed to delete section");
-      setStructure(await res.json());
+      setShelfStructure(await res.json());
       setStock((prev) => prev.filter((i) => !(i.box === box && i.section === section)));
-      setDeleteSectionConfirm(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
@@ -287,6 +286,13 @@ export default function StockPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
             <Package className="h-5 w-5 text-primary" />
           </div>
+          <Button
+            variant={editMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setEditMode((m) => !m)}
+          >
+            {editMode ? "Done Editing" : "Edit Arrangement"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setAddBoxOpen(true)}>
             <FolderPlus className="mr-2 h-4 w-4" />
             Add Box
@@ -360,203 +366,39 @@ export default function StockPage() {
         </div>
       )}
 
-      {/* Tabbed layout — hidden when searching */}
-      {!loading && !isSearching && (
-        boxes.length === 0 ? (
+      {/* Main view — shelf or box detail */}
+      {!loading && !isSearching && shelfStructure && (
+        shelfStructure.boxes.length === 0 ? (
           <div className="py-12 text-center text-sm text-muted-foreground">
             No boxes yet. Click &ldquo;Add Box&rdquo; to get started.
           </div>
+        ) : selectedBox ? (
+          <BoxDetailView
+            box={selectedBox}
+            stock={stock}
+            onBack={() => setSelectedBoxLabel(null)}
+            onStructureChange={setShelfStructure}
+            onAddItem={openAdd}
+            onEditItem={openEdit}
+            onDeleteItem={handleDeleteItem}
+            onDeleteSection={handleDeleteSection}
+            onDeleteBox={handleDeleteBox}
+            onAddSection={handleAddSection}
+            deleteItemConfirm={deleteItemConfirm}
+            onDeleteItemConfirm={setDeleteItemConfirm}
+            deleteBoxConfirm={deleteBoxConfirm}
+            onDeleteBoxConfirm={setDeleteBoxConfirm}
+            editMode={editMode}
+          />
         ) : (
-          <Tabs defaultValue={boxes[0]}>
-            <TabsList className="mb-4 flex flex-wrap gap-1 h-auto">
-              {boxes.map((box) => (
-                <TabsTrigger key={box} value={box}>Box {box}</TabsTrigger>
-              ))}
-            </TabsList>
-
-            {boxes.map((box) => {
-              const sections = structure[box] ?? [];
-              const boxQty = stock.filter((i) => i.box === box).reduce((s, i) => s + i.quantity, 0);
-
-              return (
-                <TabsContent key={box} value={box} className="space-y-4">
-                  {/* Box toolbar */}
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      {boxQty} item{boxQty !== 1 ? "s" : ""} across {sections.length} section{sections.length !== 1 ? "s" : ""}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      {addSectionState?.box === box ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            className="h-8 w-32 text-sm"
-                            placeholder="Section name"
-                            value={addSectionState.value}
-                            onChange={(e) => setAddSectionState({ box, value: e.target.value })}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleAddSection(box, addSectionState.value);
-                              if (e.key === "Escape") setAddSectionState(null);
-                            }}
-                            autoFocus
-                          />
-                          <Button
-                            size="sm"
-                            className="h-8"
-                            onClick={() => handleAddSection(box, addSectionState.value)}
-                            disabled={!addSectionState.value.trim()}
-                          >
-                            Add
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setAddSectionState(null)}>
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button variant="outline" size="sm" onClick={() => setAddSectionState({ box, value: "" })}>
-                          <Plus className="mr-1.5 h-3.5 w-3.5" />
-                          Add Section
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setDeleteBoxConfirm({ box, stage: 1 })}
-                      >
-                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                        Delete Box
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Sections grid */}
-                  {sections.length === 0 ? (
-                    <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-                      No sections yet. Click &ldquo;Add Section&rdquo; above.
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {sections.map((section) => {
-                        const items = getItemsForBoxSection(box, section);
-                        const isDelConfirm =
-                          deleteSectionConfirm?.box === box &&
-                          deleteSectionConfirm?.section === section;
-                        const sectionQty = items.reduce((s, i) => s + i.quantity, 0);
-
-                        return (
-                          <Card key={section}>
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between">
-                                <CardTitle className="text-base">Section {section}</CardTitle>
-                                <div className="flex items-center gap-0.5">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    title="Add item to this section"
-                                    onClick={() => openAdd(box, section)}
-                                  >
-                                    <Plus className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    title="Delete section"
-                                    onClick={() => setDeleteSectionConfirm({ box, section, stage: 1 })}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {/* Delete section inline confirm */}
-                              {isDelConfirm && (
-                                <div className={`mt-2 rounded-md border p-2 text-xs ${deleteSectionConfirm.stage === 2 ? "border-destructive/50 bg-destructive/10" : "border-destructive/30 bg-destructive/5"}`}>
-                                  <p className="mb-2 font-medium text-destructive">
-                                    {deleteSectionConfirm.stage === 1
-                                      ? `Delete Section ${section}? (${items.length} line${items.length !== 1 ? "s" : ""}, ${sectionQty} items)`
-                                      : "This cannot be undone. All items will be removed."}
-                                  </p>
-                                  <div className="flex gap-1.5">
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      className="h-6 px-2 text-xs"
-                                      onClick={() =>
-                                        deleteSectionConfirm.stage === 1
-                                          ? setDeleteSectionConfirm({ box, section, stage: 2 })
-                                          : handleDeleteSection(box, section)
-                                      }
-                                    >
-                                      {deleteSectionConfirm.stage === 1 ? "Continue" : "Delete"}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 px-2 text-xs"
-                                      onClick={() => setDeleteSectionConfirm(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </CardHeader>
-                            <CardContent>
-                              {items.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No items</p>
-                              ) : (
-                                <ul className="space-y-2">
-                                  {items.map((item) => (
-                                    <li key={item.id} className="flex items-center justify-between gap-2">
-                                      <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium">{item.itemType}</p>
-                                        <p className="text-xs text-muted-foreground">{item.size}</p>
-                                      </div>
-                                      <div className="flex shrink-0 items-center gap-1.5">
-                                        <Badge variant="secondary" className="text-xs">
-                                          qty: {item.quantity}
-                                        </Badge>
-                                        {deleteItemConfirm === item.id ? (
-                                          <>
-                                            <Button size="sm" variant="destructive" className="h-7 px-2 text-xs"
-                                              onClick={() => handleDeleteItem(item.id)}>
-                                              Confirm
-                                            </Button>
-                                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                                              onClick={() => setDeleteItemConfirm(null)}>
-                                              Cancel
-                                            </Button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Button size="icon" variant="ghost" className="h-7 w-7"
-                                              onClick={() => openEdit(item)} aria-label="Edit">
-                                              <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button size="icon" variant="ghost"
-                                              className="h-7 w-7 text-destructive hover:text-destructive"
-                                              onClick={() => setDeleteItemConfirm(item.id)} aria-label="Remove">
-                                              <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
-                </TabsContent>
-              );
-            })}
-          </Tabs>
+          <ShelfView
+            structure={shelfStructure}
+            stock={stock}
+            onSelectBox={setSelectedBoxLabel}
+            onStructureChange={setShelfStructure}
+            onAddBox={() => setAddBoxOpen(true)}
+            editMode={editMode}
+          />
         )
       )}
 
@@ -566,7 +408,7 @@ export default function StockPage() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Add Stock Item</DialogTitle></DialogHeader>
-          <ItemForm form={form} setForm={setForm} boxes={boxes} structure={structure} />
+          <ItemForm form={form} setForm={setForm} boxes={boxLabels} structure={structureCompat} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={submitting || !form.itemType || !form.size || !form.box || !form.section}>
@@ -580,7 +422,7 @@ export default function StockPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Edit Stock Item</DialogTitle></DialogHeader>
-          <ItemForm form={form} setForm={setForm} boxes={boxes} structure={structure} />
+          <ItemForm form={form} setForm={setForm} boxes={boxLabels} structure={structureCompat} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button onClick={handleEdit} disabled={submitting || !form.itemType || !form.size}>
@@ -604,55 +446,15 @@ export default function StockPage() {
               onKeyDown={(e) => e.key === "Enter" && handleAddBox()}
               maxLength={10}
             />
-            {newBoxName.trim() && structure[newBoxName.trim().toUpperCase()] !== undefined && (
+            {newBoxName.trim() && structureCompat[newBoxName.trim().toUpperCase()] !== undefined && (
               <p className="text-xs text-destructive">Box {newBoxName.trim().toUpperCase()} already exists.</p>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAddBoxOpen(false); setNewBoxName(""); }}>Cancel</Button>
-            <Button onClick={handleAddBox} disabled={!newBoxName.trim() || structure[newBoxName.trim().toUpperCase()] !== undefined}>
+            <Button onClick={handleAddBox} disabled={!newBoxName.trim() || structureCompat[newBoxName.trim().toUpperCase()] !== undefined}>
               Add Box
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Box — two-stage dialog */}
-      <Dialog open={!!deleteBoxConfirm} onOpenChange={(open) => !open && setDeleteBoxConfirm(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">
-              {deleteBoxConfirm?.stage === 1 ? `Delete Box ${deleteBoxConfirm.box}?` : "Are you absolutely sure?"}
-            </DialogTitle>
-          </DialogHeader>
-          {deleteBoxConfirm && (
-            <p className="text-sm text-muted-foreground">
-              {deleteBoxConfirm.stage === 1 ? (
-                <>
-                  Box <strong>{deleteBoxConfirm.box}</strong> contains{" "}
-                  {(structure[deleteBoxConfirm.box] ?? []).length} section{(structure[deleteBoxConfirm.box] ?? []).length !== 1 ? "s" : ""} and{" "}
-                  {stock.filter((i) => i.box === deleteBoxConfirm.box).reduce((s, i) => s + i.quantity, 0)} total items.
-                </>
-              ) : (
-                <span className="font-medium text-destructive">
-                  This cannot be undone. All stock in Box {deleteBoxConfirm.box} will be permanently deleted.
-                </span>
-              )}
-            </p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteBoxConfirm(null)}>Cancel</Button>
-            {deleteBoxConfirm?.stage === 1 ? (
-              <Button variant="destructive"
-                onClick={() => setDeleteBoxConfirm({ box: deleteBoxConfirm.box, stage: 2 })}>
-                Continue
-              </Button>
-            ) : (
-              <Button variant="destructive"
-                onClick={() => deleteBoxConfirm && handleDeleteBox(deleteBoxConfirm.box)}>
-                Delete Box {deleteBoxConfirm?.box}
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
