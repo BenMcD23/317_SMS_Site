@@ -7,7 +7,7 @@ export interface BoxSection {
 
 export interface ShelfBox {
   label: string;
-  shelfLevel: 1 | 2 | 3;
+  shelfLevel: 0 | 1 | 2 | 3;
   shelfPosition: number;
   boxWidth: number;
   topEnd: "left" | "right";

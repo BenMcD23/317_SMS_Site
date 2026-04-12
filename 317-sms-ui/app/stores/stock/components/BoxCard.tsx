@@ -12,6 +12,7 @@ interface BoxCardProps {
   onClick: () => void;
   overlay?: boolean;
   editMode?: boolean;
+  isMisc?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
 }
@@ -22,6 +23,7 @@ export function BoxCard({
   onClick,
   overlay = false,
   editMode = false,
+  isMisc = false,
   onMoveUp,
   onMoveDown,
 }: BoxCardProps) {
@@ -90,7 +92,7 @@ export function BoxCard({
 
       {/* Clickable content */}
       <button className="text-left w-full pr-7" onClick={onClick} tabIndex={0}>
-        <p className="text-lg font-bold leading-none">Box {box.label}</p>
+        <p className="text-lg font-bold leading-none">{isMisc ? box.label : `Box ${box.label}`}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}
         </p>

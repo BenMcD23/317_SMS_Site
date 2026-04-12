@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { ShelfView } from "./components/ShelfView";
+import { BoxCard } from "./components/BoxCard";
 
 export default function StockPage() {
   const router = useRouter();
@@ -31,6 +32,8 @@ export default function StockPage() {
 
   const [addBoxOpen, setAddBoxOpen] = useState(false);
   const [newBoxName, setNewBoxName] = useState("");
+  const [addAreaOpen, setAddAreaOpen] = useState(false);
+  const [newAreaName, setNewAreaName] = useState("");
   const [editMode, setEditMode] = useState(false);
 
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
@@ -59,6 +62,7 @@ export default function StockPage() {
   const totalCount = stock.reduce((sum, i) => sum + i.quantity, 0);
   const isSearching = searchName.trim() !== "";
 
+  // All labels (for duplicate checking)
   const structureCompat = useMemo(
     () =>
       Object.fromEntries(
@@ -66,6 +70,27 @@ export default function StockPage() {
       ),
     [shelfStructure]
   );
+
+  // Shelf boxes (levels 1–3) passed to ShelfView
+  const shelfOnlyStructure = useMemo(
+    () =>
+      shelfStructure
+        ? { boxes: shelfStructure.boxes.filter((b) => b.shelfLevel !== 0) }
+        : null,
+    [shelfStructure]
+  );
+
+  // Misc areas (level 0)
+  const miscAreas = useMemo(
+    () =>
+      (shelfStructure?.boxes ?? [])
+        .filter((b) => b.shelfLevel === 0)
+        .sort((a, b) => a.shelfPosition - b.shelfPosition),
+    [shelfStructure]
+  );
+
+  // Set of misc labels for search result badge
+  const miscLabels = useMemo(() => new Set(miscAreas.map((a) => a.label)), [miscAreas]);
 
   const searchResults = useMemo(() => {
     if (!searchName.trim()) return [];
@@ -107,6 +132,26 @@ export default function StockPage() {
     }
   }
 
+  async function handleAddArea() {
+    const name = newAreaName.trim().toUpperCase();
+    if (!name || structureCompat[name] !== undefined) return;
+    try {
+      const res = await fetch("/api/stores/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add-area", box: name }),
+      });
+      if (!res.ok) throw new Error("Failed to add area");
+      setShelfStructure(await res.json());
+      setAddAreaOpen(false);
+      setNewAreaName("");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  const hasShelfBoxes = (shelfOnlyStructure?.boxes.length ?? 0) > 0;
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-16">
       {/* Header */}
@@ -131,6 +176,10 @@ export default function StockPage() {
           <Button variant="outline" size="sm" onClick={() => setAddBoxOpen(true)}>
             <FolderPlus className="mr-2 h-4 w-4" />
             Add Box
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setAddAreaOpen(true)}>
+            <FolderPlus className="mr-2 h-4 w-4" />
+            Add Area
           </Button>
         </div>
       </div>
@@ -184,6 +233,7 @@ export default function StockPage() {
                     <SearchResultRow
                       key={item.id}
                       item={item}
+                      isMisc={miscLabels.has(item.box)}
                       deleteConfirm={deleteItemConfirm}
                       onDelete={handleDeleteItem}
                       onDeleteConfirm={setDeleteItemConfirm}
@@ -197,21 +247,45 @@ export default function StockPage() {
       )}
 
       {/* Shelf view */}
-      {!loading && !isSearching && shelfStructure && (
-        shelfStructure.boxes.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            No boxes yet. Click &ldquo;Add Box&rdquo; to get started.
-          </div>
-        ) : (
+      {!loading && !isSearching && shelfOnlyStructure && (
+        hasShelfBoxes ? (
           <ShelfView
-            structure={shelfStructure}
+            structure={shelfOnlyStructure}
             stock={stock}
             onSelectBox={(label) => router.push(`/stores/stock/${label}`)}
-            onStructureChange={setShelfStructure}
+            onStructureChange={(s) =>
+              setShelfStructure((prev) =>
+                prev
+                  ? { boxes: [...s.boxes, ...prev.boxes.filter((b) => b.shelfLevel === 0)] }
+                  : s
+              )
+            }
             onAddBox={() => setAddBoxOpen(true)}
             editMode={editMode}
           />
+        ) : (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No shelf boxes yet. Click &ldquo;Add Box&rdquo; to get started.
+          </div>
         )
+      )}
+
+      {/* Misc areas */}
+      {!loading && !isSearching && miscAreas.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">Other Areas</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {miscAreas.map((area) => (
+              <BoxCard
+                key={area.label}
+                box={area}
+                stock={stock}
+                onClick={() => router.push(`/stores/stock/${area.label}`)}
+                isMisc
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Add Box */}
@@ -240,6 +314,33 @@ export default function StockPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Area */}
+      <Dialog open={addAreaOpen} onOpenChange={setAddAreaOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Add Misc Area</DialogTitle></DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="newArea">Area Label</Label>
+            <Input
+              id="newArea"
+              placeholder="e.g. CUPBOARD"
+              value={newAreaName}
+              onChange={(e) => setNewAreaName(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && handleAddArea()}
+              maxLength={20}
+            />
+            {newAreaName.trim() && structureCompat[newAreaName.trim().toUpperCase()] !== undefined && (
+              <p className="text-xs text-destructive">{newAreaName.trim().toUpperCase()} already exists.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddAreaOpen(false); setNewAreaName(""); }}>Cancel</Button>
+            <Button onClick={handleAddArea} disabled={!newAreaName.trim() || structureCompat[newAreaName.trim().toUpperCase()] !== undefined}>
+              Add Area
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -248,11 +349,13 @@ export default function StockPage() {
 
 function SearchResultRow({
   item,
+  isMisc,
   deleteConfirm,
   onDelete,
   onDeleteConfirm,
 }: {
   item: StockItem;
+  isMisc: boolean;
   deleteConfirm: string | null;
   onDelete: (id: string) => void;
   onDeleteConfirm: (id: string | null) => void;
@@ -264,7 +367,9 @@ function SearchResultRow({
         <p className="text-xs text-muted-foreground">{item.size}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Badge variant="outline" className="text-xs">Box {item.box} §{item.section}</Badge>
+        <Badge variant="outline" className="text-xs">
+          {isMisc ? item.box : `Box ${item.box}`} §{item.section}
+        </Badge>
         <Badge variant="secondary" className="text-xs">qty: {item.quantity}</Badge>
         {deleteConfirm === item.id ? (
           <>

@@ -35,6 +35,10 @@ const ITEM_TYPES = [
   "Trousers",
   "Slacks",
   "Skirts",
+  "Beret",
+  "Tie",
+  "Brassard",
+  "Belt",
 ];
 
 type DraftItem = { itemType: string; size: string; needSizing: boolean };

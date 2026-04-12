@@ -32,7 +32,14 @@ const ITEM_TYPES = [
   "Trousers",
   "Slacks",
   "Skirts",
+  "Beret",
+  "Tie",
+  "Brassard",
+  "Belt",
 ];
+
+// Items that have no size — size is auto-filled as "N/A"
+const NO_SIZE_ITEMS = new Set(["Tie", "Brassard", "Belt"]);
 
 interface ItemFormState {
   itemType: string;
@@ -90,6 +97,8 @@ export default function BoxPage() {
     () => shelfStructure?.boxes.find((b) => b.label === boxLabel) ?? null,
     [shelfStructure, boxLabel]
   );
+
+  const isMisc = selectedBox?.shelfLevel === 0;
 
   const structureCompat = useMemo(
     () =>
@@ -278,6 +287,7 @@ export default function BoxPage() {
         deleteBoxConfirm={deleteBoxConfirm}
         onDeleteBoxConfirm={setDeleteBoxConfirm}
         editMode={editMode}
+        isMisc={isMisc}
       />
 
       {/* Add Item */}
@@ -325,12 +335,17 @@ function ItemForm({
   structure: Record<string, string[]>;
 }) {
   const sections = form.box ? (structure[form.box] ?? []) : [];
+  const noSize = NO_SIZE_ITEMS.has(form.itemType);
+
+  function handleItemTypeChange(v: string) {
+    setForm((f) => ({ ...f, itemType: v, size: NO_SIZE_ITEMS.has(v) ? "N/A" : (NO_SIZE_ITEMS.has(f.itemType) ? "" : f.size) }));
+  }
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="itemType">Item Type</Label>
-        <Select value={form.itemType} onValueChange={(v) => setForm((f) => ({ ...f, itemType: v }))}>
+        <Select value={form.itemType} onValueChange={handleItemTypeChange}>
           <SelectTrigger id="itemType"><SelectValue placeholder="Select item type" /></SelectTrigger>
           <SelectContent>
             {ITEM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -338,12 +353,14 @@ function ItemForm({
         </Select>
       </div>
 
+      {!noSize && (
       <div className="space-y-1.5">
         <Label htmlFor="size">Size</Label>
         <Input id="size" value={form.size}
           onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))}
           placeholder="e.g. 95/36 or 74" />
       </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">

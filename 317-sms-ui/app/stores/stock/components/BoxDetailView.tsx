@@ -43,6 +43,7 @@ interface BoxDetailViewProps {
   deleteBoxConfirm: boolean;
   onDeleteBoxConfirm: (confirm: boolean) => void;
   editMode: boolean;
+  isMisc?: boolean;
 }
 
 /** Drop zone between rows — expands when dragging, highlights when hovered */
@@ -97,6 +98,7 @@ export function BoxDetailView({
   deleteBoxConfirm,
   onDeleteBoxConfirm,
   editMode,
+  isMisc = false,
 }: BoxDetailViewProps) {
   const [addSectionValue, setAddSectionValue] = useState<string | null>(null);
   const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>(
@@ -307,10 +309,10 @@ export function BoxDetailView({
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
           <ChevronLeft className="h-4 w-4" />
-          Shelf
+          {isMisc ? "Stock" : "Shelf"}
         </Button>
 
-        <h2 className="text-xl font-bold">Box {box.label}</h2>
+        <h2 className="text-xl font-bold">{isMisc ? box.label : `Box ${box.label}`}</h2>
 
         <div className="ml-auto flex items-center gap-2">
           {/* Add section */}
@@ -397,7 +399,7 @@ export function BoxDetailView({
               onClick={() => onDeleteBoxConfirm(true)}
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Delete Box
+              {isMisc ? "Delete Area" : "Delete Box"}
             </Button>
           )}
         </div>
