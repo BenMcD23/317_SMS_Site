@@ -15,7 +15,7 @@ import {
   arrayMove,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ArrowLeft, ArrowRight, ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "./SectionCard";
@@ -99,7 +99,6 @@ export function BoxDetailView({
   editMode,
 }: BoxDetailViewProps) {
   const [addSectionValue, setAddSectionValue] = useState<string | null>(null);
-  const [togglingTopEnd, setTogglingTopEnd] = useState(false);
   const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>(
     {}
   );
@@ -300,24 +299,6 @@ export function BoxDetailView({
     el.addEventListener("pointerup", onUp, { once: true });
   }
 
-  async function handleTopEndToggle() {
-    const newEnd = box.topEnd === "left" ? "right" : "left";
-    setTogglingTopEnd(true);
-    try {
-      const res = await fetch(`/api/stores/boxes/${box.label}/layout`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topEnd: newEnd }),
-      });
-      if (res.ok) onStructureChange(await res.json());
-    } finally {
-      setTogglingTopEnd(false);
-    }
-  }
-
-  const topEndLabel = box.topEnd === "left" ? "← Top end" : "Top end →";
-  const TopEndIcon = box.topEnd === "left" ? ArrowLeft : ArrowRight;
-
   const isDraggingSection = draggingSection !== null;
 
   return (
@@ -332,19 +313,6 @@ export function BoxDetailView({
         <h2 className="text-xl font-bold">Box {box.label}</h2>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Top-end toggle */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTopEndToggle}
-            disabled={togglingTopEnd}
-            className="gap-1.5 text-xs"
-            title="Toggle which physical end of the box is the top"
-          >
-            <TopEndIcon className="h-3.5 w-3.5" />
-            {topEndLabel}
-          </Button>
-
           {/* Add section */}
           {addSectionValue === null ? (
             <Button
@@ -442,26 +410,9 @@ export function BoxDetailView({
         </div>
       ) : (
         <div className="space-y-3">
-          {/* TOP / BOTTOM orientation labels */}
-          <div className="flex justify-between px-1">
-            <span
-              className={`text-xs font-semibold ${
-                box.topEnd === "left"
-                  ? "text-primary"
-                  : "text-muted-foreground/40"
-              }`}
-            >
-              {box.topEnd === "left" ? "▲ TOP" : "BOTTOM"}
-            </span>
-            <span
-              className={`text-xs font-semibold ${
-                box.topEnd === "right"
-                  ? "text-primary"
-                  : "text-muted-foreground/40"
-              }`}
-            >
-              {box.topEnd === "right" ? "▲ TOP" : "BOTTOM"}
-            </span>
+          {/* TOP label */}
+          <div className="px-1">
+            <span className="text-xs font-semibold text-primary">▲ TOP</span>
           </div>
 
           {/* Rows */}
@@ -574,6 +525,11 @@ export function BoxDetailView({
               )}
             </DragOverlay>
           </DndContext>
+
+          {/* BOTTOM label */}
+          <div className="px-1">
+            <span className="text-xs font-semibold text-muted-foreground/40">▼ BOTTOM</span>
+          </div>
         </div>
       )}
     </div>

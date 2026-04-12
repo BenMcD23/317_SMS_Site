@@ -2,7 +2,8 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 
 interface BoxCardProps {
@@ -11,6 +12,8 @@ interface BoxCardProps {
   onClick: () => void;
   overlay?: boolean;
   editMode?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
 export function BoxCard({
@@ -19,6 +22,8 @@ export function BoxCard({
   onClick,
   overlay = false,
   editMode = false,
+  onMoveUp,
+  onMoveDown,
 }: BoxCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -48,19 +53,43 @@ export function BoxCard({
       }`}
       {...(editMode ? attributes : {})}
     >
-      {/* Drag handle — only in editMode */}
+      {/* Edit mode controls */}
       {editMode && (
         <div
-          {...listeners}
-          className="absolute top-2 right-2 text-muted-foreground/50 hover:text-muted-foreground cursor-grab"
+          className="absolute top-1 right-1 flex flex-col items-center gap-0.5"
           onClick={(e) => e.stopPropagation()}
         >
-          <GripVertical className="h-4 w-4" />
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-5 w-5"
+            title="Move to shelf above"
+            disabled={!onMoveUp}
+            onClick={onMoveUp}
+          >
+            <ArrowUp className="h-3 w-3" />
+          </Button>
+          <div
+            {...listeners}
+            className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab flex items-center justify-center h-5 w-5"
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-5 w-5"
+            title="Move to shelf below"
+            disabled={!onMoveDown}
+            onClick={onMoveDown}
+          >
+            <ArrowDown className="h-3 w-3" />
+          </Button>
         </div>
       )}
 
       {/* Clickable content */}
-      <button className="text-left w-full pr-5" onClick={onClick} tabIndex={0}>
+      <button className="text-left w-full pr-7" onClick={onClick} tabIndex={0}>
         <p className="text-lg font-bold leading-none">Box {box.label}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}

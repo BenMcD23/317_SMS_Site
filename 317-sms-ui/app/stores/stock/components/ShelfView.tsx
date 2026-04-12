@@ -10,7 +10,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { BoxCard } from "./BoxCard";
 import { ShelfBox, ShelfStructure, StockItem } from "@/lib/stores-types";
 
@@ -36,7 +36,7 @@ function DropGap({
   return (
     <div
       ref={setNodeRef}
-      className={`shrink-0 rounded transition-all ${
+      className={`shrink-0 self-stretch rounded transition-all ${
         isOver
           ? "w-16 bg-primary/30 border-2 border-primary/60"
           : isDragging
@@ -55,8 +55,8 @@ interface ShelfRowProps {
   activeId: string | null;
   overId: string | null;
   editMode: boolean;
-  onResizeBox: (label: string, newWidth: number) => void;
   isDragging: boolean;
+  onMoveBox: (label: string, direction: 1 | -1) => void;
 }
 
 function ShelfRow({
@@ -67,8 +67,8 @@ function ShelfRow({
   activeId,
   overId,
   editMode,
-  onResizeBox,
   isDragging,
+  onMoveBox,
 }: ShelfRowProps) {
   const levelLabels: Record<number, string> = {
     3: "Top shelf",
@@ -76,52 +76,7 @@ function ShelfRow({
     1: "Bottom shelf",
   };
 
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [localWidths, setLocalWidths] = useState<Record<string, number>>({});
-
-  const getWidth = (box: ShelfBox) => localWidths[box.label] ?? box.boxWidth;
-
   const isTargetLevel = overId?.startsWith(`gap-${level}-`) ?? false;
-
-  function startResize(
-    e: React.PointerEvent<HTMLDivElement>,
-    boxALabel: string,
-    boxBLabel: string
-  ) {
-    e.preventDefault();
-    const el = e.currentTarget as HTMLDivElement;
-    el.setPointerCapture(e.pointerId);
-
-    const boxA = boxes.find((b) => b.label === boxALabel)!;
-    const boxB = boxes.find((b) => b.label === boxBLabel)!;
-    const startWidthA = getWidth(boxA);
-    const startWidthB = getWidth(boxB);
-    const startX = e.clientX;
-    const rowWidth = rowRef.current?.clientWidth ?? 800;
-    const totalFlexGrow = boxes.reduce((s, b) => s + getWidth(b), 0);
-    const flexPerPx = totalFlexGrow / rowWidth;
-
-    function onMove(ev: PointerEvent) {
-      const deltaFlex = Math.round((ev.clientX - startX) * flexPerPx);
-      setLocalWidths((prev) => ({
-        ...prev,
-        [boxALabel]: Math.max(10, startWidthA + deltaFlex),
-        [boxBLabel]: Math.max(10, startWidthB - deltaFlex),
-      }));
-    }
-
-    function onUp(ev: PointerEvent) {
-      const deltaFlex = Math.round((ev.clientX - startX) * flexPerPx);
-      const newA = Math.max(10, startWidthA + deltaFlex);
-      const newB = Math.max(10, startWidthB - deltaFlex);
-      el.removeEventListener("pointermove", onMove);
-      onResizeBox(boxALabel, newA);
-      onResizeBox(boxBLabel, newB);
-    }
-
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup", onUp, { once: true });
-  }
 
   return (
     <div className="space-y-1">
@@ -141,7 +96,7 @@ function ShelfRow({
         <div className="absolute bottom-0 left-0 right-0 h-2 rounded bg-border" />
 
         {/* Boxes row */}
-        <div ref={rowRef} className="flex items-end pb-2 min-h-[100px] w-full">
+        <div className="flex items-end pb-2 min-h-[100px] w-full">
           {editMode && (
             <DropGap
               id={`gap-${level}-0`}
@@ -155,7 +110,7 @@ function ShelfRow({
               key={box.label}
               className="relative flex items-end"
               style={{
-                flex: `${getWidth(box)} 1 80px`,
+                flex: "1 1 80px",
                 minWidth: "80px",
                 opacity: activeId === box.label ? 0.4 : 1,
               }}
@@ -166,21 +121,10 @@ function ShelfRow({
                   stock={stock}
                   onClick={() => onSelectBox(box.label)}
                   editMode={editMode}
+                  onMoveUp={level < 3 ? () => onMoveBox(box.label, 1) : undefined}
+                  onMoveDown={level > 1 ? () => onMoveBox(box.label, -1) : undefined}
                 />
               </div>
-
-              {/* Resize handle between this box and the next (editMode only) */}
-              {editMode && idx < boxes.length - 1 && (
-                <div
-                  className="absolute right-0 top-0 bottom-2 w-4 cursor-col-resize z-10 flex items-center justify-center hover:bg-primary/10 group"
-                  style={{ touchAction: "none", transform: "translateX(50%)" }}
-                  onPointerDown={(e) =>
-                    startResize(e, box.label, boxes[idx + 1].label)
-                  }
-                >
-                  <div className="h-6 w-0.5 rounded-full bg-border group-hover:bg-primary/60" />
-                </div>
-              )}
 
               {editMode && (
                 <DropGap
@@ -297,12 +241,34 @@ export function ShelfView({
     }
   }
 
-  async function handleResizeBox(label: string, newWidth: number) {
+  async function handleMoveBox(label: string, direction: 1 | -1) {
+    const box = structure.boxes.find((b) => b.label === label);
+    if (!box) return;
+    const newLevel = (box.shelfLevel + direction) as 1 | 2 | 3;
+    if (newLevel < 1 || newLevel > 3) return;
+
+    const siblings = structure.boxes
+      .filter((b) => b.shelfLevel === newLevel)
+      .sort((a, b) => a.shelfPosition - b.shelfPosition);
+    const newPos = siblings.length;
+
+    const updatedBoxes = structure.boxes.map((b) => {
+      if (b.label === label) return { ...b, shelfLevel: newLevel, shelfPosition: newPos };
+      if (b.shelfLevel === box.shelfLevel && b.label !== label) {
+        const sorted = structure.boxes
+          .filter((x) => x.shelfLevel === box.shelfLevel && x.label !== label)
+          .sort((a, b) => a.shelfPosition - b.shelfPosition);
+        return { ...b, shelfPosition: sorted.findIndex((x) => x.label === b.label) };
+      }
+      return b;
+    });
+    onStructureChange({ boxes: updatedBoxes });
+
     try {
       const res = await fetch(`/api/stores/boxes/${label}/layout`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ boxWidth: newWidth }),
+        body: JSON.stringify({ shelfLevel: newLevel, shelfPosition: newPos }),
       });
       if (res.ok) onStructureChange(await res.json());
     } catch {}
@@ -320,8 +286,8 @@ export function ShelfView({
           activeId={activeBox?.label ?? null}
           overId={overId}
           editMode={editMode}
-          onResizeBox={handleResizeBox}
           isDragging={isDragging}
+          onMoveBox={handleMoveBox}
         />
       ))}
     </div>
