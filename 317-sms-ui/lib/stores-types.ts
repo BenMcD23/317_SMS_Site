@@ -28,11 +28,20 @@ export interface StockItem {
   gender: string;   // "male" | "female" | "unisex"
 }
 
+export interface QmNote {
+  id: string;
+  content: string;
+  timestamp: string;
+  addedBy: string;
+}
+
 export interface OrderItem {
   id: string;
   itemType: string;
   size: string;
   needSizing: boolean;
+  sizingDetails: string;
+  qmNotes: QmNote[];
 }
 
 export interface Order {

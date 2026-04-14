@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Order, OrderItem, StockItem } from "@/lib/stores-types";
+import { Order, OrderItem, QmNote, StockItem } from "@/lib/stores-types";
 import { CadetSearchInput } from "@/components/cadet-search";
 
 const ITEM_TYPES = [
@@ -41,10 +41,15 @@ const ITEM_TYPES = [
   "Belt",
 ];
 
-type DraftItem = { itemType: string; size: string; needSizing: boolean };
+type DraftItem = {
+  itemType: string;
+  size: string;
+  needSizing: boolean;
+  sizingDetails: string;
+};
 
 function emptyDraftItem(): DraftItem {
-  return { itemType: "", size: "", needSizing: false };
+  return { itemType: "", size: "", needSizing: false, sizingDetails: "" };
 }
 
 function formatTimestamp(ts: string): string {
@@ -61,6 +66,10 @@ function formatTimestamp(ts: string): string {
 export default function OrdersPage() {
   const { data: session } = useSession();
   const token = (session as { id_token?: string } | null)?.id_token ?? null;
+  const currentUser =
+    (session as { user?: { name?: string; email?: string } } | null)?.user?.name ??
+    (session as { user?: { name?: string; email?: string } } | null)?.user?.email ??
+    "Unknown";
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [stock, setStock] = useState<StockItem[]>([]);
@@ -75,19 +84,40 @@ export default function OrdersPage() {
   const [newItems, setNewItems] = useState<DraftItem[]>([emptyDraftItem()]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Edit size dialog
+  // Edit size dialog — also handles needSizing + sizingDetails
   const [editSizeOpen, setEditSizeOpen] = useState(false);
   const [editSizeOrderId, setEditSizeOrderId] = useState<string | null>(null);
   const [editSizeItemId, setEditSizeItemId] = useState<string | null>(null);
   const [editSizeValue, setEditSizeValue] = useState("");
+  const [editNeedSizing, setEditNeedSizing] = useState(false);
+  const [editSizingDetails, setEditSizingDetails] = useState("");
 
   // Add item to existing order (inline per order)
   const [addingToOrderId, setAddingToOrderId] = useState<string | null>(null);
   const [addItemDraft, setAddItemDraft] = useState<DraftItem>(emptyDraftItem());
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  // QM note adding
+  const [addingNoteItemId, setAddingNoteItemId] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  // Confirm dialog
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  function openConfirm(message: string, action: () => void) {
+    setConfirmMessage(message);
+    setPendingAction(() => action);
+    setConfirmOpen(true);
+  }
+
+  function handleConfirm() {
+    pendingAction?.();
+    setConfirmOpen(false);
+  }
+
+  useEffect(() => { fetchAll(); }, []);
 
   async function fetchAll() {
     setLoading(true);
@@ -120,7 +150,7 @@ export default function OrdersPage() {
     return stock.find((s) => s.itemType === itemType && s.size === size);
   }
 
-  async function handleRemoveFromStock(stockItem: StockItem) {
+  async function doRemoveFromStock(stockItem: StockItem) {
     try {
       const res = await fetch(`/api/stores/stock/${stockItem.id}`, {
         method: "PATCH",
@@ -135,7 +165,14 @@ export default function OrdersPage() {
     }
   }
 
-  async function handleDeleteOrder(orderId: string) {
+  function handleRemoveFromStock(stockItem: StockItem) {
+    openConfirm(
+      `Remove one ${stockItem.itemType} (${stockItem.size}) from stock?`,
+      () => doRemoveFromStock(stockItem)
+    );
+  }
+
+  async function doDeleteOrder(orderId: string) {
     try {
       const res = await fetch(`/api/stores/orders/${orderId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete order");
@@ -146,17 +183,45 @@ export default function OrdersPage() {
     }
   }
 
-  async function handleDeleteOrderItem(orderId: string, itemId: string) {
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return;
-    const updatedItems = order.items.filter((i) => i.id !== itemId);
-    await patchOrder(orderId, { items: updatedItems });
+  function handleDeleteOrder(orderId: string, cadetName: string) {
+    openConfirm(
+      `Delete the entire order for ${cadetName}? This cannot be undone.`,
+      () => doDeleteOrder(orderId)
+    );
+  }
+
+  function handleDeleteOrderItem(orderId: string, itemId: string, itemType: string) {
+    openConfirm(
+      `Remove ${itemType} from this order?`,
+      () => {
+        const order = orders.find((o) => o.id === orderId);
+        if (!order) return;
+        patchOrder(orderId, { items: order.items.filter((i) => i.id !== itemId) });
+      }
+    );
+  }
+
+  function handleDeleteQmNote(orderId: string, item: OrderItem, noteId: string) {
+    openConfirm(
+      "Delete this QM note? This cannot be undone.",
+      () => {
+        const order = orders.find((o) => o.id === orderId);
+        if (!order) return;
+        patchOrder(orderId, {
+          items: order.items.map((i) =>
+            i.id === item.id ? { ...i, qmNotes: (i.qmNotes ?? []).filter((n) => n.id !== noteId) } : i
+          ),
+        });
+      }
+    );
   }
 
   function openEditSize(orderId: string, item: OrderItem) {
     setEditSizeOrderId(orderId);
     setEditSizeItemId(item.id);
     setEditSizeValue(item.size);
+    setEditNeedSizing(item.needSizing);
+    setEditSizingDetails(item.sizingDetails ?? "");
     setEditSizeOpen(true);
   }
 
@@ -166,7 +231,9 @@ export default function OrdersPage() {
     if (!order) return;
     await patchOrder(editSizeOrderId, {
       items: order.items.map((i) =>
-        i.id === editSizeItemId ? { ...i, size: editSizeValue } : i
+        i.id === editSizeItemId
+          ? { ...i, size: editNeedSizing ? "" : editSizeValue, needSizing: editNeedSizing, sizingDetails: editSizingDetails }
+          : i
       ),
     });
     setEditSizeOpen(false);
@@ -215,6 +282,27 @@ export default function OrdersPage() {
     }
   }
 
+  async function handleAddQmNote(orderId: string, item: OrderItem) {
+    if (!noteText.trim()) return;
+    setSavingNote(true);
+    const newNote: QmNote = {
+      id: crypto.randomUUID(),
+      content: noteText.trim(),
+      timestamp: new Date().toISOString(),
+      addedBy: currentUser,
+    };
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) { setSavingNote(false); return; }
+    await patchOrder(orderId, {
+      items: order.items.map((i) =>
+        i.id === item.id ? { ...i, qmNotes: [...(i.qmNotes ?? []), newNote] } : i
+      ),
+    });
+    setNoteText("");
+    setSavingNote(false);
+    setAddingNoteItemId(null);
+  }
+
   function startAddToOrder(orderId: string) {
     setAddingToOrderId(orderId);
     setAddItemDraft(emptyDraftItem());
@@ -224,9 +312,8 @@ export default function OrdersPage() {
     if (!addItemDraft.itemType) return;
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    await patchOrder(orderId, {
-      items: [...order.items, addItemDraft as unknown as OrderItem],
-    });
+    const newItem: OrderItem = { id: "", qmNotes: [], ...addItemDraft };
+    await patchOrder(orderId, { items: [...order.items, newItem] });
     setAddingToOrderId(null);
   }
 
@@ -251,7 +338,6 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
@@ -278,7 +364,6 @@ export default function OrdersPage() {
 
             return (
               <Card key={order.id}>
-                {/* Summary row */}
                 <CardHeader className="pb-0">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -303,28 +388,40 @@ export default function OrdersPage() {
                   </div>
                 </CardHeader>
 
-                {/* Expanded details */}
                 {expanded && (
                   <CardContent className="pt-4 space-y-3">
                     <ul className="space-y-2">
                       {order.items.map((orderItem) => {
                         const stockMatch = findStockMatch(orderItem.itemType, orderItem.size);
                         const inStock = stockMatch && stockMatch.quantity > 0;
+                        const isAddingNoteHere = addingNoteItemId === orderItem.id;
 
                         return (
-                          <li key={orderItem.id} className="rounded-md border bg-muted/30 p-3">
+                          <li key={orderItem.id} className="rounded-md border bg-muted/30 p-3 space-y-2">
+                            {/* Item header row */}
                             <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-medium">{orderItem.itemType}</p>
-                                  {orderItem.needSizing && (
-                                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 text-xs">
-                                      Need Sizing
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">Size: {orderItem.size || "—"}</p>
-                                <div className="mt-1.5">
+                              <div className="min-w-0 flex-1 space-y-1.5">
+                                <p className="text-sm font-medium">{orderItem.itemType}</p>
+
+                                {/* Sizing details — prominent amber block when needSizing */}
+                                {orderItem.needSizing ? (
+                                  <div className="rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 px-2.5 py-1.5 space-y-0.5">
+                                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                                      Needs Sizing
+                                    </p>
+                                    {orderItem.sizingDetails && (
+                                      <p className="text-xs text-amber-800 dark:text-amber-300">
+                                        {orderItem.sizingDetails}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">
+                                    Size: {orderItem.size || "—"}
+                                  </p>
+                                )}
+
+                                <div>
                                   {stockMatch ? (
                                     inStock ? (
                                       <p className="text-xs font-medium text-green-600 dark:text-green-400">
@@ -338,25 +435,79 @@ export default function OrdersPage() {
                                   )}
                                 </div>
                               </div>
+
                               <div className="flex shrink-0 flex-col gap-1.5 items-end">
                                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
                                   onClick={() => openEditSize(order.id, orderItem)}>
-                                  Edit Size
+                                  {orderItem.needSizing ? "Enter Size" : "Edit Size"}
                                 </Button>
-                                {stockMatch && inStock && (
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 px-2 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                                    onClick={() => handleRemoveFromStock(stockMatch)}>
-                                    Remove from Stock
-                                  </Button>
-                                )}
+                                <Button size="sm" variant="outline"
+                                  className="h-7 px-2 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                                  disabled={!stockMatch || !inStock}
+                                  onClick={() => stockMatch && handleRemoveFromStock(stockMatch)}>
+                                  Remove from Stock
+                                </Button>
                                 <Button size="sm" variant="ghost"
                                   className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                                  onClick={() => handleDeleteOrderItem(order.id, orderItem.id)}>
+                                  onClick={() => handleDeleteOrderItem(order.id, orderItem.id, orderItem.itemType)}>
                                   <Trash2 className="h-3 w-3 mr-1" />
-                                  Remove
+                                  Delete
                                 </Button>
                               </div>
+                            </div>
+
+                            {/* QM Notes */}
+                            <div className="space-y-1.5 border-t pt-2">
+                              {(orderItem.qmNotes ?? []).length > 0 && (
+                                <div className="space-y-1">
+                                  {(orderItem.qmNotes ?? []).map((note) => (
+                                    <div key={note.id} className="rounded bg-background border px-2.5 py-1.5 space-y-0.5">
+                                      <p className="text-xs whitespace-pre-wrap">{note.content}</p>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <p className="text-[10px] text-muted-foreground">
+                                          {note.addedBy} · {formatTimestamp(note.timestamp)}
+                                        </p>
+                                        <Button size="icon" variant="ghost"
+                                          className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                                          onClick={() => handleDeleteQmNote(order.id, orderItem, note.id)}
+                                          aria-label="Delete note">
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {isAddingNoteHere ? (
+                                <div className="space-y-1.5">
+                                  <textarea
+                                    className="w-full rounded-md border bg-background px-3 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                                    rows={3}
+                                    placeholder="Type your note..."
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                    autoFocus
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button size="sm" className="h-7 px-3 text-xs"
+                                      disabled={!noteText.trim() || savingNote}
+                                      onClick={() => handleAddQmNote(order.id, orderItem)}>
+                                      {savingNote ? "Saving..." : "Save Note"}
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                                      onClick={() => { setAddingNoteItemId(null); setNoteText(""); }}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs w-full"
+                                  onClick={() => { setAddingNoteItemId(orderItem.id); setNoteText(""); }}>
+                                  <StickyNote className="h-3 w-3 mr-1.5" />
+                                  Add QM Note
+                                </Button>
+                              )}
                             </div>
                           </li>
                         );
@@ -380,16 +531,22 @@ export default function OrdersPage() {
                           <div className="w-28">
                             <Input className="h-8 text-sm" placeholder="Size"
                               value={addItemDraft.size}
+                              disabled={addItemDraft.needSizing}
                               onChange={(e) => setAddItemDraft((d) => ({ ...d, size: e.target.value }))} />
                           </div>
                           <div className="flex items-center gap-1.5">
                             <Checkbox id={`ns-add-${order.id}`} checked={addItemDraft.needSizing}
-                              onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c }))} />
+                              onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c, size: !!c ? "" : d.size }))} />
                             <Label htmlFor={`ns-add-${order.id}`} className="text-xs cursor-pointer whitespace-nowrap">
                               Need Sizing
                             </Label>
                           </div>
                         </div>
+                        {addItemDraft.needSizing && (
+                          <Input className="h-8 text-sm" placeholder="Sizing details (optional)"
+                            value={addItemDraft.sizingDetails}
+                            onChange={(e) => setAddItemDraft((d) => ({ ...d, sizingDetails: e.target.value }))} />
+                        )}
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 px-3 text-xs"
                             disabled={!addItemDraft.itemType}
@@ -412,7 +569,7 @@ export default function OrdersPage() {
 
                     {/* Delete order */}
                     <div className="flex justify-end pt-1">
-                      <Button size="sm" variant="destructive" onClick={() => handleDeleteOrder(order.id)}>
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteOrder(order.id, order.cadetName)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Order
                       </Button>
@@ -436,10 +593,7 @@ export default function OrdersPage() {
                 token={token}
                 selectedCin={newCadetCin}
                 selectedName={newCadetName}
-                onSelect={(cin, name) => {
-                  setNewCadetCin(cin || null);
-                  setNewCadetName(name);
-                }}
+                onSelect={(cin, name) => { setNewCadetCin(cin || null); setNewCadetName(name); }}
               />
             </div>
 
@@ -471,6 +625,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="w-24">
                       <Input className="h-8 text-sm" placeholder="Size" value={item.size}
+                        disabled={item.needSizing}
                         onChange={(e) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, size: e.target.value } : it))} />
                     </div>
                     <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-muted-foreground"
@@ -481,9 +636,13 @@ export default function OrdersPage() {
                   </div>
                   <div className="flex items-center gap-1.5 px-0.5">
                     <Checkbox id={`ns-new-${idx}`} checked={item.needSizing}
-                      onCheckedChange={(c) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, needSizing: !!c } : it))} />
+                      onCheckedChange={(c) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, needSizing: !!c, size: !!c ? "" : it.size } : it))} />
                     <Label htmlFor={`ns-new-${idx}`} className="text-xs cursor-pointer">Need Sizing</Label>
                   </div>
+                  {item.needSizing && (
+                    <Input className="h-8 text-sm" placeholder="Sizing details (optional)" value={item.sizingDetails}
+                      onChange={(e) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, sizingDetails: e.target.value } : it))} />
+                  )}
                 </div>
               ))}
             </div>
@@ -499,20 +658,71 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Size Dialog */}
+      {/* Confirm Dialog */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{confirmMessage}</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleConfirm}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Size / Sizing Dialog */}
       <Dialog open={editSizeOpen} onOpenChange={setEditSizeOpen}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Edit Size</DialogTitle></DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="editSize">Size</Label>
-            <Input id="editSize" value={editSizeValue}
-              onChange={(e) => setEditSizeValue(e.target.value)}
-              placeholder="e.g. 95/36"
-              onKeyDown={(e) => e.key === "Enter" && handleSaveEditSize()} />
+          <DialogHeader>
+            <DialogTitle>Size & Sizing Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="edit-needs-sizing"
+                checked={editNeedSizing}
+                onCheckedChange={(c) => {
+                  setEditNeedSizing(!!c);
+                  if (!c) setEditSizingDetails("");
+                }}
+              />
+              <Label htmlFor="edit-needs-sizing" className="cursor-pointer">Needs Sizing</Label>
+            </div>
+
+            {editNeedSizing ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="editSizingDetails">Sizing Details</Label>
+                <textarea
+                  id="editSizingDetails"
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                  rows={3}
+                  placeholder="e.g. chest 96cm, height 175cm"
+                  value={editSizingDetails}
+                  onChange={(e) => setEditSizingDetails(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="editSize">Size</Label>
+                <Input
+                  id="editSize"
+                  value={editSizeValue}
+                  onChange={(e) => setEditSizeValue(e.target.value)}
+                  placeholder="e.g. 95/36"
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveEditSize()}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditSizeOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveEditSize} disabled={!editSizeValue.trim()}>Save</Button>
+            <Button
+              onClick={handleSaveEditSize}
+              disabled={editNeedSizing ? false : !editSizeValue.trim()}>
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
