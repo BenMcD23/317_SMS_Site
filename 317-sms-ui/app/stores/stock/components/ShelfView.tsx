@@ -275,7 +275,8 @@ export function ShelfView({
   }
 
   const shelfContent = (
-    <div className="space-y-6">
+    <div className="overflow-x-auto">
+    <div className="space-y-6 min-w-[320px]">
       {([3, 2, 1] as const).map((level) => (
         <ShelfRow
           key={level}
@@ -290,6 +291,7 @@ export function ShelfView({
           onMoveBox={handleMoveBox}
         />
       ))}
+    </div>
     </div>
   );
 

@@ -319,7 +319,7 @@ export default function CadetOverviewPage() {
         </div>
         <div className="flex shrink-0 items-center gap-2 mt-1">
           {cadet.rank && (
-            <Badge variant="secondary" className="text-sm px-3 py-1">
+            <Badge variant="secondary" className="hidden sm:inline-flex text-sm px-3 py-1">
               {cadet.rank}
             </Badge>
           )}
@@ -337,7 +337,8 @@ export default function CadetOverviewPage() {
               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
               : <Ban className="h-3.5 w-3.5" />
             }
-            {cadet.banned ? "Remove ban" : "Ban from events"}
+            <span className="hidden sm:inline">{cadet.banned ? "Remove ban" : "Ban from events"}</span>
+            <span className="sm:hidden">{cadet.banned ? "Unban" : "Ban"}</span>
           </Button>
         </div>
       </div>

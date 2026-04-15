@@ -155,15 +155,20 @@ export default function StockPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-16">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Stock</h1>
-          <p className="text-muted-foreground">
-            {loading ? "Loading..." : `${totalCount} items across ${stock.length} lines`}
-          </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-4 sm:block">
+          <div>
+            <h1 className="text-3xl font-bold">Stock</h1>
+            <p className="text-muted-foreground">
+              {loading ? "Loading..." : `${totalCount} items across ${stock.length} lines`}
+            </p>
+          </div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:hidden">
+            <Package className="h-5 w-5 text-primary" />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:flex">
             <Package className="h-5 w-5 text-primary" />
           </div>
           <Button
@@ -197,8 +202,8 @@ export default function StockPage() {
         </div>
         {isSearching && (
           <Input
-            placeholder="Filter by size…"
-            className="w-40"
+            placeholder="Size…"
+            className="w-24 sm:w-36"
             value={searchSize}
             onChange={(e) => setSearchSize(e.target.value)}
           />

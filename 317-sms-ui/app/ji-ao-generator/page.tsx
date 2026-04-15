@@ -57,7 +57,7 @@ export default function JiGenerator() {
   };
 
   return (
-    <main className="container max-w-xl mx-auto py-10 px-4">
+    <div className="mx-auto max-w-xl pb-16">
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">JI / AO Generator</CardTitle>
@@ -103,6 +103,6 @@ export default function JiGenerator() {
           </div>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

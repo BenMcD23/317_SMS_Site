@@ -75,7 +75,7 @@ export default function ProgrammeUpdaterPage() {
   };
 
   return (
-    <main className="container max-w-lg mx-auto py-10 px-4">
+    <div className="mx-auto max-w-lg pb-16">
       <Card>
         <CardHeader>
           <CardTitle>Programme Updater</CardTitle>
@@ -147,6 +147,6 @@ export default function ProgrammeUpdaterPage() {
 
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

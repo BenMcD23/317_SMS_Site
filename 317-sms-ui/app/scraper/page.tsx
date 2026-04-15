@@ -368,7 +368,7 @@ export default function ScraperPage() {
   };
 
   return (
-    <main className="container max-w-5xl mx-auto py-10 px-4 space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8 pb-16">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -553,6 +553,6 @@ export default function ScraperPage() {
           </Button>
         </Link>
       </div>
-    </main>
+    </div>
   );
 }

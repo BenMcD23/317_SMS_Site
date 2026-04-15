@@ -25,21 +25,23 @@ export default function AssessmentsLayout({
       </div>
 
       {/* Sub-nav tabs */}
-      <div className="flex gap-1 border-b">
-        {TABS.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
-              pathname === tab.href
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {tab.label}
-          </Link>
-        ))}
+      <div className="overflow-x-auto">
+        <div className="flex gap-1 border-b min-w-max">
+          {TABS.map((tab) => (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={cn(
+                "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                pathname === tab.href
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {children}

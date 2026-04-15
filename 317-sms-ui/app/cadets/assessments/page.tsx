@@ -191,7 +191,7 @@ function AssessmentPdfRow({
 
   return (
     <div className="border-t first:border-t-0">
-      <div className="flex items-center gap-3 px-4 py-2.5 pl-10 hover:bg-muted/30 transition-colors">
+      <div className="flex items-center gap-3 px-4 py-2.5 pl-4 sm:pl-10 hover:bg-muted/30 transition-colors">
         {/* Pass/fail icon */}
         <div className="shrink-0">
           {assessment.passed === true ? (
@@ -292,14 +292,14 @@ function AssessmentPdfRow({
 
       {/* PDF viewer */}
       {expanded && (
-        <div className="px-4 pb-3 pl-10">
+        <div className="px-4 pb-3 pl-4 sm:pl-10">
           {pdfError ? (
             <p className="text-xs text-destructive">{pdfError}</p>
           ) : pdfUrl ? (
             <iframe
               src={pdfUrl}
               className="w-full rounded border"
-              style={{ height: 500 }}
+              style={{ height: "min(500px, 60vh)" }}
               title={`Assessment ${assessment.id}`}
             />
           ) : (
@@ -443,7 +443,7 @@ function UploadButton({
       </div>
 
       {showLogs && logs.length > 0 && (
-        <div className="w-72 rounded-md border bg-muted/60 p-2 text-[11px] font-mono text-muted-foreground max-h-36 overflow-y-auto">
+        <div className="w-full max-w-72 rounded-md border bg-muted/60 p-2 text-[11px] font-mono text-muted-foreground max-h-36 overflow-y-auto">
           {logs.map((l, i) => (
             <div key={i} className="leading-5">{l}</div>
           ))}

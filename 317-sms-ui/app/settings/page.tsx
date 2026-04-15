@@ -193,7 +193,7 @@ export default function SettingsPage() {
                   setAssessorNameDirty(true);
                 }}
                 placeholder="e.g. Sgt J. Bloggs"
-                className="max-w-sm"
+                className="flex-1 max-w-sm"
               />
               <Button
                 size="sm"
