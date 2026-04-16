@@ -84,7 +84,7 @@ function ShelfRow({
         {levelLabels[level]}
       </p>
       <div
-        className={`relative rounded-lg transition-all duration-150 ${
+        className={`overflow-x-auto rounded-lg transition-all duration-150 ${
           isDragging && isTargetLevel
             ? "ring-2 ring-primary ring-offset-2 bg-primary/5"
             : isDragging
@@ -92,11 +92,13 @@ function ShelfRow({
             : ""
         }`}
       >
+        {/* Inner container sized to content so plank always spans all boxes */}
+        <div className="relative w-max min-w-full pb-2">
         {/* Shelf plank */}
         <div className="absolute bottom-0 left-0 right-0 h-2 rounded bg-border" />
 
         {/* Boxes row */}
-        <div className="flex items-end pb-2 min-h-[100px] w-full">
+        <div className="flex items-stretch min-h-[100px]">
           {editMode && (
             <DropGap
               id={`gap-${level}-0`}
@@ -108,14 +110,14 @@ function ShelfRow({
           {boxes.map((box, idx) => (
             <div
               key={box.label}
-              className="relative flex items-end"
+              className="relative flex items-stretch"
               style={{
-                flex: "1 1 80px",
-                minWidth: "80px",
+                flex: "1 1 100px",
+                minWidth: "100px",
                 opacity: activeId === box.label ? 0.4 : 1,
               }}
             >
-              <div className="w-full">
+              <div className="w-full h-full">
                 <BoxCard
                   box={box}
                   stock={stock}
@@ -143,6 +145,7 @@ function ShelfRow({
               </p>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
@@ -275,8 +278,7 @@ export function ShelfView({
   }
 
   const shelfContent = (
-    <div className="overflow-x-auto">
-    <div className="space-y-6 min-w-[320px]">
+    <div className="space-y-6">
       {([3, 2, 1] as const).map((level) => (
         <ShelfRow
           key={level}
@@ -291,7 +293,6 @@ export function ShelfView({
           onMoveBox={handleMoveBox}
         />
       ))}
-    </div>
     </div>
   );
 

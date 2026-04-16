@@ -123,8 +123,8 @@ function SignatureSection({
         <canvas
           ref={canvasRef}
           width={560}
-          height={80}
-          className="w-full cursor-crosshair touch-none"
+          height={120}
+          className="w-full cursor-crosshair touch-none sm:h-20 h-28"
         />
         {!hasDrawn && !overrideSignature && (
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">

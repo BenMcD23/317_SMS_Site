@@ -16,24 +16,24 @@ export default function FormGeneratorsLayout({
   const pathname = usePathname();
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-border">
-        <nav className="-mb-px flex gap-6">
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div className="overflow-x-auto">
+        <div className="flex gap-1 border-b min-w-max">
           {tabs.map((tab) => (
             <Link
               key={tab.href}
               href={tab.href}
               className={cn(
-                "border-b-2 pb-3 text-sm font-medium transition-colors",
+                "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
                 pathname === tab.href
-                  ? "border-primary text-foreground"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
             </Link>
           ))}
-        </nav>
+        </div>
       </div>
       {children}
     </div>

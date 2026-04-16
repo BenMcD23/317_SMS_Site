@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,17 +11,20 @@ import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 
 export default function JiGenerator() {
+  const { data: session } = useSession();
   const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Fetch events on load
   useEffect(() => {
-    apiFetch(`${API_BASE}/events`)
+    if (!session?.id_token) return;
+    const headers = { Authorization: `Bearer ${session.id_token}` };
+    apiFetch(`${API_BASE}/events`, { headers })
       .then(res => res.json())
       .then(data => setEvents(data))
       .catch(() => toast.error("Failed to load events"));
-  }, []);
+  }, [session?.id_token]);
 
   const handleDownload = async (action: "ji" | "ao") => {
     if (!selectedEvent) {
@@ -30,7 +34,8 @@ export default function JiGenerator() {
 
     setLoading(true);
     try {
-      const response = await apiFetch(`${API_BASE}/generate-doc/${selectedEvent}/${action}`);
+      const headers = { Authorization: `Bearer ${session?.id_token}` };
+      const response = await apiFetch(`${API_BASE}/generate-doc/${selectedEvent}/${action}`, { headers });
       
       if (!response.ok) throw new Error("Download failed");
 

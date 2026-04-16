@@ -434,20 +434,22 @@ export function BoxDetailView({
                   <div
                     key={`row-${rowIdx}`}
                     data-section-row={rowIdx}
-                    className="overflow-x-auto pb-1"
+                    className="overflow-x-auto"
                   >
+                    {/* w-max min-w-full: row is as wide as its sections but never narrower than the viewport */}
+                    <div className="w-max min-w-full pb-1 border-b">
                     <SortableContext
                       items={sectionIds}
                       strategy={horizontalListSortingStrategy}
                     >
-                      <div className="flex gap-0 w-max min-w-full">
+                      <div className="flex gap-0">
                         {rowSections.map((section, idx) => (
                           <div
                             key={section.label}
                             className="relative flex items-stretch"
                             style={{
-                              flex: `${getSectionWidth(section)} 1 210px`,
-                              minWidth: "150px",
+                              flex: `${getSectionWidth(section)} 1 200px`,
+                              minWidth: "160px",
                             }}
                           >
                             <div className="w-full">
@@ -507,6 +509,7 @@ export function BoxDetailView({
                         ))}
                       </div>
                     </SortableContext>
+                    </div>
                   </div>,
                   <RowSeparator
                     key={`sep-${rowIdx}`}

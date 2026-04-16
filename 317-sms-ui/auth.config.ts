@@ -27,6 +27,7 @@ export const authConfig: NextAuthConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user
       const isLoginPage = nextUrl.pathname === "/login"
+      const isUnauthorizedPage = nextUrl.pathname === "/unauthorized"
 
       if (isLoginPage) {
         if (isLoggedIn) return Response.redirect(new URL("/", nextUrl))
@@ -35,12 +36,15 @@ export const authConfig: NextAuthConfig = {
 
       if (!isLoggedIn) return Response.redirect(new URL("/login", nextUrl))
 
+      // Always allow the unauthorized page for logged-in users
+      if (isUnauthorizedPage) return true
+
       // Block users with no recognised role
-      if (!auth.role) return Response.redirect(new URL("/login", nextUrl))
+      if (!auth.role) return Response.redirect(new URL("/unauthorized", nextUrl))
 
       // NCOs can only access their permitted routes
       if (auth.role === "nco" && !ncoCanAccess(nextUrl.pathname)) {
-        return Response.redirect(new URL("/", nextUrl))
+        return Response.redirect(new URL("/unauthorized", nextUrl))
       }
 
       return true
