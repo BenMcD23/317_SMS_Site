@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -100,6 +100,10 @@ export default function OrdersPage() {
   const [addingNoteItemId, setAddingNoteItemId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+
+  // Sort and search
+  const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Confirm dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -317,6 +321,16 @@ export default function OrdersPage() {
     setAddingToOrderId(null);
   }
 
+  const filteredOrders = orders
+    .filter((o) =>
+      searchQuery.trim() === "" ||
+      o.cadetName.toLowerCase().includes(searchQuery.trim().toLowerCase())
+    )
+    .sort((a, b) => {
+      const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      return sortOrder === "oldest" ? diff : -diff;
+    });
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
       {/* Header */}
@@ -324,7 +338,7 @@ export default function OrdersPage() {
         <div>
           <h1 className="text-3xl font-bold">Orders</h1>
           <p className="text-muted-foreground">
-            {loading ? "Loading..." : `${orders.length} order${orders.length !== 1 ? "s" : ""}`}
+            {loading ? "Loading..." : `${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -336,6 +350,25 @@ export default function OrdersPage() {
             New Order
           </Button>
         </div>
+      </div>
+
+      {/* Search + Sort controls */}
+      <div className="flex gap-2">
+        <Input
+          placeholder="Search by cadet name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-9"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-1.5"
+          onClick={() => setSortOrder((s) => (s === "oldest" ? "newest" : "oldest"))}
+        >
+          <ArrowUpDown className="h-3.5 w-3.5" />
+          {sortOrder === "oldest" ? "Oldest first" : "Newest first"}
+        </Button>
       </div>
 
       {error && (
@@ -354,10 +387,16 @@ export default function OrdersPage() {
         </p>
       )}
 
+      {!loading && orders.length > 0 && filteredOrders.length === 0 && (
+        <p className="py-12 text-center text-sm text-muted-foreground">
+          No orders match your search.
+        </p>
+      )}
+
       {/* Orders list */}
-      {!loading && orders.length > 0 && (
+      {!loading && filteredOrders.length > 0 && (
         <div className="space-y-3">
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const expanded = expandedIds.has(order.id);
             const needSizingCount = order.items.filter((i) => i.needSizing).length;
             const isAddingHere = addingToOrderId === order.id;
