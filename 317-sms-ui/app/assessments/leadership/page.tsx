@@ -28,6 +28,8 @@ import { AssessorCard } from "@/components/assessments/assessor-card";
 
 
 // ─── Questions ────────────────────────────────────────────────────────────────
+const DEBRIEF_MAX = 540;
+
 const QUESTIONS = [
   { id: 1, text: 'Did the team leader follow "SMEAC" as a briefing tool?', labels: { 1: "No", 3: "Almost", 5: "Yes" } },
   { id: 2, text: "Were ALL the limitations mentioned?", labels: { 1: "No", 3: "Some", 5: "All" } },
@@ -440,12 +442,22 @@ export default function LeadershipAssessmentPage() {
           <CardTitle className="text-base">Debriefing Notes</CardTitle>
         </CardHeader>
         <CardContent>
-          <Textarea
-            placeholder="Enter debrief notes..."
-            rows={5}
-            value={form.debriefingNotes}
-            onChange={(e) => setForm((f) => ({ ...f, debriefingNotes: e.target.value }))}
-          />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="debriefingNotes">Notes</Label>
+              <span className={cn("text-xs", form.debriefingNotes.length > DEBRIEF_MAX ? "text-destructive" : "text-muted-foreground")}>
+                {form.debriefingNotes.length} / {DEBRIEF_MAX}
+              </span>
+            </div>
+            <Textarea
+              id="debriefingNotes"
+              placeholder="Enter debrief notes..."
+              rows={5}
+              maxLength={DEBRIEF_MAX}
+              value={form.debriefingNotes}
+              onChange={(e) => setForm((f) => ({ ...f, debriefingNotes: e.target.value.slice(0, DEBRIEF_MAX) }))}
+            />
+          </div>
         </CardContent>
       </Card>
 
