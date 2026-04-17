@@ -205,34 +205,30 @@ function AssessmentPdfRow({
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">
-            {assessment.exercise_name ?? typeLabel(assessment.assessment_type)}
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-medium truncate">
+              {assessment.exercise_name ?? typeLabel(assessment.assessment_type)}
+            </p>
+            {assessment.passed !== null && (
+              <Badge
+                className={cn(
+                  "text-[11px] shrink-0",
+                  assessment.passed
+                    ? "bg-green-500 text-white hover:bg-green-500"
+                    : "bg-red-500 text-white hover:bg-red-500"
+                )}
+              >
+                {assessment.passed ? "PASS" : "FAIL"}
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {formatDate(assessment.created_at)}
+            {assessment.total_score !== null && (
+              <> · <span className="font-mono">{assessment.total_score}/50</span></>
+            )}
             {assessment.assessor_name && <> · {assessment.assessor_name}</>}
           </p>
-        </div>
-
-        {/* Score + pass badge */}
-        <div className="shrink-0 flex items-center gap-2">
-          {assessment.total_score !== null && (
-            <span className="text-xs font-mono text-muted-foreground">
-              {assessment.total_score}/50
-            </span>
-          )}
-          {assessment.passed !== null && (
-            <Badge
-              className={cn(
-                "text-[11px]",
-                assessment.passed
-                  ? "bg-green-500 text-white hover:bg-green-500"
-                  : "bg-red-500 text-white hover:bg-red-500"
-              )}
-            >
-              {assessment.passed ? "PASS" : "FAIL"}
-            </Badge>
-          )}
         </div>
 
         {/* Controls */}
@@ -416,7 +412,12 @@ function UploadButton({
     return (
       <Badge variant="outline" className="gap-1.5 text-xs text-muted-foreground">
         <AlertCircle className="h-3 w-3" />
-        {assessmentType === "Blue Leadership" ? "Needs 2 passes" : "Needs 1 pass"}
+        <span className="hidden sm:inline">
+          {assessmentType === "Blue Leadership" ? "Needs 2 passes" : "Needs 1 pass"}
+        </span>
+        <span className="sm:hidden">
+          {assessmentType === "Blue Leadership" ? "2 passes" : "1 pass"}
+        </span>
       </Badge>
     );
   }
@@ -478,7 +479,7 @@ function AssessmentGroupRow({
 
   return (
     <div className="rounded-lg border bg-card">
-      <div className="flex w-full items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+      <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 hover:bg-muted/40 transition-colors">
         <div
           role="button"
           tabIndex={0}
@@ -501,10 +502,11 @@ function AssessmentGroupRow({
           </Badge>
 
           <span className="flex-1 text-sm font-medium">
-            {group.assessments.length} assessment{group.assessments.length !== 1 ? "s" : ""}
+            {group.assessments.length}
+            <span className="hidden sm:inline"> assessment{group.assessments.length !== 1 ? "s" : ""}</span>
           </span>
 
-          <span className="text-xs text-muted-foreground mr-3 shrink-0">
+          <span className="text-xs text-muted-foreground shrink-0">
             <span
               className={cn(
                 "font-semibold",
@@ -513,13 +515,14 @@ function AssessmentGroupRow({
             >
               {group.passed_count}
             </span>
-            <span className="text-muted-foreground">/{group.required_to_upload} passed</span>
+            <span className="text-muted-foreground">/{group.required_to_upload}</span>
+            <span className="text-muted-foreground hidden sm:inline"> passed</span>
           </span>
         </div>
 
-        <div className="shrink-0">
+        <div className="shrink-0 ml-auto">
           <UploadButton
-            assessmentIds={group.assessments.map((a) => a.id)}   // ← all IDs in the group
+            assessmentIds={group.assessments.map((a) => a.id)}
             assessmentType={group.assessment_type}
             canUpload={group.can_upload}
             uploaded={group.uploaded}
@@ -598,9 +601,7 @@ function CadetAssessmentCard({
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                CIN {cadet.cin} · {totalAssessments} assessment
-                {totalAssessments !== 1 ? "s" : ""}
-                {cadet.flight && <> · {cadet.flight} Flight</>}
+                {totalAssessments} assessment{totalAssessments !== 1 ? "s" : ""}
               </p>
             </div>
             <span className="text-muted-foreground shrink-0">
