@@ -42,6 +42,8 @@ export interface OrderItem {
   needSizing: boolean;
   sizingDetails: string;
   qmNotes: QmNote[];
+  givenAt: string | null;
+  givenBy: string | null;
 }
 
 export interface Order {

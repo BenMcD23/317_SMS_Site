@@ -69,7 +69,7 @@ export function SectionCard({
         )}
 
         <span className="flex-1 text-center text-sm font-semibold truncate">
-          §{section.label}
+          Section {section.label}
         </span>
 
         <div className="flex items-center gap-0.5 shrink-0">

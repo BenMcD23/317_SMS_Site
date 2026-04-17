@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -88,6 +88,12 @@ export default function OrdersPage() {
   const [addingNoteItemId, setAddingNoteItemId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+
+  // Mark as given
+  const [markingAsGiven, setMarkingAsGiven] = useState<string | null>(null);
+  const [markGivenOpen, setMarkGivenOpen] = useState(false);
+  const [markGivenOrder, setMarkGivenOrder] = useState<Order | null>(null);
+  const [markGivenItem, setMarkGivenItem] = useState<OrderItem | null>(null);
 
   // Sort and search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
@@ -299,6 +305,39 @@ export default function OrdersPage() {
     setAddingNoteItemId(null);
   }
 
+  async function doMarkItemAsGiven(order: Order, item: OrderItem) {
+    setMarkingAsGiven(item.id);
+    try {
+      const res = await fetch(`/api/stores/issuances/${order.cadetCin}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          givenBy: currentUser,
+          items: [{ itemType: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }],
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to mark as given");
+      // Refresh orders so givenAt/givenBy appear on the item
+      await fetchAll();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setMarkingAsGiven(null);
+    }
+  }
+
+  function handleMarkItemAsGiven(order: Order, item: OrderItem) {
+    setMarkGivenOrder(order);
+    setMarkGivenItem(item);
+    setMarkGivenOpen(true);
+  }
+
+  async function confirmMarkAsGiven() {
+    if (!markGivenOrder || !markGivenItem) return;
+    setMarkGivenOpen(false);
+    await doMarkItemAsGiven(markGivenOrder, markGivenItem);
+  }
+
   function startAddToOrder(orderId: string) {
     setAddingToOrderId(orderId);
     setAddItemDraft(emptyDraftItem());
@@ -308,7 +347,7 @@ export default function OrdersPage() {
     if (!addItemDraft.itemType) return;
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    const newItem: OrderItem = { id: "", qmNotes: [], ...addItemDraft };
+    const newItem: OrderItem = { id: "", qmNotes: [], givenAt: null, givenBy: null, ...addItemDraft };
     await patchOrder(orderId, { items: [...order.items, newItem] });
     setAddingToOrderId(null);
   }
@@ -467,27 +506,45 @@ export default function OrdersPage() {
                                 </div>
                               </div>
 
-                              <div className="flex shrink-0 flex-col gap-1.5 items-end">
+                              <div className="flex shrink-0 flex-col gap-1.5 items-end w-36">
                                 {!NO_SIZE_ITEMS.has(orderItem.itemType) && (
-                                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
+                                  <Button size="sm" variant="outline" className="h-7 w-full text-xs"
                                     onClick={() => openEditSize(order.id, orderItem)}>
                                     {orderItem.needSizing ? "Enter Size" : "Edit Size"}
                                   </Button>
                                 )}
                                 <Button size="sm" variant="outline"
-                                  className="h-7 px-2 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                                  className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                                   disabled={!stockMatch || !inStock}
                                   onClick={() => stockMatch && handleRemoveFromStock(stockMatch)}>
                                   Remove from Stock
                                 </Button>
-                                <Button size="sm" variant="ghost"
-                                  className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                <Button size="sm" variant="outline"
+                                  className="h-7 w-full text-xs text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 disabled:opacity-40"
+                                  disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt || orderItem.needSizing || (!NO_SIZE_ITEMS.has(orderItem.itemType) && !orderItem.size)}
+                                  onClick={() => handleMarkItemAsGiven(order, orderItem)}>
+                                  <PackageCheck className="h-3 w-3 mr-1" />
+                                  Mark as Given
+                                </Button>
+                                <Button size="sm" variant="outline"
+                                  className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                                   onClick={() => handleDeleteOrderItem(order.id, orderItem.id, orderItem.itemType)}>
                                   <Trash2 className="h-3 w-3 mr-1" />
                                   Delete
                                 </Button>
                               </div>
                             </div>
+
+                            {/* Given stamp */}
+                            {orderItem.givenAt && (
+                              <div className="flex items-center gap-1.5 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-2.5 py-1.5">
+                                <PackageCheck className="h-3 w-3 shrink-0 text-green-600 dark:text-green-400" />
+                                <p className="text-xs text-green-700 dark:text-green-400">
+                                  Given {formatTimestamp(orderItem.givenAt)}
+                                  {orderItem.givenBy && <> · {orderItem.givenBy}</>}
+                                </p>
+                              </div>
+                            )}
 
                             {/* QM Notes */}
                             <div className="space-y-1.5 border-t pt-2">
@@ -703,6 +760,36 @@ export default function OrdersPage() {
             <Button onClick={handleCreateOrder}
               disabled={submitting || !newCadetCin || newItems.filter((i) => i.itemType).length === 0}>
               {submitting ? "Creating..." : "Create Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark as Given Dialog */}
+      <Dialog open={markGivenOpen} onOpenChange={setMarkGivenOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mark as Given</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>
+              <span className="font-medium">{markGivenItem?.itemType}</span> (size{" "}
+              <span className="font-medium">{markGivenItem?.size}</span>) will be recorded as issued to{" "}
+              <span className="font-medium">{markGivenOrder?.cadetName}</span>.
+            </p>
+            <p className="text-muted-foreground">
+              This will update their uniform issuance record on their cadet profile. If an issuance record already exists for this item it will be overwritten. This cannot be undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMarkGivenOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-green-700 hover:bg-green-800 text-white"
+              onClick={confirmMarkAsGiven}
+              disabled={markingAsGiven !== null}
+            >
+              <PackageCheck className="mr-2 h-4 w-4" />
+              Mark as Given
             </Button>
           </DialogFooter>
         </DialogContent>
