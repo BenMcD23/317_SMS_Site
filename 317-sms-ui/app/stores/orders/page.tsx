@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -27,6 +27,7 @@ import { Order, OrderItem, QmNote, StockItem } from "@/lib/stores-types";
 import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
 import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
+import { cn } from "@/lib/utils";
 
 type DraftItem = {
   itemType: string;
@@ -63,6 +64,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  // Tab
+  const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
 
   // New order dialog
   const [newOrderOpen, setNewOrderOpen] = useState(false);
@@ -256,6 +260,20 @@ export default function OrdersPage() {
     }
   }
 
+  function handleCompleteOrder(orderId: string, cadetName: string) {
+    openConfirm(
+      `Mark the order for ${cadetName} as complete? It will move to Completed Orders.`,
+      () => patchOrder(orderId, { completed: true })
+    );
+  }
+
+  function handleReopenOrder(orderId: string, cadetName: string) {
+    openConfirm(
+      `Reopen the order for ${cadetName}? It will return to Active Orders.`,
+      () => patchOrder(orderId, { completed: false })
+    );
+  }
+
   function openNewOrder() {
     setNewCadetCin(null);
     setNewCadetName("");
@@ -317,7 +335,6 @@ export default function OrdersPage() {
         }),
       });
       if (!res.ok) throw new Error("Failed to mark as given");
-      // Refresh orders so givenAt/givenBy appear on the item
       await fetchAll();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -352,7 +369,10 @@ export default function OrdersPage() {
     setAddingToOrderId(null);
   }
 
-  const filteredOrders = orders
+  const activeOrders = orders.filter((o) => !o.completed);
+  const completedOrders = orders.filter((o) => !!o.completed);
+
+  const filteredOrders = (activeTab === "active" ? activeOrders : completedOrders)
     .filter((o) =>
       searchQuery.trim() === "" ||
       o.cadetName.toLowerCase().includes(searchQuery.trim().toLowerCase())
@@ -380,6 +400,40 @@ export default function OrdersPage() {
             <Plus className="mr-2 h-4 w-4" />
             New Order
           </Button>
+        </div>
+      </div>
+
+      {/* Tab nav */}
+      <div className="overflow-x-auto">
+        <div className="flex gap-1 border-b min-w-max">
+          {(["active", "completed"] as const).map((tab) => {
+            const count = tab === "active" ? activeOrders.length : completedOrders.length;
+            const label = tab === "active" ? "Active Orders" : "Completed Orders";
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap flex items-center gap-1.5",
+                  activeTab === tab
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {label}
+                {!loading && (
+                  <span className={cn(
+                    "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold min-w-[18px]",
+                    activeTab === tab
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -420,7 +474,18 @@ export default function OrdersPage() {
 
       {!loading && orders.length > 0 && filteredOrders.length === 0 && (
         <p className="py-12 text-center text-sm text-muted-foreground">
-          No orders match your search.
+          {searchQuery.trim()
+            ? "No orders match your search."
+            : activeTab === "active"
+              ? "No active orders."
+              : "No completed orders."}
+        </p>
+      )}
+
+      {/* Completed tab info */}
+      {!loading && activeTab === "completed" && (
+        <p className="text-xs text-muted-foreground text-center">
+          Completed orders are automatically removed after 6 months.
         </p>
       )}
 
@@ -429,11 +494,12 @@ export default function OrdersPage() {
         <div className="space-y-3">
           {filteredOrders.map((order) => {
             const expanded = expandedIds.has(order.id);
+            const isCompleted = !!order.completed;
             const needSizingCount = order.items.filter((i) => i.needSizing).length;
             const isAddingHere = addingToOrderId === order.id;
 
             return (
-              <Card key={order.id}>
+              <Card key={order.id} className={isCompleted ? "opacity-80" : undefined}>
                 <CardHeader className="pb-0">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -441,7 +507,7 @@ export default function OrdersPage() {
                       <p className="text-xs text-muted-foreground">{formatTimestamp(order.timestamp)}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {needSizingCount > 0 && (
+                      {!isCompleted && needSizingCount > 0 && (
                         <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 text-xs">
                           {needSizingCount} need sizing
                         </Badge>
@@ -491,48 +557,52 @@ export default function OrdersPage() {
                                   </p>
                                 )}
 
-                                <div>
-                                  {stockMatch ? (
-                                    inStock ? (
-                                      <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                                        Box {stockMatch.box} Section {stockMatch.section} (qty: {stockMatch.quantity})
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs font-medium text-destructive">Out of Stock</p>
-                                    )
-                                  ) : !orderItem.needSizing ? (
-                                    <p className="text-xs text-muted-foreground">Not in stock</p>
-                                  ) : null}
-                                </div>
+                                {!isCompleted && (
+                                  <div>
+                                    {stockMatch ? (
+                                      inStock ? (
+                                        <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                                          Box {stockMatch.box} Section {stockMatch.section} (qty: {stockMatch.quantity})
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs font-medium text-destructive">Out of Stock</p>
+                                      )
+                                    ) : !orderItem.needSizing ? (
+                                      <p className="text-xs text-muted-foreground">Not in stock</p>
+                                    ) : null}
+                                  </div>
+                                )}
                               </div>
 
-                              <div className="flex shrink-0 flex-col gap-1.5 items-end w-36">
-                                {!NO_SIZE_ITEMS.has(orderItem.itemType) && (
-                                  <Button size="sm" variant="outline" className="h-7 w-full text-xs"
-                                    onClick={() => openEditSize(order.id, orderItem)}>
-                                    {orderItem.needSizing ? "Enter Size" : "Edit Size"}
+                              {!isCompleted && (
+                                <div className="flex shrink-0 flex-col gap-1.5 items-end w-36">
+                                  {!NO_SIZE_ITEMS.has(orderItem.itemType) && (
+                                    <Button size="sm" variant="outline" className="h-7 w-full text-xs"
+                                      onClick={() => openEditSize(order.id, orderItem)}>
+                                      {orderItem.needSizing ? "Enter Size" : "Edit Size"}
+                                    </Button>
+                                  )}
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                                    disabled={!stockMatch || !inStock}
+                                    onClick={() => stockMatch && handleRemoveFromStock(stockMatch)}>
+                                    Remove from Stock
                                   </Button>
-                                )}
-                                <Button size="sm" variant="outline"
-                                  className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                                  disabled={!stockMatch || !inStock}
-                                  onClick={() => stockMatch && handleRemoveFromStock(stockMatch)}>
-                                  Remove from Stock
-                                </Button>
-                                <Button size="sm" variant="outline"
-                                  className="h-7 w-full text-xs text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 disabled:opacity-40"
-                                  disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt || orderItem.needSizing || (!NO_SIZE_ITEMS.has(orderItem.itemType) && !orderItem.size)}
-                                  onClick={() => handleMarkItemAsGiven(order, orderItem)}>
-                                  <PackageCheck className="h-3 w-3 mr-1" />
-                                  Mark as Given
-                                </Button>
-                                <Button size="sm" variant="outline"
-                                  className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => handleDeleteOrderItem(order.id, orderItem.id, orderItem.itemType)}>
-                                  <Trash2 className="h-3 w-3 mr-1" />
-                                  Delete
-                                </Button>
-                              </div>
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 w-full text-xs text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 disabled:opacity-40"
+                                    disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt || orderItem.needSizing || (!NO_SIZE_ITEMS.has(orderItem.itemType) && !orderItem.size)}
+                                    onClick={() => handleMarkItemAsGiven(order, orderItem)}>
+                                    <PackageCheck className="h-3 w-3 mr-1" />
+                                    Mark as Given
+                                  </Button>
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => handleDeleteOrderItem(order.id, orderItem.id, orderItem.itemType)}>
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Delete
+                                  </Button>
+                                </div>
+                              )}
                             </div>
 
                             {/* Given stamp */}
@@ -557,46 +627,50 @@ export default function OrdersPage() {
                                         <p className="text-[10px] text-muted-foreground">
                                           {note.addedBy} · {formatTimestamp(note.timestamp)}
                                         </p>
-                                        <Button size="icon" variant="ghost"
-                                          className="h-5 w-5 text-muted-foreground hover:text-destructive"
-                                          onClick={() => handleDeleteQmNote(order.id, orderItem, note.id)}
-                                          aria-label="Delete note">
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
+                                        {!isCompleted && (
+                                          <Button size="icon" variant="ghost"
+                                            className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                                            onClick={() => handleDeleteQmNote(order.id, orderItem, note.id)}
+                                            aria-label="Delete note">
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        )}
                                       </div>
                                     </div>
                                   ))}
                                 </div>
                               )}
 
-                              {isAddingNoteHere ? (
-                                <div className="space-y-1.5">
-                                  <textarea
-                                    className="w-full rounded-md border bg-background px-3 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                                    rows={3}
-                                    placeholder="Type your note..."
-                                    value={noteText}
-                                    onChange={(e) => setNoteText(e.target.value)}
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button size="sm" className="h-7 px-3 text-xs"
-                                      disabled={!noteText.trim() || savingNote}
-                                      onClick={() => handleAddQmNote(order.id, orderItem)}>
-                                      {savingNote ? "Saving..." : "Save Note"}
-                                    </Button>
-                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                                      onClick={() => { setAddingNoteItemId(null); setNoteText(""); }}>
-                                      Cancel
-                                    </Button>
+                              {!isCompleted && (
+                                isAddingNoteHere ? (
+                                  <div className="space-y-1.5">
+                                    <textarea
+                                      className="w-full rounded-md border bg-background px-3 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                                      rows={3}
+                                      placeholder="Type your note..."
+                                      value={noteText}
+                                      onChange={(e) => setNoteText(e.target.value)}
+                                      autoFocus
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button size="sm" className="h-7 px-3 text-xs"
+                                        disabled={!noteText.trim() || savingNote}
+                                        onClick={() => handleAddQmNote(order.id, orderItem)}>
+                                        {savingNote ? "Saving..." : "Save Note"}
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                                        onClick={() => { setAddingNoteItemId(null); setNoteText(""); }}>
+                                        Cancel
+                                      </Button>
+                                    </div>
                                   </div>
-                                </div>
-                              ) : (
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs w-full"
-                                  onClick={() => { setAddingNoteItemId(orderItem.id); setNoteText(""); }}>
-                                  <StickyNote className="h-3 w-3 mr-1.5" />
-                                  Add QM Note
-                                </Button>
+                                ) : (
+                                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs w-full"
+                                    onClick={() => { setAddingNoteItemId(orderItem.id); setNoteText(""); }}>
+                                    <StickyNote className="h-3 w-3 mr-1.5" />
+                                    Add QM Note
+                                  </Button>
+                                )
                               )}
                             </div>
                           </li>
@@ -604,72 +678,92 @@ export default function OrdersPage() {
                       })}
                     </ul>
 
-                    {/* Add item to existing order */}
-                    {isAddingHere ? (
-                      <div className="rounded-md border border-dashed p-3 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Add item to order</p>
-                        <div className="flex gap-2 items-end flex-wrap">
-                          <div className="flex-1 min-w-36">
-                            <Select value={addItemDraft.itemType}
-                              onValueChange={(v) => setAddItemDraft((d) => ({ ...d, itemType: v }))}>
-                              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Item type" /></SelectTrigger>
-                              <SelectContent>
-                                {ITEM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
+                    {/* Add item to existing order (active only) */}
+                    {!isCompleted && (
+                      isAddingHere ? (
+                        <div className="rounded-md border border-dashed p-3 space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">Add item to order</p>
+                          <div className="flex gap-2 items-end flex-wrap">
+                            <div className="flex-1 min-w-36">
+                              <Select value={addItemDraft.itemType}
+                                onValueChange={(v) => setAddItemDraft((d) => ({ ...d, itemType: v }))}>
+                                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Item type" /></SelectTrigger>
+                                <SelectContent>
+                                  {ITEM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
+                              <div className="w-28">
+                                <SizeCombobox
+                                  className="h-8 text-sm"
+                                  itemType={addItemDraft.itemType}
+                                  value={addItemDraft.size}
+                                  disabled={addItemDraft.needSizing}
+                                  onChange={(v) => setAddItemDraft((d) => ({ ...d, size: v }))}
+                                />
+                              </div>
+                            )}
+                            {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
+                              <div className="flex items-center gap-1.5">
+                                <Checkbox id={`ns-add-${order.id}`} checked={addItemDraft.needSizing}
+                                  onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c, size: !!c ? "" : d.size }))} />
+                                <Label htmlFor={`ns-add-${order.id}`} className="text-xs cursor-pointer whitespace-nowrap">
+                                  Need Sizing
+                                </Label>
+                              </div>
+                            )}
                           </div>
-                          {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
-                            <div className="w-28">
-                              <SizeCombobox
-                                className="h-8 text-sm"
-                                itemType={addItemDraft.itemType}
-                                value={addItemDraft.size}
-                                disabled={addItemDraft.needSizing}
-                                onChange={(v) => setAddItemDraft((d) => ({ ...d, size: v }))}
-                              />
-                            </div>
+                          {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && addItemDraft.needSizing && (
+                            <Input className="h-8 text-sm" placeholder="Sizing details (optional)"
+                              value={addItemDraft.sizingDetails}
+                              onChange={(e) => setAddItemDraft((d) => ({ ...d, sizingDetails: e.target.value }))} />
                           )}
-                          {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
-                            <div className="flex items-center gap-1.5">
-                              <Checkbox id={`ns-add-${order.id}`} checked={addItemDraft.needSizing}
-                                onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c, size: !!c ? "" : d.size }))} />
-                              <Label htmlFor={`ns-add-${order.id}`} className="text-xs cursor-pointer whitespace-nowrap">
-                                Need Sizing
-                              </Label>
-                            </div>
-                          )}
+                          <div className="flex gap-2">
+                            <Button size="sm" className="h-7 px-3 text-xs"
+                              disabled={!addItemDraft.itemType}
+                              onClick={() => handleAddToOrder(order.id)}>
+                              Add
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                              onClick={() => setAddingToOrderId(null)}>
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
-                        {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && addItemDraft.needSizing && (
-                          <Input className="h-8 text-sm" placeholder="Sizing details (optional)"
-                            value={addItemDraft.sizingDetails}
-                            onChange={(e) => setAddItemDraft((d) => ({ ...d, sizingDetails: e.target.value }))} />
-                        )}
-                        <div className="flex gap-2">
-                          <Button size="sm" className="h-7 px-3 text-xs"
-                            disabled={!addItemDraft.itemType}
-                            onClick={() => handleAddToOrder(order.id)}>
-                            Add
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                            onClick={() => setAddingToOrderId(null)}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" className="w-full h-8 text-xs"
-                        onClick={() => startAddToOrder(order.id)}>
-                        <Plus className="mr-1.5 h-3.5 w-3.5" />
-                        Add Item to Order
-                      </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="w-full h-8 text-xs"
+                          onClick={() => startAddToOrder(order.id)}>
+                          <Plus className="mr-1.5 h-3.5 w-3.5" />
+                          Add Item to Order
+                        </Button>
+                      )
                     )}
 
-                    {/* Delete order */}
-                    <div className="flex justify-end pt-1">
-                      <Button size="sm" variant="destructive" onClick={() => handleDeleteOrder(order.id, order.cadetName)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Order
-                      </Button>
+                    {/* Footer actions */}
+                    <div className="flex justify-end gap-2 pt-1">
+                      {isCompleted ? (
+                        <Button size="sm" variant="outline"
+                          className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                          onClick={() => handleReopenOrder(order.id, order.cadetName)}>
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          Reopen Order
+                        </Button>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="destructive"
+                            onClick={() => handleDeleteOrder(order.id, order.cadetName)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Order
+                          </Button>
+                          <Button size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => handleCompleteOrder(order.id, order.cadetName)}>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Complete Order
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 )}

@@ -52,4 +52,5 @@ export interface Order {
   cadetCin: number;
   timestamp: string;
   items: OrderItem[];
+  completed?: boolean;
 }
