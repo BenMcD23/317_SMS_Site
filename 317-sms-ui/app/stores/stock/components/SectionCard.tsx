@@ -158,8 +158,8 @@ export function SectionCard({
           items.map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-1">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium">{item.itemType}</p>
-                <p className="text-xs text-muted-foreground">{item.size}</p>
+                <p className="truncate text-sm font-medium">{item.itemType}</p>
+                <p className="text-sm text-muted-foreground">{item.size}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Badge variant="secondary" className="text-xs px-1">

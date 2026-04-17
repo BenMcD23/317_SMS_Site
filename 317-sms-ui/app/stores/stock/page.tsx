@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Search, FolderPlus, Check, Settings2 } from "lucide-react";
+import { Package, Search, FolderPlus, Check, Settings2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { ShelfView } from "./components/ShelfView";
+import { AddStockDialog } from "./components/AddStockDialog";
 
 export default function StockPage() {
   const router = useRouter();
@@ -29,11 +30,11 @@ export default function StockPage() {
   const [searchName, setSearchName] = useState("");
   const [searchSize, setSearchSize] = useState("");
 
-  const [addBoxOpen, setAddBoxOpen] = useState(false);
-  const [newBoxName, setNewBoxName] = useState("");
-  const [addAreaOpen, setAddAreaOpen] = useState(false);
-  const [newAreaName, setNewAreaName] = useState("");
+  const [addBoxAreaOpen, setAddBoxAreaOpen] = useState(false);
+  const [newBoxAreaName, setNewBoxAreaName] = useState("");
+  const [addBoxAreaType, setAddBoxAreaType] = useState<"box" | "area">("box");
   const [editMode, setEditMode] = useState(false);
+  const [addStockOpen, setAddStockOpen] = useState(false);
 
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
 
@@ -98,37 +99,19 @@ export default function StockPage() {
     }
   }
 
-  async function handleAddBox() {
-    const name = newBoxName.trim().toUpperCase();
+  async function handleAddBoxArea() {
+    const name = newBoxAreaName.trim().toUpperCase();
     if (!name || structureCompat[name] !== undefined) return;
     try {
       const res = await fetch("/api/stores/structure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "add-box", box: name }),
+        body: JSON.stringify({ action: addBoxAreaType === "box" ? "add-box" : "add-area", box: name }),
       });
-      if (!res.ok) throw new Error("Failed to add box");
+      if (!res.ok) throw new Error(`Failed to add ${addBoxAreaType}`);
       setShelfStructure(await res.json());
-      setAddBoxOpen(false);
-      setNewBoxName("");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    }
-  }
-
-  async function handleAddArea() {
-    const name = newAreaName.trim().toUpperCase();
-    if (!name || structureCompat[name] !== undefined) return;
-    try {
-      const res = await fetch("/api/stores/structure", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "add-area", box: name }),
-      });
-      if (!res.ok) throw new Error("Failed to add area");
-      setShelfStructure(await res.json());
-      setAddAreaOpen(false);
-      setNewAreaName("");
+      setAddBoxAreaOpen(false);
+      setNewBoxAreaName("");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
@@ -154,13 +137,9 @@ export default function StockPage() {
           <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:flex">
             <Package className="h-5 w-5 text-primary" />
           </div>
-          <Button variant="outline" size="sm" onClick={() => setAddBoxOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setAddBoxAreaOpen(true)}>
             <FolderPlus className="mr-2 h-4 w-4" />
-            Add Box
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAddAreaOpen(true)}>
-            <FolderPlus className="mr-2 h-4 w-4" />
-            Add Area
+            Add Box/Area
           </Button>
         </div>
       </div>
@@ -184,6 +163,14 @@ export default function StockPage() {
             onChange={(e) => setSearchSize(e.target.value)}
           />
         )}
+      </div>
+
+      {/* Add Stock button */}
+      <div className="flex justify-center">
+        <Button size="sm" onClick={() => setAddStockOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Stock
+        </Button>
       </div>
 
       {/* Error */}
@@ -234,7 +221,7 @@ export default function StockPage() {
           stock={stock}
           onSelectBox={(label) => router.push(`/stores/stock/${label}`)}
           onStructureChange={(s) => setShelfStructure(s)}
-          onAddBox={() => setAddBoxOpen(true)}
+          onAddBox={() => setAddBoxAreaOpen(true)}
           editMode={editMode}
         />
       )}
@@ -262,55 +249,57 @@ export default function StockPage() {
         </div>
       )}
 
-      {/* Add Box */}
-      <Dialog open={addBoxOpen} onOpenChange={setAddBoxOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Add New Box</DialogTitle></DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="newBox">Box Label</Label>
-            <Input
-              id="newBox"
-              placeholder="e.g. H"
-              value={newBoxName}
-              onChange={(e) => setNewBoxName(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === "Enter" && handleAddBox()}
-              maxLength={10}
-            />
-            {newBoxName.trim() && structureCompat[newBoxName.trim().toUpperCase()] !== undefined && (
-              <p className="text-xs text-destructive">Box {newBoxName.trim().toUpperCase()} already exists.</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setAddBoxOpen(false); setNewBoxName(""); }}>Cancel</Button>
-            <Button onClick={handleAddBox} disabled={!newBoxName.trim() || structureCompat[newBoxName.trim().toUpperCase()] !== undefined}>
-              Add Box
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Add Stock */}
+      {shelfStructure && (
+        <AddStockDialog
+          open={addStockOpen}
+          onOpenChange={setAddStockOpen}
+          stock={stock}
+          shelfStructure={shelfStructure}
+          onSuccess={loadAll}
+        />
+      )}
 
-      {/* Add Area */}
-      <Dialog open={addAreaOpen} onOpenChange={setAddAreaOpen}>
+      {/* Add Box/Area */}
+      <Dialog open={addBoxAreaOpen} onOpenChange={(o) => { setAddBoxAreaOpen(o); if (!o) setNewBoxAreaName(""); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Add Misc Area</DialogTitle></DialogHeader>
-          <div className="space-y-1.5">
-            <Label htmlFor="newArea">Area Label</Label>
-            <Input
-              id="newArea"
-              placeholder="e.g. CUPBOARD"
-              value={newAreaName}
-              onChange={(e) => setNewAreaName(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === "Enter" && handleAddArea()}
-              maxLength={20}
-            />
-            {newAreaName.trim() && structureCompat[newAreaName.trim().toUpperCase()] !== undefined && (
-              <p className="text-xs text-destructive">{newAreaName.trim().toUpperCase()} already exists.</p>
-            )}
+          <DialogHeader><DialogTitle>Add Box / Area</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="flex rounded-md border overflow-hidden">
+              <button
+                type="button"
+                className={`flex-1 py-1.5 text-sm transition-colors ${addBoxAreaType === "box" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                onClick={() => { setAddBoxAreaType("box"); setNewBoxAreaName(""); }}
+              >
+                Box
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-1.5 text-sm transition-colors ${addBoxAreaType === "area" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                onClick={() => { setAddBoxAreaType("area"); setNewBoxAreaName(""); }}
+              >
+                Misc Area
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="newBoxArea">Label</Label>
+              <Input
+                id="newBoxArea"
+                placeholder={addBoxAreaType === "box" ? "e.g. H" : "e.g. CUPBOARD"}
+                value={newBoxAreaName}
+                onChange={(e) => setNewBoxAreaName(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && handleAddBoxArea()}
+                maxLength={addBoxAreaType === "box" ? 10 : 20}
+              />
+              {newBoxAreaName.trim() && structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined && (
+                <p className="text-xs text-destructive">{newBoxAreaName.trim().toUpperCase()} already exists.</p>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setAddAreaOpen(false); setNewAreaName(""); }}>Cancel</Button>
-            <Button onClick={handleAddArea} disabled={!newAreaName.trim() || structureCompat[newAreaName.trim().toUpperCase()] !== undefined}>
-              Add Area
+            <Button variant="outline" onClick={() => { setAddBoxAreaOpen(false); setNewBoxAreaName(""); }}>Cancel</Button>
+            <Button onClick={handleAddBoxArea} disabled={!newBoxAreaName.trim() || structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined}>
+              Add {addBoxAreaType === "box" ? "Box" : "Area"}
             </Button>
           </DialogFooter>
         </DialogContent>
