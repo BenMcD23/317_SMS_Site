@@ -501,12 +501,13 @@ function AssessmentGroupRow({
             {typeLabel(group.assessment_type)}
           </Badge>
 
-          <span className="flex-1 text-sm font-medium">
-            {group.assessments.length}
-            <span className="hidden sm:inline"> assessment{group.assessments.length !== 1 ? "s" : ""}</span>
+          <span className="flex-1 text-sm font-medium hidden sm:block">
+            {group.assessments.length} assessment{group.assessments.length !== 1 ? "s" : ""}
           </span>
+        </div>
 
-          <span className="text-xs text-muted-foreground shrink-0">
+        <div className="shrink-0 ml-auto flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
             <span
               className={cn(
                 "font-semibold",
@@ -515,12 +516,9 @@ function AssessmentGroupRow({
             >
               {group.passed_count}
             </span>
-            <span className="text-muted-foreground">/{group.required_to_upload}</span>
-            <span className="text-muted-foreground hidden sm:inline"> passed</span>
+            <span>/{group.required_to_upload}</span>
+            <span className="hidden sm:inline"> passed</span>
           </span>
-        </div>
-
-        <div className="shrink-0 ml-auto">
           <UploadButton
             assessmentIds={group.assessments.map((a) => a.id)}
             assessmentType={group.assessment_type}
