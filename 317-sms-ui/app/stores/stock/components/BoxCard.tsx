@@ -51,53 +51,71 @@ export function BoxCard({
       className={`relative flex flex-col gap-1 rounded-lg border bg-card p-3 shadow-sm select-none w-full h-full ${
         overlay
           ? "shadow-lg ring-2 ring-primary"
+          : editMode
+          ? "border-dashed border-primary/40 bg-primary/5"
           : "hover:border-primary/50 transition-colors"
       }`}
       {...(editMode ? attributes : {})}
     >
-      {/* Edit mode controls */}
       {editMode && (
-        <div
-          className="absolute top-1 right-1 flex flex-col items-center gap-0.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-5 w-5"
-            title="Move to shelf above"
-            disabled={!onMoveUp}
-            onClick={onMoveUp}
-          >
-            <ArrowUp className="h-3 w-3" />
-          </Button>
+        <>
+          {/* Drag handle — centred */}
           <div
             {...listeners}
-            className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab flex items-center justify-center h-5 w-5"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted cursor-grab active:cursor-grabbing transition-colors"
+            onClick={(e) => e.stopPropagation()}
           >
-            <GripVertical className="h-4 w-4" />
+            <GripVertical className="h-5 w-5" />
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-5 w-5"
-            title="Move to shelf below"
-            disabled={!onMoveDown}
-            onClick={onMoveDown}
-          >
-            <ArrowDown className="h-3 w-3" />
-          </Button>
-        </div>
+
+          {/* Arrow up — top-right */}
+          <div className="absolute top-1 right-1" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              title="Move to shelf above"
+              disabled={!onMoveUp}
+              onClick={onMoveUp}
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+
+          {/* Arrow down — bottom-right */}
+          <div className="absolute bottom-1 right-1" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              title="Move to shelf below"
+              disabled={!onMoveDown}
+              onClick={onMoveDown}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </>
       )}
 
-      {/* Clickable content */}
-      <button className="text-left w-full pr-7" onClick={onClick} tabIndex={0}>
-        <p className="text-lg font-bold leading-none">{isMisc ? box.label : `Box ${box.label}`}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}
-        </p>
-        <p className="text-xs text-muted-foreground">{totalQty} items</p>
-      </button>
+      {/* Content — not clickable in edit mode */}
+      {editMode ? (
+        <div className="text-left w-full pointer-events-none opacity-50">
+          <p className="text-lg font-bold leading-none">{isMisc ? box.label : `Box ${box.label}`}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}
+          </p>
+          <p className="text-xs text-muted-foreground">{totalQty} items</p>
+        </div>
+      ) : (
+        <button className="text-left w-full" onClick={onClick} tabIndex={0}>
+          <p className="text-lg font-bold leading-none">{isMisc ? box.label : `Box ${box.label}`}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}
+          </p>
+          <p className="text-xs text-muted-foreground">{totalQty} items</p>
+        </button>
+      )}
     </div>
   );
 }

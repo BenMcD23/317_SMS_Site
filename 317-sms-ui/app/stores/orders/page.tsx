@@ -24,22 +24,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Order, OrderItem, QmNote, StockItem } from "@/lib/stores-types";
+import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
+import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
-
-const ITEM_TYPES = [
-  "Wedgewood Male",
-  "Wedgewood Female",
-  "Working Blue Male",
-  "Working Blue Female",
-  "Jumper",
-  "Trousers",
-  "Slacks",
-  "Skirts",
-  "Beret",
-  "Tie",
-  "Brassard",
-  "Belt",
-];
 
 type DraftItem = {
   itemType: string;
@@ -88,6 +75,7 @@ export default function OrdersPage() {
   const [editSizeOpen, setEditSizeOpen] = useState(false);
   const [editSizeOrderId, setEditSizeOrderId] = useState<string | null>(null);
   const [editSizeItemId, setEditSizeItemId] = useState<string | null>(null);
+  const [editSizeItemType, setEditSizeItemType] = useState("");
   const [editSizeValue, setEditSizeValue] = useState("");
   const [editNeedSizing, setEditNeedSizing] = useState(false);
   const [editSizingDetails, setEditSizingDetails] = useState("");
@@ -151,6 +139,9 @@ export default function OrdersPage() {
   }
 
   function findStockMatch(itemType: string, size: string): StockItem | undefined {
+    if (NO_SIZE_ITEMS.has(itemType)) {
+      return stock.find((s) => s.itemType === itemType);
+    }
     return stock.find((s) => s.itemType === itemType && s.size === size);
   }
 
@@ -223,6 +214,7 @@ export default function OrdersPage() {
   function openEditSize(orderId: string, item: OrderItem) {
     setEditSizeOrderId(orderId);
     setEditSizeItemId(item.id);
+    setEditSizeItemType(item.itemType);
     setEditSizeValue(item.size);
     setEditNeedSizing(item.needSizing);
     setEditSizingDetails(item.sizingDetails ?? "");
@@ -442,16 +434,16 @@ export default function OrdersPage() {
                               <div className="min-w-0 flex-1 space-y-1.5">
                                 <p className="text-sm font-medium">{orderItem.itemType}</p>
 
-                                {/* Sizing details — prominent amber block when needSizing */}
                                 {orderItem.needSizing ? (
-                                  <div className="rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 px-2.5 py-1.5 space-y-0.5">
-                                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                                  <div className="space-y-1">
+                                    <p className="text-xs font-medium text-orange-500 dark:text-orange-400">
                                       Needs Sizing
                                     </p>
                                     {orderItem.sizingDetails && (
-                                      <p className="text-xs text-amber-800 dark:text-amber-300">
-                                        {orderItem.sizingDetails}
-                                      </p>
+                                      <div className="rounded-md border bg-muted/40 px-2.5 py-1.5">
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Sizing Details</p>
+                                        <p className="text-xs text-foreground">{orderItem.sizingDetails}</p>
+                                      </div>
                                     )}
                                   </div>
                                 ) : (
@@ -469,17 +461,19 @@ export default function OrdersPage() {
                                     ) : (
                                       <p className="text-xs font-medium text-destructive">Out of Stock</p>
                                     )
-                                  ) : (
+                                  ) : !orderItem.needSizing ? (
                                     <p className="text-xs text-muted-foreground">Not in stock</p>
-                                  )}
+                                  ) : null}
                                 </div>
                               </div>
 
                               <div className="flex shrink-0 flex-col gap-1.5 items-end">
-                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
-                                  onClick={() => openEditSize(order.id, orderItem)}>
-                                  {orderItem.needSizing ? "Enter Size" : "Edit Size"}
-                                </Button>
+                                {!NO_SIZE_ITEMS.has(orderItem.itemType) && (
+                                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
+                                    onClick={() => openEditSize(order.id, orderItem)}>
+                                    {orderItem.needSizing ? "Enter Size" : "Edit Size"}
+                                  </Button>
+                                )}
                                 <Button size="sm" variant="outline"
                                   className="h-7 px-2 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                                   disabled={!stockMatch || !inStock}
@@ -567,21 +561,28 @@ export default function OrdersPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="w-28">
-                            <Input className="h-8 text-sm" placeholder="Size"
-                              value={addItemDraft.size}
-                              disabled={addItemDraft.needSizing}
-                              onChange={(e) => setAddItemDraft((d) => ({ ...d, size: e.target.value }))} />
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Checkbox id={`ns-add-${order.id}`} checked={addItemDraft.needSizing}
-                              onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c, size: !!c ? "" : d.size }))} />
-                            <Label htmlFor={`ns-add-${order.id}`} className="text-xs cursor-pointer whitespace-nowrap">
-                              Need Sizing
-                            </Label>
-                          </div>
+                          {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
+                            <div className="w-28">
+                              <SizeCombobox
+                                className="h-8 text-sm"
+                                itemType={addItemDraft.itemType}
+                                value={addItemDraft.size}
+                                disabled={addItemDraft.needSizing}
+                                onChange={(v) => setAddItemDraft((d) => ({ ...d, size: v }))}
+                              />
+                            </div>
+                          )}
+                          {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
+                            <div className="flex items-center gap-1.5">
+                              <Checkbox id={`ns-add-${order.id}`} checked={addItemDraft.needSizing}
+                                onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c, size: !!c ? "" : d.size }))} />
+                              <Label htmlFor={`ns-add-${order.id}`} className="text-xs cursor-pointer whitespace-nowrap">
+                                Need Sizing
+                              </Label>
+                            </div>
+                          )}
                         </div>
-                        {addItemDraft.needSizing && (
+                        {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && addItemDraft.needSizing && (
                           <Input className="h-8 text-sm" placeholder="Sizing details (optional)"
                             value={addItemDraft.sizingDetails}
                             onChange={(e) => setAddItemDraft((d) => ({ ...d, sizingDetails: e.target.value }))} />
@@ -662,25 +663,35 @@ export default function OrdersPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="w-24">
-                      <Input className="h-8 text-sm" placeholder="Size" value={item.size}
-                        disabled={item.needSizing}
-                        onChange={(e) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, size: e.target.value } : it))} />
-                    </div>
+                    {!NO_SIZE_ITEMS.has(item.itemType) && (
+                      <div className="w-24">
+                        <SizeCombobox
+                          className="h-8 text-sm"
+                          itemType={item.itemType}
+                          value={item.size}
+                          disabled={item.needSizing}
+                          onChange={(v) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, size: v } : it))}
+                        />
+                      </div>
+                    )}
                     <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-muted-foreground"
                       onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
                       aria-label="Remove item">
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="flex items-center gap-1.5 px-0.5">
-                    <Checkbox id={`ns-new-${idx}`} checked={item.needSizing}
-                      onCheckedChange={(c) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, needSizing: !!c, size: !!c ? "" : it.size } : it))} />
-                    <Label htmlFor={`ns-new-${idx}`} className="text-xs cursor-pointer">Need Sizing</Label>
-                  </div>
-                  {item.needSizing && (
-                    <Input className="h-8 text-sm" placeholder="Sizing details (optional)" value={item.sizingDetails}
-                      onChange={(e) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, sizingDetails: e.target.value } : it))} />
+                  {!NO_SIZE_ITEMS.has(item.itemType) && (
+                    <>
+                      <div className="flex items-center gap-1.5 px-0.5">
+                        <Checkbox id={`ns-new-${idx}`} checked={item.needSizing}
+                          onCheckedChange={(c) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, needSizing: !!c, size: !!c ? "" : it.size } : it))} />
+                        <Label htmlFor={`ns-new-${idx}`} className="text-xs cursor-pointer">Need Sizing</Label>
+                      </div>
+                      {item.needSizing && (
+                        <Input className="h-8 text-sm" placeholder="Sizing details (optional)" value={item.sizingDetails}
+                          onChange={(e) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, sizingDetails: e.target.value } : it))} />
+                      )}
+                    </>
                   )}
                 </div>
               ))}
@@ -745,10 +756,11 @@ export default function OrdersPage() {
             ) : (
               <div className="space-y-1.5">
                 <Label htmlFor="editSize">Size</Label>
-                <Input
+                <SizeCombobox
                   id="editSize"
+                  itemType={editSizeItemType}
                   value={editSizeValue}
-                  onChange={(e) => setEditSizeValue(e.target.value)}
+                  onChange={setEditSizeValue}
                   placeholder="e.g. 95/36"
                   onKeyDown={(e) => e.key === "Enter" && handleSaveEditSize()}
                 />

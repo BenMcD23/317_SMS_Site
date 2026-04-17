@@ -48,7 +48,7 @@ function DropGap({
 }
 
 interface ShelfRowProps {
-  level: 1 | 2 | 3;
+  level: 0 | 1 | 2 | 3;
   boxes: ShelfBox[];
   stock: StockItem[];
   onSelectBox: (label: string) => void;
@@ -74,6 +74,7 @@ function ShelfRow({
     3: "Top shelf",
     2: "Middle shelf",
     1: "Bottom shelf",
+    0: "Other Areas",
   };
 
   const isTargetLevel = overId?.startsWith(`gap-${level}-`) ?? false;
@@ -123,8 +124,9 @@ function ShelfRow({
                   stock={stock}
                   onClick={() => onSelectBox(box.label)}
                   editMode={editMode}
+                  isMisc={level === 0}
                   onMoveUp={level < 3 ? () => onMoveBox(box.label, 1) : undefined}
-                  onMoveDown={level > 1 ? () => onMoveBox(box.label, -1) : undefined}
+                  onMoveDown={level > 0 ? () => onMoveBox(box.label, -1) : undefined}
                 />
               </div>
 
@@ -141,7 +143,7 @@ function ShelfRow({
           {boxes.length === 0 && (
             <div className="flex items-center justify-center w-full pb-3">
               <p className="text-xs text-muted-foreground/50 italic">
-                {editMode ? "Drop a box here" : "Empty shelf"}
+                {editMode ? "Drop a box here" : "Empty"}
               </p>
             </div>
           )}
@@ -169,7 +171,7 @@ export function ShelfView({
 
   const isDragging = activeBox !== null;
 
-  const boxesByLevel = (level: 1 | 2 | 3) =>
+  const boxesByLevel = (level: 0 | 1 | 2 | 3) =>
     structure.boxes
       .filter((b) => b.shelfLevel === level)
       .sort((a, b) => a.shelfPosition - b.shelfPosition);
@@ -201,7 +203,7 @@ export function ShelfView({
     const gap = parseGapId(String(event.over.id));
     if (!gap) return;
 
-    const newLevel = gap.level as 1 | 2 | 3;
+    const newLevel = gap.level as 0 | 1 | 2 | 3;
     const newPos = gap.insertAt;
 
     const remaining = structure.boxes
@@ -247,8 +249,8 @@ export function ShelfView({
   async function handleMoveBox(label: string, direction: 1 | -1) {
     const box = structure.boxes.find((b) => b.label === label);
     if (!box) return;
-    const newLevel = (box.shelfLevel + direction) as 1 | 2 | 3;
-    if (newLevel < 1 || newLevel > 3) return;
+    const newLevel = (box.shelfLevel + direction) as 0 | 1 | 2 | 3;
+    if (newLevel < 0 || newLevel > 3) return;
 
     const siblings = structure.boxes
       .filter((b) => b.shelfLevel === newLevel)
@@ -279,7 +281,7 @@ export function ShelfView({
 
   const shelfContent = (
     <div className="space-y-6">
-      {([3, 2, 1] as const).map((level) => (
+      {([3, 2, 1, 0] as const).map((level) => (
         <ShelfRow
           key={level}
           level={level}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Search, FolderPlus } from "lucide-react";
+import { Package, Search, FolderPlus, Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { ShelfView } from "./components/ShelfView";
-import { BoxCard } from "./components/BoxCard";
 
 export default function StockPage() {
   const router = useRouter();
@@ -71,26 +70,11 @@ export default function StockPage() {
     [shelfStructure]
   );
 
-  // Shelf boxes (levels 1–3) passed to ShelfView
-  const shelfOnlyStructure = useMemo(
-    () =>
-      shelfStructure
-        ? { boxes: shelfStructure.boxes.filter((b) => b.shelfLevel !== 0) }
-        : null,
+  // Set of level-0 labels for search result badge
+  const miscLabels = useMemo(
+    () => new Set((shelfStructure?.boxes ?? []).filter((b) => b.shelfLevel === 0).map((b) => b.label)),
     [shelfStructure]
   );
-
-  // Misc areas (level 0)
-  const miscAreas = useMemo(
-    () =>
-      (shelfStructure?.boxes ?? [])
-        .filter((b) => b.shelfLevel === 0)
-        .sort((a, b) => a.shelfPosition - b.shelfPosition),
-    [shelfStructure]
-  );
-
-  // Set of misc labels for search result badge
-  const miscLabels = useMemo(() => new Set(miscAreas.map((a) => a.label)), [miscAreas]);
 
   const searchResults = useMemo(() => {
     if (!searchName.trim()) return [];
@@ -150,7 +134,6 @@ export default function StockPage() {
     }
   }
 
-  const hasShelfBoxes = (shelfOnlyStructure?.boxes.length ?? 0) > 0;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-16">
@@ -171,13 +154,6 @@ export default function StockPage() {
           <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:flex">
             <Package className="h-5 w-5 text-primary" />
           </div>
-          <Button
-            variant={editMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => setEditMode((m) => !m)}
-          >
-            {editMode ? "Done Editing" : "Edit Arrangement"}
-          </Button>
           <Button variant="outline" size="sm" onClick={() => setAddBoxOpen(true)}>
             <FolderPlus className="mr-2 h-4 w-4" />
             Add Box
@@ -251,45 +227,38 @@ export default function StockPage() {
         </div>
       )}
 
-      {/* Shelf view */}
-      {!loading && !isSearching && shelfOnlyStructure && (
-        hasShelfBoxes ? (
-          <ShelfView
-            structure={shelfOnlyStructure}
-            stock={stock}
-            onSelectBox={(label) => router.push(`/stores/stock/${label}`)}
-            onStructureChange={(s) =>
-              setShelfStructure((prev) =>
-                prev
-                  ? { boxes: [...s.boxes, ...prev.boxes.filter((b) => b.shelfLevel === 0)] }
-                  : s
-              )
-            }
-            onAddBox={() => setAddBoxOpen(true)}
-            editMode={editMode}
-          />
-        ) : (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            No shelf boxes yet. Click &ldquo;Add Box&rdquo; to get started.
-          </div>
-        )
+      {/* Shelf + Other Areas view */}
+      {!loading && !isSearching && shelfStructure && (
+        <ShelfView
+          structure={shelfStructure}
+          stock={stock}
+          onSelectBox={(label) => router.push(`/stores/stock/${label}`)}
+          onStructureChange={(s) => setShelfStructure(s)}
+          onAddBox={() => setAddBoxOpen(true)}
+          editMode={editMode}
+        />
       )}
 
-      {/* Misc areas */}
-      {!loading && !isSearching && miscAreas.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">Other Areas</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {miscAreas.map((area) => (
-              <BoxCard
-                key={area.label}
-                box={area}
-                stock={stock}
-                onClick={() => router.push(`/stores/stock/${area.label}`)}
-                isMisc
-              />
-            ))}
-          </div>
+      {/* Edit Arrangement — bottom centre */}
+      {!loading && !isSearching && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant={editMode ? "default" : "outline"}
+            className="gap-2 px-6"
+            onClick={() => setEditMode((m) => !m)}
+          >
+            {editMode ? (
+              <>
+                <Check className="h-4 w-4" />
+                Done Editing
+              </>
+            ) : (
+              <>
+                <Settings2 className="h-4 w-4" />
+                Edit Arrangement
+              </>
+            )}
+          </Button>
         </div>
       )}
 

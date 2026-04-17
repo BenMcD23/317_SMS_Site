@@ -21,25 +21,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ShelfStructure, ShelfBox, StockItem } from "@/lib/stores-types";
+import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
+import { SizeCombobox } from "@/components/size-combobox";
 import { BoxDetailView } from "../components/BoxDetailView";
-
-const ITEM_TYPES = [
-  "Wedgewood Male",
-  "Wedgewood Female",
-  "Working Blue Male",
-  "Working Blue Female",
-  "Jumper",
-  "Trousers",
-  "Slacks",
-  "Skirts",
-  "Beret",
-  "Tie",
-  "Brassard",
-  "Belt",
-];
-
-// Items that have no size — size is auto-filled as "N/A"
-const NO_SIZE_ITEMS = new Set(["Tie", "Brassard", "Belt"]);
 
 interface ItemFormState {
   itemType: string;
@@ -356,9 +340,13 @@ function ItemForm({
       {!noSize && (
       <div className="space-y-1.5">
         <Label htmlFor="size">Size</Label>
-        <Input id="size" value={form.size}
-          onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))}
-          placeholder="e.g. 95/36 or 74" />
+        <SizeCombobox
+          id="size"
+          itemType={form.itemType}
+          value={form.size}
+          onChange={(v) => setForm((f) => ({ ...f, size: v }))}
+          placeholder="e.g. 95/36 or 74"
+        />
       </div>
       )}
 
