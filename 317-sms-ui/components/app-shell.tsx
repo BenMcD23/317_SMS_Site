@@ -56,7 +56,7 @@ const NAV_ITEMS: NavItem[] = [
     staffOnly: true,
     children: [
       { label: "JI/AO Generator", href: "/ji-ao-generator", icon: FileText },
-      { label: "SMS Scraper", href: "/scraper", icon: MessageSquare },
+      { label: "SMS Scrapers", href: "/scraper", icon: MessageSquare },
       { label: "Programme Updater", href: "/programme-updater", icon: Calendar },
     ],
   },

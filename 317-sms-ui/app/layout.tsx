@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SMS Scraper Tools",
-  description: "Bader SMS Management",
+  title: "317 SMS",
+  description: "317 Sqn Managment Tool",
 };
 
 export default function RootLayout({
