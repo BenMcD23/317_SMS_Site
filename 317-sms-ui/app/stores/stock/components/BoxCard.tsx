@@ -2,9 +2,10 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
+import { useState } from "react";
 
 interface BoxCardProps {
   box: ShelfBox;
@@ -15,6 +16,7 @@ interface BoxCardProps {
   isMisc?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  onDeleteBox?: () => void;
 }
 
 export function BoxCard({
@@ -26,7 +28,9 @@ export function BoxCard({
   isMisc = false,
   onMoveUp,
   onMoveDown,
+  onDeleteBox,
 }: BoxCardProps) {
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `box-${box.label}`,
@@ -95,6 +99,42 @@ export function BoxCard({
               <ArrowDown className="h-3.5 w-3.5" />
             </Button>
           </div>
+
+          {/* Delete box — bottom-left */}
+          {onDeleteBox && (
+            <div className="absolute bottom-1 left-1" onClick={(e) => e.stopPropagation()}>
+              {deleteConfirm ? (
+                <div className="flex gap-0.5">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-5 px-1 text-xs"
+                    onClick={() => { setDeleteConfirm(false); onDeleteBox(); }}
+                  >
+                    ✓
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 px-1 text-xs"
+                    onClick={() => setDeleteConfirm(false)}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-destructive/60 hover:text-destructive"
+                  title="Delete box"
+                  onClick={() => setDeleteConfirm(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          )}
         </>
       )}
 

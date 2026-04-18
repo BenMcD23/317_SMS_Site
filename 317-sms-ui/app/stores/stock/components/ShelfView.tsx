@@ -21,6 +21,7 @@ interface ShelfViewProps {
   onStructureChange: (s: ShelfStructure) => void;
   onAddBox: () => void;
   editMode: boolean;
+  onDeleteBox: (label: string) => void;
 }
 
 function DropGap({
@@ -57,6 +58,7 @@ interface ShelfRowProps {
   editMode: boolean;
   isDragging: boolean;
   onMoveBox: (label: string, direction: 1 | -1) => void;
+  onDeleteBox: (label: string) => void;
 }
 
 function ShelfRow({
@@ -69,6 +71,7 @@ function ShelfRow({
   editMode,
   isDragging,
   onMoveBox,
+  onDeleteBox,
 }: ShelfRowProps) {
   const levelLabels: Record<number, string> = {
     3: "Top shelf",
@@ -127,6 +130,7 @@ function ShelfRow({
                   isMisc={level === 0}
                   onMoveUp={level < 3 ? () => onMoveBox(box.label, 1) : undefined}
                   onMoveDown={level > 0 ? () => onMoveBox(box.label, -1) : undefined}
+                  onDeleteBox={editMode ? () => onDeleteBox(box.label) : undefined}
                 />
               </div>
 
@@ -161,6 +165,7 @@ export function ShelfView({
   onStructureChange,
   onAddBox,
   editMode,
+  onDeleteBox,
 }: ShelfViewProps) {
   const [activeBox, setActiveBox] = useState<ShelfBox | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -293,6 +298,7 @@ export function ShelfView({
           editMode={editMode}
           isDragging={isDragging}
           onMoveBox={handleMoveBox}
+          onDeleteBox={onDeleteBox}
         />
       ))}
     </div>

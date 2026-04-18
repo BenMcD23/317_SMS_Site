@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -238,17 +238,6 @@ export default function BoxPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 pb-16">
-      {/* Edit toggle */}
-      <div className="flex justify-end">
-        <Button
-          variant={editMode ? "default" : "outline"}
-          size="sm"
-          onClick={() => setEditMode((m) => !m)}
-        >
-          {editMode ? "Done Editing" : "Edit Arrangement"}
-        </Button>
-      </div>
-
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
@@ -273,6 +262,27 @@ export default function BoxPage() {
         editMode={editMode}
         isMisc={isMisc}
       />
+
+      {/* Edit Arrangement — bottom centre */}
+      <div className="flex justify-center pt-2">
+        <Button
+          variant={editMode ? "default" : "outline"}
+          className="gap-2 px-6"
+          onClick={() => setEditMode((m) => !m)}
+        >
+          {editMode ? (
+            <>
+              <Check className="h-4 w-4" />
+              Done Editing
+            </>
+          ) : (
+            <>
+              <Settings2 className="h-4 w-4" />
+              Edit Arrangement
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* Add Item */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

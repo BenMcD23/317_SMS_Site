@@ -54,3 +54,22 @@ export interface Order {
   items: OrderItem[];
   completed?: boolean;
 }
+
+export interface BadgeItem {
+  id: number;
+  name: string;
+  quantity: number;
+}
+
+export interface BadgeCell {
+  id: number;
+  row: number;
+  col: number;
+  label: string | null;
+  items: BadgeItem[];
+}
+
+export interface BadgeGrid {
+  config: { numRows: number; numCols: number };
+  cells: BadgeCell[];
+}

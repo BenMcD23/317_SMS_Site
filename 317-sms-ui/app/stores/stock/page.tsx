@@ -99,6 +99,21 @@ export default function StockPage() {
     }
   }
 
+  async function handleDeleteBox(label: string) {
+    try {
+      const res = await fetch("/api/stores/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-box", box: label }),
+      });
+      if (!res.ok) throw new Error("Failed to delete box");
+      setShelfStructure(await res.json());
+      setStock((prev) => prev.filter((i) => i.box !== label));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
   async function handleAddBoxArea() {
     const name = newBoxAreaName.trim().toUpperCase();
     if (!name || structureCompat[name] !== undefined) return;
@@ -223,6 +238,7 @@ export default function StockPage() {
           onStructureChange={(s) => setShelfStructure(s)}
           onAddBox={() => setAddBoxAreaOpen(true)}
           editMode={editMode}
+          onDeleteBox={handleDeleteBox}
         />
       )}
 

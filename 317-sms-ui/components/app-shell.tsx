@@ -33,6 +33,7 @@ import {
   Package,
   ShoppingCart,
   FilePlus2,
+  Award,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ const NAV_ITEMS: NavItem[] = [
     staffOnly: true,
     children: [
       { label: "Stock", href: "/stores/stock", icon: Package },
+      { label: "Badge Stock", href: "/stores/badges", icon: Award },
       { label: "Orders", href: "/stores/orders", icon: ShoppingCart },
     ],
   },

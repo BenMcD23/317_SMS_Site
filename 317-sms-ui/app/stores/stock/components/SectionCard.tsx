@@ -107,15 +107,17 @@ export function SectionCard({
           >
             <Plus className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6 text-destructive hover:text-destructive"
-            title="Delete section"
-            onClick={() => setDeleteConfirm(true)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {editMode && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6 text-destructive hover:text-destructive"
+              title="Delete section"
+              onClick={() => setDeleteConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
