@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,8 +33,9 @@ type JourneyEntry = {
   mileageClaimed: string;
 };
 
+let _entryCounter = 0;
 const defaultEntry = (): JourneyEntry => ({
-  id: Date.now(),
+  id: ++_entryCounter,
   dateOfJourney: "",
   timeOfDeparture: "",
   timeOfArrival: "",
@@ -64,6 +65,7 @@ function EntryCard({
   canRemove: boolean;
   homeAddress: string;
 }) {
+  const uid = useId();
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
   const [calculatingMileage, setCalculatingMileage] = useState(false);
@@ -154,9 +156,9 @@ function EntryCard({
             </h3>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label htmlFor={`date-${entry.id}`}>Date of Journey</Label>
+                <Label htmlFor={`date-${uid}`}>Date of Journey</Label>
                 <Input
-                  id={`date-${entry.id}`}
+                  id={`date-${uid}`}
                   type="date"
                   value={entry.dateOfJourney}
                   onChange={set("dateOfJourney")}
@@ -164,18 +166,18 @@ function EntryCard({
                 <p className="text-xs text-muted-foreground">DD/MM/YY</p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`dep-${entry.id}`}>Time of Departure</Label>
+                <Label htmlFor={`dep-${uid}`}>Time of Departure</Label>
                 <Input
-                  id={`dep-${entry.id}`}
+                  id={`dep-${uid}`}
                   type="time"
                   value={entry.timeOfDeparture}
                   onChange={set("timeOfDeparture")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`arr-${entry.id}`}>Time of Arrival</Label>
+                <Label htmlFor={`arr-${uid}`}>Time of Arrival</Label>
                 <Input
-                  id={`arr-${entry.id}`}
+                  id={`arr-${uid}`}
                   type="time"
                   value={entry.timeOfArrival}
                   onChange={set("timeOfArrival")}
@@ -184,9 +186,9 @@ function EntryCard({
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor={`from-${entry.id}`}>From</Label>
+                <Label htmlFor={`from-${uid}`}>From</Label>
                 <Textarea
-                  id={`from-${entry.id}`}
+                  id={`from-${uid}`}
                   placeholder={"House number and street\nTown, City\nPostcode"}
                   value={entry.from}
                   onChange={set("from")}
@@ -205,9 +207,9 @@ function EntryCard({
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`to-${entry.id}`}>To</Label>
+                <Label htmlFor={`to-${uid}`}>To</Label>
                 <Textarea
-                  id={`to-${entry.id}`}
+                  id={`to-${uid}`}
                   placeholder={"House number and street\nTown, City\nPostcode"}
                   value={entry.to}
                   onChange={set("to")}
@@ -237,11 +239,11 @@ function EntryCard({
             </h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor={`nature-${entry.id}`}>
+                <Label htmlFor={`nature-${uid}`}>
                   Nature of Activity and SMS Ref
                 </Label>
                 <Textarea
-                  id={`nature-${entry.id}`}
+                  id={`nature-${uid}`}
                   placeholder="e.g. Training camp, SMS-1234"
                   value={entry.natureOfActivity}
                   onChange={set("natureOfActivity")}
@@ -249,11 +251,11 @@ function EntryCard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`nrn-${entry.id}`}>
+                <Label htmlFor={`nrn-${uid}`}>
                   Name / Rank / No of Passenger(s)
                 </Label>
                 <Textarea
-                  id={`nrn-${entry.id}`}
+                  id={`nrn-${uid}`}
                   placeholder="e.g. Cdt Smith J, 1234567"
                   value={entry.nameRankNo}
                   onChange={set("nameRankNo")}
@@ -261,9 +263,9 @@ function EntryCard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`gbt-${entry.id}`}>GBT Hotel Booking Ref</Label>
+                <Label htmlFor={`gbt-${uid}`}>GBT Hotel Booking Ref</Label>
                 <Textarea
-                  id={`gbt-${entry.id}`}
+                  id={`gbt-${uid}`}
                   placeholder="Booking reference"
                   value={entry.gbtHotelRef}
                   onChange={set("gbtHotelRef")}
@@ -271,11 +273,11 @@ function EntryCard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`misc-${entry.id}`}>
+                <Label htmlFor={`misc-${uid}`}>
                   Details of any Miscellaneous Expenses
                 </Label>
                 <Textarea
-                  id={`misc-${entry.id}`}
+                  id={`misc-${uid}`}
                   placeholder="Any additional expenses..."
                   value={entry.miscExpenses}
                   onChange={set("miscExpenses")}
@@ -294,9 +296,9 @@ function EntryCard({
             </h3>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label htmlFor={`pax-${entry.id}`}>Number of Passengers</Label>
+                <Label htmlFor={`pax-${uid}`}>Number of Passengers</Label>
                 <Input
-                  id={`pax-${entry.id}`}
+                  id={`pax-${uid}`}
                   type="number"
                   min="1"
                   placeholder="0"
@@ -305,9 +307,9 @@ function EntryCard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`method-${entry.id}`}>Method</Label>
+                <Label htmlFor={`method-${uid}`}>Method</Label>
                 <Select value={entry.method} onValueChange={(v) => onUpdate(entry.id, "method", v)}>
-                  <SelectTrigger id={`method-${entry.id}`}>
+                  <SelectTrigger id={`method-${uid}`}>
                     <SelectValue placeholder="Select method" />
                   </SelectTrigger>
                   <SelectContent>
@@ -318,9 +320,9 @@ function EntryCard({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`mileage-${entry.id}`}>Mileage Claimed</Label>
+                <Label htmlFor={`mileage-${uid}`}>Mileage Claimed</Label>
                 <Input
-                  id={`mileage-${entry.id}`}
+                  id={`mileage-${uid}`}
                   type="number"
                   min="0"
                   step="0.1"
