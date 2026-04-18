@@ -312,7 +312,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShowRolePass((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showRolePass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
@@ -347,7 +347,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShowPersPass((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showPersPass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>

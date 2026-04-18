@@ -191,7 +191,7 @@ function ConsolePanel({
           <button
             onClick={handleStop}
             title="Stop scraper"
-            className="ml-1 p-0.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-colors"
+            className="ml-1 cursor-pointer p-0.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-colors"
           >
             <X size={13} />
           </button>
@@ -390,7 +390,7 @@ export default function ScraperPage() {
       {phase === "select" && externallyRunning.length > 0 && (
         <button
           onClick={handleViewRunning}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-sm text-left hover:bg-blue-500/15 transition-colors"
+          className="w-full cursor-pointer flex items-center gap-3 px-4 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-sm text-left hover:bg-blue-500/15 transition-colors"
         >
           <Loader2 size={15} className="animate-spin text-blue-500 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -416,7 +416,7 @@ export default function ScraperPage() {
           <div className="flex items-center justify-between">
             <button
               onClick={toggleAll}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+              className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               {allSelected ? (
                 <CheckSquare size={16} className="text-primary" />

@@ -103,7 +103,7 @@ function InfoTooltip({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="text-muted-foreground hover:text-foreground transition-colors"
+        className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
         aria-label="More information"
       >
         <Info className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ function AssessmentPdfRow({
           <button
             type="button"
             onClick={handleDownload}
-            className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title="Download PDF"
           >
             <Download className="h-3.5 w-3.5" />
@@ -244,7 +244,7 @@ function AssessmentPdfRow({
           <button
             type="button"
             onClick={handleToggle}
-            className="flex items-center gap-1.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             {loadingPdf ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -261,14 +261,14 @@ function AssessmentPdfRow({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="rounded px-1.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
               >
                 {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmDelete(false)}
-                className="rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+                className="cursor-pointer rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
               >
                 Cancel
               </button>
@@ -277,7 +277,7 @@ function AssessmentPdfRow({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
               title="Delete assessment"
             >
               <Trash2 className="h-3.5 w-3.5" />

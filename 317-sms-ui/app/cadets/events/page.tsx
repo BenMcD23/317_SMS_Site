@@ -70,7 +70,7 @@ function BannedCadetRow({
     <div className="rounded-md border border-red-200 bg-white overflow-hidden">
       <button
         type="button"
-        className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-red-50 transition-colors"
+        className="w-full cursor-pointer text-left px-3 py-2 flex items-center gap-2 hover:bg-red-50 transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
         <p className="flex-1 text-sm font-medium text-red-900">
@@ -94,7 +94,7 @@ function BannedCadetRow({
                 key={e.event_id}
                 type="button"
                 onClick={() => router.push(`/cadets/events`)}
-                className="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-red-50 transition-colors"
+                className="w-full cursor-pointer text-left px-3 py-1.5 flex items-center gap-2 hover:bg-red-50 transition-colors"
               >
                 <CalendarDays className="h-3 w-3 text-red-400 shrink-0" />
                 <span className="text-xs text-red-700">{formatBanEvent(e)}</span>
@@ -115,7 +115,7 @@ function SubAppCard({ subApp }: { subApp: SubAppEvent }) {
     <div className="ml-4 border-l-2 border-primary/20 pl-3">
       <button
         type="button"
-        className="w-full text-left"
+        className="w-full cursor-pointer text-left"
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="flex items-center gap-2 py-2 px-2 rounded-md hover:bg-muted/40 transition-colors">
@@ -145,7 +145,7 @@ function SubAppCard({ subApp }: { subApp: SubAppEvent }) {
                 key={c.cin}
                 type="button"
                 onClick={() => router.push(`/cadets/${c.cin}`)}
-                className="flex w-full items-center gap-3 px-2 py-2 text-left hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex w-full cursor-pointer items-center gap-3 px-2 py-2 text-left hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                   {c.first_name[0]}{c.last_name[0]}
@@ -184,7 +184,7 @@ function EventCard({ event }: { event: CadetEvent }) {
     <Card className="overflow-hidden">
       <button
         type="button"
-        className="w-full text-left"
+        className="w-full cursor-pointer text-left"
         onClick={() => setExpanded((v) => !v)}
       >
         <CardHeader className="flex flex-row items-center gap-3 py-3 px-4 hover:bg-muted/40 transition-colors">
@@ -218,7 +218,7 @@ function EventCard({ event }: { event: CadetEvent }) {
                       key={c.cin}
                       type="button"
                       onClick={() => router.push(`/cadets/${c.cin}`)}
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
                         {c.first_name[0]}{c.last_name[0]}

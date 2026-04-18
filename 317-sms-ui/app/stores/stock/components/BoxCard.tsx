@@ -37,7 +37,7 @@ export function BoxCard({
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : 1,
-    cursor: overlay ? "grabbing" : "default",
+    cursor: overlay ? "grabbing" : editMode ? "grab" : "pointer",
   };
 
   const totalQty = stock
@@ -108,7 +108,7 @@ export function BoxCard({
           <p className="text-xs text-muted-foreground">{totalQty} items</p>
         </div>
       ) : (
-        <button className="text-left w-full" onClick={onClick} tabIndex={0}>
+        <button className="cursor-pointer text-left w-full" onClick={onClick} tabIndex={0}>
           <p className="text-lg font-bold leading-none">{isMisc ? box.label : `Box ${box.label}`}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}

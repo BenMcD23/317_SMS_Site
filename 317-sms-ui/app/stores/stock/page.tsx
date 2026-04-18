@@ -268,14 +268,14 @@ export default function StockPage() {
             <div className="flex rounded-md border overflow-hidden">
               <button
                 type="button"
-                className={`flex-1 py-1.5 text-sm transition-colors ${addBoxAreaType === "box" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                className={`flex-1 cursor-pointer py-1.5 text-sm transition-colors ${addBoxAreaType === "box" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
                 onClick={() => { setAddBoxAreaType("box"); setNewBoxAreaName(""); }}
               >
                 Box
               </button>
               <button
                 type="button"
-                className={`flex-1 py-1.5 text-sm transition-colors ${addBoxAreaType === "area" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                className={`flex-1 cursor-pointer py-1.5 text-sm transition-colors ${addBoxAreaType === "area" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
                 onClick={() => { setAddBoxAreaType("area"); setNewBoxAreaName(""); }}
               >
                 Misc Area

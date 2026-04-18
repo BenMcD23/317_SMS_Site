@@ -229,7 +229,7 @@ export default function BoxPage() {
     return (
       <div className="py-12 text-center text-sm text-muted-foreground">
         Box {boxLabel} not found.{" "}
-        <button className="underline" onClick={() => router.push("/stores/stock")}>
+        <button className="cursor-pointer underline" onClick={() => router.push("/stores/stock")}>
           Go back
         </button>
       </div>

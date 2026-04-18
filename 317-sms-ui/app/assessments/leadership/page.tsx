@@ -71,7 +71,7 @@ function ScoreSelector({
               type="button"
               onClick={() => onChange(score)}
               className={cn(
-                "group relative flex flex-1 flex-col items-center gap-0.5 rounded-md border py-2.5 text-xs font-semibold transition-all",
+                "group relative flex flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-md border py-2.5 text-xs font-semibold transition-all",
                 isSelected
                   ? score === 1
                     ? "border-red-500 bg-red-500 text-white shadow-sm"
