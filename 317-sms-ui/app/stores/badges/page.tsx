@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Award, Plus, Search } from "lucide-react";
+import { Award, Check, Plus, Search, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +47,9 @@ export default function BadgeStockPage() {
   const [editCategory, setEditCategory] = useState<BadgeCategory | null>(null);
   const [editSubType, setEditSubType] = useState<string | null>(null);
   const [editLevel, setEditLevel] = useState<string | null>(null);
+
+  // Edit mode
+  const [editMode, setEditMode] = useState(false);
 
   // Add row/col confirm dialogs
   const [addRowOpen, setAddRowOpen] = useState(false);
@@ -95,6 +98,41 @@ export default function BadgeStockPage() {
       if (!res.ok) throw new Error("Failed");
       setGrid(await res.json());
       setAddColOpen(false);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  async function handleDeleteRow(rowIndex: number) {
+    try {
+      const res = await fetch(`/api/stores/badges/rows/${rowIndex}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setGrid(await res.json());
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  async function handleDeleteCol(colIndex: number) {
+    try {
+      const res = await fetch(`/api/stores/badges/cols/${colIndex}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setGrid(await res.json());
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  async function handleRenameCell(cellId: number, label: string) {
+    try {
+      const res = await fetch(`/api/stores/badges/cells/${cellId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: label || null }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const updated = await res.json();
+      setGrid(updated);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
@@ -343,12 +381,37 @@ export default function BadgeStockPage() {
 
       {/* Grid */}
       {!loading && !isSearching && grid && (
-        <BadgeGridView
-          grid={grid}
-          onAddItem={(cellId) => openAddBadge(cellId)}
-          onEditItem={openEditBadge}
-          onDeleteItem={handleDeleteItem}
-        />
+        <>
+          <BadgeGridView
+            grid={grid}
+            editMode={editMode}
+            onAddItem={(cellId) => openAddBadge(cellId)}
+            onEditItem={openEditBadge}
+            onDeleteItem={handleDeleteItem}
+            onDeleteRow={handleDeleteRow}
+            onDeleteCol={handleDeleteCol}
+            onRenameCell={handleRenameCell}
+          />
+          <div className="flex justify-center pt-2">
+            <Button
+              variant={editMode ? "default" : "outline"}
+              className="gap-2 px-6"
+              onClick={() => setEditMode((m) => !m)}
+            >
+              {editMode ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Done Editing
+                </>
+              ) : (
+                <>
+                  <Settings2 className="h-4 w-4" />
+                  Edit
+                </>
+              )}
+            </Button>
+          </div>
+        </>
       )}
 
       {/* Add Badge dialog */}
