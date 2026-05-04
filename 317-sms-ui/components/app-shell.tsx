@@ -435,7 +435,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const token = (session as any)?.id_token as string | undefined;
     if (!token) return;
 
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
     fetch(`${API}/health`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (res.ok) setApiStatus("ok");
