@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Upload, Trash2, CheckCircle2, User, KeyRound, PenLine, Settings2 } from "lucide-react";
+import { Eye, EyeOff, Upload, Trash2, CheckCircle2, User, KeyRound, PenLine, Settings2, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -25,10 +25,15 @@ export default function SettingsPage() {
 
   // ── Signature ────────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [sigLoading, setSigLoading] = useState(false);
   const [hasSavedSignature, setHasSavedSignature] = useState(false);
+  const [signatureMode, setSignatureMode] = useState<"draw" | "upload">("draw");
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [drawnDataUrl, setDrawnDataUrl] = useState<string | null>(null);
 
   // ── Assessor name ────────────────────────────────────────────────────────────
   const [assessorName, setAssessorName] = useState("");
@@ -54,6 +59,52 @@ export default function SettingsPage() {
     });
   }, [session]);
 
+  useEffect(() => {
+    if (signatureMode !== "draw") return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const getPos = (e: MouseEvent | TouchEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+      return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+    };
+    const start = (e: MouseEvent | TouchEvent) => { drawingRef.current = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+    const move = (e: MouseEvent | TouchEvent) => { if (!drawingRef.current) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+    const stop = () => { if (!drawingRef.current) return; drawingRef.current = false; setHasDrawn(true); setDrawnDataUrl(canvas.toDataURL()); };
+
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    canvas.addEventListener("mouseup", stop);
+    canvas.addEventListener("mouseleave", stop);
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", stop);
+    return () => {
+      canvas.removeEventListener("mousedown", start);
+      canvas.removeEventListener("mousemove", move);
+      canvas.removeEventListener("mouseup", stop);
+      canvas.removeEventListener("mouseleave", stop);
+      canvas.removeEventListener("touchstart", start);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", stop);
+    };
+  }, [signatureMode]);
+
+  const clearDraw = () => {
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+    setDrawnDataUrl(null);
+  };
+
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,11 +123,20 @@ export default function SettingsPage() {
   };
 
   const handleSignatureSave = async () => {
-    if (!signatureFile || !session?.id_token) return;
+    if (!session?.id_token) return;
     setSigLoading(true);
     try {
+      let fileToSave: File | null = null;
+      if (signatureMode === "draw" && drawnDataUrl) {
+        const blob = await (await fetch(drawnDataUrl)).blob();
+        fileToSave = new File([blob], "signature.png", { type: "image/png" });
+      } else if (signatureMode === "upload" && signatureFile) {
+        fileToSave = signatureFile;
+      }
+      if (!fileToSave) return;
+
       const formData = new FormData();
-      formData.append("file", signatureFile);
+      formData.append("file", fileToSave);
       const res = await apiFetch(`${API_BASE}/save-signature`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.id_token}` },
@@ -85,7 +145,12 @@ export default function SettingsPage() {
       if (res.ok) {
         toast.success("Signature saved.");
         setHasSavedSignature(true);
-        setSignatureFile(null);
+        if (signatureMode === "draw" && drawnDataUrl) {
+          setSignaturePreview(drawnDataUrl);
+          clearDraw();
+        } else {
+          setSignatureFile(null);
+        }
       } else {
         const err = await res.json();
         toast.error(err.detail ?? "Failed to save signature.");
@@ -210,48 +275,80 @@ export default function SettingsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Signature</CardTitle>
             <CardDescription>
-              PNG or JPEG of your signature, embedded in assessment PDFs.
+              Embedded in assessment PDFs. Draw one below or upload an image.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {signaturePreview ? (
+            {/* Saved preview */}
+            {hasSavedSignature && signaturePreview && !hasDrawn && !signatureFile && (
               <div className="relative w-fit overflow-hidden rounded-lg border bg-white p-4 shadow-sm">
-                {hasSavedSignature && !signatureFile && (
-                  <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
-                    <CheckCircle2 className="h-3 w-3" /> Saved
-                  </span>
-                )}
-                <img
-                  src={signaturePreview}
-                  alt="Signature preview"
-                  className="max-h-20 object-contain"
-                />
+                <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                  <CheckCircle2 className="h-3 w-3" /> Saved
+                </span>
+                <img src={signaturePreview} alt="Signature preview" className="max-h-20 object-contain" />
               </div>
-            ) : (
+            )}
+
+            {/* Mode toggle */}
+            <div className="flex w-fit overflow-hidden rounded-md border text-sm">
+              <button
+                type="button"
+                onClick={() => { setSignatureMode("draw"); setSignatureFile(null); }}
+                className={cn("flex items-center gap-1.5 px-3 py-1.5", signatureMode === "draw" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")}
+              >
+                <PenLine className="h-3.5 w-3.5" /> Draw
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSignatureMode("upload"); clearDraw(); }}
+                className={cn("flex items-center gap-1.5 border-l px-3 py-1.5", signatureMode === "upload" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")}
+              >
+                <Upload className="h-3.5 w-3.5" /> Upload
+              </button>
+            </div>
+
+            {/* Draw mode */}
+            {signatureMode === "draw" && (
+              <div className="space-y-1.5">
+                <div className="relative overflow-hidden rounded-md border bg-white">
+                  <canvas
+                    ref={canvasRef}
+                    width={560}
+                    height={120}
+                    className="w-full cursor-crosshair touch-none"
+                    style={{ height: "80px" }}
+                  />
+                  {!hasDrawn && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                      Sign here
+                    </span>
+                  )}
+                </div>
+                {hasDrawn && (
+                  <button type="button" onClick={clearDraw} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
+                    <RotateCcw className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Upload mode */}
+            {signatureMode === "upload" && (
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-8 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted/30 hover:text-foreground"
               >
-                <PenLine className="h-6 w-6" />
-                <span className="font-medium">Click to upload signature</span>
+                <Upload className="h-6 w-6" />
+                <span className="font-medium">{signatureFile ? signatureFile.name : "Click to upload signature"}</span>
                 <span className="text-xs">PNG or JPEG · max 2 MB</span>
               </div>
             )}
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
 
+            {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={sigLoading}>
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
-                {signaturePreview ? "Change" : "Upload"}
-              </Button>
-              {signatureFile && (
+              {(hasDrawn || signatureFile) && (
                 <Button size="sm" onClick={handleSignatureSave} disabled={sigLoading}>
                   {sigLoading ? "Saving…" : "Save signature"}
                 </Button>
@@ -262,8 +359,7 @@ export default function SettingsPage() {
                   onClick={handleSignatureDelete} disabled={sigLoading}
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
                 >
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                  Remove
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
                 </Button>
               )}
             </div>
