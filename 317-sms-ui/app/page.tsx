@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, MessageSquare, Calendar, Users } from "lucide-react";
+import { FileText, MessageSquare, Calendar, Users, Newspaper } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -278,9 +278,10 @@ function BadgeStatCard({
 // ─── Quick tools ──────────────────────────────────────────────────────────────
 
 const QUICK_TOOLS = [
-  { title: "JI/AO Generator", desc: "Generate cadet documents", href: "/ji-ao-generator", icon: FileText },
-  { title: "SMS Scraper", desc: "Run qualification & event tools", href: "/scraper", icon: MessageSquare },
-  { title: "Programme Updater", desc: "Push the latest programme to the website", href: "/programme-updater", icon: Calendar },
+  { title: "JI/AO Generator", desc: "Generate cadet documents", href: "/tools/ji-ao-generator", icon: FileText },
+  { title: "SMS Scraper", desc: "Run qualification & event tools", href: "/tools/scraper", icon: MessageSquare },
+  { title: "Programme Updater", desc: "Push the latest programme to the website", href: "/tools/programme-updater", icon: Calendar },
+  { title: "Newsletter Updater", desc: "Upload a new newsletter to the website", href: "/tools/newsletter-updater", icon: Newspaper },
 ];
 
 function QuickTools() {

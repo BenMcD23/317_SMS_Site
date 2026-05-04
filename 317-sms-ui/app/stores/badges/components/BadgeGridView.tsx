@@ -1,33 +1,56 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BadgeCell, BadgeGrid, BadgeItem } from "@/lib/stores-types";
 
 function BadgeCellCard({
   cell,
+  editMode,
   onAddItem,
   onEditItem,
   onDeleteItem,
+  onRenameCell,
 }: {
   cell: BadgeCell;
+  editMode: boolean;
   onAddItem: (cellId: number) => void;
   onEditItem: (item: BadgeItem, cellId: number) => void;
   onDeleteItem: (itemId: number) => void;
+  onRenameCell: (cellId: number, label: string) => void;
 }) {
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<number | null>(null);
+  const [labelDraft, setLabelDraft] = useState(cell.label ?? "");
+
+  function commitLabel() {
+    const trimmed = labelDraft.trim();
+    if (trimmed !== (cell.label ?? "")) {
+      onRenameCell(cell.id, trimmed);
+    }
+  }
 
   return (
     <div className="flex flex-col rounded-lg border bg-card shadow-sm w-full h-full">
       {/* Header */}
       <div className="flex items-center justify-between gap-1 border-b px-2 py-1.5">
         <div className="w-4" />
-        <span className="flex-1 truncate text-center text-xs font-semibold">
-          {cell.label ?? "Section"}
-        </span>
+        {editMode ? (
+          <Input
+            className="h-6 flex-1 text-center text-xs font-semibold px-1 py-0"
+            value={labelDraft}
+            placeholder="Section name…"
+            onChange={(e) => setLabelDraft(e.target.value)}
+            onBlur={commitLabel}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+          />
+        ) : (
+          <span className="flex-1 truncate text-center text-xs font-semibold">
+            {cell.label ?? ""}
+          </span>
+        )}
         <Button
           size="icon"
           variant="ghost"
@@ -99,16 +122,24 @@ function BadgeCellCard({
 
 interface BadgeGridViewProps {
   grid: BadgeGrid;
+  editMode: boolean;
   onAddItem: (cellId: number) => void;
   onEditItem: (item: BadgeItem, cellId: number) => void;
   onDeleteItem: (itemId: number) => void;
+  onDeleteRow: (rowIndex: number) => void;
+  onDeleteCol: (colIndex: number) => void;
+  onRenameCell: (cellId: number, label: string) => void;
 }
 
 export function BadgeGridView({
   grid,
+  editMode,
   onAddItem,
   onEditItem,
   onDeleteItem,
+  onDeleteRow,
+  onDeleteCol,
+  onRenameCell,
 }: BadgeGridViewProps) {
   const { numRows, numCols } = grid.config;
   const rows = Array.from({ length: numRows }, (_, i) => i);
@@ -133,8 +164,20 @@ export function BadgeGridView({
 
       {/* Column headers */}
       {cols.map((c) => (
-        <div key={`ch-${c}`} className="flex items-center justify-center">
+        <div key={`ch-${c}`} className="flex items-center justify-center gap-1">
           <span className="text-xs font-medium text-muted-foreground">{c + 1}</span>
+          {editMode && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
+              title={`Delete column ${c + 1}`}
+              disabled={numCols <= 1}
+              onClick={() => onDeleteCol(c)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       ))}
 
@@ -142,8 +185,20 @@ export function BadgeGridView({
       {rows.map((r) => (
         <React.Fragment key={`row-${r}`}>
           {/* Row label */}
-          <div className="flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-0.5">
             <span className="text-xs font-medium text-muted-foreground">{r + 1}</span>
+            {editMode && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                title={`Delete row ${r + 1}`}
+                disabled={numRows <= 1}
+                onClick={() => onDeleteRow(r)}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
           </div>
 
           {/* Cells */}
@@ -153,10 +208,13 @@ export function BadgeGridView({
               <div key={`cell-${r}-${c}`} style={{ minHeight: 100 }}>
                 {cell ? (
                   <BadgeCellCard
+                    key={`${cell.id}-${cell.label}`}
                     cell={cell}
+                    editMode={editMode}
                     onAddItem={onAddItem}
                     onEditItem={onEditItem}
                     onDeleteItem={onDeleteItem}
+                    onRenameCell={onRenameCell}
                   />
                 ) : (
                   <div className="h-full rounded-lg" style={{ minHeight: 100 }} />

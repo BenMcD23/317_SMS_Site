@@ -34,6 +34,7 @@ import {
   ShoppingCart,
   FilePlus2,
   Award,
+  Newspaper,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,9 +57,10 @@ const NAV_ITEMS: NavItem[] = [
     icon: FileText,
     staffOnly: true,
     children: [
-      { label: "JI/AO Generator", href: "/ji-ao-generator", icon: FileText },
-      { label: "SMS Scrapers", href: "/scraper", icon: MessageSquare },
-      { label: "Programme Updater", href: "/programme-updater", icon: Calendar },
+      { label: "JI/AO Generator", href: "/tools/ji-ao-generator", icon: FileText },
+      { label: "SMS Scrapers", href: "/tools/scraper", icon: MessageSquare },
+      { label: "Programme Updater", href: "/tools/programme-updater", icon: Calendar },
+      { label: "Newsletter Updater", href: "/tools/newsletter-updater", icon: Newspaper },
     ],
   },
   {
@@ -435,7 +437,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const token = (session as any)?.id_token as string | undefined;
     if (!token) return;
 
-    const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
     fetch(`${API}/health`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (res.ok) setApiStatus("ok");
