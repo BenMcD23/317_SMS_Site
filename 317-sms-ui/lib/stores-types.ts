@@ -55,6 +55,19 @@ export interface Order {
   completed?: boolean;
 }
 
+export interface SizingDetailsJSON {
+  currentSize?: string;
+  currentSizeUnknown?: boolean;
+  biggerSmaller?: "" | "bigger" | "smaller" | "same";
+  chest?: string;
+  collar?: string;
+  waist?: string;
+  leg?: string;
+  seat?: string;
+  hips?: string;
+  notes?: string;
+}
+
 export interface BadgeItem {
   id: number;
   name: string;
