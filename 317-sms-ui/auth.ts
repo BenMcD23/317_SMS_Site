@@ -39,19 +39,58 @@ async function getUserRole(userEmail: string): Promise<"staff" | "nco" | null> {
   }
 }
 
+async function refreshGoogleToken(refreshToken: string) {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  })
+  if (!res.ok) throw new Error("Token refresh failed")
+  return res.json()
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   callbacks: {
     async jwt({ token, account, user }) {
       if (account) {
         token.id_token = account.id_token
+        token.access_token = account.access_token
+        token.refresh_token = account.refresh_token
+        token.expires_at = account.expires_at
         token.role = (await getUserRole(user!.email!)) ?? undefined
+        return token
       }
-      return token
+
+      const now = Math.floor(Date.now() / 1000)
+      if ((token.expires_at as number) > now + 300) return token
+
+      if (!token.refresh_token) return { ...token, error: "RefreshTokenMissing" }
+
+      try {
+        const refreshed = await refreshGoogleToken(token.refresh_token as string)
+        return {
+          ...token,
+          id_token: refreshed.id_token ?? token.id_token,
+          access_token: refreshed.access_token,
+          expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in,
+          refresh_token: refreshed.refresh_token ?? token.refresh_token,
+          error: undefined,
+        }
+      } catch (e) {
+        console.error("[jwt] Token refresh failed:", e)
+        return { ...token, error: "RefreshAccessTokenError" }
+      }
     },
     async session({ session, token }) {
       session.id_token = token.id_token as string
       session.role = token.role
+      if (token.error) session.error = token.error as string
       return session
     },
     async signIn({ user }) {

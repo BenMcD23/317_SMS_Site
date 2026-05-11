@@ -103,6 +103,7 @@ type FormState = {
   exerciseName: string;
   scores: Record<number, number | null>;
   assessorName: string;
+  assessorRole: string;
   date: string;
   debriefingNotes: string;
 };
@@ -114,6 +115,7 @@ const initialState = (): FormState => ({
   exerciseName: "",
   scores: Object.fromEntries(QUESTIONS.map((q) => [q.id, null])),
   assessorName: "",
+  assessorRole: "",
   date: new Date().toISOString().split("T")[0],
   debriefingNotes: "",
 });
@@ -425,6 +427,8 @@ export default function LeadershipAssessmentPage() {
       <AssessorCard
         assessorName={form.assessorName}
         onAssessorNameChange={(v) => setForm((f) => ({ ...f, assessorName: v }))}
+        assessorRole={form.assessorRole}
+        onAssessorRoleChange={(v) => setForm((f) => ({ ...f, assessorRole: v }))}
         date={form.date}
         onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
         showNameFromAccount={!!session?.user?.name}

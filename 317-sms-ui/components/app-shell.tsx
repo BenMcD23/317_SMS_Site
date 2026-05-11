@@ -35,6 +35,7 @@ import {
   FilePlus2,
   Award,
   Newspaper,
+  BookOpen,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "First Aid", href: "/assessments/first-aid", icon: HeartPulse },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
+      { label: "MOI", href: "/assessments/moi", icon: BookOpen },
     ],
   },
   {

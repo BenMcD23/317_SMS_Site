@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Order, OrderItem, QmNote, StockItem } from "@/lib/stores-types";
+import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON } from "@/lib/stores-types";
 import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
 import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
@@ -38,6 +38,43 @@ type DraftItem = {
 
 function emptyDraftItem(): DraftItem {
   return { itemType: "", size: "", needSizing: false, sizingDetails: "" };
+}
+
+const FIT_LABELS: Record<string, string> = { bigger: "Bigger", smaller: "Smaller", same: "Same size" };
+
+function parseSizingDetails(str: string): SizingDetailsJSON | null {
+  if (!str) return null;
+  try { return JSON.parse(str) as SizingDetailsJSON; } catch { return null; }
+}
+
+function SizingDetailsDisplay({ raw }: { raw: string }) {
+  const parsed = parseSizingDetails(raw);
+  if (!parsed) return <p className="text-xs text-foreground">{raw}</p>;
+
+  const rows: { label: string; value: string }[] = [];
+  if (parsed.currentSizeUnknown) rows.push({ label: "Current size", value: "Unknown" });
+  else if (parsed.currentSize)   rows.push({ label: "Current size", value: parsed.currentSize });
+  if (parsed.biggerSmaller)      rows.push({ label: "Overall fit",  value: FIT_LABELS[parsed.biggerSmaller] ?? parsed.biggerSmaller });
+  if (parsed.chest)  rows.push({ label: "Chest",  value: parsed.chest });
+  if (parsed.collar) rows.push({ label: "Collar", value: parsed.collar });
+  if (parsed.waist)  rows.push({ label: "Waist",  value: parsed.waist });
+  if (parsed.leg)    rows.push({ label: "Leg",    value: parsed.leg });
+  if (parsed.seat)   rows.push({ label: "Seat",   value: parsed.seat });
+  if (parsed.hips)   rows.push({ label: "Hips",   value: parsed.hips });
+  if (parsed.notes)  rows.push({ label: "Notes",  value: parsed.notes });
+
+  if (rows.length === 0) return <p className="text-xs text-muted-foreground italic">No sizing details</p>;
+
+  return (
+    <div className="space-y-0.5">
+      {rows.map(({ label, value }) => (
+        <div key={label} className="flex gap-2 text-xs">
+          <span className="text-muted-foreground w-24 shrink-0">{label}</span>
+          <span className="text-foreground">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function formatTimestamp(ts: string): string {
@@ -546,8 +583,8 @@ export default function OrdersPage() {
                                     </p>
                                     {orderItem.sizingDetails && (
                                       <div className="rounded-md border bg-muted/40 px-2.5 py-1.5">
-                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Sizing Details</p>
-                                        <p className="text-xs text-foreground">{orderItem.sizingDetails}</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Sizing Details</p>
+                                        <SizingDetailsDisplay raw={orderItem.sizingDetails} />
                                       </div>
                                     )}
                                   </div>

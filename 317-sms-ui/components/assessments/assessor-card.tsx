@@ -152,12 +152,125 @@ function SignatureSection({
   );
 }
 
+// ─── Simple draw pad (for cadet signature) ───────────────────────────────────
+function DrawPad({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+
+  const getPos = (e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    if ("touches" in e)
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      };
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const start = (e: MouseEvent | TouchEvent) => {
+      drawing.current = true;
+      const p = getPos(e, canvas);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      e.preventDefault();
+    };
+    const move = (e: MouseEvent | TouchEvent) => {
+      if (!drawing.current) return;
+      const p = getPos(e, canvas);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      e.preventDefault();
+    };
+    const stop = () => {
+      if (!drawing.current) return;
+      drawing.current = false;
+      setHasDrawn(true);
+      onChange(canvas.toDataURL());
+    };
+
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    canvas.addEventListener("mouseup", stop);
+    canvas.addEventListener("mouseleave", stop);
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", stop);
+    return () => {
+      canvas.removeEventListener("mousedown", start);
+      canvas.removeEventListener("mousemove", move);
+      canvas.removeEventListener("mouseup", stop);
+      canvas.removeEventListener("mouseleave", stop);
+      canvas.removeEventListener("touchstart", start);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", stop);
+    };
+  }, [onChange]);
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+    onChange(null);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="relative overflow-hidden rounded-md border bg-white">
+        <canvas
+          ref={canvasRef}
+          width={560}
+          height={120}
+          className="w-full cursor-crosshair touch-none sm:h-20 h-28"
+        />
+        {!hasDrawn && !value && (
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+            Sign here
+          </span>
+        )}
+      </div>
+      {hasDrawn && (
+        <button
+          type="button"
+          onClick={clear}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+        >
+          <RotateCcw className="h-3 w-3" /> Clear
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Assessor card ────────────────────────────────────────────────────────────
 export type AssessorCardProps = {
   assessorName: string;
   onAssessorNameChange: (v: string) => void;
-  date: string;
-  onDateChange: (v: string) => void;
+  assessorRole: string;
+  onAssessorRoleChange: (v: string) => void;
   showNameFromAccount: boolean;
   // Signature
   sigLoading: boolean;
@@ -166,13 +279,18 @@ export type AssessorCardProps = {
   onOverrideSignature: (v: string | null) => void;
   showDraw: boolean;
   onSetShowDraw: (v: boolean) => void;
+  // Optional
+  date?: string;
+  onDateChange?: (v: string) => void;
+  cadetSignature?: string | null;
+  onCadetSignature?: (v: string | null) => void;
 };
 
 export function AssessorCard({
   assessorName,
   onAssessorNameChange,
-  date,
-  onDateChange,
+  assessorRole,
+  onAssessorRoleChange,
   showNameFromAccount,
   sigLoading,
   savedSignatureUrl,
@@ -180,6 +298,10 @@ export function AssessorCard({
   onOverrideSignature,
   showDraw,
   onSetShowDraw,
+  date,
+  onDateChange,
+  cadetSignature,
+  onCadetSignature,
 }: AssessorCardProps) {
   return (
     <Card>
@@ -203,18 +325,30 @@ export function AssessorCard({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="assessorRole">Assessor&apos;s Role</Label>
             <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => onDateChange(e.target.value)}
+              id="assessorRole"
+              placeholder="e.g. Flying Officer, Staff Instructor"
+              value={assessorRole}
+              onChange={(e) => onAssessorRoleChange(e.target.value)}
             />
           </div>
         </div>
 
+        {onDateChange !== undefined && (
+          <div className="space-y-1.5">
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={date ?? ""}
+              onChange={(e) => onDateChange(e.target.value)}
+            />
+          </div>
+        )}
+
         <div className="space-y-1.5">
-          <Label>Signature</Label>
+          <Label>Assessor&apos;s Signature</Label>
           {sigLoading ? (
             <div className="flex h-14 items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -238,6 +372,14 @@ export function AssessorCard({
             No signature - You can draw above or save one in{" "}
             <Link href="/settings" className="underline">Settings</Link>.
           </div>
+        )}
+
+        {onCadetSignature !== undefined && (
+          <DrawPad
+            label="Candidate's Signature"
+            value={cadetSignature ?? null}
+            onChange={onCadetSignature}
+          />
         )}
       </CardContent>
     </Card>

@@ -72,6 +72,7 @@ type FormState = {
   cyberSecDate: string;
   comments: string;
   assessorName: string;
+  assessorRole: string;
   date: string;
 };
 
@@ -82,6 +83,7 @@ const initialState = (): FormState => ({
   cyberSecDate: "",
   comments: "",
   assessorName: "",
+  assessorRole: "",
   date: new Date().toISOString().split("T")[0],
 });
 
@@ -402,6 +404,8 @@ export default function RadioAssessmentPage() {
       <AssessorCard
         assessorName={form.assessorName}
         onAssessorNameChange={(v) => setForm((f) => ({ ...f, assessorName: v }))}
+        assessorRole={form.assessorRole}
+        onAssessorRoleChange={(v) => setForm((f) => ({ ...f, assessorRole: v }))}
         date={form.date}
         onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
         showNameFromAccount={!!session?.user?.name}
