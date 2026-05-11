@@ -516,17 +516,21 @@ function AssessmentGroupRow({
             >
               {group.passed_count}
             </span>
-            <span>/{group.required_to_upload}</span>
+            {group.assessment_type !== "MOI" && (
+              <span>/{group.required_to_upload}</span>
+            )}
             <span className="hidden sm:inline"> passed</span>
           </span>
-          <UploadButton
-            assessmentIds={group.assessments.map((a) => a.id)}
-            assessmentType={group.assessment_type}
-            canUpload={group.can_upload}
-            uploaded={group.uploaded}
-            token={token}
-            onUploaded={onUploaded}
-          />
+          {group.assessment_type !== "MOI" && (
+            <UploadButton
+              assessmentIds={group.assessments.map((a) => a.id)}
+              assessmentType={group.assessment_type}
+              canUpload={group.can_upload}
+              uploaded={group.uploaded}
+              token={token}
+              onUploaded={onUploaded}
+            />
+          )}
         </div>
       </div>
 
