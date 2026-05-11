@@ -21,6 +21,7 @@ const SECTIONS = [
   {
     id: "identifying",
     title: "Identifying Participants Needs",
+    commentLimit: 670,
     questions: [
       { id: 1, text: "Have participants needs been identified?" },
       { id: 2, text: "Are objectives SMART?" },
@@ -29,6 +30,7 @@ const SECTIONS = [
   {
     id: "planning",
     title: "Planning and Preparation of Lesson",
+    commentLimit: 900,
     questions: [
       { id: 3, text: "Was lesson plan submitted and complete?" },
       { id: 4, text: "Were resources prepared and ready?" },
@@ -38,6 +40,7 @@ const SECTIONS = [
   {
     id: "resources",
     title: "Use of Resources",
+    commentLimit: 900,
     questions: [
       { id: 6, text: "Were resources used effectively?" },
       { id: 7, text: "How well did resources support delivery of lesson?" },
@@ -46,6 +49,7 @@ const SECTIONS = [
   {
     id: "delivery",
     title: "Delivery of Lesson",
+    commentLimit: 500,
     questions: [
       { id: 8, text: "Was the delivery of the session confident and clear?" },
       { id: 9, text: "How well did the candidate manage the classroom environment?" },
@@ -54,6 +58,7 @@ const SECTIONS = [
   {
     id: "assessment",
     title: "Assessment of Students",
+    commentLimit: 900,
     questions: [
       { id: 10, text: "How well was the student's learning assessed throughout the session?" },
       { id: 11, text: "How well did the assessment at the end of the session achieve initial objectives?" },
@@ -62,6 +67,7 @@ const SECTIONS = [
   {
     id: "evaluation",
     title: "Evaluation of Lesson",
+    commentLimit: 900,
     questions: [
       { id: 12, text: "During the session, did the instructor actively adapt to any changes in the lesson plan?" },
       { id: 13, text: "During debrief, was the instructor able to evaluate their lesson?" },
@@ -514,6 +520,7 @@ export default function MoiAssessmentPage() {
                 rows={2}
                 placeholder="Section comments..."
                 className="mt-1 text-sm"
+                maxLength={section.commentLimit}
                 value={form.sectionComments[section.id]}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -522,6 +529,9 @@ export default function MoiAssessmentPage() {
                   }))
                 }
               />
+              <p className={`text-xs text-right mt-0.5 ${form.sectionComments[section.id].length > section.commentLimit ? "text-red-500" : "text-muted-foreground"}`}>
+                {form.sectionComments[section.id].length}/{section.commentLimit}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -565,9 +575,13 @@ export default function MoiAssessmentPage() {
               id="strengthsSummary"
               rows={3}
               placeholder="Key strengths observed..."
+              maxLength={1150}
               value={form.strengthsSummary}
               onChange={(e) => setForm((f) => ({ ...f, strengthsSummary: e.target.value }))}
             />
+            <p className={`text-xs text-right mt-0.5 ${form.strengthsSummary.length > 1150 ? "text-red-500" : "text-muted-foreground"}`}>
+              {form.strengthsSummary.length}/1150
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="improvementsSummary">Summary of Areas of Improvement</Label>
@@ -575,9 +589,13 @@ export default function MoiAssessmentPage() {
               id="improvementsSummary"
               rows={3}
               placeholder="Areas to develop..."
+              maxLength={1150}
               value={form.improvementsSummary}
               onChange={(e) => setForm((f) => ({ ...f, improvementsSummary: e.target.value }))}
             />
+            <p className={`text-xs text-right mt-0.5 ${form.improvementsSummary.length > 1150 ? "text-red-500" : "text-muted-foreground"}`}>
+              {form.improvementsSummary.length}/1150
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="generalComments">General Comments</Label>
@@ -585,9 +603,13 @@ export default function MoiAssessmentPage() {
               id="generalComments"
               rows={3}
               placeholder="Any other comments..."
+              maxLength={1150}
               value={form.generalComments}
               onChange={(e) => setForm((f) => ({ ...f, generalComments: e.target.value }))}
             />
+            <p className={`text-xs text-right mt-0.5 ${form.generalComments.length > 1150 ? "text-red-500" : "text-muted-foreground"}`}>
+              {form.generalComments.length}/1150
+            </p>
           </div>
         </CardContent>
       </Card>
