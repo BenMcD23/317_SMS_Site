@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, MessageSquare, Calendar, Users, Newspaper } from "lucide-react";
@@ -311,12 +311,16 @@ function QuickTools() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const { data: session } = useSession();
+  const { data: session } = useSession({ required: true });
   const [stats, setStats] = useState<CurrentStats | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (session?.error) {
+      signIn("google", { callbackUrl: "/" });
+      return;
+    }
     if (!session?.id_token) return;
     const token = session.id_token as string;
 
