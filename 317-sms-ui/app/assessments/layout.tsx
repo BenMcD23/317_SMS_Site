@@ -8,6 +8,7 @@ const TABS = [
   { label: "Leadership", href: "/assessments/leadership" },
   { label: "First Aid", href: "/assessments/first-aid" },
   { label: "Radio", href: "/assessments/radio" },
+  { label: "MOI", href: "/assessments/moi" },
 ];
 
 export default function AssessmentsLayout({
