@@ -14,6 +14,12 @@ export const authConfig: NextAuthConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
     }),
   ],
   pages: {
