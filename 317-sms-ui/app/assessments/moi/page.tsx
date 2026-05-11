@@ -627,6 +627,7 @@ export default function MoiAssessmentPage() {
         onOverrideSignature={setOverrideSignature}
         showDraw={showDrawOverride}
         onSetShowDraw={setShowDrawOverride}
+        showRole
         assessorRole={form.assessorRole}
         onAssessorRoleChange={(v) => setForm((f) => ({ ...f, assessorRole: v }))}
         cadetSignature={form.cadetSignature}

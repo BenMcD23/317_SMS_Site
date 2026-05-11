@@ -271,6 +271,7 @@ export type AssessorCardProps = {
   onAssessorNameChange: (v: string) => void;
   assessorRole: string;
   onAssessorRoleChange: (v: string) => void;
+  showRole?: boolean;
   showNameFromAccount: boolean;
   // Signature
   sigLoading: boolean;
@@ -291,6 +292,7 @@ export function AssessorCard({
   onAssessorNameChange,
   assessorRole,
   onAssessorRoleChange,
+  showRole = false,
   showNameFromAccount,
   sigLoading,
   savedSignatureUrl,
@@ -324,18 +326,30 @@ export function AssessorCard({
               onChange={(e) => onAssessorNameChange(e.target.value)}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="assessorRole">Assessor&apos;s Role</Label>
-            <Input
-              id="assessorRole"
-              placeholder="e.g. Flying Officer, Staff Instructor"
-              value={assessorRole}
-              onChange={(e) => onAssessorRoleChange(e.target.value)}
-            />
-          </div>
+          {showRole ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="assessorRole">Assessor&apos;s Role</Label>
+              <Input
+                id="assessorRole"
+                placeholder="e.g. Flying Officer, Staff Instructor"
+                value={assessorRole}
+                onChange={(e) => onAssessorRoleChange(e.target.value)}
+              />
+            </div>
+          ) : onDateChange !== undefined && (
+            <div className="space-y-1.5">
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date ?? ""}
+                onChange={(e) => onDateChange(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
-        {onDateChange !== undefined && (
+        {showRole && onDateChange !== undefined && (
           <div className="space-y-1.5">
             <Label htmlFor="date">Date</Label>
             <Input
