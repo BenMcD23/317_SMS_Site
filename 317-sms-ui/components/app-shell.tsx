@@ -443,7 +443,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     fetch(`${API}/health`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (res.ok) setApiStatus("ok");
-        else if (res.status === 401 || res.status === 403) signOut({ callbackUrl: "/login" });
+        else if (res.status === 401 || res.status === 403) signIn("google", { callbackUrl: "/" });
         else setApiStatus("api-down");
       })
       .catch(() => setApiStatus("api-down"));
