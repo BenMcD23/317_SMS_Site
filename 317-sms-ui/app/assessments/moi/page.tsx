@@ -96,7 +96,7 @@ function ScoreButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-sm font-semibold transition-all",
+        "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border text-sm font-semibold transition-all",
         selected
           ? score === 1
             ? "border-red-500 bg-red-500 text-white shadow-sm"
@@ -121,12 +121,14 @@ function QuestionRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-        {question.id}
-      </span>
-      <p className="flex-1 text-sm">{question.text}</p>
-      <div className="flex shrink-0 gap-1">
+    <div className="py-3 sm:flex sm:items-center sm:gap-3 space-y-2.5 sm:space-y-0">
+      <div className="flex gap-2 sm:flex-1">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5">
+          {question.id}
+        </span>
+        <p className="text-sm leading-snug">{question.text}</p>
+      </div>
+      <div className="flex gap-1.5 pl-7 sm:pl-0 sm:shrink-0">
         {[1, 2, 3, 4, 5].map((s) => (
           <ScoreButton key={s} score={s} selected={value === s} onClick={() => onChange(s)} />
         ))}
@@ -495,14 +497,7 @@ export default function MoiAssessmentPage() {
             <CardTitle className="text-base">{section.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            <div className="hidden justify-end pr-1 sm:flex">
-              <div className="flex gap-1 text-[10px] text-muted-foreground">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <span key={n} className="flex w-9 justify-center">{n}</span>
-                ))}
-              </div>
-            </div>
-            {section.questions.map((q, i) => (
+{section.questions.map((q, i) => (
               <div key={q.id}>
                 <QuestionRow
                   question={q}
