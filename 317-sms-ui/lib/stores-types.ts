@@ -68,6 +68,23 @@ export interface SizingDetailsJSON {
   notes?: string;
 }
 
+export interface BadgeOrderItem {
+  id: string;
+  badgeName: string;
+  qmNotes: QmNote[];
+  givenAt: string | null;
+  givenBy: string | null;
+}
+
+export interface BadgeOrder {
+  id: string;
+  cadetName: string;
+  cadetCin: number;
+  timestamp: string;
+  completed?: boolean;
+  items: BadgeOrderItem[];
+}
+
 export interface BadgeItem {
   id: number;
   name: string;
