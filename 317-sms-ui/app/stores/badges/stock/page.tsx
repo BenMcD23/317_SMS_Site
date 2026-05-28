@@ -22,8 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BadgeGrid, BadgeItem } from "@/lib/stores-types";
-import { BadgeGridView } from "./components/BadgeGridView";
-import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName, parseBadgeName } from "./badge-types";
+import { BadgeGridView } from "../components/BadgeGridView";
+import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName, parseBadgeName } from "../badge-types";
 
 export default function BadgeStockPage() {
   const [grid, setGrid] = useState<BadgeGrid | null>(null);

@@ -39,12 +39,25 @@ import {
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type NavChild = {
+type NavLeaf = {
   label: string;
   href: string;
   icon: React.ElementType;
   staffOnly?: boolean;
 };
+
+type NavSubGroup = {
+  label: string;
+  icon: React.ElementType;
+  staffOnly?: boolean;
+  children: NavLeaf[];
+};
+
+type NavChild = NavLeaf | NavSubGroup;
+
+function isNavSubGroup(child: NavChild): child is NavSubGroup {
+  return "children" in child;
+}
 
 type NavItem =
   | { label: string; href: string; icon: React.ElementType; children?: never; staffOnly?: boolean }
@@ -88,9 +101,22 @@ const NAV_ITEMS: NavItem[] = [
     icon: Package,
     staffOnly: true,
     children: [
-      { label: "Stock", href: "/stores/stock", icon: Package },
-      { label: "Badge Stock", href: "/stores/badges", icon: Award },
-      { label: "Orders", href: "/stores/orders", icon: ShoppingCart },
+      {
+        label: "Uniform",
+        icon: Package,
+        children: [
+          { label: "Stock", href: "/stores/uniform/stock", icon: Package },
+          { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart },
+        ],
+      },
+      {
+        label: "Badges",
+        icon: Award,
+        children: [
+          { label: "Stock", href: "/stores/badges/stock", icon: Package },
+          { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart },
+        ],
+      },
     ],
   },
   {
@@ -109,7 +135,14 @@ function filterNavItems(items: NavItem[], role: string | undefined): NavItem[] {
     .filter((item) => role === "staff" || !item.staffOnly)
     .map((item) => {
       if (!item.children) return item;
-      const children = item.children.filter((c) => role === "staff" || !c.staffOnly);
+      const children = item.children
+        .filter((c) => role === "staff" || !c.staffOnly)
+        .map((c) => {
+          if (!isNavSubGroup(c)) return c;
+          const leaves = c.children.filter((l) => role === "staff" || !l.staffOnly);
+          return { ...c, children: leaves };
+        })
+        .filter((c) => !isNavSubGroup(c) || c.children.length > 0);
       return { ...item, children };
     })
     .filter((item) => !item.children || item.children.length > 0) as NavItem[];
@@ -139,6 +172,66 @@ function ThemeToggle() {
   );
 }
 
+// ─── Sub-group component (nested dropdown within a parent) ────────────────────
+function NavSubGroupComponent({
+  group,
+  pathname,
+  onNavigate,
+}: {
+  group: NavSubGroup;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const GroupIcon = group.icon;
+  const isGroupActive = group.children.some((l) => pathname === l.href);
+  const [open, setOpen] = useState(isGroupActive);
+  useEffect(() => {
+    if (isGroupActive) setOpen(true);
+  }, [isGroupActive]);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+          isGroupActive
+            ? "text-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+        )}
+      >
+        <GroupIcon className="h-4 w-4 shrink-0" />
+        <span className="flex-1 text-left">{group.label}</span>
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="ml-4 mt-1 space-y-1 border-l pl-3">
+          {group.children.map((leaf) => {
+            const LeafIcon = leaf.icon;
+            const leafActive = pathname === leaf.href;
+            return (
+              <Link
+                key={leaf.href}
+                href={leaf.href}
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  leafActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+              >
+                <LeafIcon className="h-4 w-4 shrink-0" />
+                {leaf.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── NavItem component ────────────────────────────────────────────────────────
 function NavItemComponent({
   item,
@@ -153,7 +246,10 @@ function NavItemComponent({
   const hasChildren = !!item.children?.length;
   const Icon = item.icon;
 
-  const isChildActive = item.children?.some((c) => pathname === c.href) ?? false;
+  const isChildActive =
+    item.children?.some((c) =>
+      isNavSubGroup(c) ? c.children.some((l) => pathname === l.href) : pathname === c.href
+    ) ?? false;
   const isActive = !hasChildren && item.href ? pathname === item.href : false;
 
   const [open, setOpen] = useState(isChildActive);
@@ -175,11 +271,39 @@ function NavItemComponent({
           >
             <Icon className="h-4 w-4 shrink-0" />
           </button>
-          <div className="pointer-events-none absolute left-full top-0 z-50 ml-2 hidden w-44 rounded-md border bg-popover p-1 shadow-md group-hover/tip:pointer-events-auto group-hover/tip:block">
+          <div className="pointer-events-none absolute left-full top-0 z-50 ml-2 hidden w-48 rounded-md border bg-popover p-1 shadow-md group-hover/tip:pointer-events-auto group-hover/tip:block">
             <p className="mb-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {item.label}
             </p>
             {item.children!.map((child) => {
+              if (isNavSubGroup(child)) {
+                return (
+                  <div key={child.label}>
+                    <p className="mt-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                      {child.label}
+                    </p>
+                    {child.children.map((leaf) => {
+                      const LeafIcon = leaf.icon;
+                      return (
+                        <Link
+                          key={leaf.href}
+                          href={leaf.href}
+                          onClick={onNavigate}
+                          className={cn(
+                            "flex items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors",
+                            pathname === leaf.href
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-accent"
+                          )}
+                        >
+                          <LeafIcon className="h-3.5 w-3.5" />
+                          {leaf.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              }
               const ChildIcon = child.icon;
               return (
                 <Link
@@ -221,6 +345,16 @@ function NavItemComponent({
         {open && (
           <div className="ml-4 mt-1 space-y-1 border-l pl-3">
             {item.children!.map((child) => {
+              if (isNavSubGroup(child)) {
+                return (
+                  <NavSubGroupComponent
+                    key={child.label}
+                    group={child}
+                    pathname={pathname}
+                    onNavigate={onNavigate}
+                  />
+                );
+              }
               const ChildIcon = child.icon;
               const childActive = pathname === child.href;
               return (
