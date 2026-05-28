@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,7 @@ function ScoreButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-sm font-semibold transition-all",
+        "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border text-sm font-semibold transition-all",
         selected
           ? score === 1
             ? "border-red-500 bg-red-500 text-white shadow-sm"
@@ -121,12 +122,14 @@ function QuestionRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-        {question.id}
-      </span>
-      <p className="flex-1 text-sm">{question.text}</p>
-      <div className="flex shrink-0 gap-1">
+    <div className="py-3 sm:flex sm:items-center sm:gap-3 space-y-2.5 sm:space-y-0">
+      <div className="flex gap-2 sm:flex-1">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5">
+          {question.id}
+        </span>
+        <p className="text-sm leading-snug">{question.text}</p>
+      </div>
+      <div className="flex gap-1.5 pl-7 sm:pl-0 sm:shrink-0">
         {[1, 2, 3, 4, 5].map((s) => (
           <ScoreButton key={s} score={s} selected={value === s} onClick={() => onChange(s)} />
         ))}
@@ -177,7 +180,8 @@ const initialState = (): FormState => ({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function MoiAssessmentPage() {
   const { data: session } = useSession();
-  const [form, setForm] = useState<FormState>(initialState());
+  const { state: form, setState: setForm, clearDraft, draftRestored } = useAssessmentDraft("moi", initialState(), session?.user?.email, (s) => s.cadetCin !== null);
+  const [draftBannerDismissed, setDraftBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -243,6 +247,8 @@ export default function MoiAssessmentPage() {
     setOverrideSignature(null);
     setSubmitted(false);
     setAssessmentId(null);
+    clearDraft();
+    setDraftBannerDismissed(true);
     loadAssessorName();
   };
 
@@ -300,6 +306,7 @@ export default function MoiAssessmentPage() {
       }
 
       const result = await res.json();
+      clearDraft();
       setAssessmentId(result.assessment_id);
       setSubmitted(true);
     } catch (err: unknown) {
@@ -379,6 +386,13 @@ export default function MoiAssessmentPage() {
         <h1 className="text-3xl font-bold">MOI Assessment</h1>
         <p className="text-muted-foreground">Air Cadet Methods of Instruction Course</p>
       </div>
+
+      {draftRestored && !draftBannerDismissed && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          <span className="text-amber-700">Draft restored from your last session.</span>
+          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800">Reset Form</Button>
+        </div>
+      )}
 
       {/* Candidate details */}
       <Card>
@@ -495,14 +509,7 @@ export default function MoiAssessmentPage() {
             <CardTitle className="text-base">{section.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            <div className="hidden justify-end pr-1 sm:flex">
-              <div className="flex gap-1 text-[10px] text-muted-foreground">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <span key={n} className="flex w-9 justify-center">{n}</span>
-                ))}
-              </div>
-            </div>
-            {section.questions.map((q, i) => (
+{section.questions.map((q, i) => (
               <div key={q.id}>
                 <QuestionRow
                   question={q}
@@ -659,7 +666,7 @@ export default function MoiAssessmentPage() {
           )}
         </Button>
         <Button variant="outline" onClick={handleReset}>
-          Reset
+          Reset Form
         </Button>
       </div>
     </div>

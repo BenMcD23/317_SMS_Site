@@ -39,6 +39,15 @@ async function getUserRole(userEmail: string): Promise<"staff" | "nco" | null> {
   }
 }
 
+function getIdTokenExp(idToken: string): number {
+  try {
+    const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString())
+    return payload.exp ?? 0
+  } catch {
+    return 0
+  }
+}
+
 async function refreshGoogleToken(refreshToken: string) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -56,6 +65,9 @@ async function refreshGoogleToken(refreshToken: string) {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  session: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   callbacks: {
     async jwt({ token, account, user }) {
       if (account) {
@@ -74,9 +86,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       try {
         const refreshed = await refreshGoogleToken(token.refresh_token as string)
+        const newIdToken = refreshed.id_token ?? token.id_token
+        if (!refreshed.id_token && getIdTokenExp(newIdToken as string) < now + 60) {
+          return { ...token, error: "RefreshAccessTokenError" }
+        }
         return {
           ...token,
-          id_token: refreshed.id_token ?? token.id_token,
+          id_token: newIdToken,
           access_token: refreshed.access_token,
           expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in,
           refresh_token: refreshed.refresh_token ?? token.refresh_token,
