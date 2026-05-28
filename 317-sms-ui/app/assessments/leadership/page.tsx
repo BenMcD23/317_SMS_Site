@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,7 +124,8 @@ const initialState = (): FormState => ({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LeadershipAssessmentPage() {
   const { data: session } = useSession();
-  const [form, setForm] = useState<FormState>(initialState());
+  const { state: form, setState: setForm, clearDraft, draftRestored } = useAssessmentDraft("leadership", initialState(), session?.user?.email, (s) => s.cadetCin !== null);
+  const [draftBannerDismissed, setDraftBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -196,6 +198,8 @@ export default function LeadershipAssessmentPage() {
     setOverrideSignature(null);
     setSubmitted(false);
     setAssessmentId(null);
+    clearDraft();
+    setDraftBannerDismissed(true);
     loadAssessorName();
   };
 
@@ -245,6 +249,7 @@ export default function LeadershipAssessmentPage() {
       }
 
       const result = await res.json();
+      clearDraft();
       setAssessmentId(result.assessment_id);
       setSubmitted(true);
     } catch (err: unknown) {
@@ -328,6 +333,13 @@ export default function LeadershipAssessmentPage() {
         <h1 className="text-3xl font-bold">Leadership Assessment</h1>
         <p className="text-muted-foreground">Blue Badge — Air Cadet Foundation</p>
       </div>
+
+      {draftRestored && !draftBannerDismissed && (
+        <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          <span className="text-amber-700">Draft restored from your last session.</span>
+          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800">Reset Form</Button>
+        </div>
+      )}
 
       {/* Exercise details */}
       <Card>
@@ -480,7 +492,7 @@ export default function LeadershipAssessmentPage() {
           )}
         </Button>
         <Button variant="outline" onClick={handleReset}>
-          Reset
+          Reset Form
         </Button>
       </div>
     </div>
