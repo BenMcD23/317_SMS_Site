@@ -25,8 +25,8 @@ import {
   Plane,
   AlertTriangle,
   Ban,
-  Shirt,
 } from "lucide-react";
+import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -56,25 +56,6 @@ type Assessment = {
   exercise_name: string | null;
   assessor_name: string | null;
 };
-
-type Issuance = {
-  id: number;
-  itemCategory: string;
-  lastGiven: string;
-  sizeGiven: string | null;
-};
-
-const ISSUANCE_CATEGORIES = [
-  "Beret",
-  "Wedgewood Shirt",
-  "Working Blue Shirt",
-  "Jumper",
-  "Slacks/Trousers",
-  "Skirt",
-  "Tie",
-  "Brassard",
-  "Belt",
-];
 
 type CadetDetail = {
   cin: number;
@@ -240,21 +221,17 @@ export default function CadetOverviewPage() {
   const [cadet, setCadet] = useState<CadetDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [issuances, setIssuances] = useState<Issuance[]>([]);
-
   const token = session?.id_token;
 
   const fetchCadet = async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [cadetRes, issuancesRes] = await Promise.all([
-        apiFetch(`${API_BASE}/cadets/${cin}`, { headers: { Authorization: `Bearer ${token}` } }),
-        apiFetch(`${API_BASE}/stores/issuances/${cin}`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+      const cadetRes = await apiFetch(`${API_BASE}/cadets/${cin}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!cadetRes.ok) throw new Error((await cadetRes.json()).detail ?? cadetRes.statusText);
       setCadet(await cadetRes.json());
-      setIssuances(issuancesRes.ok ? await issuancesRes.json() : []);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load cadet");
     } finally {
@@ -621,37 +598,7 @@ export default function CadetOverviewPage() {
         </CardContent>
       </Card>
 
-      {/* Uniform Issuances */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Shirt className="h-4 w-4 text-muted-foreground" />
-            Uniform Issuances
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y">
-            {ISSUANCE_CATEGORIES.map((category) => {
-              const record = issuances.find((i) => i.itemCategory === category);
-              return (
-                <div key={category} className="flex items-center justify-between gap-4 px-6 py-3">
-                  <span className="text-sm font-medium">{category}</span>
-                  {record ? (
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">{formatDate(record.lastGiven)}</p>
-                      {record.sizeGiven && (
-                        <p className="text-xs text-muted-foreground">Size: {record.sizeGiven}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">N/A</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      <UniformIssuancesCard baseUrl={`/api/stores/issuances/${cin}`} />
 
     </div>
   );
