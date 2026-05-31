@@ -368,7 +368,7 @@ export default function OrdersPage() {
         ? `/api/stores/issuances/user/${(order as { userId?: number }).userId}`
         : `/api/stores/issuances/${order.cadetCin}`;
       const issuanceBody = isUserOrder
-        ? { items: [{ itemCategory: item.itemType, sizeGiven: item.size || null }] }
+        ? { givenBy: currentUser, items: [{ itemCategory: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }] }
         : { givenBy: currentUser, items: [{ itemType: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }] };
       const res = await fetch(issuanceUrl, {
         method: "POST",
