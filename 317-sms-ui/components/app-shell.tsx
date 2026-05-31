@@ -36,6 +36,7 @@ import {
   Award,
   Newspaper,
   BookOpen,
+  UserCog,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -125,6 +126,14 @@ const NAV_ITEMS: NavItem[] = [
     staffOnly: true,
     children: [
       { label: "F1771e", href: "/form-generators/f1771e", icon: FileText },
+    ],
+  },
+  {
+    label: "Staff",
+    icon: UserCog,
+    staffOnly: true,
+    children: [
+      { label: "Staff Overview", href: "/staff/overview", icon: Users, staffOnly: true },
     ],
   },
   { label: "Settings", href: "/settings", icon: Settings },

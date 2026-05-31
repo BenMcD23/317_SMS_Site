@@ -363,13 +363,17 @@ export default function OrdersPage() {
   async function doMarkItemAsGiven(order: Order, item: OrderItem) {
     setMarkingAsGiven(item.id);
     try {
-      const res = await fetch(`/api/stores/issuances/${order.cadetCin}`, {
+      const isUserOrder = (order as { subjectType?: string }).subjectType === "user";
+      const issuanceUrl = isUserOrder
+        ? `/api/stores/issuances/user/${(order as { userId?: number }).userId}`
+        : `/api/stores/issuances/${order.cadetCin}`;
+      const issuanceBody = isUserOrder
+        ? { items: [{ itemCategory: item.itemType, sizeGiven: item.size || null }] }
+        : { givenBy: currentUser, items: [{ itemType: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }] };
+      const res = await fetch(issuanceUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          givenBy: currentUser,
-          items: [{ itemType: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }],
-        }),
+        body: JSON.stringify(issuanceBody),
       });
       if (!res.ok) throw new Error("Failed to mark as given");
       await fetchAll();
@@ -540,7 +544,14 @@ export default function OrdersPage() {
                 <CardHeader className="pb-0">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <p className="font-semibold">{order.cadetName}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{order.cadetName}</p>
+                        {(order as { subjectType?: string }).subjectType === "user" && (
+                          <span className="rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-400">
+                            Staff
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">{formatTimestamp(order.timestamp)}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
