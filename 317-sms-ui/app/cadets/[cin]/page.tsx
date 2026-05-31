@@ -644,7 +644,7 @@ export default function CadetOverviewPage() {
                       )}
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground italic">Not yet issued</span>
+                    <span className="text-xs text-muted-foreground italic">N/A</span>
                   )}
                 </div>
               );
