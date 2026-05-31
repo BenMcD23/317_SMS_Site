@@ -9,8 +9,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider refetchInterval={30 * 60} refetchOnWindowFocus={false}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
-        enableSystem
+        defaultTheme="dark"
         disableTransitionOnChange
       >
         {children}
