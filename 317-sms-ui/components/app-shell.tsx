@@ -75,7 +75,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: "JI/AO Generator", href: "/tools/ji-ao-generator", icon: FileText },
       { label: "SMS Scrapers", href: "/tools/scraper", icon: MessageSquare },
       { label: "Programme Updater", href: "/tools/programme-updater", icon: Calendar },
-      { label: "Newsletter Updater", href: "/tools/newsletter-updater", icon: Newspaper },
+      { label: "Newsletter Management", href: "/tools/newsletter-updater", icon: Newspaper },
     ],
   },
   {
