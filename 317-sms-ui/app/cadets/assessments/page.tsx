@@ -85,6 +85,28 @@ function typeColour(t: string) {
   return TYPE_COLOURS[t] ?? "bg-muted text-muted-foreground border-muted";
 }
 
+// Solid dot colour for the compact type summary on collapsed cards.
+const TYPE_DOT_COLOURS: Record<string, string> = {
+  "Blue Leadership": "bg-blue-500",
+  first_aid: "bg-red-500",
+  radio: "bg-purple-500",
+  MOI: "bg-emerald-500",
+};
+
+function typeDotColour(t: string) {
+  return TYPE_DOT_COLOURS[t] ?? "bg-muted-foreground/50";
+}
+
+const RETENTION_DAYS = 182; // completed assessments are deleted after ~6 months
+
+// Days until a completed assessment is auto-deleted (null if no completion date).
+function daysUntilDeletion(uploadedAt: string | null): number | null {
+  if (!uploadedAt) return null;
+  const elapsedMs = Date.now() - new Date(uploadedAt).getTime();
+  const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+  return Math.max(0, RETENTION_DAYS - elapsedDays);
+}
+
 type AssessmentFilter = "active" | "ready" | "completed";
 
 // Active = not yet uploaded (incomplete OR ready-but-not-uploaded)
@@ -540,6 +562,20 @@ function CompletionControl({
             {formatDate(uploadedAt)}
           </span>
         )}
+        {(() => {
+          const days = daysUntilDeletion(uploadedAt);
+          if (days === null) return null;
+          return (
+            <span
+              className={cn(
+                "text-[11px]",
+                days < 30 ? "text-amber-600 font-medium" : "text-muted-foreground/70"
+              )}
+            >
+              {days === 0 ? "Deletes today" : `Deletes in ${days}d`}
+            </span>
+          );
+        })()}
         {isStaff &&
           (confirm ? (
             <div className="flex items-center gap-1">
@@ -738,7 +774,6 @@ function CadetAssessmentCard({
   onAssessmentDeleted: (id: number) => void;
 }) {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(true);
 
   const totalAssessments = cadet.groups.reduce((s, g) => s + g.assessments.length, 0);
   const readyCount = cadet.groups.filter((g) => g.can_upload && !g.uploaded).length;
@@ -747,15 +782,7 @@ function CadetAssessmentCard({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setExpanded((v) => !v)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
-            }}
-            className="flex flex-1 items-center gap-3 cursor-pointer min-w-0"
-          >
+          <div className="flex flex-1 items-center gap-3 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
               {cadet.first_name[0]}{cadet.last_name[0]}
             </div>
@@ -780,13 +807,6 @@ function CadetAssessmentCard({
                 {totalAssessments} assessment{totalAssessments !== 1 ? "s" : ""}
               </p>
             </div>
-            <span className="text-muted-foreground shrink-0">
-              {expanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </span>
           </div>
 
           <Button
@@ -800,20 +820,18 @@ function CadetAssessmentCard({
         </div>
       </CardHeader>
 
-      {expanded && (
-        <CardContent className="pt-0 space-y-2">
-          {cadet.groups.map((group) => (
-            <AssessmentGroupRow
-              key={group.assessment_type}
-              cin={cadet.cin}
-              group={group}
-              token={token}
-              onUploaded={onUploaded}
-              onAssessmentDeleted={onAssessmentDeleted}
-            />
-          ))}
-        </CardContent>
-      )}
+      <CardContent className="pt-0 space-y-2">
+        {cadet.groups.map((group) => (
+          <AssessmentGroupRow
+            key={group.assessment_type}
+            cin={cadet.cin}
+            group={group}
+            token={token}
+            onUploaded={onUploaded}
+            onAssessmentDeleted={onAssessmentDeleted}
+          />
+        ))}
+      </CardContent>
     </Card>
   );
 }
@@ -827,6 +845,7 @@ export default function AssessmentsOverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<AssessmentFilter>("active");
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const token = session?.id_token ?? null;
 
@@ -870,12 +889,20 @@ export default function AssessmentsOverviewPage() {
     fetchData();
   }, [token]);
 
-  // Filter each cadet's groups by the active tab, then drop cadets that have
-  // no groups left (and apply the name/CIN search).
+  // Assessment types present across all cadets (for the type filter chips).
+  const availableTypes = Array.from(
+    new Set(cadets.flatMap((c) => c.groups.map((g) => g.assessment_type)))
+  );
+
+  const matchesType = (g: AssessmentGroup) =>
+    !typeFilter || g.assessment_type === typeFilter;
+
+  // Filter each cadet's groups by the active tab + type, then drop cadets that
+  // have no groups left (and apply the name/CIN search).
   const filtered = cadets
     .map((c) => ({
       ...c,
-      groups: c.groups.filter((g) => groupMatchesFilter(g, filter)),
+      groups: c.groups.filter((g) => groupMatchesFilter(g, filter) && matchesType(g)),
     }))
     .filter((c) => {
       if (c.groups.length === 0) return false;
@@ -888,9 +915,18 @@ export default function AssessmentsOverviewPage() {
       );
     });
 
-  const readyTotal = cadets.filter((c) =>
-    c.groups.some((g) => g.can_upload && !g.uploaded)
-  ).length;
+  // Per-tab cadet counts, respecting the active type filter so they match the list.
+  const countForFilter = (f: AssessmentFilter) =>
+    cadets.filter((c) =>
+      c.groups.some((g) => groupMatchesFilter(g, f) && matchesType(g))
+    ).length;
+  const tabCounts: Record<AssessmentFilter, number> = {
+    active: countForFilter("active"),
+    ready: countForFilter("ready"),
+    completed: countForFilter("completed"),
+  };
+
+  const readyTotal = countForFilter("ready");
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
@@ -918,29 +954,74 @@ export default function AssessmentsOverviewPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or CIN…"
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="sticky top-0 z-10 space-y-3 border-b bg-background/95 pb-3 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or CIN…"
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            {(["active", "ready", "completed"] as const).map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? "default" : "outline"}
+                onClick={() => setFilter(f)}
+                className="capitalize gap-1.5"
+              >
+                {f}
+                <span
+                  className={cn(
+                    "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
+                    filter === f
+                      ? "bg-background/25 text-current"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {tabCounts[f]}
+                </span>
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {(["active", "ready", "completed"] as const).map((f) => (
-            <Button
-              key={f}
-              size="sm"
-              variant={filter === f ? "default" : "outline"}
-              onClick={() => setFilter(f)}
-              className="capitalize"
+
+        {availableTypes.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTypeFilter(null)}
+              className={cn(
+                "cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                typeFilter === null
+                  ? "border-foreground/20 bg-foreground/10 text-foreground"
+                  : "border-transparent bg-muted text-muted-foreground hover:bg-muted/70"
+              )}
             >
-              {f}
-            </Button>
-          ))}
-        </div>
+              All types
+            </button>
+            {availableTypes.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTypeFilter(typeFilter === t ? null : t)}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  typeFilter === t
+                    ? typeColour(t)
+                    : "border-transparent bg-muted text-muted-foreground hover:bg-muted/70"
+                )}
+              >
+                <span className={cn("h-2 w-2 rounded-full", typeDotColour(t))} />
+                {typeLabel(t)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {!loading && filter === "completed" && filtered.length > 0 && (
