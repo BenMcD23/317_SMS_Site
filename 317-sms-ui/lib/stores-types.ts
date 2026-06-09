@@ -44,6 +44,7 @@ export interface OrderItem {
   qmNotes: QmNote[];
   givenAt: string | null;
   givenBy: string | null;
+  readyToCollect: string | null;
 }
 
 export interface Order {
@@ -74,6 +75,7 @@ export interface BadgeOrderItem {
   qmNotes: QmNote[];
   givenAt: string | null;
   givenBy: string | null;
+  readyToCollect: string | null;
 }
 
 export interface BadgeOrder {

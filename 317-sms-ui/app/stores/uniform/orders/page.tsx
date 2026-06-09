@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -135,6 +135,9 @@ export default function OrdersPage() {
   const [markGivenOpen, setMarkGivenOpen] = useState(false);
   const [markGivenOrder, setMarkGivenOrder] = useState<Order | null>(null);
   const [markGivenItem, setMarkGivenItem] = useState<OrderItem | null>(null);
+
+  // Mark as ready to collect
+  const [markingAsReady, setMarkingAsReady] = useState<string | null>(null);
 
   // Sort and search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
@@ -396,6 +399,21 @@ export default function OrdersPage() {
     await doMarkItemAsGiven(markGivenOrder, markGivenItem);
   }
 
+  async function handleMarkItemAsReady(orderId: string, itemId: string) {
+    setMarkingAsReady(itemId);
+    try {
+      const res = await fetch(`/api/stores/orders/${orderId}/items/${itemId}/mark-ready`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to mark as ready to collect");
+      await fetchAll();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setMarkingAsReady(null);
+    }
+  }
+
   function startAddToOrder(orderId: string) {
     setAddingToOrderId(orderId);
     setAddItemDraft(emptyDraftItem());
@@ -405,7 +423,7 @@ export default function OrdersPage() {
     if (!addItemDraft.itemType) return;
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    const newItem: OrderItem = { id: "", qmNotes: [], givenAt: null, givenBy: null, ...addItemDraft };
+    const newItem: OrderItem = { id: "", qmNotes: [], givenAt: null, givenBy: null, readyToCollect: null, ...addItemDraft };
     await patchOrder(orderId, { items: [...order.items, newItem] });
     setAddingToOrderId(null);
   }
@@ -637,6 +655,13 @@ export default function OrdersPage() {
                                     Remove from Stock
                                   </Button>
                                   <Button size="sm" variant="outline"
+                                    className="h-7 w-full text-xs text-blue-700 border-blue-300 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20 disabled:opacity-40"
+                                    disabled={markingAsReady === orderItem.id || !!orderItem.readyToCollect || !!orderItem.givenAt}
+                                    onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}>
+                                    <Bell className="h-3 w-3 mr-1" />
+                                    {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
+                                  </Button>
+                                  <Button size="sm" variant="outline"
                                     className="h-7 w-full text-xs text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 disabled:opacity-40"
                                     disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt || orderItem.needSizing || (!NO_SIZE_ITEMS.has(orderItem.itemType) && !orderItem.size)}
                                     onClick={() => handleMarkItemAsGiven(order, orderItem)}>
@@ -652,6 +677,16 @@ export default function OrdersPage() {
                                 </div>
                               )}
                             </div>
+
+                            {/* Ready to collect stamp */}
+                            {orderItem.readyToCollect && !orderItem.givenAt && (
+                              <div className="flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-2.5 py-1.5">
+                                <Bell className="h-3 w-3 shrink-0 text-blue-600 dark:text-blue-400" />
+                                <p className="text-xs text-blue-700 dark:text-blue-400">
+                                  Cadet notified {formatTimestamp(orderItem.readyToCollect)}
+                                </p>
+                              </div>
+                            )}
 
                             {/* Given stamp */}
                             {orderItem.givenAt && (
