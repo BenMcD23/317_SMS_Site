@@ -23,6 +23,8 @@ import {
   Download,
   Trash2,
   Info,
+  CheckCheck,
+  RotateCcw,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -46,6 +48,7 @@ type AssessmentGroup = {
   required_to_upload: number;
   can_upload: boolean;
   uploaded: boolean;
+  uploaded_at: string | null;
 };
 
 type CadetAssessments = {
@@ -80,6 +83,39 @@ const TYPE_COLOURS: Record<string, string> = {
 
 function typeColour(t: string) {
   return TYPE_COLOURS[t] ?? "bg-muted text-muted-foreground border-muted";
+}
+
+// Solid dot colour for the compact type summary on collapsed cards.
+const TYPE_DOT_COLOURS: Record<string, string> = {
+  "Blue Leadership": "bg-blue-500",
+  first_aid: "bg-red-500",
+  radio: "bg-purple-500",
+  MOI: "bg-emerald-500",
+};
+
+function typeDotColour(t: string) {
+  return TYPE_DOT_COLOURS[t] ?? "bg-muted-foreground/50";
+}
+
+const RETENTION_DAYS = 182; // completed assessments are deleted after ~6 months
+
+// Days until a completed assessment is auto-deleted (null if no completion date).
+function daysUntilDeletion(uploadedAt: string | null): number | null {
+  if (!uploadedAt) return null;
+  const elapsedMs = Date.now() - new Date(uploadedAt).getTime();
+  const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+  return Math.max(0, RETENTION_DAYS - elapsedDays);
+}
+
+type AssessmentFilter = "active" | "ready" | "completed";
+
+// Active = not yet uploaded (incomplete OR ready-but-not-uploaded)
+// Ready  = enough passes to upload but not uploaded yet
+// Completed = uploaded / manually marked complete
+function groupMatchesFilter(g: AssessmentGroup, filter: AssessmentFilter) {
+  if (filter === "active") return !g.uploaded;
+  if (filter === "ready") return g.can_upload && !g.uploaded;
+  return g.uploaded; // completed
 }
 
 // ─── Info tooltip ─────────────────────────────────────────────────────────────
@@ -462,14 +498,167 @@ function UploadButton({
   );
 }
 
+// ─── Manual mark-complete control ─────────────────────────────────────────────
+
+function CompletionControl({
+  cin,
+  assessmentType,
+  uploaded,
+  uploadedAt,
+  token,
+  onChanged,
+}: {
+  cin: number;
+  assessmentType: string;
+  uploaded: boolean;
+  uploadedAt: string | null;
+  token: string | null;
+  onChanged: () => void;
+}) {
+  const { data: session } = useSession();
+  const [loading, setLoading] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isStaff = session?.role === "staff";
+
+  const setCompleted = async (completed: boolean) => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch(
+        `${API_BASE}/assessments/${cin}/${encodeURIComponent(assessmentType)}/mark-complete`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ completed }),
+        }
+      );
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(detail?.detail ?? "Failed");
+      }
+      setConfirm(false);
+      onChanged();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
+      setLoading(false);
+    }
+  };
+
+  // ── Completed: show date + (staff) reopen ──────────────────────────────────
+  if (uploaded) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 text-xs">
+          <CheckCircle2 className="h-3 w-3" /> Completed
+        </Badge>
+        {uploadedAt && (
+          <span className="text-[11px] text-muted-foreground">
+            {formatDate(uploadedAt)}
+          </span>
+        )}
+        {(() => {
+          const days = daysUntilDeletion(uploadedAt);
+          if (days === null) return null;
+          return (
+            <span
+              className={cn(
+                "text-[11px]",
+                days < 30 ? "text-amber-600 font-medium" : "text-muted-foreground/70"
+              )}
+            >
+              {days === 0 ? "Deletes today" : `Deletes in ${days}d`}
+            </span>
+          );
+        })()}
+        {isStaff &&
+          (confirm ? (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCompleted(false)}
+                disabled={loading}
+                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] font-medium text-amber-600 hover:bg-amber-50 transition-colors"
+              >
+                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reopen"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirm(false)}
+                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirm(true)}
+              className="flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground hover:text-amber-600 transition-colors"
+              title="Move back to active"
+            >
+              <RotateCcw className="h-3 w-3" /> Reopen
+            </button>
+          ))}
+        {error && <p className="text-[11px] text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  // ── Active: (staff) mark complete manually ─────────────────────────────────
+  if (!isStaff) return null;
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      {confirm ? (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setCompleted(true)}
+            disabled={loading}
+            className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-green-600 hover:bg-green-50 transition-colors"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirm(false)}
+            className="cursor-pointer rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirm(true)}
+          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-green-600 hover:bg-green-50 transition-colors"
+          title="Mark this set as completed without uploading to SMS"
+        >
+          <CheckCheck className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Mark complete</span>
+        </button>
+      )}
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 // ─── Assessment group row ─────────────────────────────────────────────────────
 
 function AssessmentGroupRow({
+  cin,
   group,
   token,
   onUploaded,
   onAssessmentDeleted,
 }: {
+  cin: number;
   group: AssessmentGroup;
   token: string | null;
   onUploaded: () => void;
@@ -521,15 +710,36 @@ function AssessmentGroupRow({
             )}
             <span className="hidden sm:inline"> passed</span>
           </span>
-          {group.assessment_type !== "MOI" && (
-            <UploadButton
-              assessmentIds={group.assessments.map((a) => a.id)}
+          {group.uploaded ? (
+            <CompletionControl
+              cin={cin}
               assessmentType={group.assessment_type}
-              canUpload={group.can_upload}
               uploaded={group.uploaded}
+              uploadedAt={group.uploaded_at}
               token={token}
-              onUploaded={onUploaded}
+              onChanged={onUploaded}
             />
+          ) : (
+            <>
+              {group.assessment_type !== "MOI" && (
+                <UploadButton
+                  assessmentIds={group.assessments.map((a) => a.id)}
+                  assessmentType={group.assessment_type}
+                  canUpload={group.can_upload}
+                  uploaded={group.uploaded}
+                  token={token}
+                  onUploaded={onUploaded}
+                />
+              )}
+              <CompletionControl
+                cin={cin}
+                assessmentType={group.assessment_type}
+                uploaded={group.uploaded}
+                uploadedAt={group.uploaded_at}
+                token={token}
+                onChanged={onUploaded}
+              />
+            </>
           )}
         </div>
       </div>
@@ -564,7 +774,6 @@ function CadetAssessmentCard({
   onAssessmentDeleted: (id: number) => void;
 }) {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(true);
 
   const totalAssessments = cadet.groups.reduce((s, g) => s + g.assessments.length, 0);
   const readyCount = cadet.groups.filter((g) => g.can_upload && !g.uploaded).length;
@@ -573,15 +782,7 @@ function CadetAssessmentCard({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setExpanded((v) => !v)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
-            }}
-            className="flex flex-1 items-center gap-3 cursor-pointer min-w-0"
-          >
+          <div className="flex flex-1 items-center gap-3 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
               {cadet.first_name[0]}{cadet.last_name[0]}
             </div>
@@ -606,13 +807,6 @@ function CadetAssessmentCard({
                 {totalAssessments} assessment{totalAssessments !== 1 ? "s" : ""}
               </p>
             </div>
-            <span className="text-muted-foreground shrink-0">
-              {expanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </span>
           </div>
 
           <Button
@@ -626,19 +820,18 @@ function CadetAssessmentCard({
         </div>
       </CardHeader>
 
-      {expanded && (
-        <CardContent className="pt-0 space-y-2">
-          {cadet.groups.map((group) => (
-            <AssessmentGroupRow
-              key={group.assessment_type}
-              group={group}
-              token={token}
-              onUploaded={onUploaded}
-              onAssessmentDeleted={onAssessmentDeleted}
-            />
-          ))}
-        </CardContent>
-      )}
+      <CardContent className="pt-0 space-y-2">
+        {cadet.groups.map((group) => (
+          <AssessmentGroupRow
+            key={group.assessment_type}
+            cin={cadet.cin}
+            group={group}
+            token={token}
+            onUploaded={onUploaded}
+            onAssessmentDeleted={onAssessmentDeleted}
+          />
+        ))}
+      </CardContent>
     </Card>
   );
 }
@@ -651,7 +844,8 @@ export default function AssessmentsOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "ready" | "complete">("all");
+  const [filter, setFilter] = useState<AssessmentFilter>("active");
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const token = session?.id_token ?? null;
 
@@ -695,25 +889,44 @@ export default function AssessmentsOverviewPage() {
     fetchData();
   }, [token]);
 
-  const filtered = cadets.filter((c) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      c.first_name.toLowerCase().includes(q) ||
-      c.last_name.toLowerCase().includes(q) ||
-      String(c.cin).includes(q);
+  // Assessment types present across all cadets (for the type filter chips).
+  const availableTypes = Array.from(
+    new Set(cadets.flatMap((c) => c.groups.map((g) => g.assessment_type)))
+  );
 
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "ready" && c.groups.some((g) => g.can_upload && !g.uploaded)) ||
-      (filter === "complete" && c.groups.every((g) => g.uploaded));
+  const matchesType = (g: AssessmentGroup) =>
+    !typeFilter || g.assessment_type === typeFilter;
 
-    return matchesSearch && matchesFilter;
-  });
+  // Filter each cadet's groups by the active tab + type, then drop cadets that
+  // have no groups left (and apply the name/CIN search).
+  const filtered = cadets
+    .map((c) => ({
+      ...c,
+      groups: c.groups.filter((g) => groupMatchesFilter(g, filter) && matchesType(g)),
+    }))
+    .filter((c) => {
+      if (c.groups.length === 0) return false;
+      const q = search.toLowerCase();
+      return (
+        !q ||
+        c.first_name.toLowerCase().includes(q) ||
+        c.last_name.toLowerCase().includes(q) ||
+        String(c.cin).includes(q)
+      );
+    });
 
-  const readyTotal = cadets.filter((c) =>
-    c.groups.some((g) => g.can_upload && !g.uploaded)
-  ).length;
+  // Per-tab cadet counts, respecting the active type filter so they match the list.
+  const countForFilter = (f: AssessmentFilter) =>
+    cadets.filter((c) =>
+      c.groups.some((g) => groupMatchesFilter(g, f) && matchesType(g))
+    ).length;
+  const tabCounts: Record<AssessmentFilter, number> = {
+    active: countForFilter("active"),
+    ready: countForFilter("ready"),
+    completed: countForFilter("completed"),
+  };
+
+  const readyTotal = countForFilter("ready");
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
@@ -741,30 +954,85 @@ export default function AssessmentsOverviewPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or CIN…"
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="sticky top-0 z-10 space-y-3 border-b bg-background/95 pb-3 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or CIN…"
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            {(["active", "ready", "completed"] as const).map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? "default" : "outline"}
+                onClick={() => setFilter(f)}
+                className="capitalize gap-1.5"
+              >
+                {f}
+                <span
+                  className={cn(
+                    "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
+                    filter === f
+                      ? "bg-background/25 text-current"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {tabCounts[f]}
+                </span>
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {(["all", "ready", "complete"] as const).map((f) => (
-            <Button
-              key={f}
-              size="sm"
-              variant={filter === f ? "default" : "outline"}
-              onClick={() => setFilter(f)}
-              className="capitalize"
+
+        {availableTypes.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTypeFilter(null)}
+              className={cn(
+                "cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                typeFilter === null
+                  ? "border-foreground/20 bg-foreground/10 text-foreground"
+                  : "border-transparent bg-muted text-muted-foreground hover:bg-muted/70"
+              )}
             >
-              {f}
-            </Button>
-          ))}
-        </div>
+              All types
+            </button>
+            {availableTypes.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTypeFilter(typeFilter === t ? null : t)}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  typeFilter === t
+                    ? typeColour(t)
+                    : "border-transparent bg-muted text-muted-foreground hover:bg-muted/70"
+                )}
+              >
+                <span className={cn("h-2 w-2 rounded-full", typeDotColour(t))} />
+                {typeLabel(t)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {!loading && filter === "completed" && filtered.length > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3">
+          <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Completed assessments are automatically deleted 6 months after they
+            were uploaded.
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -782,7 +1050,13 @@ export default function AssessmentsOverviewPage() {
 
       {!loading && !error && filtered.length === 0 && (
         <p className="py-12 text-center text-sm text-muted-foreground">
-          {search ? `No cadets match "${search}"` : "No assessments found."}
+          {search
+            ? `No cadets match "${search}"`
+            : filter === "active"
+            ? "No active assessments — everything is uploaded or completed."
+            : filter === "ready"
+            ? "No assessments are ready to upload."
+            : "No completed assessments yet."}
         </p>
       )}
 
