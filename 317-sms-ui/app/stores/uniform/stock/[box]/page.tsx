@@ -54,7 +54,6 @@ export default function BoxPage() {
   const [form, setForm] = useState<ItemFormState>(emptyForm(boxLabel));
   const [submitting, setSubmitting] = useState(false);
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
-  const [deleteBoxConfirm, setDeleteBoxConfirm] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -180,7 +179,7 @@ export default function BoxPage() {
         body: JSON.stringify({ action: "delete-box", box }),
       });
       if (!res.ok) throw new Error("Failed to delete box");
-      router.push("/stores/stock");
+      router.push("/stores/uniform/stock");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
@@ -229,7 +228,7 @@ export default function BoxPage() {
     return (
       <div className="py-12 text-center text-sm text-muted-foreground">
         Box {boxLabel} not found.{" "}
-        <button className="cursor-pointer underline" onClick={() => router.push("/stores/stock")}>
+        <button className="cursor-pointer underline" onClick={() => router.push("/stores/uniform/stock")}>
           Go back
         </button>
       </div>
@@ -247,7 +246,7 @@ export default function BoxPage() {
       <BoxDetailView
         box={selectedBox}
         stock={stock}
-        onBack={() => router.push("/stores/stock")}
+        onBack={() => router.push("/stores/uniform/stock")}
         onStructureChange={setShelfStructure}
         onAddItem={openAdd}
         onEditItem={openEdit}
@@ -257,8 +256,6 @@ export default function BoxPage() {
         onAddSection={handleAddSection}
         deleteItemConfirm={deleteItemConfirm}
         onDeleteItemConfirm={setDeleteItemConfirm}
-        deleteBoxConfirm={deleteBoxConfirm}
-        onDeleteBoxConfirm={setDeleteBoxConfirm}
         editMode={editMode}
         isMisc={isMisc}
       />

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +56,10 @@ export default function BadgeStockPage() {
   // Add row/col confirm dialogs
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [addColOpen, setAddColOpen] = useState(false);
+
+  // Delete row/col confirm dialogs
+  const [deleteRowConfirm, setDeleteRowConfirm] = useState<number | null>(null);
+  const [deleteColConfirm, setDeleteColConfirm] = useState<number | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -287,44 +293,29 @@ export default function BadgeStockPage() {
   }, [grid, searchQuery, isSearching]);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center justify-between gap-4 sm:block">
-          <div>
-            <h1 className="text-3xl font-bold">Badge Stock</h1>
-            <p className="text-muted-foreground">
-              {loading
-                ? "Loading..."
-                : `${totalItems} badge${totalItems !== 1 ? "s" : ""} across ${grid?.cells.length ?? 0} section${(grid?.cells.length ?? 0) !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:hidden">
-            <Award className="h-5 w-5 text-primary" />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:flex">
-            <Award className="h-5 w-5 text-primary" />
-          </div>
-          <Button
-            size="sm"
-            onClick={() => openAddBadge()}
-            disabled={loading || !grid?.cells.length}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            Add Badge
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAddRowOpen(true)} disabled={loading}>
-            <Plus className="mr-1 h-4 w-4" />
-            Add Row
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setAddColOpen(true)} disabled={loading}>
-            <Plus className="mr-1 h-4 w-4" />
-            Add Col
-          </Button>
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Badge Stock"
+        description={
+          loading
+            ? "Loading…"
+            : `${totalItems} badge${totalItems !== 1 ? "s" : ""} across ${grid?.cells.length ?? 0} section${(grid?.cells.length ?? 0) !== 1 ? "s" : ""}`
+        }
+        actions={
+          <>
+            <Button size="sm" onClick={() => openAddBadge()} disabled={loading || !grid?.cells.length}>
+              <Plus data-icon="inline-start" />
+              Add badge
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setAddRowOpen(true)} disabled={loading}>
+              Add row
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setAddColOpen(true)} disabled={loading}>
+              Add column
+            </Button>
+          </>
+        }
+      />
 
       {/* Search */}
       {!loading && (
@@ -339,12 +330,7 @@ export default function BadgeStockPage() {
         </div>
       )}
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} />
 
       {/* Loading */}
       {loading && (
@@ -388,8 +374,8 @@ export default function BadgeStockPage() {
             onAddItem={(cellId) => openAddBadge(cellId)}
             onEditItem={openEditBadge}
             onDeleteItem={handleDeleteItem}
-            onDeleteRow={handleDeleteRow}
-            onDeleteCol={handleDeleteCol}
+            onDeleteRow={(r) => setDeleteRowConfirm(r)}
+            onDeleteCol={(c) => setDeleteColConfirm(c)}
             onRenameCell={handleRenameCell}
           />
           <div className="flex justify-center pt-2">
@@ -674,6 +660,38 @@ export default function BadgeStockPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddColOpen(false)}>Cancel</Button>
             <Button onClick={handleAddCol}>Add Column</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Row confirm */}
+      <Dialog open={deleteRowConfirm !== null} onOpenChange={(o) => { if (!o) setDeleteRowConfirm(null); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader><DialogTitle>Delete Row {(deleteRowConfirm ?? 0) + 1}?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            All badges in row {(deleteRowConfirm ?? 0) + 1} will be permanently removed. This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteRowConfirm(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { if (deleteRowConfirm !== null) { handleDeleteRow(deleteRowConfirm); setDeleteRowConfirm(null); } }}>
+              Delete Row
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Col confirm */}
+      <Dialog open={deleteColConfirm !== null} onOpenChange={(o) => { if (!o) setDeleteColConfirm(null); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader><DialogTitle>Delete Column {(deleteColConfirm ?? 0) + 1}?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            All badges in column {(deleteColConfirm ?? 0) + 1} will be permanently removed. This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteColConfirm(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { if (deleteColConfirm !== null) { handleDeleteCol(deleteColConfirm); setDeleteColConfirm(null); } }}>
+              Delete Column
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

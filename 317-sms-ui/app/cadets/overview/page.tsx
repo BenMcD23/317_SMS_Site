@@ -3,11 +3,24 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
+import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, ChevronRight, Users } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -20,18 +33,6 @@ type Cadet = {
   rank: string | null;
   flight: string | null;
 };
-
-const FLIGHT_COLOURS: Record<string, string> = {
-  Alpha:   "bg-blue-100 text-blue-700 border-blue-200",
-  Bravo:   "bg-red-100 text-red-700 border-red-200",
-  Charlie: "bg-green-100 text-green-700 border-green-200",
-  Delta:   "bg-yellow-100 text-yellow-700 border-yellow-200",
-};
-
-function flightClass(flight: string | null) {
-  if (!flight) return "bg-muted text-muted-foreground border-muted";
-  return FLIGHT_COLOURS[flight] ?? "bg-muted text-muted-foreground border-muted";
-}
 
 export default function CadetsPage() {
   const { data: session } = useSession();
@@ -69,113 +70,99 @@ export default function CadetsPage() {
     );
   });
 
-  // Group by first letter of last name
-  const grouped = filtered.reduce<Record<string, Cadet[]>>((acc, c) => {
-    const letter = c.last_name[0]?.toUpperCase() ?? "#";
-    (acc[letter] ??= []).push(c);
-    return acc;
-  }, {});
-  const letters = Object.keys(grouped).sort();
-
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Cadets</h1>
-          <p className="text-muted-foreground">
-            {loading ? "Loading…" : `${cadets.length} cadets enrolled`}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Users className="h-5 w-5 text-primary" />
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Cadets"
+        description={loading ? "Loading…" : `${cadets.length} cadets on strength`}
+      />
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+      <InputGroup>
+        <InputGroupAddon>
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
           placeholder="Search by name, rank, flight or CIN…"
-          className="pl-9"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
+      </InputGroup>
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} title="Could not load cadets" />
 
-      {/* Loading skeleton */}
       {loading && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {[...Array(8)].map((_, i) => (
-            <Skeleton key={i} className="h-14 rounded-lg" />
+            <Skeleton key={i} className="h-12" />
           ))}
         </div>
       )}
 
-      {/* Empty */}
       {!loading && !error && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          {search ? `No cadets match "${search}"` : "No cadets found."}
-        </p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Users />
+            </EmptyMedia>
+            <EmptyTitle>No cadets found</EmptyTitle>
+            <EmptyDescription>
+              {search ? `Nothing matches "${search}".` : "Run the cadet scraper to populate this list."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
 
-      {/* List grouped by letter */}
-      {!loading && letters.map((letter) => (
-        <div key={letter}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            {letter}
-          </p>
-          <Card className="overflow-hidden p-0">
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {grouped[letter].map((c) => (
-                  <button
-                    key={c.cin}
-                    type="button"
-                    onClick={() => router.push(`/cadets/${c.cin}`)}
-                    className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    {/* Avatar */}
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                      {c.first_name[0]}{c.last_name[0]}
+      {!loading && filtered.length > 0 && (
+        <Card className="overflow-hidden py-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">Name</TableHead>
+                <TableHead>CIN</TableHead>
+                <TableHead>Rank</TableHead>
+                <TableHead>Flight</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((c) => (
+                <TableRow
+                  key={c.cin}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/cadets/${c.cin}`)}
+                >
+                  <TableCell className="pl-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="size-7">
+                        <AvatarFallback className="text-xs">
+                          {cadetInitials(c.first_name, c.last_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">
+                        {c.last_name}, {c.first_name}
+                      </span>
                     </div>
-
-                    {/* Name + CIN */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {c.first_name} {c.last_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">CIN {c.cin}</p>
-                    </div>
-
-                    {/* Badges */}
-                    <div className="flex shrink-0 items-center gap-2">
-                      {c.rank && (
-                        <Badge variant="secondary" className="hidden text-xs sm:inline-flex">
-                          {c.rank}
-                        </Badge>
-                      )}
-                      {c.flight && (
-                        <Badge className={cn("hidden text-xs border sm:inline-flex", flightClass(c.flight))}>
-                          {c.flight}
-                        </Badge>
-                      )}
-                      <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ))}
+                  </TableCell>
+                  <TableCell className="tabular-nums text-muted-foreground">{c.cin}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.rank ?? "—"}</TableCell>
+                  <TableCell>
+                    {c.flight ? (
+                      <Badge variant="outline" className={cn(flightBadgeClass(c.flight))}>
+                        {c.flight}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="w-8 pr-4">
+                    <ChevronRight className="size-4 text-muted-foreground/50" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }

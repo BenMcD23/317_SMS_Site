@@ -4,10 +4,15 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
+import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, CalendarDays, Users, ChevronDown, ChevronRight, Ban } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -44,16 +49,42 @@ type BannedCadet = {
   events: { event_id: number; event_title: string }[];
 };
 
-const FLIGHT_COLOURS: Record<string, string> = {
-  Alpha:   "bg-blue-100 text-blue-700 border-blue-200",
-  Bravo:   "bg-red-100 text-red-700 border-red-200",
-  Charlie: "bg-green-100 text-green-700 border-green-200",
-  Delta:   "bg-yellow-100 text-yellow-700 border-yellow-200",
-};
-
-function flightClass(flight: string | null) {
-  if (!flight) return "bg-muted text-muted-foreground border-muted";
-  return FLIGHT_COLOURS[flight] ?? "bg-muted text-muted-foreground border-muted";
+function CadetRow({ cadet, compact = false }: { cadet: EventCadet; compact?: boolean }) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      onClick={() => router.push(`/cadets/${cadet.cin}`)}
+      className={cn(
+        "flex w-full cursor-pointer items-center gap-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        compact ? "px-2 py-2" : "px-4 py-2.5",
+      )}
+    >
+      <Avatar className={compact ? "size-6" : "size-7"}>
+        <AvatarFallback className="text-[10px]">
+          {cadetInitials(cadet.first_name, cadet.last_name)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <p className={cn("truncate font-medium", compact ? "text-xs" : "text-sm")}>
+          {cadet.first_name} {cadet.last_name}
+        </p>
+        <p className="text-xs text-muted-foreground">CIN {cadet.cin}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {cadet.rank && (
+          <Badge variant="secondary" className="hidden sm:inline-flex">
+            {cadet.rank}
+          </Badge>
+        )}
+        {cadet.flight && (
+          <Badge variant="outline" className={cn("hidden sm:inline-flex", flightBadgeClass(cadet.flight))}>
+            {cadet.flight}
+          </Badge>
+        )}
+      </div>
+    </button>
+  );
 }
 
 function BannedCadetRow({
@@ -64,41 +95,37 @@ function BannedCadetRow({
   formatBanEvent: (e: { event_id: number; event_title: string }) => string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const router = useRouter();
 
   return (
-    <div className="rounded-md border border-red-200 bg-white overflow-hidden">
+    <div className="overflow-hidden rounded-md border bg-card">
       <button
         type="button"
-        className="w-full cursor-pointer text-left px-3 py-2 flex items-center gap-2 hover:bg-red-50 transition-colors"
+        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/50"
         onClick={() => setExpanded((v) => !v)}
       >
-        <p className="flex-1 text-sm font-medium text-red-900">
+        <p className="flex-1 text-sm font-medium">
           {cadet.rank ? `${cadet.rank} ` : ""}{cadet.first_name} {cadet.last_name}
         </p>
         {cadet.events.length > 0 && (
-          <span className="text-xs text-red-500 shrink-0">{cadet.events.length} event{cadet.events.length !== 1 ? "s" : ""}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {cadet.events.length} event{cadet.events.length !== 1 ? "s" : ""}
+          </span>
         )}
         {expanded
-          ? <ChevronDown className="h-3 w-3 text-red-400 shrink-0" />
-          : <ChevronRight className="h-3 w-3 text-red-400 shrink-0" />
+          ? <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+          : <ChevronRight className="size-3 shrink-0 text-muted-foreground" />
         }
       </button>
       {expanded && (
-        <div className="border-t border-red-100 divide-y divide-red-100">
+        <div className="divide-y border-t">
           {cadet.events.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-red-400 italic">Not registered on any events</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">Not registered on any events</p>
           ) : (
             cadet.events.map((e) => (
-              <button
-                key={e.event_id}
-                type="button"
-                onClick={() => router.push(`/cadets/events`)}
-                className="w-full cursor-pointer text-left px-3 py-1.5 flex items-center gap-2 hover:bg-red-50 transition-colors"
-              >
-                <CalendarDays className="h-3 w-3 text-red-400 shrink-0" />
-                <span className="text-xs text-red-700">{formatBanEvent(e)}</span>
-              </button>
+              <div key={e.event_id} className="flex items-center gap-2 px-3 py-1.5">
+                <CalendarDays className="size-3 shrink-0 text-muted-foreground" />
+                <span className="text-xs">{formatBanEvent(e)}</span>
+              </div>
             ))
           )}
         </div>
@@ -109,65 +136,34 @@ function BannedCadetRow({
 
 function SubAppCard({ subApp }: { subApp: SubAppEvent }) {
   const [expanded, setExpanded] = useState(false);
-  const router = useRouter();
 
   return (
-    <div className="ml-4 border-l-2 border-primary/20 pl-3">
+    <div className="ml-4 border-l-2 border-border pl-3">
       <button
         type="button"
         className="w-full cursor-pointer text-left"
         onClick={() => setExpanded((v) => !v)}
       >
-        <div className="flex items-center gap-2 py-2 px-2 rounded-md hover:bg-muted/40 transition-colors">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <CalendarDays className="h-3 w-3 text-primary" />
-          </div>
-          <span className="flex-1 min-w-0 text-sm font-medium truncate text-muted-foreground">
+        <div className="flex items-center gap-2 rounded-md px-2 py-2 transition-colors hover:bg-muted/40">
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-muted-foreground">
             {subApp.title}
           </span>
-          <Badge variant="outline" className="shrink-0 gap-1 text-xs">
-            <Users className="h-3 w-3" />
+          <Badge variant="outline" className="shrink-0 gap-1">
+            <Users className="size-3" />
             {subApp.cadet_count}
           </Badge>
           {expanded
-            ? <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-            : <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+            ? <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+            : <ChevronRight className="size-3 shrink-0 text-muted-foreground" />
           }
         </div>
       </button>
       {expanded && (
-        <div className="divide-y border-t mt-1">
+        <div className="mt-1 divide-y border-t">
           {subApp.cadets.length === 0 ? (
-            <p className="px-2 py-2 text-xs text-muted-foreground italic">No matched cadets.</p>
+            <p className="px-2 py-2 text-xs text-muted-foreground">No matched cadets.</p>
           ) : (
-            subApp.cadets.map((c) => (
-              <button
-                key={c.cin}
-                type="button"
-                onClick={() => router.push(`/cadets/${c.cin}`)}
-                className="flex w-full cursor-pointer items-center gap-3 px-2 py-2 text-left hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                  {c.first_name[0]}{c.last_name[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{c.first_name} {c.last_name}</p>
-                  <p className="text-[11px] text-muted-foreground">CIN {c.cin}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {c.rank && (
-                    <Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">
-                      {c.rank}
-                    </Badge>
-                  )}
-                  {c.flight && (
-                    <Badge className={cn("hidden text-[10px] border sm:inline-flex", flightClass(c.flight))}>
-                      {c.flight}
-                    </Badge>
-                  )}
-                </div>
-              </button>
-            ))
+            subApp.cadets.map((c) => <CadetRow key={c.cin} cadet={c} compact />)
           )}
         </div>
       )}
@@ -177,76 +173,46 @@ function SubAppCard({ subApp }: { subApp: SubAppEvent }) {
 
 function EventCard({ event }: { event: CadetEvent }) {
   const [expanded, setExpanded] = useState(false);
-  const router = useRouter();
   const totalCadets = event.cadet_count + event.sub_apps.reduce((sum, s) => sum + s.cadet_count, 0);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="gap-0 overflow-hidden py-0">
       <button
         type="button"
         className="w-full cursor-pointer text-left"
         onClick={() => setExpanded((v) => !v)}
       >
-        <CardHeader className="flex flex-row items-center gap-3 py-3 px-4 hover:bg-muted/40 transition-colors">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <CalendarDays className="h-4 w-4 text-primary" />
+        <CardHeader className="flex flex-row items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+          <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <CardTitle className="truncate text-sm font-medium">{event.title}</CardTitle>
           </div>
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-sm font-semibold truncate">{event.title}</CardTitle>
-          </div>
-          <Badge variant="secondary" className="shrink-0 gap-1 text-xs">
-            <Users className="h-3 w-3" />
+          <Badge variant="secondary" className="shrink-0 gap-1">
+            <Users className="size-3" />
             {totalCadets}
           </Badge>
           {expanded
-            ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-            : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            ? <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            : <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
           }
         </CardHeader>
       </button>
 
       {expanded && (
-        <CardContent className="p-0 border-t">
+        <CardContent className="border-t p-0">
           {event.cadets.length === 0 && event.sub_apps.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground italic">No matched cadets.</p>
+            <p className="px-4 py-3 text-sm text-muted-foreground">No matched cadets.</p>
           ) : (
             <>
               {event.cadets.length > 0 && (
                 <div className="divide-y">
-                  {event.cadets.map((c) => (
-                    <button
-                      key={c.cin}
-                      type="button"
-                      onClick={() => router.push(`/cadets/${c.cin}`)}
-                      className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">
-                        {c.first_name[0]}{c.last_name[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{c.first_name} {c.last_name}</p>
-                        <p className="text-xs text-muted-foreground">CIN {c.cin}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        {c.rank && (
-                          <Badge variant="secondary" className="hidden text-[11px] sm:inline-flex">
-                            {c.rank}
-                          </Badge>
-                        )}
-                        {c.flight && (
-                          <Badge className={cn("hidden text-[11px] border sm:inline-flex", flightClass(c.flight))}>
-                            {c.flight}
-                          </Badge>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                  {event.cadets.map((c) => <CadetRow key={c.cin} cadet={c} />)}
                 </div>
               )}
               {event.sub_apps.length > 0 && (
-                <div className={cn("pb-2 space-y-1", event.cadets.length > 0 && "border-t")}>
-                  <p className="px-4 pt-2 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Sub-Applications
+                <div className={cn("flex flex-col gap-1 pb-2", event.cadets.length > 0 && "border-t")}>
+                  <p className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Sub-applications
                   </p>
                   {event.sub_apps.map((sub) => (
                     <SubAppCard key={sub.id} subApp={sub} />
@@ -309,21 +275,13 @@ export default function CadetEventListPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Event List</h1>
-          <p className="text-muted-foreground">
-            {loading ? "Loading…" : `${events.length} event${events.length !== 1 ? "s" : ""} recorded`}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <CalendarDays className="h-5 w-5 text-primary" />
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Events"
+        description={loading ? "Loading…" : `${events.length} event${events.length !== 1 ? "s" : ""} synced from Bader`}
+      />
 
-      {/* Banned cadets banner */}
+      {/* Banned cadets */}
       {bans.length > 0 && (() => {
         const subAppParent: Record<number, string> = {};
         for (const evt of events) {
@@ -336,12 +294,14 @@ export default function CadetEventListPage() {
           return parent ? `${parent}, ${e.event_title}` : e.event_title;
         };
         return (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3">
-            <div className="flex items-center gap-2 text-red-800">
-              <Ban className="h-4 w-4 shrink-0" />
-              <p className="text-sm font-semibold">{bans.length} cadet{bans.length !== 1 ? "s" : ""} currently banned from events</p>
+          <div className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+            <div className="flex items-center gap-2 text-destructive">
+              <Ban className="size-4 shrink-0" />
+              <p className="text-sm font-semibold">
+                {bans.length} cadet{bans.length !== 1 ? "s" : ""} currently banned from events
+              </p>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               {bans.map((b) => (
                 <BannedCadetRow key={b.cin} cadet={b} formatBanEvent={formatBanEvent} />
               ))}
@@ -350,43 +310,43 @@ export default function CadetEventListPage() {
         );
       })()}
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+      <InputGroup>
+        <InputGroupAddon>
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
           placeholder="Search by event name or cadet…"
-          className="pl-9"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
+      </InputGroup>
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} title="Could not load events" />
 
-      {/* Loading skeleton */}
       {loading && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-14 rounded-xl" />
+            <Skeleton key={i} className="h-12" />
           ))}
         </div>
       )}
 
-      {/* Empty */}
       {!loading && !error && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          {search ? `No events match "${search}"` : "No events found. Run the cadet event scraper to populate this list."}
-        </p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <CalendarDays />
+            </EmptyMedia>
+            <EmptyTitle>No events found</EmptyTitle>
+            <EmptyDescription>
+              {search ? `Nothing matches "${search}".` : "Run the cadet event scraper to populate this list."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
 
-      {/* Event list */}
       {!loading && !error && (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {filtered.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}

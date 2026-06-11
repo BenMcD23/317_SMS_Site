@@ -146,7 +146,7 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
                         <div className="flex items-center gap-1">
                           <Button
                             size="icon" variant="ghost"
-                            className="h-8 w-8 text-green-600 hover:text-green-700"
+                            className="h-8 w-8 text-success hover:text-success"
                             onClick={() => save(category)}
                             disabled={saving || !editDate}
                           >

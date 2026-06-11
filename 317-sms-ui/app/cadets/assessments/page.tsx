@@ -5,9 +5,17 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
+import { cadetInitials } from "@/lib/cadet-format";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -75,17 +83,7 @@ function typeLabel(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-const TYPE_COLOURS: Record<string, string> = {
-  "Blue Leadership": "bg-blue-100 text-blue-700 border-blue-200",
-  first_aid: "bg-red-100 text-red-700 border-red-200",
-  radio: "bg-purple-100 text-purple-700 border-purple-200",
-};
-
-function typeColour(t: string) {
-  return TYPE_COLOURS[t] ?? "bg-muted text-muted-foreground border-muted";
-}
-
-// Solid dot colour for the compact type summary on collapsed cards.
+// Dot colour per assessment type — domain colours, used with neutral badges
 const TYPE_DOT_COLOURS: Record<string, string> = {
   "Blue Leadership": "bg-blue-500",
   first_aid: "bg-red-500",
@@ -121,36 +119,19 @@ function groupMatchesFilter(g: AssessmentGroup, filter: AssessmentFilter) {
 // ─── Info tooltip ─────────────────────────────────────────────────────────────
 
 function InfoTooltip({ text }: { text: string }) {
-  const [visible, setVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setVisible(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   return (
-    <div ref={ref} className="relative inline-flex items-center">
-      <button
-        type="button"
-        onClick={() => setVisible((v) => !v)}
-        className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="More information"
-      >
-        <Info className="h-3.5 w-3.5" />
-      </button>
-      {visible && (
-        <div className="absolute top-full right-0 mt-2 z-50 w-56 rounded-lg border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md">
-        {text}
-        <div className="absolute -top-1.5 right-2 h-3 w-3 rotate-45 border-t border-l bg-popover" />
-        </div>
-      )}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+          aria-label="More information"
+        >
+          <Info className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-56">{text}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -231,30 +212,31 @@ function AssessmentPdfRow({
         {/* Pass/fail icon */}
         <div className="shrink-0">
           {assessment.passed === true ? (
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+            <CheckCircle2 className="size-3.5 text-success" />
           ) : assessment.passed === false ? (
-            <XCircle className="h-3.5 w-3.5 text-red-500" />
+            <XCircle className="size-3.5 text-destructive" />
           ) : (
-            <div className="h-3.5 w-3.5 rounded-full border-2 border-muted-foreground/30" />
+            <div className="size-3.5 rounded-full border-2 border-muted-foreground/30" />
           )}
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium truncate">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-medium">
               {assessment.exercise_name ?? typeLabel(assessment.assessment_type)}
             </p>
             {assessment.passed !== null && (
               <Badge
+                variant="outline"
                 className={cn(
-                  "text-[11px] shrink-0",
+                  "shrink-0",
                   assessment.passed
-                    ? "bg-green-500 text-white hover:bg-green-500"
-                    : "bg-red-500 text-white hover:bg-red-500"
+                    ? "border-success/40 bg-success/10 text-success"
+                    : "border-destructive/40 bg-destructive/10 text-destructive"
                 )}
               >
-                {assessment.passed ? "PASS" : "FAIL"}
+                {assessment.passed ? "Pass" : "Fail"}
               </Badge>
             )}
           </div>
@@ -297,9 +279,9 @@ function AssessmentPdfRow({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
               >
-                {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm"}
+                {deleting ? <Loader2 className="size-3.5 animate-spin" /> : "Confirm"}
               </button>
               <button
                 type="button"
@@ -313,10 +295,10 @@ function AssessmentPdfRow({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               title="Delete assessment"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="size-3.5" />
             </button>
           )}
         </div>
@@ -438,16 +420,16 @@ function UploadButton({
 
   if (done) {
     return (
-      <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 text-xs">
-        <CheckCircle2 className="h-3 w-3" /> Uploaded
+      <Badge variant="outline" className="gap-1.5 border-success/40 bg-success/10 text-success">
+        <CheckCircle2 className="size-3" /> Uploaded
       </Badge>
     );
   }
 
   if (!canUpload) {
     return (
-      <Badge variant="outline" className="gap-1.5 text-xs text-muted-foreground">
-        <AlertCircle className="h-3 w-3" />
+      <Badge variant="outline" className="gap-1.5 text-muted-foreground">
+        <AlertCircle className="size-3" />
         <span className="hidden sm:inline">
           {assessmentType === "Blue Leadership" ? "Needs 2 passes" : "Needs 1 pass"}
         </span>
@@ -463,16 +445,11 @@ function UploadButton({
   return (
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1.5">
-        <Button
-          size="sm"
-          onClick={handleUpload}
-          disabled={loading}
-          className="h-7 gap-1.5 text-xs"
-        >
+        <Button size="sm" onClick={handleUpload} disabled={loading}>
           {loading ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Loader2 className="animate-spin" data-icon="inline-start" />
           ) : (
-            <Upload className="h-3 w-3" />
+            <Upload data-icon="inline-start" />
           )}
           {loading ? "Uploading…" : "Upload to SMS"}
         </Button>
@@ -554,8 +531,8 @@ function CompletionControl({
   if (uploaded) {
     return (
       <div className="flex flex-col items-end gap-1">
-        <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 text-xs">
-          <CheckCircle2 className="h-3 w-3" /> Completed
+        <Badge variant="outline" className="gap-1.5 border-success/40 bg-success/10 text-success">
+          <CheckCircle2 className="size-3" /> Completed
         </Badge>
         {uploadedAt && (
           <span className="text-[11px] text-muted-foreground">
@@ -569,7 +546,7 @@ function CompletionControl({
             <span
               className={cn(
                 "text-[11px]",
-                days < 30 ? "text-amber-600 font-medium" : "text-muted-foreground/70"
+                days < 30 ? "font-medium text-warning" : "text-muted-foreground/70"
               )}
             >
               {days === 0 ? "Deletes today" : `Deletes in ${days}d`}
@@ -583,14 +560,14 @@ function CompletionControl({
                 type="button"
                 onClick={() => setCompleted(false)}
                 disabled={loading}
-                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] font-medium text-amber-600 hover:bg-amber-50 transition-colors"
+                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] font-medium text-warning transition-colors hover:bg-warning/15"
               >
-                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reopen"}
+                {loading ? <Loader2 className="size-3 animate-spin" /> : "Reopen"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirm(false)}
-                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted transition-colors"
+                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted"
               >
                 Cancel
               </button>
@@ -599,10 +576,10 @@ function CompletionControl({
             <button
               type="button"
               onClick={() => setConfirm(true)}
-              className="flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground hover:text-amber-600 transition-colors"
+              className="flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-warning"
               title="Move back to active"
             >
-              <RotateCcw className="h-3 w-3" /> Reopen
+              <RotateCcw className="size-3" /> Reopen
             </button>
           ))}
         {error && <p className="text-[11px] text-destructive">{error}</p>}
@@ -621,14 +598,14 @@ function CompletionControl({
             type="button"
             onClick={() => setCompleted(true)}
             disabled={loading}
-            className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-green-600 hover:bg-green-50 transition-colors"
+            className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-success transition-colors hover:bg-success/10"
           >
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm"}
+            {loading ? <Loader2 className="size-3.5 animate-spin" /> : "Confirm"}
           </button>
           <button
             type="button"
             onClick={() => setConfirm(false)}
-            className="cursor-pointer rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            className="cursor-pointer rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
           >
             Cancel
           </button>
@@ -637,10 +614,10 @@ function CompletionControl({
         <button
           type="button"
           onClick={() => setConfirm(true)}
-          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-green-600 hover:bg-green-50 transition-colors"
+          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-success/10 hover:text-success"
           title="Mark this set as completed without uploading to SMS"
         >
-          <CheckCheck className="h-3.5 w-3.5" />
+          <CheckCheck className="size-3.5" />
           <span className="hidden sm:inline">Mark complete</span>
         </button>
       )}
@@ -686,7 +663,8 @@ function AssessmentGroupRow({
             )}
           </span>
 
-          <Badge className={cn("shrink-0 border text-xs", typeColour(group.assessment_type))}>
+          <Badge variant="outline" className="shrink-0 gap-1.5">
+            <span className={cn("size-2 rounded-full", typeDotColour(group.assessment_type))} />
             {typeLabel(group.assessment_type)}
           </Badge>
 
@@ -700,7 +678,7 @@ function AssessmentGroupRow({
             <span
               className={cn(
                 "font-semibold",
-                group.passed_count > 0 ? "text-green-600" : "text-muted-foreground"
+                group.passed_count > 0 ? "text-success" : "text-muted-foreground"
               )}
             >
               {group.passed_count}
@@ -782,23 +760,25 @@ function CadetAssessmentCard({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
-          <div className="flex flex-1 items-center gap-3 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-              {cadet.first_name[0]}{cadet.last_name[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Avatar className="size-9">
+              <AvatarFallback className="text-sm">
+                {cadetInitials(cadet.first_name, cadet.last_name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="font-semibold">
                   {cadet.first_name} {cadet.last_name}
                 </p>
                 {cadet.rank && (
-                  <Badge variant="secondary" className="text-xs hidden sm:inline-flex">
+                  <Badge variant="secondary" className="hidden sm:inline-flex">
                     {cadet.rank}
                   </Badge>
                 )}
                 {readyCount > 0 && (
-                  <Badge className="gap-1 bg-amber-500 text-white hover:bg-amber-500 text-xs">
-                    <Upload className="h-2.5 w-2.5" />
+                  <Badge variant="outline" className="gap-1 border-warning/40 bg-warning/15 text-warning">
+                    <Upload className="size-2.5" />
                     {readyCount} ready
                   </Badge>
                 )}
@@ -929,65 +909,48 @@ export default function AssessmentsOverviewPage() {
   const readyTotal = countForFilter("ready");
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Assessments</h1>
-          <p className="text-muted-foreground">
-            {loading ? "Loading…" : `${cadets.length} cadets with assessments`}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <ClipboardList className="h-5 w-5 text-primary" />
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Cadet Assessments"
+        description={loading ? "Loading…" : `${cadets.length} cadets with assessment sheets`}
+      />
 
       {!loading && readyTotal > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <Upload className="h-4 w-4 shrink-0 text-amber-600" />
-          <p className="text-sm text-amber-800">
-            <span className="font-semibold">
-              {readyTotal} cadet{readyTotal !== 1 ? "s" : ""}
-            </span>{" "}
-            ready to have qualifications uploaded.
-          </p>
-        </div>
+        <Alert>
+          <Upload className="text-warning" />
+          <AlertTitle>
+            {readyTotal} cadet{readyTotal !== 1 ? "s" : ""} ready to have qualifications uploaded
+          </AlertTitle>
+        </Alert>
       )}
 
-      <div className="sticky top-0 z-10 space-y-3 border-b bg-background/95 pb-3 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="sticky top-0 z-10 flex flex-col gap-3 border-b bg-background/95 pb-3 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+          <InputGroup className="flex-1">
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
               placeholder="Search by name or CIN…"
-              className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-          <div className="flex gap-2">
+          </InputGroup>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            value={filter}
+            onValueChange={(v) => v && setFilter(v as AssessmentFilter)}
+          >
             {(["active", "ready", "completed"] as const).map((f) => (
-              <Button
-                key={f}
-                size="sm"
-                variant={filter === f ? "default" : "outline"}
-                onClick={() => setFilter(f)}
-                className="capitalize gap-1.5"
-              >
+              <ToggleGroupItem key={f} value={f} className="gap-1.5 capitalize">
                 {f}
-                <span
-                  className={cn(
-                    "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums",
-                    filter === f
-                      ? "bg-background/25 text-current"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
                   {tabCounts[f]}
                 </span>
-              </Button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         </div>
 
         {availableTypes.length > 1 && (
@@ -1012,11 +975,11 @@ export default function AssessmentsOverviewPage() {
                 className={cn(
                   "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                   typeFilter === t
-                    ? typeColour(t)
+                    ? "border-foreground/20 bg-foreground/10 text-foreground"
                     : "border-transparent bg-muted text-muted-foreground hover:bg-muted/70"
                 )}
               >
-                <span className={cn("h-2 w-2 rounded-full", typeDotColour(t))} />
+                <span className={cn("size-2 rounded-full", typeDotColour(t))} />
                 {typeLabel(t)}
               </button>
             ))}
@@ -1025,39 +988,42 @@ export default function AssessmentsOverviewPage() {
       </div>
 
       {!loading && filter === "completed" && filtered.length > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3">
-          <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Completed assessments are automatically deleted 6 months after they
-            were uploaded.
-          </p>
-        </div>
+        <Alert>
+          <Info />
+          <AlertTitle className="font-normal text-muted-foreground">
+            Completed assessments are automatically deleted 6 months after they were uploaded.
+          </AlertTitle>
+        </Alert>
       )}
 
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} title="Could not load assessments" />
 
       {loading && (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
+            <Skeleton key={i} className="h-32" />
           ))}
         </div>
       )}
 
       {!loading && !error && filtered.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          {search
-            ? `No cadets match "${search}"`
-            : filter === "active"
-            ? "No active assessments — everything is uploaded or completed."
-            : filter === "ready"
-            ? "No assessments are ready to upload."
-            : "No completed assessments yet."}
-        </p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <ClipboardList />
+            </EmptyMedia>
+            <EmptyTitle>Nothing here</EmptyTitle>
+            <EmptyDescription>
+              {search
+                ? `No cadets match "${search}".`
+                : filter === "active"
+                ? "No active assessments — everything is uploaded or completed."
+                : filter === "ready"
+                ? "No assessments are ready to upload."
+                : "No completed assessments yet."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
 
       {!loading &&

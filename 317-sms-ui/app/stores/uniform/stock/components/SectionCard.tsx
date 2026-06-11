@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BoxSection, StockItem } from "@/lib/stores-types";
 import { useState } from "react";
 
@@ -121,36 +122,25 @@ export function SectionCard({
         </div>
       </div>
 
-      {/* Delete section confirm */}
-      {deleteConfirm && (
-        <div className="border-b px-3 py-2 text-xs bg-destructive/5 border-destructive/20">
-          <p className="mb-1.5 font-medium text-destructive">
-            Delete §{section.label}? ({items.length} line
-            {items.length !== 1 ? "s" : ""})
+      {/* Delete section confirm dialog */}
+      <Dialog open={deleteConfirm} onOpenChange={(o) => { if (!o) setDeleteConfirm(false); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Delete Section {section.label}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete section {section.label}?
+            {items.length > 0 && ` ${items.length} item${items.length !== 1 ? "s" : ""} will be removed.`}
+            {" "}This cannot be undone.
           </p>
-          <div className="flex gap-1.5">
-            <Button
-              size="sm"
-              variant="destructive"
-              className="h-6 px-2 text-xs"
-              onClick={() => {
-                setDeleteConfirm(false);
-                onDeleteSection(boxLabel, section.label);
-              }}
-            >
-              Delete
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { setDeleteConfirm(false); onDeleteSection(boxLabel, section.label); }}>
+              Delete Section
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-xs"
-              onClick={() => setDeleteConfirm(false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Item list */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: "280px" }}>

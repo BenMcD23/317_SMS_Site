@@ -2,9 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
+import { cadetInitials } from "@/lib/cadet-format";
 import { Search, ChevronRight, UserCog } from "lucide-react";
 
 type StaffUser = {
@@ -40,54 +45,66 @@ export default function StaffOverviewPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex items-center gap-3">
-        <UserCog className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Staff Overview</h1>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Staff"
+        description={loading ? "Loading…" : `${users.length} staff member${users.length !== 1 ? "s" : ""}`}
+      />
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+      <InputGroup>
+        <InputGroupAddon>
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
           placeholder="Search by name or email…"
-          className="pl-9"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
+      </InputGroup>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      <ErrorAlert message={error} title="Could not load staff" />
 
       {loading ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            <Skeleton key={i} className="h-14 w-full" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No staff members found.</p>
+      ) : filtered.length === 0 && !error ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <UserCog />
+            </EmptyMedia>
+            <EmptyTitle>No staff members found</EmptyTitle>
+            {search && <EmptyDescription>Nothing matches &quot;{search}&quot;.</EmptyDescription>}
+          </EmptyHeader>
+        </Empty>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y">
-              {filtered.map((u) => {
-                const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => router.push(`/staff/${u.id}`)}
-                    className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-muted/50"
-                  >
-                    <div>
-                      <p className="font-medium">{name}</p>
-                      <p className="text-sm text-muted-foreground">{u.email}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
+        <Card className="overflow-hidden py-0">
+          <div className="divide-y">
+            {filtered.map((u) => {
+              const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+              return (
+                <button
+                  key={u.id}
+                  onClick={() => router.push(`/staff/${u.id}`)}
+                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                >
+                  <Avatar className="size-8">
+                    <AvatarFallback className="text-xs">
+                      {cadetInitials(u.firstName, u.lastName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+                </button>
+              );
+            })}
+          </div>
         </Card>
       )}
     </div>

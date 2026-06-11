@@ -2,29 +2,48 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
   LogOut,
   FileText,
-  MessageSquare,
   Calendar,
   Settings,
   Users,
-  ChevronDown,
-  ChevronRight,
   LayoutDashboard,
-  ClipboardList,
-  Shield,
   Radio,
   HeartPulse,
   Star,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Menu,
   Sun,
   Moon,
   ClipboardCheck,
@@ -32,56 +51,45 @@ import {
   AlertTriangle,
   Package,
   ShoppingCart,
-  FilePlus2,
   Award,
   Newspaper,
   BookOpen,
   UserCog,
+  ChevronsUpDown,
+  DatabaseZap,
+  ReceiptText,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type NavLeaf = {
+// ─── Navigation ───────────────────────────────────────────────────────────────
+
+type NavLink = {
   label: string;
   href: string;
   icon: React.ElementType;
   staffOnly?: boolean;
 };
 
-type NavSubGroup = {
-  label: string;
-  icon: React.ElementType;
+type NavSection = {
+  label?: string;
   staffOnly?: boolean;
-  children: NavLeaf[];
+  links: NavLink[];
 };
 
-type NavChild = NavLeaf | NavSubGroup;
-
-function isNavSubGroup(child: NavChild): child is NavSubGroup {
-  return "children" in child;
-}
-
-type NavItem =
-  | { label: string; href: string; icon: React.ElementType; children?: never; staffOnly?: boolean }
-  | { label: string; href?: never; icon: React.ElementType; children: NavChild[]; staffOnly?: boolean };
-
-// ─── Nav structure ────────────────────────────────────────────────────────────
-const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+const NAV_SECTIONS: NavSection[] = [
   {
-    label: "Tools",
-    icon: FileText,
-    staffOnly: true,
-    children: [
-      { label: "JI/AO Generator", href: "/tools/ji-ao-generator", icon: FileText },
-      { label: "SMS Scrapers", href: "/tools/scraper", icon: MessageSquare },
-      { label: "Programme Updater", href: "/tools/programme-updater", icon: Calendar },
-      { label: "Newsletter Management", href: "/tools/newsletter-updater", icon: Newspaper },
+    links: [{ label: "Dashboard", href: "/", icon: LayoutDashboard }],
+  },
+  {
+    label: "Cadets",
+    links: [
+      { label: "Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
+      { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck },
+      { label: "Events", href: "/cadets/events", icon: Calendar, staffOnly: true },
     ],
   },
   {
     label: "Assessment Sheets",
-    icon: ClipboardList,
-    children: [
+    links: [
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "First Aid", href: "/assessments/first-aid", icon: HeartPulse },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
@@ -89,437 +97,151 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: "Cadets",
-    icon: Users,
-    children: [
-      { label: "Cadet Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
-      { label: "Cadet Assessment Sheets", href: "/cadets/assessments", icon: ClipboardCheck },
-      { label: "Event List", href: "/cadets/events", icon: Calendar, staffOnly: true },
-    ],
-  },
-  {
     label: "Stores",
-    icon: Package,
     staffOnly: true,
-    children: [
-      {
-        label: "Uniform",
-        icon: Package,
-        children: [
-          { label: "Stock", href: "/stores/uniform/stock", icon: Package },
-          { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart },
-        ],
-      },
-      {
-        label: "Badges",
-        icon: Award,
-        children: [
-          { label: "Stock", href: "/stores/badges/stock", icon: Package },
-          { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart },
-        ],
-      },
+    links: [
+      { label: "Uniform Stock", href: "/stores/uniform/stock", icon: Package },
+      { label: "Uniform Orders", href: "/stores/uniform/orders", icon: ShoppingCart },
+      { label: "Badge Stock", href: "/stores/badges/stock", icon: Award },
+      { label: "Badge Orders", href: "/stores/badges/orders", icon: ShoppingCart },
     ],
   },
   {
-    label: "Form Generators",
-    icon: FilePlus2,
+    label: "Tools",
     staffOnly: true,
-    children: [
-      { label: "F1771e", href: "/form-generators/f1771e", icon: FileText },
+    links: [
+      { label: "JI/AO Generator", href: "/tools/ji-ao-generator", icon: FileText },
+      { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap },
+      { label: "Programme", href: "/tools/programme-updater", icon: Calendar },
+      { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper },
+      { label: "F1771e Claim", href: "/form-generators/f1771e", icon: ReceiptText },
     ],
   },
   {
-    label: "Staff",
-    icon: UserCog,
-    staffOnly: true,
-    children: [
-      { label: "Staff Overview", href: "/staff/overview", icon: Users, staffOnly: true },
+    label: "Squadron",
+    links: [
+      { label: "Staff", href: "/staff/overview", icon: UserCog, staffOnly: true },
+      { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
-  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
-function filterNavItems(items: NavItem[], role: string | undefined): NavItem[] {
-  return items
-    .filter((item) => role === "staff" || !item.staffOnly)
-    .map((item) => {
-      if (!item.children) return item;
-      const children = item.children
-        .filter((c) => role === "staff" || !c.staffOnly)
-        .map((c) => {
-          if (!isNavSubGroup(c)) return c;
-          const leaves = c.children.filter((l) => role === "staff" || !l.staffOnly);
-          return { ...c, children: leaves };
-        })
-        .filter((c) => !isNavSubGroup(c) || c.children.length > 0);
-      return { ...item, children };
-    })
-    .filter((item) => !item.children || item.children.length > 0) as NavItem[];
+function visibleSections(role: string | undefined): NavSection[] {
+  return NAV_SECTIONS.filter((s) => role === "staff" || !s.staffOnly)
+    .map((s) => ({
+      ...s,
+      links: s.links.filter((l) => role === "staff" || !l.staffOnly),
+    }))
+    .filter((s) => s.links.length > 0);
 }
 
-// ─── Dark mode toggle button ──────────────────────────────────────────────────
+function isLinkActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+/** Page title for the header, from the deepest matching nav link. */
+function currentPageTitle(pathname: string): string | null {
+  let best: { label: string; len: number } | null = null;
+  for (const section of NAV_SECTIONS) {
+    for (const link of section.links) {
+      if (isLinkActive(pathname, link.href) && link.href.length > (best?.len ?? -1)) {
+        best = {
+          label: section.label ? `${section.label} · ${link.label}` : link.label,
+          len: link.href.length,
+        };
+      }
+    }
+  }
+  return best?.label ?? null;
+}
+
+// ─── Theme toggle ─────────────────────────────────────────────────────────────
+
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   // Avoid hydration mismatch — only render after mount
   useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="h-8 w-8" />;
+  if (!mounted) return <div className="size-8" />;
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="icon"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       aria-label="Toggle dark mode"
     >
-      {resolvedTheme === "dark" ? (
-        <Sun className="h-4 w-4" />
-      ) : (
-        <Moon className="h-4 w-4" />
-      )}
-    </button>
+      {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+    </Button>
   );
 }
 
-// ─── Sub-group component (nested dropdown within a parent) ────────────────────
-function NavSubGroupComponent({
-  group,
-  pathname,
-  onNavigate,
-}: {
-  group: NavSubGroup;
-  pathname: string;
-  onNavigate?: () => void;
-}) {
-  const GroupIcon = group.icon;
-  const isGroupActive = group.children.some((l) => pathname === l.href);
-  const [open, setOpen] = useState(isGroupActive);
-  useEffect(() => {
-    if (isGroupActive) setOpen(true);
-  }, [isGroupActive]);
+// ─── User menu (sidebar footer) ───────────────────────────────────────────────
 
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-          isGroupActive
-            ? "text-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-foreground"
-        )}
-      >
-        <GroupIcon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left">{group.label}</span>
-        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-      </button>
-      {open && (
-        <div className="ml-4 mt-1 space-y-1 border-l pl-3">
-          {group.children.map((leaf) => {
-            const LeafIcon = leaf.icon;
-            const leafActive = pathname === leaf.href;
-            return (
-              <Link
-                key={leaf.href}
-                href={leaf.href}
-                onClick={onNavigate}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  leafActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-              >
-                <LeafIcon className="h-4 w-4 shrink-0" />
-                {leaf.label}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+function initials(name: string | null | undefined): string {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
-// ─── NavItem component ────────────────────────────────────────────────────────
-function NavItemComponent({
-  item,
-  collapsed,
-  onNavigate,
-}: {
-  item: NavItem;
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
-  const pathname = usePathname();
-  const hasChildren = !!item.children?.length;
-  const Icon = item.icon;
-
-  const isChildActive =
-    item.children?.some((c) =>
-      isNavSubGroup(c) ? c.children.some((l) => pathname === l.href) : pathname === c.href
-    ) ?? false;
-  const isActive = !hasChildren && item.href ? pathname === item.href : false;
-
-  const [open, setOpen] = useState(isChildActive);
-  useEffect(() => {
-    if (isChildActive) setOpen(true);
-  }, [isChildActive]);
-
-  if (hasChildren) {
-    if (collapsed) {
-      return (
-        <div className="group/tip relative">
-          <button
-            className={cn(
-              "flex w-full items-center justify-center rounded-md p-2 transition-colors",
-              isChildActive
-                ? "bg-accent text-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-          </button>
-          <div className="pointer-events-none absolute left-full top-0 z-50 ml-2 hidden w-48 rounded-md border bg-popover p-1 shadow-md group-hover/tip:pointer-events-auto group-hover/tip:block">
-            <p className="mb-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {item.label}
-            </p>
-            {item.children!.map((child) => {
-              if (isNavSubGroup(child)) {
-                return (
-                  <div key={child.label}>
-                    <p className="mt-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                      {child.label}
-                    </p>
-                    {child.children.map((leaf) => {
-                      const LeafIcon = leaf.icon;
-                      return (
-                        <Link
-                          key={leaf.href}
-                          href={leaf.href}
-                          onClick={onNavigate}
-                          className={cn(
-                            "flex items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors",
-                            pathname === leaf.href
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:bg-accent"
-                          )}
-                        >
-                          <LeafIcon className="h-3.5 w-3.5" />
-                          {leaf.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                );
-              }
-              const ChildIcon = child.icon;
-              return (
-                <Link
-                  key={child.href}
-                  href={child.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors",
-                    pathname === child.href
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent"
-                  )}
-                >
-                  <ChildIcon className="h-3.5 w-3.5" />
-                  {child.label}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-            isChildActive
-              ? "text-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}
-        >
-          <Icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">{item.label}</span>
-          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        </button>
-        {open && (
-          <div className="ml-4 mt-1 space-y-1 border-l pl-3">
-            {item.children!.map((child) => {
-              if (isNavSubGroup(child)) {
-                return (
-                  <NavSubGroupComponent
-                    key={child.label}
-                    group={child}
-                    pathname={pathname}
-                    onNavigate={onNavigate}
-                  />
-                );
-              }
-              const ChildIcon = child.icon;
-              const childActive = pathname === child.href;
-              return (
-                <Link
-                  key={child.href}
-                  href={child.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    childActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  )}
-                >
-                  <ChildIcon className="h-4 w-4 shrink-0" />
-                  {child.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (collapsed) {
-    return (
-      <div className="group/tip relative">
-        <Link
-          href={item.href!}
-          onClick={onNavigate}
-          className={cn(
-            "flex w-full items-center justify-center rounded-md p-2 transition-colors",
-            isActive
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}
-        >
-          <Icon className="h-4 w-4 shrink-0" />
-        </Link>
-        <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-xs shadow-md group-hover/tip:block">
-          {item.label}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={item.href!}
-      onClick={onNavigate}
-      className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-        isActive
-          ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      )}
-    >
-      <Icon className="h-4 w-4 shrink-0" />
-      {item.label}
-    </Link>
-  );
-}
-
-// ─── Sidebar content ──────────────────────────────────────────────────────────
-function SidebarContent({
-  collapsed,
-  onToggleCollapse,
-  onNavigate,
-}: {
-  collapsed: boolean;
-  onToggleCollapse: () => void;
-  onNavigate?: () => void;
-}) {
+function UserMenu() {
   const { data: session } = useSession();
-  const visibleNavItems = filterNavItems(NAV_ITEMS, session?.role);
+  const user = session?.user;
 
   return (
-    <div className="flex h-full flex-col">
-      <div
-        className={cn(
-          "flex items-center border-b",
-          collapsed ? "justify-center px-2 py-4" : "justify-between px-5 py-4"
-        )}
-      >
-        {collapsed ? (
-          <Shield className="h-6 w-6 text-primary" />
-        ) : (
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold tracking-tight">317 SMS</span>
-          </div>
-        )}
-        <button
-          onClick={onToggleCollapse}
-          className={cn(
-            "rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-            collapsed && "ml-0"
-          )}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="h-4 w-4" />
-          ) : (
-            <PanelLeftClose className="h-4 w-4" />
-          )}
-        </button>
-      </div>
-
-      <nav className={cn("flex-1 space-y-1 overflow-y-auto py-4", collapsed ? "px-2" : "px-3")}>
-        {visibleNavItems.map((item) => (
-          <NavItemComponent
-            key={item.href ?? item.label}
-            item={item}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
-        ))}
-      </nav>
-
-      <div className={cn("border-t py-3", collapsed ? "px-2" : "px-4")}>
-        {!collapsed && session?.user && (
-          <p className="mb-2 truncate text-xs text-muted-foreground">
-            Signed in as{" "}
-            <span className="font-medium text-foreground">{session.user.name}</span>
-          </p>
-        )}
-        {collapsed ? (
-          <div className="group/tip relative">
-            <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              className="flex w-full items-center justify-center rounded-md p-2 text-destructive transition-colors hover:bg-destructive/10"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-            <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-xs shadow-md group-hover/tip:block">
-              Logout
-            </div>
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
-        )}
-      </div>
-    </div>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton size="lg">
+              <Avatar className="size-8 rounded-md">
+                <AvatarFallback className="rounded-md bg-sidebar-primary text-sidebar-primary-foreground text-xs">
+                  {initials(user?.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left leading-tight">
+                <span className="truncate text-sm font-medium">{user?.name ?? "Signed out"}</span>
+                <span className="truncate text-xs text-sidebar-foreground/60 capitalize">
+                  {session?.role ?? ""}
+                </span>
+              </div>
+              <ChevronsUpDown className="ml-auto size-4" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-(--radix-dropdown-menu-trigger-width) min-w-56">
+            <DropdownMenuLabel className="font-normal">
+              <p className="text-sm font-medium">{user?.name}</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem variant="destructive" onClick={() => signOut({ callbackUrl: "/login" })}>
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }
 
 // ─── API status indicator ─────────────────────────────────────────────────────
+
 type ApiStatus = "checking" | "ok" | "api-down" | "auth-error";
 
 function ApiStatusBadge({ status }: { status: ApiStatus }) {
@@ -529,25 +251,23 @@ function ApiStatusBadge({ status }: { status: ApiStatus }) {
     <div
       className={cn(
         "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
-        status === "api-down"
-          ? "bg-destructive/10 text-destructive"
-          : "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+        status === "api-down" ? "bg-destructive/10 text-destructive" : "bg-warning/15 text-warning"
       )}
     >
       {status === "api-down" ? (
         <>
-          <WifiOff className="h-3.5 w-3.5" />
-          API Offline
+          <WifiOff className="size-3.5" />
+          API offline
         </>
       ) : (
         <>
-          <AlertTriangle className="h-3.5 w-3.5" />
-          Session expired — please&nbsp;
+          <AlertTriangle className="size-3.5" />
+          Session expired —&nbsp;
           <button
             onClick={() => signIn("google", { callbackUrl: window.location.pathname })}
             className="underline underline-offset-2"
           >
-            re-authenticate
+            sign in again
           </button>
         </>
       )}
@@ -555,31 +275,77 @@ function ApiStatusBadge({ status }: { status: ApiStatus }) {
   );
 }
 
+// ─── App sidebar ──────────────────────────────────────────────────────────────
+
+function AppSidebar() {
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const sections = visibleSections(session?.role);
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/">
+                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-md">
+                  <Image src="/icon.jpg" alt="" width={32} height={32} className="size-8 object-cover" />
+                </div>
+                <div className="grid flex-1 text-left leading-tight">
+                  <span className="truncate text-sm font-semibold">317 Squadron</span>
+                  <span className="truncate text-xs text-sidebar-foreground/60">Management System</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
+      <SidebarContent>
+        {sections.map((section, i) => (
+          <SidebarGroup key={section.label ?? i}>
+            {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.links.map((link) => (
+                  <SidebarMenuItem key={link.href}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={link.label}
+                      isActive={isLinkActive(pathname, link.href)}
+                    >
+                      <Link href={link.href}>
+                        <link.icon />
+                        <span>{link.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
+
+      <SidebarFooter>
+        <UserMenu />
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
 // ─── AppShell ─────────────────────────────────────────────────────────────────
-const NO_SHELL_ROUTES = ["/login"];
+
+const NO_SHELL_ROUTES = ["/login", "/unauthorized"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [collapsed, setCollapsed] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
 
   useEffect(() => {
-    const update = () => {
-      setCollapsed(window.innerWidth < 768);
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    const token = (session as any)?.id_token as string | undefined;
+    const token = session?.id_token as string | undefined;
     if (!token) return;
 
     const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -592,79 +358,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => setApiStatus("api-down"));
   }, [session]);
 
-  // Render bare page with no sidebar/header for auth routes
+  // Auth routes render without the shell
   if (NO_SHELL_ROUTES.includes(pathname)) {
     return <>{children}</>;
   }
 
+  const title = currentPageTitle(pathname);
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          "hidden md:flex flex-col shrink-0 border-r bg-background transition-all duration-200 ease-in-out",
-          collapsed ? "w-14" : "w-64"
-        )}
-      >
-        <SidebarContent
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((v) => !v)}
-        />
-      </aside>
-
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Mobile drawer */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-background transition-transform duration-200 ease-in-out md:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <SidebarContent
-          collapsed={false}
-          onToggleCollapse={() => setMobileOpen(false)}
-          onNavigate={() => setMobileOpen(false)}
-        />
-      </aside>
-
-      {/* Main */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Top bar — visible on all screen sizes, contains dark mode toggle */}
-        <header className="flex items-center justify-between border-b bg-background px-4 py-2">
-          {/* Left: hamburger on mobile, empty spacer on desktop */}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent md:hidden"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
-          {/* Centre: brand on mobile */}
-          <div className="flex items-center gap-2 md:hidden">
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="font-semibold tracking-tight">317 SMS</span>
-          </div>
-
-          {/* Invisible spacer so toggle stays right on desktop */}
-          <div className="hidden md:block" />
-
-          {/* Right: API status + dark mode toggle */}
-          <div className="flex items-center gap-2">
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
+          {title && <span className="text-sm font-medium text-muted-foreground">{title}</span>}
+          <div className="ml-auto flex items-center gap-2">
             <ApiStatusBadge status={apiStatus} />
             <ThemeToggle />
           </div>
         </header>
-
-        <main className="flex-1 overflow-y-auto bg-muted/30 p-4 md:p-8">{children}</main>
-      </div>
-    </div>
+        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

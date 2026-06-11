@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, MessageSquare, Calendar, Users, Newspaper } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/page-header";
+import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
+import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  Tooltip, ResponsiveContainer,
 } from "recharts";
 
 const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -45,19 +48,17 @@ const BADGE_LABELS: Record<string, string> = {
   swimming_proficiency: "Swimming",
 };
 
+// Badge level colours are domain colours (bronze/silver/gold), not theme colours
 const LEVEL_COLOURS: Record<string, string> = {
-  None: "#e5e7eb",
+  None: "var(--muted)",
   Blue: "#3b82f6",
-  Bronze: "#92400e",
-  Bronze_fill: "#b45309",
+  Bronze: "#b45309",
   Silver: "#6b7280",
   Gold: "#ca8a04",
   Basic: "#6ee7b7",
   Intermediate: "#34d399",
   Advanced: "#059669",
   Nijmegen: "#7c3aed",
-  True: "#22c55e",
-  False: "#e5e7eb",
 };
 
 const LEVEL_ORDER = ["None", "Blue", "Bronze", "Silver", "Gold", "Nijmegen", "Basic", "Intermediate", "Advanced"];
@@ -79,50 +80,36 @@ async function fetchJSON(path: string, token: string) {
   return res.json();
 }
 
-// ─── Top stat cards ───────────────────────────────────────────────────────────
+// ─── Stat cards ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function StatCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: React.ReactNode;
+  detail?: React.ReactNode;
+}) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <p className="text-sm text-muted-foreground">{label}</p>
+    <Card className="gap-2 py-5">
+      <CardHeader className="pb-0">
+        <CardDescription>{label}</CardDescription>
       </CardHeader>
-      <CardContent className="flex items-end justify-between">
-        <span className="text-3xl font-bold">{value}</span>
-        {sub && <Badge variant="secondary" className="mb-1">{sub}</Badge>}
+      <CardContent className="flex flex-col gap-1.5">
+        <span className="text-2xl font-semibold tabular-nums">{value}</span>
+        {detail && <div className="text-xs text-muted-foreground">{detail}</div>}
       </CardContent>
     </Card>
   );
 }
 
-// ─── Flight breakdown ─────────────────────────────────────────────────────────
-
-const FLIGHT_ORDER = ["NCO", "A", "B", "C"];
-
-function FlightBreakdown({ byFlight }: { byFlight: Record<string, number> }) {
-  const data = FLIGHT_ORDER
-    .filter((f) => byFlight[f] !== undefined)
-    .map((f) => ({ flight: `${f} Flt`, count: byFlight[f] }));
-
-  const extra = Object.entries(byFlight)
-    .filter(([f]) => !FLIGHT_ORDER.includes(f))
-    .map(([f, n]) => ({ flight: f, count: n }));
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">By Flight</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-wrap gap-4">
-        {[...data, ...extra].map(({ flight, count }) => (
-          <div key={flight} className="text-center">
-            <p className="text-2xl font-bold">{count}</p>
-            <p className="text-xs text-muted-foreground">{flight}</p>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
+function breakdownLine(counts: Record<string, number>, order: string[]): string {
+  const known = order.filter((k) => counts[k] !== undefined).map((k) => `${counts[k]} ${k}`);
+  const extra = Object.keys(counts)
+    .filter((k) => !order.includes(k))
+    .map((k) => `${counts[k]} ${k}`);
+  return [...known, ...extra].join(" · ");
 }
 
 // ─── Age bar chart ────────────────────────────────────────────────────────────
@@ -134,17 +121,26 @@ function AgeChart({ byAge }: { byAge: Record<string, number> }) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Age Distribution</CardTitle>
+      <CardHeader>
+        <CardTitle className="text-base">Age distribution</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={160}>
+        <ResponsiveContainer width="100%" height={180}>
           <BarChart data={data} barSize={22}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="age" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={24} />
-            <Tooltip />
-            <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="age" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={24} tickLine={false} axisLine={false} />
+            <Tooltip
+              cursor={{ fill: "var(--muted)" }}
+              contentStyle={{
+                background: "var(--popover)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                color: "var(--popover-foreground)",
+                fontSize: 12,
+              }}
+            />
+            <Bar dataKey="count" fill="var(--chart-1)" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -152,35 +148,7 @@ function AgeChart({ byAge }: { byAge: Record<string, number> }) {
   );
 }
 
-// ─── Rank breakdown ───────────────────────────────────────────────────────────
-
-const RANK_ORDER = ["Cadet", "Cpl", "Sgt", "FS", "CWO"];
-
-function RankBreakdown({ byRank }: { byRank: Record<string, number> }) {
-  const data = RANK_ORDER
-    .filter((r) => byRank[r] !== undefined)
-    .map((r) => ({ rank: r, count: byRank[r] }));
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">NCO Breakdown</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-4">
-          {data.map(({ rank, count }) => (
-            <div key={rank} className="text-center min-w-[48px]">
-              <p className="text-2xl font-bold">{count}</p>
-              <p className="text-xs text-muted-foreground">{rank}</p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Badge stat card ──────────────────────────────────────────────────────────
+// ─── Badge progression card ───────────────────────────────────────────────────
 
 function BadgeStatCard({
   badgeKey,
@@ -198,12 +166,10 @@ function BadgeStatCard({
   const completedCount = total - noneCount;
   const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
-  // Sort levels for display
   const sortedLevels = LEVEL_ORDER
     .filter((l) => l !== "None" && (levels[l] ?? 0) > 0)
     .map((l) => ({ level: l, count: levels[l] ?? 0 }));
 
-  // Build per-level history series
   const allLevels = Array.from(
     new Set(history.flatMap((h) => Object.keys(h.data.badges[badgeKey] ?? {})))
   ).filter((l) => l !== "None");
@@ -217,98 +183,113 @@ function BadgeStatCard({
   });
 
   return (
-    <Card>
-      <CardHeader className="pb-1">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">{label}</CardTitle>
-          <Badge variant={pct > 0 ? "default" : "secondary"} className="text-xs">
-            {pct}% ({completedCount}/{total})
+    <Card className="gap-3">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm">{label}</CardTitle>
+          <Badge variant={pct > 0 ? "secondary" : "outline"} className="tabular-nums">
+            {completedCount}/{total}
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {/* Level breakdown */}
+      <CardContent className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {sortedLevels.length === 0 ? (
-            <span className="text-xs text-muted-foreground">No cadets hold this badge yet</span>
+            <span className="text-xs text-muted-foreground">Not yet held by any cadet</span>
           ) : (
             sortedLevels.map(({ level, count }) => (
-              <div key={level} className="flex items-center gap-1">
+              <div key={level} className="flex items-center gap-1.5">
                 <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  className="inline-block size-2 rounded-full"
                   style={{ background: levelColor(level) }}
                 />
                 <span className="text-xs font-medium">{level}</span>
-                <span className="text-xs text-muted-foreground">{count}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
               </div>
             ))
           )}
         </div>
 
-        {/* Progression chart */}
-        {chartData.length >= 2 ? (
-          <ResponsiveContainer width="100%" height={100}>
+        {chartData.length >= 2 && (
+          <ResponsiveContainer width="100%" height={90}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={20} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={20} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--popover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  color: "var(--popover-foreground)",
+                  fontSize: 12,
+                }}
+              />
               {allLevels.map((l) => (
-                <Line
-                  key={l}
-                  type="monotone"
-                  dataKey={l}
-                  stroke={levelColor(l)}
-                  strokeWidth={2}
-                  dot={false}
-                />
+                <Line key={l} type="monotone" dataKey={l} stroke={levelColor(l)} strokeWidth={2} dot={false} />
               ))}
             </LineChart>
           </ResponsiveContainer>
-        ) : (
-          <p className="text-xs text-muted-foreground pt-1">
-            Run the scraper bi-weekly to build progression charts
-          </p>
         )}
       </CardContent>
     </Card>
   );
 }
 
-// ─── Quick tools ──────────────────────────────────────────────────────────────
+// ─── Quick links (staff tools) ────────────────────────────────────────────────
 
 const QUICK_TOOLS = [
-  { title: "JI/AO Generator", desc: "Generate cadet documents", href: "/tools/ji-ao-generator", icon: FileText },
-  { title: "SMS Scraper", desc: "Run qualification & event tools", href: "/tools/scraper", icon: MessageSquare },
-  { title: "Programme Updater", desc: "Push the latest programme to the website", href: "/tools/programme-updater", icon: Calendar },
-  { title: "Newsletter Updater", desc: "Upload a new newsletter to the website", href: "/tools/newsletter-updater", icon: Newspaper },
+  { title: "JI/AO Generator", desc: "Generate joining instructions and admin orders", href: "/tools/ji-ao-generator", icon: FileText },
+  { title: "Bader Scrapers", desc: "Sync cadet and event data from SMS", href: "/tools/scraper", icon: DatabaseZap },
+  { title: "Programme", desc: "Publish the monthly programme to the website", href: "/tools/programme-updater", icon: Calendar },
+  { title: "Newsletter", desc: "Manage published newsletters", href: "/tools/newsletter-updater", icon: Newspaper },
 ];
 
 function QuickTools() {
   return (
-    <section>
-      <h2 className="mb-4 text-lg font-semibold">Quick Access</h2>
-      <div className="grid gap-4 sm:grid-cols-3">
-        {QUICK_TOOLS.map((t) => {
-          const Icon = t.icon;
-          return (
-            <Link key={t.href} href={t.href}>
-              <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
-                <CardHeader>
-                  <Icon className="mb-2 h-5 w-5 text-primary" />
-                  <CardTitle className="text-base">{t.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{t.desc}</p>
-                </CardHeader>
-              </Card>
-            </Link>
-          );
-        })}
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tools</h2>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {QUICK_TOOLS.map((t) => (
+          <Link key={t.href} href={t.href} className="group">
+            <Card className="h-full gap-2 py-5 transition-colors group-hover:border-primary/40">
+              <CardHeader className="pb-0">
+                <div className="flex items-center justify-between">
+                  <t.icon className="size-4 text-muted-foreground" />
+                  <ArrowRight className="size-3.5 text-muted-foreground/0 transition-all group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-0.5">
+                <p className="text-sm font-medium">{t.title}</p>
+                <p className="text-xs text-muted-foreground">{t.desc}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </section>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-28" />
+        ))}
+      </div>
+      <Skeleton className="h-64" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
+          <Skeleton key={i} className="h-40" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { data: session } = useSession({ required: true });
@@ -337,54 +318,45 @@ export default function HomePage() {
   }, [session?.id_token]);
 
   const total = stats?.total_cadets ?? 0;
+  const ncoCount = stats
+    ? Object.entries(stats.by_rank)
+        .filter(([rank]) => rank !== "Cadet" && rank !== "Unknown")
+        .reduce((sum, [, n]) => sum + n, 0)
+    : 0;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        {session?.user && (
-          <p className="text-muted-foreground">Welcome back, {session.user.name}</p>
-        )}
-      </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+      <PageHeader title="Dashboard" description="Squadron overview and badge progression" />
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Loading stats…</p>
+        <DashboardSkeleton />
       ) : (
-        <>
-          {/* Top-level numbers */}
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Total Cadets" value={total} />
-            {stats && <FlightBreakdown byFlight={stats.by_flight} />}
-            {stats && <RankBreakdown byRank={stats.by_rank} />}
-            {stats && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Users className="h-4 w-4" /> Cadets Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Link href="/cadets/overview" className="text-sm text-primary underline-offset-4 hover:underline">
-                    View all cadets →
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-          </section>
-
-          {/* Age distribution */}
-          {stats && (
-            <section className="grid gap-4 lg:grid-cols-2">
-              <AgeChart byAge={stats.by_age} />
+        stats && (
+          <>
+            <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <StatCard label="Cadets on strength" value={total} />
+              <StatCard
+                label="Flights"
+                value={Object.keys(stats.by_flight).length}
+                detail={breakdownLine(stats.by_flight, FLIGHT_ORDER)}
+              />
+              <StatCard
+                label="NCOs"
+                value={ncoCount}
+                detail={breakdownLine(
+                  Object.fromEntries(Object.entries(stats.by_rank).filter(([r]) => r !== "Cadet" && r !== "Unknown")),
+                  RANK_ORDER,
+                )}
+              />
             </section>
-          )}
 
-          {/* Badge progression */}
-          {stats && (
-            <section>
-              <h2 className="mb-4 text-lg font-semibold">Badge Progression</h2>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <AgeChart byAge={stats.by_age} />
+
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Badge progression
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {Object.keys(BADGE_LABELS).map((key) => (
                   <BadgeStatCard
                     key={key}
@@ -396,11 +368,11 @@ export default function HomePage() {
                 ))}
               </div>
             </section>
-          )}
-        </>
+          </>
+        )
       )}
 
-      <QuickTools />
+      {session?.role === "staff" && <QuickTools />}
     </div>
   );
 }

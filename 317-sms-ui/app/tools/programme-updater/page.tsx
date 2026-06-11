@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { PageHeader } from "@/components/page-header";
+import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { RefreshCw } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -66,7 +68,7 @@ export default function ProgrammeUpdaterPage() {
       }
 
       setResult(data);
-      toast.success("Programme updated! Vercel will redeploy shortly.");
+      toast.success("Programme updated — Vercel will redeploy shortly.");
     } catch {
       toast.error("Server unreachable.");
     } finally {
@@ -75,76 +77,65 @@ export default function ProgrammeUpdaterPage() {
   };
 
   return (
-    <div className="mx-auto max-w-lg pb-16">
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Programme"
+        description="Publish a month's programme from Google Drive to the squadron website"
+      />
+
       <Card>
-        <CardHeader>
-          <CardTitle>Programme Updater</CardTitle>
-          <CardDescription>
-            Pulls the selected month's programme from Google Drive, converts it to images,
-            and pushes everything to GitHub. Vercel will redeploy automatically.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent>
+          <FieldGroup>
+            <div className="grid grid-cols-2 gap-3">
+              <Field>
+                <FieldLabel htmlFor="month">Month</FieldLabel>
+                <Select value={month} onValueChange={setMonth}>
+                  <SelectTrigger id="month">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {MONTHS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Month</Label>
-              <Select value={month} onValueChange={setMonth}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Field>
+                <FieldLabel htmlFor="year">Year</FieldLabel>
+                <Select value={year} onValueChange={setYear}>
+                  <SelectTrigger id="year">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {YEARS.map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
             </div>
 
-            <div className="space-y-2">
-              <Label>Year</Label>
-              <Select value={year} onValueChange={setYear}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {YEARS.map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {result && (
-            <div className="rounded-lg border bg-slate-50 dark:bg-slate-900 p-4 text-sm space-y-1">
-              <p className="font-medium text-green-600 dark:text-green-400">✓ Update successful</p>
-              <p className="text-muted-foreground">PDF: <span className="font-mono">{result.pdf}</span></p>
-              <p className="text-muted-foreground">Pages converted: {result.pages_converted}</p>
-            </div>
-          )}
-
-          <Button
-            className="w-full py-6 text-lg"
-            onClick={handleUpdate}
-            disabled={loading || !session}
-          >
-            {loading ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              "Update Programme"
+            {result && (
+              <Alert>
+                <CheckCircle2 className="text-success" />
+                <AlertTitle>Update successful</AlertTitle>
+                <AlertDescription>
+                  <span className="font-mono">{result.pdf}</span> · {result.pages_converted} page
+                  {result.pages_converted !== 1 ? "s" : ""} converted. Vercel will redeploy automatically.
+                </AlertDescription>
+              </Alert>
             )}
-          </Button>
 
-          <div className="pt-2 border-t">
-            <Link href="/">
-              <Button variant="ghost" className="w-full">← Back to Home</Button>
-            </Link>
-          </div>
-
+            <Button className="w-full" onClick={handleUpdate} disabled={loading || !session}>
+              {loading && <Spinner data-icon="inline-start" />}
+              {loading ? "Updating…" : "Update programme"}
+            </Button>
+          </FieldGroup>
         </CardContent>
       </Card>
     </div>
