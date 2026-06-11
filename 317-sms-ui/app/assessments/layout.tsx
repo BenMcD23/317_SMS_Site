@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/page-header";
 
 const TABS = [
   { label: "Leadership", href: "/assessments/leadership" },
@@ -19,23 +20,23 @@ export default function AssessmentsLayout({
   const pathname = usePathname();
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Assessment Sheets</h1>
-        <p className="text-muted-foreground">View and manage cadet assessments</p>
-      </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <PageHeader
+        title="Assessment Sheets"
+        description="Record assessments and generate the paperwork"
+        className="border-b-0 pb-0"
+      />
 
-      {/* Sub-nav tabs */}
       <div className="overflow-x-auto">
-        <div className="flex gap-1 border-b min-w-max">
+        <div className="flex min-w-max gap-1 border-b">
           {TABS.map((tab) => (
             <Link
               key={tab.href}
               href={tab.href}
               className={cn(
-                "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                "-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors",
                 pathname === tab.href
-                  ? "border-primary text-primary"
+                  ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >

@@ -1,13 +1,14 @@
 "use client";
-import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageHeader } from "@/components/page-header";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Info, Loader2, Clock, CheckSquare, Square, X } from "lucide-react";
+import { Loader2, Clock, CheckSquare, Square, X } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -148,41 +149,42 @@ function ConsolePanel({
 
   const borderColor =
     status === "done"
-      ? "border-emerald-500/40"
+      ? "border-success/40"
       : status === "error"
-      ? "border-red-500/40"
-      : "border-blue-500/30";
+      ? "border-destructive/40"
+      : "border-primary/30";
 
   const headerBg =
     status === "done"
-      ? "bg-emerald-500/10"
+      ? "bg-success/10"
       : status === "error"
-      ? "bg-red-500/10"
-      : "bg-blue-500/10";
+      ? "bg-destructive/10"
+      : "bg-primary/10";
 
   return (
-    <div className={`flex flex-col rounded-xl border ${borderColor} overflow-hidden`}>
-      <div className={`flex items-center gap-2 px-3 py-2 text-sm font-medium ${headerBg}`}>
+    <div className={cn("flex flex-col overflow-hidden rounded-lg border", borderColor)}>
+      <div className={cn("flex items-center gap-2 px-3 py-2 text-sm font-medium", headerBg)}>
         {(status === "running" || status === "stopping") && (
-          <Loader2 size={13} className="animate-spin text-blue-500 shrink-0" />
+          <Loader2 size={13} className="shrink-0 animate-spin text-primary" />
         )}
-        {status === "done" && <span className="text-emerald-500 shrink-0">✓</span>}
-        {status === "error" && <span className="text-red-500 shrink-0">✗</span>}
+        {status === "done" && <span className="shrink-0 text-success">✓</span>}
+        {status === "error" && <span className="shrink-0 text-destructive">✗</span>}
         <span className="truncate">{label}</span>
         <Badge
-          variant="secondary"
-          className={`ml-auto text-xs ${
+          variant="outline"
+          className={cn(
+            "ml-auto",
             status === "done"
-              ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+              ? "border-success/40 bg-success/10 text-success"
               : status === "error"
-              ? "bg-red-500/20 text-red-700 dark:text-red-300"
-              : "bg-blue-500/20 text-blue-700 dark:text-blue-300"
-          }`}
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : "border-primary/40 bg-primary/10 text-primary"
+          )}
         >
           {status === "running"
             ? "Running"
             : status === "stopping"
-            ? "Stopping..."
+            ? "Stopping…"
             : status === "done"
             ? "Done"
             : "Error"}
@@ -191,7 +193,7 @@ function ConsolePanel({
           <button
             onClick={handleStop}
             title="Stop scraper"
-            className="ml-1 cursor-pointer p-0.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-colors"
+            className="ml-1 cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
           >
             <X size={13} />
           </button>
@@ -368,45 +370,44 @@ export default function ScraperPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 pb-16">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold">SMS Scraper Tools</h1>
-          <p className="text-muted-foreground mt-1">
-            {phase === "select"
-              ? "Select the scrapers you want to run."
-              : "Scrapers are running. Watch the consoles below."}
-          </p>
-        </div>
-        {phase === "running" && (
-          <Badge variant={allDone ? "secondary" : "destructive"}>
-            {allDone ? "All Done" : "Running"}
-          </Badge>
-        )}
-      </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Bader Scrapers"
+        description={
+          phase === "select"
+            ? "Sync cadet, event and medical data from Bader SMS"
+            : "Scrapers are running — watch the consoles below"
+        }
+        actions={
+          phase === "running" ? (
+            <Badge variant={allDone ? "secondary" : "outline"} className={cn(!allDone && "border-primary/40 bg-primary/10 text-primary")}>
+              {allDone ? "All done" : "Running"}
+            </Badge>
+          ) : undefined
+        }
+      />
 
       {/* Running scrapers banner (visible on select phase) */}
       {phase === "select" && externallyRunning.length > 0 && (
         <button
           onClick={handleViewRunning}
-          className="w-full cursor-pointer flex items-center gap-3 px-4 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-sm text-left hover:bg-blue-500/15 transition-colors"
+          className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-left text-sm transition-colors hover:bg-primary/15"
         >
-          <Loader2 size={15} className="animate-spin text-blue-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="font-medium text-blue-700 dark:text-blue-300">
+          <Loader2 size={15} className="shrink-0 animate-spin text-primary" />
+          <div className="min-w-0 flex-1">
+            <span className="font-medium text-primary">
               {externallyRunning.length === 1
                 ? externallyRunning[0].label
                 : `${externallyRunning.length} scrapers`}{" "}
               running
             </span>
             {externallyRunning[0].id && runningState[externallyRunning[0].id]?.started_by && (
-              <span className="text-muted-foreground ml-2">
+              <span className="ml-2 text-muted-foreground">
                 — started by {runningState[externallyRunning[0].id].started_by}
               </span>
             )}
           </div>
-          <span className="text-blue-500 text-xs font-medium shrink-0">View output →</span>
+          <span className="shrink-0 text-xs font-medium text-primary">View output →</span>
         </button>
       )}
 
@@ -451,18 +452,19 @@ export default function ScraperPage() {
                 <div
                   key={tool.id}
                   onClick={() => !isRunning && toggleOne(tool.id)}
-                  className={`flex flex-col space-y-2 p-4 border rounded-xl transition-colors ${
+                  className={cn(
+                    "flex flex-col gap-2 rounded-lg border p-4 transition-colors",
                     isRunning
-                      ? "border-blue-500/30 bg-blue-500/5 cursor-default"
+                      ? "cursor-default border-primary/30 bg-primary/5"
                       : isChecked
-                      ? "border-primary/50 bg-primary/5 cursor-pointer"
-                      : "bg-card hover:bg-accent/5 cursor-pointer"
-                  }`}
+                      ? "cursor-pointer border-primary/50 bg-primary/5"
+                      : "cursor-pointer bg-card hover:bg-muted/40"
+                  )}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {isRunning ? (
-                        <Loader2 size={16} className="animate-spin text-blue-500 shrink-0" />
+                        <Loader2 size={16} className="shrink-0 animate-spin text-primary" />
                       ) : (
                         <Checkbox
                           checked={isChecked}
@@ -471,9 +473,9 @@ export default function ScraperPage() {
                           className="shrink-0"
                         />
                       )}
-                      <h3 className="font-semibold">{tool.label}</h3>
+                      <h3 className="text-sm font-semibold">{tool.label}</h3>
                       {isRunning && (
-                        <Badge className="bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs border-0">
+                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
                           Running
                         </Badge>
                       )}
@@ -482,16 +484,13 @@ export default function ScraperPage() {
                       <Clock size={12} />
                       <span>{lastRun ? formatLastRan(lastRun.ran_at) : "Never"}</span>
                       {lastRun?.success === false && (
-                        <Badge variant="destructive" className="text-xs py-0 px-1.5">
+                        <Badge variant="destructive" className="px-1.5 py-0">
                           Failed
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-start gap-2 text-sm text-muted-foreground pl-7">
-                    <Info size={14} className="mt-0.5 shrink-0 text-blue-500" />
-                    <p>{tool.description}</p>
-                  </div>
+                  <p className="pl-7 text-sm text-muted-foreground">{tool.description}</p>
                 </div>
               );
             })}
@@ -539,20 +538,12 @@ export default function ScraperPage() {
           {allDone && (
             <div className="flex justify-center">
               <Button onClick={handleBackToSelect} variant="outline">
-                ← Back to Scraper Selection
+                Back to scraper selection
               </Button>
             </div>
           )}
         </>
       )}
-
-      <div className="pt-4 border-t">
-        <Link href="/">
-          <Button variant="ghost" className="w-full">
-            ← Back to Home
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }

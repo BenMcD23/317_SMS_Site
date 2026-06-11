@@ -100,9 +100,9 @@ function ScoreButton({
         "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border text-sm font-semibold transition-all",
         selected
           ? score === 1
-            ? "border-red-500 bg-red-500 text-white shadow-sm"
+            ? "border-destructive bg-destructive text-white shadow-sm"
             : score === 5
-            ? "border-green-500 bg-green-500 text-white shadow-sm"
+            ? "border-success bg-success text-white shadow-sm"
             : "border-primary bg-primary text-primary-foreground shadow-sm"
           : "border-muted text-muted-foreground hover:border-primary/40 hover:bg-muted"
       )}
@@ -321,13 +321,13 @@ export default function MoiAssessmentPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-6 pb-16">
         <div>
-          <h1 className="text-3xl font-bold">MOI Assessment</h1>
+          <h1 className="text-xl font-semibold">MOI Assessment</h1>
           <p className="text-muted-foreground">Air Cadet Methods of Instruction Course</p>
         </div>
 
-        <div className="flex flex-col items-center gap-6 rounded-xl border border-green-500/30 bg-green-500/10 px-8 py-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
+        <div className="flex flex-col items-center gap-6 rounded-xl border border-success/30 bg-success/10 px-8 py-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/20">
+            <CheckCircle2 className="h-8 w-8 text-success" />
           </div>
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">Assessment Saved</h2>
@@ -351,7 +351,7 @@ export default function MoiAssessmentPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Result</span>
               {passed ? (
-                <Badge className="bg-green-500 text-white hover:bg-green-500 gap-1 text-xs">
+                <Badge className="bg-success text-white hover:bg-success gap-1 text-xs">
                   <CheckCircle2 className="h-3 w-3" /> PASS
                 </Badge>
               ) : (
@@ -383,14 +383,14 @@ export default function MoiAssessmentPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
       <div>
-        <h1 className="text-3xl font-bold">MOI Assessment</h1>
+        <h1 className="text-xl font-semibold">MOI Assessment</h1>
         <p className="text-muted-foreground">Air Cadet Methods of Instruction Course</p>
       </div>
 
       {draftRestored && !draftBannerDismissed && (
-        <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          <span className="text-amber-700">Draft restored from your last session.</span>
-          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800">Reset Form</Button>
+        <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+          <span className="text-warning">Draft restored from your last session.</span>
+          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-warning/40 text-warning hover:bg-warning/10 hover:text-warning">Reset Form</Button>
         </div>
       )}
 
@@ -490,7 +490,7 @@ export default function MoiAssessmentPage() {
         {allAnswered && (
           <div className="shrink-0">
             {passed ? (
-              <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500">
+              <Badge className="gap-1.5 bg-success text-white hover:bg-success">
                 <CheckCircle2 className="h-3.5 w-3.5" /> PASS
               </Badge>
             ) : (
@@ -536,7 +536,7 @@ export default function MoiAssessmentPage() {
                   }))
                 }
               />
-              <p className={`text-xs text-right mt-0.5 ${form.sectionComments[section.id].length > section.commentLimit ? "text-red-500" : "text-muted-foreground"}`}>
+              <p className={`text-xs text-right mt-0.5 ${form.sectionComments[section.id].length > section.commentLimit ? "text-destructive" : "text-muted-foreground"}`}>
                 {form.sectionComments[section.id].length}/{section.commentLimit}
               </p>
             </div>
@@ -550,8 +550,8 @@ export default function MoiAssessmentPage() {
           className={cn(
             "rounded-lg border px-4 py-3 text-sm",
             passed
-              ? "border-green-200 bg-green-50 text-green-800"
-              : "border-red-200 bg-red-50 text-red-800"
+              ? "border-success/30 bg-success/10 text-success"
+              : "border-destructive/30 bg-destructive/10 text-destructive"
           )}
         >
           {passed ? (
@@ -586,7 +586,7 @@ export default function MoiAssessmentPage() {
               value={form.strengthsSummary}
               onChange={(e) => setForm((f) => ({ ...f, strengthsSummary: e.target.value }))}
             />
-            <p className={`text-xs text-right mt-0.5 ${form.strengthsSummary.length > 1150 ? "text-red-500" : "text-muted-foreground"}`}>
+            <p className={`text-xs text-right mt-0.5 ${form.strengthsSummary.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}>
               {form.strengthsSummary.length}/1150
             </p>
           </div>
@@ -600,7 +600,7 @@ export default function MoiAssessmentPage() {
               value={form.improvementsSummary}
               onChange={(e) => setForm((f) => ({ ...f, improvementsSummary: e.target.value }))}
             />
-            <p className={`text-xs text-right mt-0.5 ${form.improvementsSummary.length > 1150 ? "text-red-500" : "text-muted-foreground"}`}>
+            <p className={`text-xs text-right mt-0.5 ${form.improvementsSummary.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}>
               {form.improvementsSummary.length}/1150
             </p>
           </div>
@@ -614,7 +614,7 @@ export default function MoiAssessmentPage() {
               value={form.generalComments}
               onChange={(e) => setForm((f) => ({ ...f, generalComments: e.target.value }))}
             />
-            <p className={`text-xs text-right mt-0.5 ${form.generalComments.length > 1150 ? "text-red-500" : "text-muted-foreground"}`}>
+            <p className={`text-xs text-right mt-0.5 ${form.generalComments.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}>
               {form.generalComments.length}/1150
             </p>
           </div>

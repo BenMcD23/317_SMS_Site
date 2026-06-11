@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
 import { Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -134,30 +136,23 @@ export default function StockPage() {
 
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center justify-between gap-4 sm:block">
-          <div>
-            <h1 className="text-3xl font-bold">Stock</h1>
-            <p className="text-muted-foreground">
-              {loading ? "Loading..." : `${totalCount} items across ${stock.length} lines`}
-            </p>
-          </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:hidden">
-            <Package className="h-5 w-5 text-primary" />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:flex">
-            <Package className="h-5 w-5 text-primary" />
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setAddBoxAreaOpen(true)}>
-            <FolderPlus className="mr-2 h-4 w-4" />
-            Add Box/Area
-          </Button>
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Uniform Stock"
+        description={loading ? "Loading…" : `${totalCount} items across ${stock.length} lines`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setAddBoxAreaOpen(true)}>
+              <FolderPlus data-icon="inline-start" />
+              Add box/area
+            </Button>
+            <Button size="sm" onClick={() => setAddStockOpen(true)}>
+              <Plus data-icon="inline-start" />
+              Add stock
+            </Button>
+          </>
+        }
+      />
 
       {/* Search */}
       <div className="flex gap-2">
@@ -180,20 +175,7 @@ export default function StockPage() {
         )}
       </div>
 
-      {/* Add Stock button */}
-      <div className="flex justify-center">
-        <Button size="sm" onClick={() => setAddStockOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Stock
-        </Button>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} />
 
       {/* Loading */}
       {loading && (
