@@ -57,6 +57,10 @@ export default function BadgeStockPage() {
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [addColOpen, setAddColOpen] = useState(false);
 
+  // Delete row/col confirm dialogs
+  const [deleteRowConfirm, setDeleteRowConfirm] = useState<number | null>(null);
+  const [deleteColConfirm, setDeleteColConfirm] = useState<number | null>(null);
+
   useEffect(() => { load(); }, []);
 
   async function load() {
@@ -370,8 +374,8 @@ export default function BadgeStockPage() {
             onAddItem={(cellId) => openAddBadge(cellId)}
             onEditItem={openEditBadge}
             onDeleteItem={handleDeleteItem}
-            onDeleteRow={handleDeleteRow}
-            onDeleteCol={handleDeleteCol}
+            onDeleteRow={(r) => setDeleteRowConfirm(r)}
+            onDeleteCol={(c) => setDeleteColConfirm(c)}
             onRenameCell={handleRenameCell}
           />
           <div className="flex justify-center pt-2">
@@ -656,6 +660,38 @@ export default function BadgeStockPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddColOpen(false)}>Cancel</Button>
             <Button onClick={handleAddCol}>Add Column</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Row confirm */}
+      <Dialog open={deleteRowConfirm !== null} onOpenChange={(o) => { if (!o) setDeleteRowConfirm(null); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader><DialogTitle>Delete Row {(deleteRowConfirm ?? 0) + 1}?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            All badges in row {(deleteRowConfirm ?? 0) + 1} will be permanently removed. This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteRowConfirm(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { if (deleteRowConfirm !== null) { handleDeleteRow(deleteRowConfirm); setDeleteRowConfirm(null); } }}>
+              Delete Row
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Col confirm */}
+      <Dialog open={deleteColConfirm !== null} onOpenChange={(o) => { if (!o) setDeleteColConfirm(null); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader><DialogTitle>Delete Column {(deleteColConfirm ?? 0) + 1}?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            All badges in column {(deleteColConfirm ?? 0) + 1} will be permanently removed. This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteColConfirm(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { if (deleteColConfirm !== null) { handleDeleteCol(deleteColConfirm); setDeleteColConfirm(null); } }}>
+              Delete Column
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

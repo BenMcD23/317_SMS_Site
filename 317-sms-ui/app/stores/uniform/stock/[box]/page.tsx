@@ -54,7 +54,6 @@ export default function BoxPage() {
   const [form, setForm] = useState<ItemFormState>(emptyForm(boxLabel));
   const [submitting, setSubmitting] = useState(false);
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
-  const [deleteBoxConfirm, setDeleteBoxConfirm] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -257,8 +256,6 @@ export default function BoxPage() {
         onAddSection={handleAddSection}
         deleteItemConfirm={deleteItemConfirm}
         onDeleteItemConfirm={setDeleteItemConfirm}
-        deleteBoxConfirm={deleteBoxConfirm}
-        onDeleteBoxConfirm={setDeleteBoxConfirm}
         editMode={editMode}
         isMisc={isMisc}
       />

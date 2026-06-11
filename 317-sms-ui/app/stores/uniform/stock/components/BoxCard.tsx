@@ -4,6 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 import { useState } from "react";
 
@@ -103,38 +104,36 @@ export function BoxCard({
           {/* Delete box — bottom-left */}
           {onDeleteBox && (
             <div className="absolute bottom-1 left-1" onClick={(e) => e.stopPropagation()}>
-              {deleteConfirm ? (
-                <div className="flex gap-0.5">
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-5 px-1 text-xs"
-                    onClick={() => { setDeleteConfirm(false); onDeleteBox(); }}
-                  >
-                    ✓
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-5 px-1 text-xs"
-                    onClick={() => setDeleteConfirm(false)}
-                  >
-                    ✕
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 text-destructive/60 hover:text-destructive"
-                  title="Delete box"
-                  onClick={() => setDeleteConfirm(true)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 text-destructive/60 hover:text-destructive"
+                title="Delete box"
+                onClick={() => setDeleteConfirm(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
             </div>
           )}
+
+          {/* Delete confirm dialog */}
+          <Dialog open={deleteConfirm} onOpenChange={(o) => { if (!o) setDeleteConfirm(false); }}>
+            <DialogContent className="sm:max-w-xs">
+              <DialogHeader>
+                <DialogTitle>Delete {isMisc ? box.label : `Box ${box.label}`}?</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete {isMisc ? box.label : `box ${box.label}`}?
+                All sections and their stock will be permanently removed. This cannot be undone.
+              </p>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={() => { setDeleteConfirm(false); onDeleteBox(); }}>
+                  Delete {isMisc ? "Area" : "Box"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
 
