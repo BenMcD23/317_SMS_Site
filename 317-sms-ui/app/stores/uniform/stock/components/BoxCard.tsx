@@ -128,7 +128,7 @@ export function BoxCard({
               </p>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
-                <Button variant="destructive" onClick={() => { setDeleteConfirm(false); onDeleteBox(); }}>
+                <Button variant="destructive" onClick={() => { setDeleteConfirm(false); onDeleteBox?.(); }}>
                   Delete {isMisc ? "Area" : "Box"}
                 </Button>
               </DialogFooter>
