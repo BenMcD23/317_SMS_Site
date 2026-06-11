@@ -216,7 +216,7 @@ export default function StockPage() {
         <ShelfView
           structure={shelfStructure}
           stock={stock}
-          onSelectBox={(label) => router.push(`/stores/stock/${label}`)}
+          onSelectBox={(label) => router.push(`/stores/uniform/stock/${label}`)}
           onStructureChange={(s) => setShelfStructure(s)}
           onAddBox={() => setAddBoxAreaOpen(true)}
           editMode={editMode}
