@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "./SectionCard";
 import {
@@ -40,8 +41,6 @@ interface BoxDetailViewProps {
   onAddSection: (box: string, sectionName: string) => void;
   deleteItemConfirm: string | null;
   onDeleteItemConfirm: (id: string | null) => void;
-  deleteBoxConfirm: boolean;
-  onDeleteBoxConfirm: (confirm: boolean) => void;
   editMode: boolean;
   isMisc?: boolean;
 }
@@ -95,12 +94,11 @@ export function BoxDetailView({
   onAddSection,
   deleteItemConfirm,
   onDeleteItemConfirm,
-  deleteBoxConfirm,
-  onDeleteBoxConfirm,
   editMode,
   isMisc = false,
 }: BoxDetailViewProps) {
   const [addSectionValue, setAddSectionValue] = useState<string | null>(null);
+  const [deleteBoxConfirm, setDeleteBoxConfirm] = useState(false);
   const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>(
     {}
   );
@@ -366,42 +364,15 @@ export function BoxDetailView({
           )}
 
           {/* Delete box */}
-          {deleteBoxConfirm ? (
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-destructive font-medium">
-                Sure?
-              </span>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-8 px-2 text-xs"
-                onClick={() => {
-                  onDeleteBoxConfirm(false);
-                  onDeleteBox(box.label);
-                }}
-              >
-                Delete
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs"
-                onClick={() => onDeleteBoxConfirm(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => onDeleteBoxConfirm(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              {isMisc ? "Delete Area" : "Delete Box"}
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setDeleteBoxConfirm(true)}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            {isMisc ? "Delete Area" : "Delete Box"}
+          </Button>
         </div>
       </div>
 
@@ -537,6 +508,25 @@ export function BoxDetailView({
           </div>
         </div>
       )}
+
+      {/* Delete box confirm dialog */}
+      <Dialog open={deleteBoxConfirm} onOpenChange={(o) => { if (!o) setDeleteBoxConfirm(false); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Delete {isMisc ? "Area" : `Box ${box.label}`}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete {isMisc ? "this area" : `box ${box.label}`}?
+            All sections and their stock will be permanently removed. This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteBoxConfirm(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { setDeleteBoxConfirm(false); onDeleteBox(box.label); }}>
+              Delete {isMisc ? "Area" : "Box"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
   Award, ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X,
-  StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw,
+  StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw, Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,6 +130,7 @@ export default function BadgeOrdersPage() {
   const [markGivenOpen, setMarkGivenOpen] = useState(false);
   const [markGivenOrder, setMarkGivenOrder] = useState<BadgeOrder | null>(null);
   const [markGivenItem, setMarkGivenItem] = useState<BadgeOrderItem | null>(null);
+  const [markingAsReady, setMarkingAsReady] = useState<string | null>(null);
 
   // Sort + search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
@@ -341,6 +344,21 @@ export default function BadgeOrdersPage() {
     }
   }
 
+  async function handleMarkItemAsReady(orderId: string, itemId: string) {
+    setMarkingAsReady(itemId);
+    try {
+      const res = await fetch(`/api/stores/badges/orders/${orderId}/items/${itemId}/mark-ready`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to mark as ready to collect");
+      await fetchAll();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setMarkingAsReady(null);
+    }
+  }
+
   const currentBadgeName = newCategory ? buildBadgeName(newCategory, newSubType, newLevel) : null;
   const addBadgeName = addCategory ? buildBadgeName(addCategory, addSubType, addLevel) : null;
 
@@ -390,7 +408,7 @@ export default function BadgeOrdersPage() {
     if (!addBadgeName) return;
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    const newItem: BadgeOrderItem = { id: "", badgeName: addBadgeName, qmNotes: [], givenAt: null, givenBy: null };
+    const newItem: BadgeOrderItem = { id: "", badgeName: addBadgeName, qmNotes: [], givenAt: null, givenBy: null, readyToCollect: null };
     await patchOrder(orderId, { items: [...order.items, newItem] });
     setAddingToOrderId(null);
   }
@@ -409,25 +427,17 @@ export default function BadgeOrdersPage() {
     });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Badge Orders</h1>
-          <p className="text-muted-foreground">
-            {loading ? "Loading..." : `${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <Award className="h-5 w-5 text-primary" />
-          </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Badge Orders"
+        description={loading ? "Loading…" : `${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`}
+        actions={
           <Button onClick={openNewOrder} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            New Order
+            <Plus data-icon="inline-start" />
+            New order
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Tabs */}
       <div className="overflow-x-auto">
@@ -475,11 +485,7 @@ export default function BadgeOrdersPage() {
         </Button>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} />
 
       {loading && <div className="py-12 text-center text-sm text-muted-foreground">Loading orders...</div>}
 
@@ -546,7 +552,7 @@ export default function BadgeOrdersPage() {
 
                                 {!isCompleted && (
                                   stockMatch ? (
-                                    <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                                    <p className="text-xs font-medium text-success">
                                       In Stock: {stockMatch.cell.label ?? `Row ${stockMatch.cell.row + 1} Col ${stockMatch.cell.col + 1}`} (×{stockMatch.item.quantity})
                                     </p>
                                   ) : (
@@ -564,7 +570,14 @@ export default function BadgeOrdersPage() {
                                     Remove from Stock
                                   </Button>
                                   <Button size="sm" variant="outline"
-                                    className="h-7 w-full text-xs text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20 disabled:opacity-40"
+                                    className="h-7 w-full text-xs border-primary/40 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
+                                    disabled={markingAsReady === orderItem.id || !!orderItem.readyToCollect || !!orderItem.givenAt}
+                                    onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}>
+                                    <Bell className="h-3 w-3 mr-1" />
+                                    {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
+                                  </Button>
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 w-full text-xs border-success/40 text-success hover:bg-success/10 hover:text-success disabled:opacity-40"
                                     disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt}
                                     onClick={() => handleMarkItemAsGiven(order, orderItem)}>
                                     <PackageCheck className="h-3 w-3 mr-1" />
@@ -580,10 +593,21 @@ export default function BadgeOrdersPage() {
                               )}
                             </div>
 
+                            {/* Ready to collect stamp */}
+                            {orderItem.readyToCollect && !orderItem.givenAt && (
+                              <div className="flex items-center gap-1.5 rounded-md bg-primary/10 border border-primary/30 px-2.5 py-1.5">
+                                <Bell className="h-3 w-3 shrink-0 text-primary" />
+                                <p className="text-xs text-primary">
+                                  Cadet notified {formatTimestamp(orderItem.readyToCollect)}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Given stamp */}
                             {orderItem.givenAt && (
-                              <div className="flex items-center gap-1.5 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-2.5 py-1.5">
-                                <PackageCheck className="h-3 w-3 shrink-0 text-green-600 dark:text-green-400" />
-                                <p className="text-xs text-green-700 dark:text-green-400">
+                              <div className="flex items-center gap-1.5 rounded-md bg-success/10 border border-success/30 px-2.5 py-1.5">
+                                <PackageCheck className="h-3 w-3 shrink-0 text-success" />
+                                <p className="text-xs text-success">
                                   Given {formatTimestamp(orderItem.givenAt)}
                                   {orderItem.givenBy && <> · {orderItem.givenBy}</>}
                                 </p>
@@ -691,7 +715,7 @@ export default function BadgeOrdersPage() {
                     <div className="flex justify-end gap-2 pt-1">
                       {isCompleted ? (
                         <Button size="sm" variant="outline"
-                          className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                          className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
                           onClick={() => handleReopenOrder(order.id, order.cadetName)}>
                           <RotateCcw className="mr-2 h-4 w-4" />
                           Reopen Order
@@ -704,7 +728,7 @@ export default function BadgeOrdersPage() {
                             Delete Order
                           </Button>
                           <Button size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="bg-success hover:bg-success/90 text-white"
                             onClick={() => handleCompleteOrder(order.id, order.cadetName)}>
                             <CheckCircle2 className="mr-2 h-4 w-4" />
                             Complete Order
@@ -797,7 +821,7 @@ export default function BadgeOrdersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMarkGivenOpen(false)}>Cancel</Button>
-            <Button className="bg-green-700 hover:bg-green-800 text-white"
+            <Button className="bg-success hover:bg-success/90 text-white"
               onClick={confirmMarkAsGiven} disabled={markingAsGiven !== null}>
               <PackageCheck className="mr-2 h-4 w-4" />
               Mark as Given

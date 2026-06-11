@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserCog } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 
 type StaffUser = {
@@ -40,21 +41,14 @@ export default function StaffDetailPage() {
     );
   }
 
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (error) return <ErrorAlert message={error} title="Could not load staff member" />;
   if (!user) return <p className="text-sm text-muted-foreground">Staff member not found.</p>;
 
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3">
-        <UserCog className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold">{name}</h1>
-          <p className="text-sm text-muted-foreground">{user.email}</p>
-        </div>
-      </div>
-
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <PageHeader title={name} description={user.email} />
       <UniformIssuancesCard baseUrl={`/api/stores/issuances/user/${id}`} />
     </div>
   );

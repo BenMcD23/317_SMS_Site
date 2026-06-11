@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { PageHeader } from "@/components/page-header";
 import { toast } from "sonner";
-import { Eye, EyeOff, Upload, Trash2, CheckCircle2, User, KeyRound, PenLine, Settings2, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -222,25 +224,17 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 pb-16">
-
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Settings2 className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground text-sm">Manage your account preferences and Bader credentials.</p>
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 pb-16">
+      <PageHeader
+        title="Settings"
+        description="Your assessor identity, signature and Bader credentials"
+      />
 
       {/* ── Assessor identity ─────────────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          <User className="h-4 w-4" />
-          Assessor Identity
-        </div>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Assessor identity
+        </h2>
 
         <Card>
           <CardHeader className="pb-3">
@@ -281,31 +275,36 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             {/* Saved preview */}
             {hasSavedSignature && signaturePreview && !hasDrawn && !signatureFile && (
-              <div className="relative w-fit overflow-hidden rounded-lg border bg-white p-4 shadow-sm">
-                <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
-                  <CheckCircle2 className="h-3 w-3" /> Saved
-                </span>
+              <div className="relative w-fit overflow-hidden rounded-lg border bg-white p-4">
+                <Badge
+                  variant="outline"
+                  className="absolute right-2 top-2 gap-1 border-success/40 bg-success/10 text-success"
+                >
+                  <CheckCircle2 className="size-3" /> Saved
+                </Badge>
                 <img src={signaturePreview} alt="Signature preview" className="max-h-20 object-contain" />
               </div>
             )}
 
             {/* Mode toggle */}
-            <div className="flex w-fit overflow-hidden rounded-md border text-sm">
-              <button
-                type="button"
-                onClick={() => { setSignatureMode("draw"); setSignatureFile(null); }}
-                className={cn("flex items-center gap-1.5 px-3 py-1.5", signatureMode === "draw" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")}
-              >
-                <PenLine className="h-3.5 w-3.5" /> Draw
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSignatureMode("upload"); clearDraw(); }}
-                className={cn("flex items-center gap-1.5 border-l px-3 py-1.5", signatureMode === "upload" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")}
-              >
-                <Upload className="h-3.5 w-3.5" /> Upload
-              </button>
-            </div>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={signatureMode}
+              onValueChange={(v) => {
+                if (!v) return;
+                if (v === "draw") { setSignatureMode("draw"); setSignatureFile(null); }
+                else { setSignatureMode("upload"); clearDraw(); }
+              }}
+            >
+              <ToggleGroupItem value="draw">
+                <PenLine /> Draw
+              </ToggleGroupItem>
+              <ToggleGroupItem value="upload">
+                <Upload /> Upload
+              </ToggleGroupItem>
+            </ToggleGroup>
 
             {/* Draw mode */}
             {signatureMode === "draw" && (
@@ -368,11 +367,10 @@ export default function SettingsPage() {
       </section>
 
       {/* ── Bader credentials — staff only ────────────────────────────────────── */}
-      {session?.role === "staff" && <section className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          <KeyRound className="h-4 w-4" />
-          Bader Credentials
-        </div>
+      {session?.role === "staff" && <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Bader credentials
+        </h2>
 
         <Card>
           <CardHeader className="pb-3">

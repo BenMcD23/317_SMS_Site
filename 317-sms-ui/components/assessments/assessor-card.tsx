@@ -91,7 +91,7 @@ function SignatureSection({
           </div>
           <div className="flex flex-col gap-1.5">
             <Badge variant="secondary" className="gap-1 whitespace-nowrap text-[11px]">
-              <CheckCircle2 className="h-3 w-3 text-green-600" />
+              <CheckCircle2 className="h-3 w-3 text-success" />
               From account
             </Badge>
             <button
@@ -381,7 +381,7 @@ export function AssessorCard({
         </div>
 
         {!sigLoading && !savedSignatureUrl && !overrideSignature && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             No signature - You can draw above or save one in{" "}
             <Link href="/settings" className="underline">Settings</Link>.

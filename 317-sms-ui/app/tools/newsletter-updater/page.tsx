@@ -5,6 +5,10 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
 import { toast } from "sonner";
 import { Newspaper, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { API_BASE } from "@/lib/config";
@@ -76,48 +80,42 @@ export default function NewsletterManagementPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center justify-between gap-4 sm:block">
-          <div>
-            <h1 className="text-3xl font-bold">Newsletter Management</h1>
-            <p className="text-muted-foreground">
-              {loading ? "Loading…" : `${newsletters.length} newsletter${newsletters.length !== 1 ? "s" : ""} published`}
-            </p>
-          </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:hidden">
-            <Newspaper className="h-5 w-5 text-primary" />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 sm:flex">
-            <Newspaper className="h-5 w-5 text-primary" />
-          </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Newsletters"
+        description={
+          loading
+            ? "Loading…"
+            : `${newsletters.length} newsletter${newsletters.length !== 1 ? "s" : ""} published`
+        }
+        actions={
           <Button size="sm" onClick={() => setAddOpen(true)} disabled={!session}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Newsletter
+            <Plus data-icon="inline-start" />
+            Add newsletter
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <ErrorAlert message={error} title="Could not load newsletters" />
 
-      {/* Loading */}
       {loading && (
-        <div className="py-12 text-center text-sm text-muted-foreground">Loading newsletters…</div>
+        <div className="flex flex-col gap-2">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-14" />
+          ))}
+        </div>
       )}
 
-      {/* Empty */}
       {!loading && !error && newsletters.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          No newsletters yet. Click &ldquo;Add Newsletter&rdquo; to publish the first one.
-        </p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Newspaper />
+            </EmptyMedia>
+            <EmptyTitle>No newsletters yet</EmptyTitle>
+            <EmptyDescription>Add a newsletter to publish the first one.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
 
       {/* List */}

@@ -46,14 +46,14 @@ function CriterionRow({
     <div
       className={cn(
         "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-all hover:shadow-sm",
-        checked ? "border-green-500/40 bg-green-500/5" : "hover:border-primary/30"
+        checked ? "border-success/40 bg-success/5" : "hover:border-primary/30"
       )}
       onClick={() => onChange(!checked)}
     >
       <div
         className={cn(
           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
-          checked ? "border-green-500 bg-green-500" : "border-muted-foreground/40"
+          checked ? "border-success bg-success" : "border-muted-foreground/40"
         )}
       >
         {checked && <CheckCircle2 className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
@@ -224,13 +224,13 @@ export default function RadioAssessmentPage() {
     return (
       <div className="mx-auto max-w-3xl space-y-6 pb-16">
         <div>
-          <h1 className="text-3xl font-bold">Radio Assessment</h1>
+          <h1 className="text-xl font-semibold">Radio Assessment</h1>
           <p className="text-muted-foreground">Blue Badge — Basic Radio Operator Award</p>
         </div>
 
-        <div className="flex flex-col items-center gap-6 rounded-xl border border-green-500/30 bg-green-500/10 px-8 py-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
+        <div className="flex flex-col items-center gap-6 rounded-xl border border-success/30 bg-success/10 px-8 py-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/20">
+            <CheckCircle2 className="h-8 w-8 text-success" />
           </div>
           <div className="space-y-1">
             <h2 className="text-xl font-semibold text-foreground">Assessment Saved</h2>
@@ -254,7 +254,7 @@ export default function RadioAssessmentPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Result</span>
               {allChecked ? (
-                <Badge className="bg-green-500 text-white hover:bg-green-500 gap-1 text-xs">
+                <Badge className="bg-success text-white hover:bg-success gap-1 text-xs">
                   <CheckCircle2 className="h-3 w-3" /> PASS
                 </Badge>
               ) : (
@@ -286,14 +286,14 @@ export default function RadioAssessmentPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-16">
       <div>
-        <h1 className="text-3xl font-bold">Radio Assessment</h1>
+        <h1 className="text-xl font-semibold">Radio Assessment</h1>
         <p className="text-muted-foreground">Blue Badge — Basic Radio Operator Award</p>
       </div>
 
       {draftRestored && !draftBannerDismissed && (
-        <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          <span className="text-amber-700">Draft restored from your last session.</span>
-          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-amber-500/40 text-amber-700 hover:bg-amber-500/10 hover:text-amber-800">Reset Form</Button>
+        <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+          <span className="text-warning">Draft restored from your last session.</span>
+          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-warning/40 text-warning hover:bg-warning/10 hover:text-warning">Reset Form</Button>
         </div>
       )}
 
@@ -333,7 +333,7 @@ export default function RadioAssessmentPage() {
           </div>
         </div>
         {allChecked && (
-          <Badge className="gap-1.5 bg-green-500 text-white hover:bg-green-500 shrink-0">
+          <Badge className="gap-1.5 bg-success text-white hover:bg-success shrink-0">
             <CheckCircle2 className="h-3.5 w-3.5" /> All initialled
           </Badge>
         )}
@@ -382,8 +382,8 @@ export default function RadioAssessmentPage() {
             className={cn(
               "flex items-center justify-center gap-2 rounded-lg border-2 py-3 font-semibold",
               allChecked
-                ? "border-green-500 bg-green-500/10 text-green-600"
-                : "border-red-500 bg-red-500/10 text-red-600"
+                ? "border-success bg-success/10 text-success"
+                : "border-destructive bg-destructive/10 text-destructive"
             )}
           >
             {allChecked ? (
