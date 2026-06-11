@@ -3,6 +3,7 @@
 import { useState, useId } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -448,13 +449,11 @@ export default function F1771ePage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">F1771e Generator</h1>
-        <p className="mt-1 text-muted-foreground">
-          Add journey entries below, then generate the Word document.
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <PageHeader
+        title="F1771e Travel Claim"
+        description="Add journey entries below, then generate the Word document"
+      />
 
       <UserProfileCard onHomeAddressChange={setHomeAddress} onProfileChange={setProfile} />
 
