@@ -72,6 +72,7 @@ export interface SizingDetailsJSON {
 export interface BadgeOrderItem {
   id: string;
   badgeName: string;
+  replacement?: boolean; // replacement badges carry a £2 fee
   qmNotes: QmNote[];
   givenAt: string | null;
   givenBy: string | null;

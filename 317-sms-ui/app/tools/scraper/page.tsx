@@ -5,10 +5,16 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Loader2, Clock, CheckSquare, Square, X } from "lucide-react";
+import { Loader2, Clock, CheckSquare, Square, X, CalendarClock } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -74,7 +80,7 @@ function ConsolePanel({
   onDone: (id: string) => void;
 }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [status, setStatus] = useState<"running" | "done" | "error" | "stopping">("running");
+  const [status, setStatus] = useState<"running" | "done" | "error" | "stopping" | "stopped">("running");
   const logsEndRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -100,6 +106,11 @@ function ConsolePanel({
         }
         if (data.type === "status" && data.value === "done") {
           setStatus("done");
+          onDone(scraperId);
+          evtSource.close();
+        }
+        if (data.type === "status" && data.value === "stopped") {
+          setStatus("stopped");
           onDone(scraperId);
           evtSource.close();
         }
@@ -152,6 +163,8 @@ function ConsolePanel({
       ? "border-success/40"
       : status === "error"
       ? "border-destructive/40"
+      : status === "stopped"
+      ? "border-warning/40"
       : "border-primary/30";
 
   const headerBg =
@@ -159,6 +172,8 @@ function ConsolePanel({
       ? "bg-success/10"
       : status === "error"
       ? "bg-destructive/10"
+      : status === "stopped"
+      ? "bg-warning/10"
       : "bg-primary/10";
 
   return (
@@ -169,6 +184,7 @@ function ConsolePanel({
         )}
         {status === "done" && <span className="shrink-0 text-success">✓</span>}
         {status === "error" && <span className="shrink-0 text-destructive">✗</span>}
+        {status === "stopped" && <span className="shrink-0 text-warning">■</span>}
         <span className="truncate">{label}</span>
         <Badge
           variant="outline"
@@ -178,6 +194,8 @@ function ConsolePanel({
               ? "border-success/40 bg-success/10 text-success"
               : status === "error"
               ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : status === "stopped"
+              ? "border-warning/40 bg-warning/10 text-warning"
               : "border-primary/40 bg-primary/10 text-primary"
           )}
         >
@@ -187,6 +205,8 @@ function ConsolePanel({
             ? "Stopping…"
             : status === "done"
             ? "Done"
+            : status === "stopped"
+            ? "Stopped"
             : "Error"}
         </Badge>
         {(status === "running") && (
@@ -225,6 +245,186 @@ function ConsolePanel({
         )}
         <div ref={logsEndRef} />
       </ScrollArea>
+    </div>
+  );
+}
+
+// ─── Schedule tab ─────────────────────────────────────────────────────────────
+
+type Schedule = {
+  enabled: boolean;
+  days: string[];
+  hour: number;
+  minute: number;
+  runs_as: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
+};
+
+const DAY_OPTIONS = [
+  { id: "mon", label: "Mon" },
+  { id: "tue", label: "Tue" },
+  { id: "wed", label: "Wed" },
+  { id: "thu", label: "Thu" },
+  { id: "fri", label: "Fri" },
+  { id: "sat", label: "Sat" },
+  { id: "sun", label: "Sun" },
+];
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+function ScheduleCard({
+  tool,
+  schedule,
+  token,
+  onSaved,
+}: {
+  tool: (typeof SCRAPER_TOOLS)[number];
+  schedule: Schedule;
+  token: string;
+  onSaved: (id: string, s: Schedule) => void;
+}) {
+  const [enabled, setEnabled] = useState(schedule.enabled);
+  const [days, setDays] = useState<string[]>(schedule.days);
+  const [time, setTime] = useState(`${pad(schedule.hour)}:${pad(schedule.minute)}`);
+  const [saving, setSaving] = useState(false);
+
+  const dirty =
+    enabled !== schedule.enabled ||
+    time !== `${pad(schedule.hour)}:${pad(schedule.minute)}` ||
+    days.slice().sort().join(",") !== schedule.days.slice().sort().join(",");
+
+  const handleSave = async () => {
+    const [h, m] = time.split(":").map(Number);
+    if (enabled && days.length === 0) {
+      toast.error("Pick at least one day of the week.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/scraper-schedules/${tool.id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled, days, hour: h ?? 22, minute: m ?? 0 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.detail || "Could not save schedule");
+        return;
+      }
+      onSaved(tool.id, data);
+      toast.success(`${tool.label} schedule saved.`);
+    } catch {
+      toast.error("Could not reach server");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">{tool.label}</CardTitle>
+        <CardAction>
+          {schedule.enabled ? (
+            <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
+              Scheduled
+            </Badge>
+          ) : (
+            <Badge variant="secondary">Off</Badge>
+          )}
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm">
+            <Checkbox checked={enabled} onCheckedChange={(v) => setEnabled(v === true)} />
+            Enabled
+          </label>
+
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Days</Label>
+            <ToggleGroup
+              type="multiple"
+              variant="outline"
+              size="sm"
+              value={days}
+              onValueChange={setDays}
+            >
+              {DAY_OPTIONS.map((d) => (
+                <ToggleGroupItem key={d.id} value={d.id} aria-label={d.label} className="px-2.5">
+                  {d.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`time-${tool.id}`} className="text-xs text-muted-foreground">
+              Time
+            </Label>
+            <Input
+              id={`time-${tool.id}`}
+              type="time"
+              className="w-28"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
+
+          <Button size="sm" className="ml-auto" disabled={!dirty || saving} onClick={handleSave}>
+            {saving && <Spinner />}
+            Save
+          </Button>
+        </div>
+
+        {schedule.runs_as && (
+          <p className="text-xs text-muted-foreground">
+            Runs with {schedule.runs_as}&apos;s Bader credentials
+            {schedule.updated_by && ` · last saved by ${schedule.updated_by}`}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ScheduleTab({ token }: { token: string }) {
+  const [schedules, setSchedules] = useState<Record<string, Schedule> | null>(null);
+
+  useEffect(() => {
+    apiFetch(`${API_BASE}/scraper-schedules`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then(setSchedules)
+      .catch(() => toast.error("Could not load schedules"));
+  }, [token]);
+
+  if (!schedules) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner className="size-6" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+        <CalendarClock className="mt-0.5 size-4 shrink-0" />
+        Schedules are squadron-wide — they run automatically whether or not anyone is logged in,
+        using the saved Bader credentials of whoever last saved each schedule.
+      </p>
+      {SCRAPER_TOOLS.map((tool) => (
+        <ScheduleCard
+          key={tool.id}
+          tool={tool}
+          schedule={schedules[tool.id]}
+          token={token}
+          onSaved={(id, s) => setSchedules((prev) => ({ ...prev!, [id]: s }))}
+        />
+      ))}
     </div>
   );
 }
@@ -387,6 +587,14 @@ export default function ScraperPage() {
         }
       />
 
+      <Tabs defaultValue="run" className="flex flex-col gap-6">
+        <TabsList className="w-fit">
+          <TabsTrigger value="run">Run</TabsTrigger>
+          <TabsTrigger value="schedule">Schedule</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="run" className="flex flex-col gap-6">
+
       {/* Running scrapers banner (visible on select phase) */}
       {phase === "select" && externallyRunning.length > 0 && (
         <button
@@ -544,6 +752,12 @@ export default function ScraperPage() {
           )}
         </>
       )}
+        </TabsContent>
+
+        <TabsContent value="schedule">
+          {session?.id_token && <ScheduleTab token={session.id_token} />}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

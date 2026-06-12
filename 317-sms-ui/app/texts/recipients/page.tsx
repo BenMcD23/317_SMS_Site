@@ -18,8 +18,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
@@ -46,6 +49,10 @@ export default function TextRecipientsPage() {
   const [editing, setEditing] = useState<Recipient | null>(null);
   const [form, setForm] = useState<RecipientForm>(EMPTY_FORM);
   const [deleting, setDeleting] = useState<Recipient | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
+  const [importing, setImporting] = useState(false);
 
   const authHeaders = useMemo(
     () => ({ Authorization: `Bearer ${session?.id_token}`, "Content-Type": "application/json" }),
@@ -110,6 +117,54 @@ export default function TextRecipientsPage() {
     }
   };
 
+  const handleExport = () => {
+    const escape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const lines = [
+      "phone number,rank,surname",
+      ...recipients.map((r) => [r.phone_number, r.rank, r.surname].map(escape).join(",")),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "text-recipients.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    try {
+      const form = new FormData();
+      form.append("file", importFile);
+      form.append("mode", importMode);
+      const resp = await apiFetch(`${API_BASE}/texts/recipients/import`, {
+        method: "POST",
+        // No Content-Type — the browser sets the multipart boundary itself
+        headers: { Authorization: `Bearer ${session?.id_token}` },
+        body: form,
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast.error(data.detail || "Import failed.");
+        return;
+      }
+      toast.success(
+        `Imported ${data.imported} recipient${data.imported !== 1 ? "s" : ""}` +
+          (data.skipped ? ` (${data.skipped} row${data.skipped !== 1 ? "s" : ""} without a phone number skipped)` : "") +
+          ` — ${data.total} on the list now.`
+      );
+      setImportOpen(false);
+      setImportFile(null);
+      await loadRecipients();
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleting) return;
     try {
@@ -137,9 +192,17 @@ export default function TextRecipientsPage() {
         title="Text Recipients"
         description="Everyone on this list receives the parade night texts"
         actions={
-          <Button onClick={openAdd} disabled={!session}>
-            <Plus /> Add recipient
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleExport} disabled={recipients.length === 0}>
+              <Download /> Export CSV
+            </Button>
+            <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!session}>
+              <Upload /> Import
+            </Button>
+            <Button onClick={openAdd} disabled={!session}>
+              <Plus /> Add recipient
+            </Button>
+          </div>
         }
       />
 
@@ -234,6 +297,51 @@ export default function TextRecipientsPage() {
             <Button onClick={handleSave} disabled={saving || !form.phone_number.trim()}>
               {saving && <Spinner />}
               {editing ? "Save changes" : "Add recipient"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={(open) => { setImportOpen(open); if (!open) setImportFile(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Import recipients</DialogTitle>
+            <DialogDescription>
+              Upload a .csv or .xlsx with columns: phone number, rank, surname (same layout as the
+              old Numbers sheet).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Field>
+              <FieldLabel htmlFor="import-file">File</FieldLabel>
+              <Input
+                id="import-file"
+                type="file"
+                accept=".csv,.tsv,.txt,.xlsx,.xlsm"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="import-mode">Mode</FieldLabel>
+              <Select value={importMode} onValueChange={(v) => setImportMode(v as "merge" | "replace")}>
+                <SelectTrigger id="import-mode"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="merge">Merge — add new numbers, update existing</SelectItem>
+                  <SelectItem value="replace">Replace — wipe the list and use the file</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            {importMode === "replace" && (
+              <p className="text-xs text-destructive">
+                Replace deletes every current recipient before importing.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportOpen(false)}>Cancel</Button>
+            <Button onClick={handleImport} disabled={!importFile || importing}>
+              {importing && <Spinner />}
+              Import
             </Button>
           </DialogFooter>
         </DialogContent>
