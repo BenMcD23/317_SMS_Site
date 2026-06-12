@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PageHeader } from "@/components/page-header";
-import { Sparkles, Send, RefreshCw, Save, CheckCircle2, Undo2, AlertTriangle, ChevronDown } from "lucide-react";
+import { Sparkles, Send, RefreshCw, Save, CheckCircle2, Undo2, AlertTriangle, ChevronDown, Cpu, Info } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
@@ -43,10 +43,14 @@ type ParadeMessage = {
   main_message: string;
   c_flight_message: string;
   status: "draft" | "ready" | "sent";
+  generated_by_label: string | null;
+  generated_with_fallback: boolean;
   generated_at: string | null;
   sent_at: string | null;
   send_results: SendResult[] | null;
 };
+
+type ModelUsage = { model: string; label: string; count: number; fallback: boolean };
 
 type Editable = Pick<ParadeMessage, "uniform" | "dnco" | "main_message" | "c_flight_message">;
 
@@ -88,6 +92,25 @@ function StatusBadge({ status }: { status: ParadeMessage["status"] }) {
   if (status === "sent") return <Badge className="bg-success/15 text-success">Sent</Badge>;
   if (status === "ready") return <Badge className="bg-primary/15 text-primary">Ready to send</Badge>;
   return <Badge variant="secondary">Draft</Badge>;
+}
+
+/** Small line showing which AI model wrote this message, flagged if it fell back. */
+function ModelLine({ message }: { message: ParadeMessage }) {
+  if (!message.generated_by_label) return null;
+  if (message.generated_with_fallback) {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-warning">
+        <AlertTriangle className="size-3.5" />
+        Written by {message.generated_by_label} — the preferred model had hit its daily free-tier limit.
+      </p>
+    );
+  }
+  return (
+    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Cpu className="size-3.5" />
+      Written by {message.generated_by_label}
+    </p>
+  );
 }
 
 // ─── Message card ─────────────────────────────────────────────────────────────
@@ -146,6 +169,8 @@ function MessageCard({
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <ModelLine message={message} />
+
         <Collapsible>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="-ml-2 w-fit text-muted-foreground group">
@@ -424,10 +449,22 @@ export default function TextMessagesPage() {
         toast.error(data.detail || "Generation failed.");
         return;
       }
-      toast.success(
+
+      const models: ModelUsage[] = data.models_used ?? [];
+      const fellBack = models.filter((m) => m.fallback);
+      const base =
         `Generated ${data.generated} message${data.generated !== 1 ? "s" : ""}` +
-          (data.skipped_sent ? ` (${data.skipped_sent} already sent, left alone)` : "")
-      );
+        (data.skipped_sent ? ` (${data.skipped_sent} already sent, left alone)` : "");
+
+      if (fellBack.length > 0) {
+        const breakdown = models.map((m) => `${m.count} × ${m.label}`).join(", ");
+        toast.warning(`${base}. Best model hit its daily free-tier limit — fell back to a backup model.`, {
+          description: breakdown,
+          duration: 10000,
+        });
+      } else {
+        toast.success(base, models.length ? { description: `Written by ${models[0].label}` } : undefined);
+      }
       await loadMessages();
     } catch {
       toast.error("Server unreachable.");
@@ -481,7 +518,13 @@ export default function TextMessagesPage() {
       }
       if (action === "regenerate") {
         replaceMessage(data);
-        toast.success("Regenerated with AI.");
+        if (data.generated_with_fallback) {
+          toast.warning(`Regenerated with ${data.generated_by_label}.`, {
+            description: "The preferred model had hit its daily free-tier limit.",
+          });
+        } else {
+          toast.success(`Regenerated with ${data.generated_by_label ?? "AI"}.`);
+        }
       } else if (action === "send") {
         replaceMessage(data.message);
         if (data.failed > 0) toast.warning(`Sent to ${data.sent}, but ${data.failed} failed — see card for details.`);
@@ -554,6 +597,16 @@ export default function TextMessagesPage() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      <p className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-muted-foreground">
+        <Info className="mt-0.5 size-3.5 shrink-0 text-warning" />
+        <span>
+          The best AI model is on a free tier limited to ~20 generations a day. Generate a month once
+          and edit by hand where you can, rather than re-generating repeatedly — each night you generate
+          or regenerate uses one. If the daily limit is reached, texts are still written by a backup model
+          (you&apos;ll see a note on those).
+        </span>
+      </p>
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="size-6" /></div>
