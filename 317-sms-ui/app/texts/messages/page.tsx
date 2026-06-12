@@ -20,8 +20,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader,
   DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PageHeader } from "@/components/page-header";
-import { Sparkles, Send, RefreshCw, Save, CheckCircle2, Undo2, AlertTriangle } from "lucide-react";
+import { Sparkles, Send, RefreshCw, Save, CheckCircle2, Undo2, AlertTriangle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
@@ -35,6 +36,7 @@ type ParadeMessage = {
   id: number;
   parade_date: string;
   uniform: string;
+  uniform_raw: string;
   dnco: string;
   c_flight_raw: string;
   main_body_raw: string;
@@ -144,6 +146,37 @@ function MessageCard({
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="-ml-2 w-fit text-muted-foreground group">
+              <ChevronDown className="transition-transform group-data-[state=open]:rotate-180" />
+              Parsed programme data
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-2 grid gap-4 rounded-md border bg-muted/40 p-3 text-sm sm:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Main body</p>
+                <p className="whitespace-pre-wrap">{message.main_body_raw || "—"}</p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">C Flight</p>
+                  <p className="whitespace-pre-wrap">{message.c_flight_raw || "—"}</p>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Uniform</p>
+                  <p className="whitespace-pre-wrap">{message.uniform_raw || "—"}</p>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">DNCO</p>
+                  <p>{message.dnco || "—"}</p>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor={`uniform-${message.id}`}>Uniform</FieldLabel>
