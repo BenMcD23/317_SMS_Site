@@ -49,6 +49,8 @@ import {
   ClipboardCheck,
   WifiOff,
   AlertTriangle,
+  MessageSquareText,
+  Contact,
   Package,
   ShoppingCart,
   Award,
@@ -104,6 +106,14 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Uniform Orders", href: "/stores/uniform/orders", icon: ShoppingCart },
       { label: "Badge Stock", href: "/stores/badges/stock", icon: Award },
       { label: "Badge Orders", href: "/stores/badges/orders", icon: ShoppingCart },
+    ],
+  },
+  {
+    label: "Texts",
+    staffOnly: true,
+    links: [
+      { label: "Messages", href: "/texts/messages", icon: MessageSquareText },
+      { label: "Recipients", href: "/texts/recipients", icon: Contact },
     ],
   },
   {
