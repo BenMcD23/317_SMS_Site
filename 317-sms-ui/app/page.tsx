@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
+import { useApiQuery } from "@/lib/use-api-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,8 +14,6 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from "recharts";
-
-const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,14 +69,6 @@ function levelColor(level: string): string {
 function fmtDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-async function fetchJSON(path: string, token: string) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`${path} → ${res.status}`);
-  return res.json();
 }
 
 // ─── Stat cards ───────────────────────────────────────────────────────────────
@@ -293,29 +284,21 @@ function DashboardSkeleton() {
 
 export default function HomePage() {
   const { data: session } = useSession({ required: true });
-  const [stats, setStats] = useState<CurrentStats | null>(null);
-  const [history, setHistory] = useState<HistoryPoint[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (session?.error) {
       signIn("google", { callbackUrl: "/" });
-      return;
     }
-    if (!session?.id_token) return;
-    const token = session.id_token as string;
+  }, [session?.error]);
 
-    Promise.all([
-      fetchJSON("/stats/current", token),
-      fetchJSON("/stats/history", token),
-    ])
-      .then(([cur, hist]) => {
-        setStats(cur);
-        setHistory(hist);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [session?.id_token]);
+  const { data: stats = null } = useApiQuery<CurrentStats>(
+    ["stats", "current"],
+    "/stats/current"
+  );
+  const { data: history = [], isLoading: loading } = useApiQuery<HistoryPoint[]>(
+    ["stats", "history"],
+    "/stats/history"
+  );
 
   const total = stats?.total_cadets ?? 0;
   const ncoCount = stats
