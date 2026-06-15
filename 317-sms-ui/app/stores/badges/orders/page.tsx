@@ -548,7 +548,14 @@ export default function BadgeOrdersPage() {
                           <li key={orderItem.id} className="rounded-md border bg-muted/30 p-3 space-y-2">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1 space-y-1.5">
-                                <p className="text-sm font-medium">{orderItem.badgeName}</p>
+                                <p className="text-sm font-medium">
+                                  {orderItem.badgeName}
+                                  {orderItem.replacement && (
+                                    <Badge variant="outline" className="ml-2 border-warning/40 bg-warning/10 text-warning">
+                                      Replacement (£2)
+                                    </Badge>
+                                  )}
+                                </p>
 
                                 {!isCompleted && (
                                   stockMatch ? (
