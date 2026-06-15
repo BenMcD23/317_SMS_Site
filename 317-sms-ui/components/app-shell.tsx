@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
@@ -290,7 +291,13 @@ function ApiStatusBadge({ status }: { status: ApiStatus }) {
 function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { isMobile, setOpenMobile } = useSidebar();
   const sections = visibleSections(session?.role);
+
+  // On mobile the sidebar is an overlay sheet — collapse it after navigating
+  const closeOnMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -298,7 +305,7 @@ function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/">
+              <Link href="/" onClick={closeOnMobile}>
                 <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-md">
                   <Image src="/icon.jpg" alt="" width={32} height={32} className="size-8 object-cover" />
                 </div>
@@ -325,7 +332,7 @@ function AppSidebar() {
                       tooltip={link.label}
                       isActive={isLinkActive(pathname, link.href)}
                     >
-                      <Link href={link.href}>
+                      <Link href={link.href} onClick={closeOnMobile}>
                         <link.icon />
                         <span>{link.label}</span>
                       </Link>
