@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,19 @@ const SCRAPER_TOOLS = [
     description: "Fetches allergies and dietary requirements for cadets.",
   },
 ];
+
+// React Query keys whose cached data each scraper refreshes. When a run
+// completes we invalidate these so the affected pages show the new data
+// immediately instead of waiting out the 60s staleTime. Keys are prefixes, so
+// ["stats"] also invalidates ["stats","current"] / ["stats","history"].
+// Scrapers feeding pages that aren't cached yet (cadet detail, events) map to
+// [] — add their keys here if/when those pages move to useApiQuery.
+const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
+  "cadet-quali": [["cadets"], ["stats"]], // cadet info + qualifications → list & dashboard
+  "cadet-event": [],                      // attendance lives on cadet detail (uncached)
+  "317-event": [],                        // event metadata (uncached)
+  "medical": [],                          // allergies/dietary on cadet detail (uncached)
+};
 
 type LogEntry = { text: string; time: string };
 type LastRun = { ran_at: string | null; success: boolean | null; ran_by: string | null };
@@ -431,6 +445,7 @@ function ScheduleTab({ token }: { token: string }) {
 
 export default function ScraperPage() {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<"select" | "running">("select");
@@ -557,7 +572,12 @@ export default function ScraperPage() {
       next.add(id);
       return next;
     });
-  }, []);
+    // Drop client-side caches the scraper just refreshed so pages refetch the
+    // new data (the backend already invalidated its own cache on completion).
+    for (const queryKey of SCRAPER_CACHE_KEYS[id] ?? []) {
+      queryClient.invalidateQueries({ queryKey });
+    }
+  }, [queryClient]);
 
   const allDone = activeScrapers.length > 0 && doneScrapers.size === activeScrapers.length;
 
