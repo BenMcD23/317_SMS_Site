@@ -4,10 +4,11 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
-import { FileText } from "lucide-react";
+import { FileText, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
@@ -20,6 +21,7 @@ export default function JiGenerator() {
   const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [events, setEvents] = useState<Event317[]>([]);
   const [loading, setLoading] = useState(false);
+  const [useAi, setUseAi] = useState(false);
 
   useEffect(() => {
     if (!session?.id_token) return;
@@ -39,7 +41,10 @@ export default function JiGenerator() {
     setLoading(true);
     try {
       const headers = { Authorization: `Bearer ${session?.id_token}` };
-      const response = await apiFetch(`${API_BASE}/generate-doc/${selectedEvent}/${action}`, { headers });
+      const response = await apiFetch(
+        `${API_BASE}/generate-doc/${selectedEvent}/${action}?ai=${useAi}`,
+        { headers }
+      );
 
       if (!response.ok) throw new Error("Download failed");
 
@@ -92,6 +97,12 @@ export default function JiGenerator() {
                 Events come from the 317 event scraper — run it if something is missing.
               </FieldDescription>
             </Field>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <Checkbox checked={useAi} onCheckedChange={(v) => setUseAi(v === true)} />
+              <Sparkles className="size-4 text-muted-foreground" />
+              Write the description with AI (Groq)
+            </label>
 
             <div className="grid grid-cols-2 gap-3">
               <Button disabled={loading} onClick={() => handleDownload("ji")}>
