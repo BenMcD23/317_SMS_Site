@@ -273,7 +273,8 @@ function MessageCard({
         )}
 
         {!sent && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <Button
               size="sm"
               variant="outline"
@@ -325,8 +326,9 @@ function MessageCard({
                 {busy === "ready" ? <Spinner /> : <Undo2 />} Back to draft
               </Button>
             )}
+            </div>
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:items-center">
               <Dialog open={testOpen} onOpenChange={setTestOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" disabled={busy !== null}>
