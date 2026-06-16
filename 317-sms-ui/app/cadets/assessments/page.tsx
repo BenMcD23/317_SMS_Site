@@ -688,6 +688,56 @@ function CompletionControl({
   );
 }
 
+// ─── Combined PDF (assessment sheets + lesson plans, oldest first) ───────────
+
+function CombinedPdfButton({
+  cin,
+  assessmentType,
+  token,
+}: {
+  cin: number;
+  assessmentType: string;
+  token: string | null;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleView = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch(
+        `${API_BASE}/assessments/group/${cin}/${encodeURIComponent(assessmentType)}/combined-pdf`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error("Failed to load combined PDF");
+      const blob = await res.blob();
+      window.open(URL.createObjectURL(blob), "_blank");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 border-t bg-muted/30 px-4 py-2">
+      <button
+        type="button"
+        onClick={handleView}
+        disabled={loading}
+        className="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        title="Every assessment sheet and lesson plan for this qualification, oldest first, as one PDF"
+      >
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+        Combined record (sheets + lesson plans)
+      </button>
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 // ─── Assessment group row ─────────────────────────────────────────────────────
 
 function AssessmentGroupRow({
@@ -761,16 +811,14 @@ function AssessmentGroupRow({
             />
           ) : (
             <>
-              {group.assessment_type !== "MOI" && (
-                <UploadButton
-                  assessmentIds={group.assessments.map((a) => a.id)}
-                  assessmentType={group.assessment_type}
-                  canUpload={group.can_upload}
-                  uploaded={group.uploaded}
-                  token={token}
-                  onUploaded={onUploaded}
-                />
-              )}
+              <UploadButton
+                assessmentIds={group.assessments.map((a) => a.id)}
+                assessmentType={group.assessment_type}
+                canUpload={group.can_upload}
+                uploaded={group.uploaded}
+                token={token}
+                onUploaded={onUploaded}
+              />
               <CompletionControl
                 cin={cin}
                 assessmentType={group.assessment_type}
@@ -786,6 +834,9 @@ function AssessmentGroupRow({
 
       {expanded && (
         <div className="bg-muted/20">
+          {group.assessment_type === "MOI" && (
+            <CombinedPdfButton cin={cin} assessmentType={group.assessment_type} token={token} />
+          )}
           {group.assessments.map((a) => (
             <AssessmentPdfRow
               key={a.id}

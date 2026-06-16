@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Loader2, CheckCircle2, XCircle, Save, X } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Save, X, Paperclip } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import {
@@ -131,9 +131,34 @@ export function AssessmentEditor({
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<EditorState | null>(null);
 
+  // MOI lesson plan — stored separately from `form`, mirrors the create form
+  const [existingLessonPlan, setExistingLessonPlan] = useState<string | null>(null);
+  const [newLessonPlanFile, setNewLessonPlanFile] = useState<File | null>(null);
+  const [newLessonPlanBase64, setNewLessonPlanBase64] = useState<string | null>(null);
+  const [removeLessonPlan, setRemoveLessonPlan] = useState(false);
+  const [lessonPlanError, setLessonPlanError] = useState<string | null>(null);
+
   const isLeadership = assessmentType === "Blue Leadership";
   const isRadio = assessmentType === "Blue Radio";
   const isMoi = assessmentType === "MOI";
+
+  const handleLessonPlanChange = (file: File | null) => {
+    setLessonPlanError(null);
+    if (!file) {
+      setNewLessonPlanFile(null);
+      setNewLessonPlanBase64(null);
+      return;
+    }
+    if (file.type !== "application/pdf") {
+      setLessonPlanError("Lesson plan must be a PDF file.");
+      return;
+    }
+    setRemoveLessonPlan(false);
+    setNewLessonPlanFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setNewLessonPlanBase64(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   // ── Load existing data ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -179,6 +204,7 @@ export function AssessmentEditor({
           generalComments: f.general_comments ?? "",
           assessorRole: f.assessor_role ?? "",
         });
+        setExistingLessonPlan(d.has_lesson_plan ? d.lesson_plan_filename ?? "Lesson plan.pdf" : null);
       } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
@@ -231,6 +257,11 @@ export function AssessmentEditor({
         general_comments: form.generalComments,
         assessor_role: form.assessorRole,
         date: form.date,
+        ...(newLessonPlanBase64
+          ? { lesson_plan_pdf: newLessonPlanBase64, lesson_plan_filename: newLessonPlanFile?.name }
+          : removeLessonPlan
+          ? { remove_lesson_plan: true }
+          : {}),
       };
     }
 
@@ -467,6 +498,73 @@ export function AssessmentEditor({
                 onChange={(e) => update("assessorRole", e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5 rounded-lg border p-3">
+            <Label className="text-xs text-muted-foreground">Lesson Plan</Label>
+            {newLessonPlanFile ? (
+              <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                <span className="flex items-center gap-2 truncate">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{newLessonPlanFile.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleLessonPlanChange(null)}
+                  className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                  title="Cancel replacement"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : existingLessonPlan && !removeLessonPlan ? (
+              <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                <span className="flex items-center gap-2 truncate">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{existingLessonPlan}</span>
+                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <label className="cursor-pointer text-xs text-primary hover:underline">
+                    Replace
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => handleLessonPlanChange(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setRemoveLessonPlan(true)}
+                    className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                    title="Remove lesson plan"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <Input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => handleLessonPlanChange(e.target.files?.[0] ?? null)}
+                />
+                {removeLessonPlan && (
+                  <p className="text-xs text-muted-foreground">
+                    Lesson plan will be removed when saved.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setRemoveLessonPlan(false)}
+                      className="cursor-pointer text-primary hover:underline"
+                    >
+                      Undo
+                    </button>
+                  </p>
+                )}
+              </div>
+            )}
+            {lessonPlanError && <p className="text-xs text-destructive">{lessonPlanError}</p>}
           </div>
 
           {MOI_SECTIONS.map((section) => (
