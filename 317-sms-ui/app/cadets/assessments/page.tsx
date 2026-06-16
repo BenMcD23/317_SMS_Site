@@ -33,9 +33,14 @@ import {
   Info,
   CheckCheck,
   RotateCcw,
+  Pencil,
+  Lock,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { AssessmentEditor } from "@/components/assessments/assessment-editor";
+
+const EDITABLE_TYPES = ["Blue Leadership", "Blue Radio", "MOI"];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -140,11 +145,15 @@ function InfoTooltip({ text }: { text: string }) {
 function AssessmentPdfRow({
   assessment,
   token,
+  locked,
   onDeleted,
+  onEdited,
 }: {
   assessment: AssessmentEntry;
   token: string | null;
+  locked: boolean;
   onDeleted: (id: number) => void;
+  onEdited: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -152,6 +161,9 @@ function AssessmentPdfRow({
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const canEdit = !locked && EDITABLE_TYPES.includes(assessment.assessment_type);
 
   const fetchPdf = async (): Promise<string | null> => {
     if (pdfUrl) return pdfUrl;
@@ -173,6 +185,16 @@ function AssessmentPdfRow({
     } finally {
       setLoadingPdf(false);
     }
+  };
+
+  // After a successful edit the stored PDF was regenerated — drop the cached
+  // blob so the next view fetches the fresh one, then refresh the overview.
+  const handleSaved = () => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    setPdfUrl(null);
+    setExpanded(false);
+    setEditing(false);
+    onEdited();
   };
 
   const handleToggle = async () => {
@@ -272,6 +294,33 @@ function AssessmentPdfRow({
             {expanded ? "Hide" : "View"}
           </button>
 
+          {/* Edit (hidden once the group is completed/locked) */}
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing((v) => !v);
+                if (!editing) setExpanded(false);
+              }}
+              className={cn(
+                "flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs transition-colors",
+                editing
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+              title="Edit assessment"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          ) : locked ? (
+            <span
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground/60"
+              title="Completed assessments are locked — reopen to edit"
+            >
+              <Lock className="size-3.5" />
+            </span>
+          ) : null}
+
           {/* Delete */}
           {confirmDelete ? (
             <div className="flex items-center gap-1">
@@ -303,6 +352,19 @@ function AssessmentPdfRow({
           )}
         </div>
       </div>
+
+      {/* Inline editor */}
+      {editing && (
+        <div className="px-4 pb-3 pl-4 sm:pl-10">
+          <AssessmentEditor
+            assessmentId={assessment.id}
+            assessmentType={assessment.assessment_type}
+            token={token}
+            onSaved={handleSaved}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      )}
 
       {/* PDF viewer */}
       {expanded && (
@@ -729,7 +791,9 @@ function AssessmentGroupRow({
               key={a.id}
               assessment={a}
               token={token}
+              locked={group.uploaded}
               onDeleted={onAssessmentDeleted}
+              onEdited={onUploaded}
             />
           ))}
         </div>
