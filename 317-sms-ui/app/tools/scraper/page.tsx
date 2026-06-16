@@ -362,8 +362,10 @@ function ScheduleCard({
               type="multiple"
               variant="outline"
               size="sm"
+              spacing={1}
               value={days}
               onValueChange={setDays}
+              className="flex-wrap"
             >
               {DAY_OPTIONS.map((d) => (
                 <ToggleGroupItem key={d.id} value={d.id} aria-label={d.label} className="px-2.5">
