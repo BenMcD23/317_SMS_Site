@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,8 +22,7 @@ import { cn } from "@/lib/utils";
 import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, ChevronRight, Users } from "lucide-react";
 
-import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { useApiQuery } from "@/lib/use-api-query";
 
 type Cadet = {
   cin: number;
@@ -35,28 +33,13 @@ type Cadet = {
 };
 
 export default function CadetsPage() {
-  const { data: session } = useSession();
   const router = useRouter();
 
-  const [cadets, setCadets] = useState<Cadet[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: cadets = [], isLoading: loading, error } = useApiQuery<Cadet[]>(
+    ["cadets"],
+    "/cadets"
+  );
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (!session?.id_token) return;
-    setLoading(true);
-    apiFetch(`${API_BASE}/cadets`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
-        return res.json();
-      })
-      .then(setCadets)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [session?.id_token]);
 
   const filtered = cadets.filter((c) => {
     const q = search.toLowerCase();
@@ -88,7 +71,7 @@ export default function CadetsPage() {
         />
       </InputGroup>
 
-      <ErrorAlert message={error} title="Could not load cadets" />
+      <ErrorAlert message={error?.message ?? null} title="Could not load cadets" />
 
       {loading && (
         <div className="flex flex-col gap-2">
