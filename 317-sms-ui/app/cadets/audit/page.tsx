@@ -33,25 +33,24 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Search, ChevronDown, ChevronRight } from "lucide-react";
 
-// ─── Constants ───────────────────────────────────────────────────────────────────────
+// ─── Level styling ─────────────────────────────────────────────────────────────────
 
-const QUALIFICATION_TYPES = [
-  { value: "duke_of_edinburgh", label: "Duke of Edinburgh" },
-  { value: "first_aid", label: "First Aid" },
-  { value: "leadership", label: "Leadership" },
-  { value: "cyber", label: "Cyber" },
-  { value: "radio", label: "Radio" },
-  { value: "road_marching", label: "Road Marching" },
-  { value: "space", label: "Space" },
-  { value: "music", label: "Music" },
-  { value: "flying_badge", label: "Flying Badge" },
-  { value: "fieldcraft", label: "Fieldcraft" },
-  { value: "shooting", label: "Shooting" },
-  { value: "presentation_skills", label: "Presentation Skills" },
-  { value: "moi", label: "MOI" },
-  { value: "swimming_proficiency", label: "Swimming Proficiency" },
-  { value: "climatic_injuries", label: "Climatic Injuries" },
-];
+// Colours for each badge level returned by the audit catalog.
+const LEVEL_STYLES: Record<string, string> = {
+  blue: "border-blue-200 bg-blue-50 text-blue-700",
+  bronze: "border-amber-300 bg-amber-50 text-amber-800",
+  silver: "border-slate-300 bg-slate-100 text-slate-700",
+  gold: "border-yellow-300 bg-yellow-50 text-yellow-800",
+  nijmegen: "border-purple-200 bg-purple-50 text-purple-700",
+  basic: "border-sky-200 bg-sky-50 text-sky-700",
+  intermediate: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  advanced: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  yes: "border-green-200 bg-green-50 text-green-700",
+};
+
+function levelLabel(level: string): string {
+  return level.charAt(0).toUpperCase() + level.slice(1);
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────────────
 
@@ -82,12 +81,19 @@ type MedicalCadet = Cadet & {
   dietary: DietaryEntry[];
 };
 
+type BadgeType = {
+  key: string;
+  name: string;
+  kind: "leveled" | "boolean";
+  levels: string[];
+};
+
 type QualCheck = {
   qual_type: string;
   display_name: string;
+  kind: "leveled" | "boolean";
+  level: string | null;
   has: boolean;
-  date_achieved: string | null;
-  date_expires: string | null;
 };
 
 type AuditResult = Cadet & {
@@ -113,18 +119,20 @@ type EventEntry = {
 
 // ─── Shared components ───────────────────────────────────────────────────────────
 
-function CheckBadge({ has }: { has: boolean }) {
-  if (has) {
-    return (
-      <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
-        Yes
-      </Badge>
-    );
+function ResultBadge({ check }: { check: QualCheck | undefined }) {
+  if (!check?.has || !check.level) {
+    return <Badge variant="outline" className="text-muted-foreground">None</Badge>;
   }
-  return <Badge variant="outline" className="text-muted-foreground">No</Badge>;
+  const text = check.kind === "boolean" ? "Yes" : levelLabel(check.level);
+  return (
+    <Badge variant="outline" className={LEVEL_STYLES[check.level] ?? ""}>
+      {text}
+    </Badge>
+  );
 }
 
 function CriteriaSelector({
+  badgeTypes,
   selectedQuals,
   onToggleQual,
   includeMedical,
@@ -132,6 +140,7 @@ function CriteriaSelector({
   includeDietary,
   onToggleDietary,
 }: {
+  badgeTypes: BadgeType[];
   selectedQuals: string[];
   onToggleQual: (v: string) => void;
   includeMedical: boolean;
@@ -139,22 +148,48 @@ function CriteriaSelector({
   includeDietary: boolean;
   onToggleDietary: (v: boolean) => void;
 }) {
+  const allSelected =
+    badgeTypes.length > 0 && selectedQuals.length === badgeTypes.length;
+
+  function toggleAll() {
+    if (allSelected) {
+      badgeTypes.forEach((b) => {
+        if (selectedQuals.includes(b.key)) onToggleQual(b.key);
+      });
+    } else {
+      badgeTypes.forEach((b) => {
+        if (!selectedQuals.includes(b.key)) onToggleQual(b.key);
+      });
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-semibold">Qualifications</p>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-        {QUALIFICATION_TYPES.map((qt) => (
-          <div key={qt.value} className="flex items-center gap-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">Qualifications</p>
+        {badgeTypes.length > 0 && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={toggleAll}
+          >
+            {allSelected ? "Clear all" : "Select all"}
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+        {badgeTypes.map((b) => (
+          <div key={b.key} className="flex items-center gap-2">
             <Checkbox
-              id={`qual-${qt.value}`}
-              checked={selectedQuals.includes(qt.value)}
-              onCheckedChange={() => onToggleQual(qt.value)}
+              id={`qual-${b.key}`}
+              checked={selectedQuals.includes(b.key)}
+              onCheckedChange={() => onToggleQual(b.key)}
             />
             <Label
-              htmlFor={`qual-${qt.value}`}
+              htmlFor={`qual-${b.key}`}
               className="cursor-pointer text-sm font-normal"
             >
-              {qt.label}
+              {b.name}
             </Label>
           </div>
         ))}
@@ -188,18 +223,18 @@ function CriteriaSelector({
 
 function AuditResultsTable({
   results,
+  badgeTypes,
   qualifications,
   includeMedical,
   includeDietary,
 }: {
   results: AuditResult[];
+  badgeTypes: BadgeType[];
   qualifications: string[];
   includeMedical: boolean;
   includeDietary: boolean;
 }) {
-  const qualLabels = QUALIFICATION_TYPES.filter((q) =>
-    qualifications.includes(q.value)
-  );
+  const qualCols = badgeTypes.filter((b) => qualifications.includes(b.key));
 
   if (results.length === 0) {
     return (
@@ -213,9 +248,9 @@ function AuditResultsTable({
         <TableHeader>
           <TableRow>
             <TableHead className="min-w-40 pl-4">Cadet</TableHead>
-            {qualLabels.map((q) => (
-              <TableHead key={q.value} className="min-w-24 text-center">
-                {q.label}
+            {qualCols.map((b) => (
+              <TableHead key={b.key} className="min-w-24 text-center">
+                {b.name}
               </TableHead>
             ))}
             {includeMedical && (
@@ -235,13 +270,13 @@ function AuditResultsTable({
                 </p>
                 <p className="text-xs text-muted-foreground">CIN {r.cin}</p>
               </TableCell>
-              {qualLabels.map((q) => {
+              {qualCols.map((b) => {
                 const check = r.qualifications_check?.find(
-                  (c) => c.qual_type === q.value
+                  (c) => c.qual_type === b.key
                 );
                 return (
-                  <TableCell key={q.value} className="text-center">
-                    <CheckBadge has={check?.has ?? false} />
+                  <TableCell key={b.key} className="text-center">
+                    <ResultBadge check={check} />
                   </TableCell>
                 );
               })}
@@ -408,6 +443,8 @@ function CadetCheckTab() {
   const { data: session } = useSession();
   const { data: allCadets = [], isLoading: loadingCadets } =
     useApiQuery<Cadet[]>(["cadets"], "/cadets");
+  const { data: badgeTypes = [] } =
+    useApiQuery<BadgeType[]>(["audit-badge-types"], "/cadets/audit/badge-types");
 
   const [search, setSearch] = useState("");
   const [selectedCins, setSelectedCins] = useState<Set<number>>(new Set());
@@ -433,6 +470,14 @@ function CadetCheckTab() {
       const next = new Set(prev);
       if (next.has(cin)) next.delete(cin);
       else next.add(cin);
+      return next;
+    });
+  }
+
+  function selectAllFiltered() {
+    setSelectedCins((prev) => {
+      const next = new Set(prev);
+      filtered.forEach((c) => next.add(c.cin));
       return next;
     });
   }
@@ -471,7 +516,8 @@ function CadetCheckTab() {
   }
 
   const canRun =
-    selectedQuals.length > 0 || includeMedical || includeDietary;
+    selectedCins.size > 0 &&
+    (selectedQuals.length > 0 || includeMedical || includeDietary);
 
   return (
     <div className="flex flex-col gap-4">
@@ -482,9 +528,7 @@ function CadetCheckTab() {
             <CardTitle className="text-sm">
               Select cadets
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                {selectedCins.size === 0
-                  ? "None selected — all cadets checked"
-                  : `${selectedCins.size} selected`}
+                {selectedCins.size} selected
               </span>
             </CardTitle>
           </CardHeader>
@@ -535,8 +579,15 @@ function CadetCheckTab() {
               </div>
             )}
           </div>
-          {selectedCins.size > 0 && (
-            <div className="border-t px-4 py-2">
+          <div className="flex items-center gap-4 border-t px-4 py-2">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={selectAllFiltered}
+            >
+              Select all{search ? " (filtered)" : ""}
+            </button>
+            {selectedCins.size > 0 && (
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-foreground"
@@ -544,8 +595,8 @@ function CadetCheckTab() {
               >
                 Clear selection
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </Card>
 
         {/* Criteria */}
@@ -555,6 +606,7 @@ function CadetCheckTab() {
           </CardHeader>
           <CardContent className="border-t px-4 py-3">
             <CriteriaSelector
+              badgeTypes={badgeTypes}
               selectedQuals={selectedQuals}
               onToggleQual={toggleQual}
               includeMedical={includeMedical}
@@ -579,6 +631,7 @@ function CadetCheckTab() {
       {results !== null && (
         <AuditResultsTable
           results={results}
+          badgeTypes={badgeTypes}
           qualifications={selectedQuals}
           includeMedical={includeMedical}
           includeDietary={includeDietary}
@@ -594,6 +647,8 @@ function EventCheckTab() {
   const { data: session } = useSession();
   const { data: events = [], isLoading: loadingEvents } =
     useApiQuery<EventEntry[]>(["cadet-events"], "/cadet-events");
+  const { data: badgeTypes = [] } =
+    useApiQuery<BadgeType[]>(["audit-badge-types"], "/cadets/audit/badge-types");
 
   const [selectedEventId, setSelectedEventId] = useState("");
   const [selectedSubAppId, setSelectedSubAppId] = useState("all");
@@ -658,6 +713,10 @@ function EventCheckTab() {
     (selectedQuals.length > 0 || includeMedical || includeDietary);
 
   const selectedSubApp = subApps.find((s) => String(s.id) === selectedSubAppId);
+  const shownCadets =
+    selectedSubAppId === "all"
+      ? selectedEvent?.cadets ?? []
+      : selectedSubApp?.cadets ?? [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -725,6 +784,26 @@ function EventCheckTab() {
                       } on sub-app`}
                 </p>
               )}
+
+              {selectedEvent && shownCadets.length > 0 && (
+                <div className="max-h-56 overflow-y-auto rounded-md border">
+                  <div className="divide-y">
+                    {shownCadets.map((c) => (
+                      <div
+                        key={c.cin}
+                        className="flex items-center gap-3 px-3 py-2 text-sm"
+                      >
+                        <span className="font-medium">
+                          {c.last_name}, {c.first_name}
+                        </span>
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          {c.cin}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -736,6 +815,7 @@ function EventCheckTab() {
           </CardHeader>
           <CardContent className="border-t px-4 py-3">
             <CriteriaSelector
+              badgeTypes={badgeTypes}
               selectedQuals={selectedQuals}
               onToggleQual={toggleQual}
               includeMedical={includeMedical}
@@ -760,6 +840,7 @@ function EventCheckTab() {
       {results !== null && (
         <AuditResultsTable
           results={results}
+          badgeTypes={badgeTypes}
           qualifications={selectedQuals}
           includeMedical={includeMedical}
           includeDietary={includeDietary}
@@ -779,7 +860,7 @@ export default function AuditPage() {
         description="Review cadet medical requirements and check qualifications"
       />
       <Tabs defaultValue="medical">
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
           <TabsTrigger value="medical">Medical Overview</TabsTrigger>
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>
           <TabsTrigger value="event-check">Event Audit</TabsTrigger>
