@@ -63,6 +63,7 @@ import {
   DatabaseZap,
   ReceiptText,
   ShieldCheck,
+  ScrollText,
 } from "lucide-react";
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
