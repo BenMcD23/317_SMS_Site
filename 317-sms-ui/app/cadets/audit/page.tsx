@@ -120,48 +120,81 @@ type EventEntry = {
 
 // ─── Shared components ───────────────────────────────────────────────────────────
 
-function ResultBadge({ check }: { check: QualCheck | undefined }) {
-  if (!check?.has || !check.level) {
-    return <Badge variant="outline" className="text-muted-foreground">None</Badge>;
-  }
-  const text = check.kind === "boolean" ? "Yes" : levelLabel(check.level);
+// A selected criterion is a badge key → the chosen level labels for it.
+type LevelSelection = Record<string, string[]>;
+
+function matchedLevel(check: QualCheck | undefined, levels: string[]): string | null {
+  return check?.level && levels.includes(check.level) ? check.level : null;
+}
+
+function LevelChip({
+  active,
+  level,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  level?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <Badge variant="outline" className={LEVEL_STYLES[check.level] ?? ""}>
-      {text}
-    </Badge>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+        active
+          ? level
+            ? LEVEL_STYLES[level] ?? "border-primary bg-primary/10 text-primary"
+            : "border-primary bg-primary/10 text-primary"
+          : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
 function CriteriaSelector({
   badgeTypes,
-  selectedQuals,
-  onToggleQual,
+  selected,
+  onChange,
   includeMedical,
   onToggleMedical,
   includeDietary,
   onToggleDietary,
 }: {
   badgeTypes: BadgeType[];
-  selectedQuals: string[];
-  onToggleQual: (v: string) => void;
+  selected: LevelSelection;
+  onChange: (next: LevelSelection) => void;
   includeMedical: boolean;
   onToggleMedical: (v: boolean) => void;
   includeDietary: boolean;
   onToggleDietary: (v: boolean) => void;
 }) {
-  const allSelected =
-    badgeTypes.length > 0 && selectedQuals.length === badgeTypes.length;
+  const leveled = badgeTypes.filter((b) => b.kind === "leveled");
+  const boolean = badgeTypes.filter((b) => b.kind === "boolean");
+  const anySelected = Object.keys(selected).length > 0;
 
-  function toggleAll() {
-    if (allSelected) {
-      badgeTypes.forEach((b) => {
-        if (selectedQuals.includes(b.key)) onToggleQual(b.key);
-      });
-    } else {
-      badgeTypes.forEach((b) => {
-        if (!selectedQuals.includes(b.key)) onToggleQual(b.key);
-      });
-    }
+  function setLevels(key: string, levels: string[]) {
+    const next = { ...selected };
+    if (levels.length === 0) delete next[key];
+    else next[key] = levels;
+    onChange(next);
+  }
+  function toggleLevel(b: BadgeType, lvl: string) {
+    const cur = selected[b.key] ?? [];
+    setLevels(b.key, cur.includes(lvl) ? cur.filter((x) => x !== lvl) : [...cur, lvl]);
+  }
+  function toggleAllLevels(b: BadgeType) {
+    const cur = selected[b.key] ?? [];
+    setLevels(b.key, cur.length === b.levels.length ? [] : [...b.levels]);
+  }
+  function selectEverything() {
+    const next: LevelSelection = {};
+    badgeTypes.forEach((b) => { next[b.key] = [...b.levels]; });
+    onChange(next);
   }
 
   return (
@@ -172,29 +205,63 @@ function CriteriaSelector({
           <button
             type="button"
             className="text-xs text-muted-foreground hover:text-foreground"
-            onClick={toggleAll}
+            onClick={anySelected ? () => onChange({}) : selectEverything}
           >
-            {allSelected ? "Clear all" : "Select all"}
+            {anySelected ? "Clear all" : "Select all"}
           </button>
         )}
       </div>
-      <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-        {badgeTypes.map((b) => (
-          <div key={b.key} className="flex items-center gap-2">
-            <Checkbox
-              id={`qual-${b.key}`}
-              checked={selectedQuals.includes(b.key)}
-              onCheckedChange={() => onToggleQual(b.key)}
-            />
-            <Label
-              htmlFor={`qual-${b.key}`}
-              className="cursor-pointer text-sm font-normal"
+
+      <div className="flex flex-col gap-2.5">
+        {leveled.map((b) => {
+          const cur = selected[b.key] ?? [];
+          const allSel = cur.length === b.levels.length;
+          return (
+            <div
+              key={b.key}
+              className="flex flex-col gap-1.5 border-b pb-2.5 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
-              {b.name}
-            </Label>
-          </div>
-        ))}
+              <span className="text-sm">{b.name}</span>
+              <div className="flex flex-wrap gap-1">
+                <LevelChip active={allSel} onClick={() => toggleAllLevels(b)}>
+                  All
+                </LevelChip>
+                {b.levels.map((lvl) => (
+                  <LevelChip
+                    key={lvl}
+                    active={cur.includes(lvl)}
+                    level={lvl}
+                    onClick={() => toggleLevel(b, lvl)}
+                  >
+                    {levelLabel(lvl)}
+                  </LevelChip>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {boolean.length > 0 && (
+        <>
+          <p className="border-t pt-3 text-sm font-semibold">Other</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {boolean.map((b) => (
+              <div key={b.key} className="flex items-center gap-2">
+                <Checkbox
+                  id={`qual-${b.key}`}
+                  checked={(selected[b.key] ?? []).length > 0}
+                  onCheckedChange={(v) => setLevels(b.key, v ? [...b.levels] : [])}
+                />
+                <Label htmlFor={`qual-${b.key}`} className="cursor-pointer text-sm font-normal">
+                  {b.name}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       <p className="border-t pt-3 text-sm font-semibold">Medical &amp; Dietary</p>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
@@ -225,19 +292,32 @@ function CriteriaSelector({
 function AuditResultsTable({
   results,
   badgeTypes,
-  qualifications,
+  selected,
   includeMedical,
   includeDietary,
 }: {
   results: AuditResult[];
   badgeTypes: BadgeType[];
-  qualifications: string[];
+  selected: LevelSelection;
   includeMedical: boolean;
   includeDietary: boolean;
 }) {
-  const qualCols = badgeTypes.filter((b) => qualifications.includes(b.key));
+  const qualCols = badgeTypes.filter((b) => (selected[b.key] ?? []).length > 0);
+  const hasQualCriteria = qualCols.length > 0;
 
-  if (results.length === 0) {
+  // Only keep cadets who hold one of the selected levels for at least one
+  // selected badge (so all-"None" cadets drop out). With no qualifications
+  // selected (medical/dietary-only audit), keep every result.
+  const rows = hasQualCriteria
+    ? results.filter((r) =>
+        qualCols.some((b) => {
+          const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
+          return matchedLevel(check, selected[b.key] ?? []) !== null;
+        }),
+      )
+    : results;
+
+  if (rows.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">No results.</p>
     );
@@ -264,7 +344,7 @@ function AuditResultsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {results.map((r) => (
+          {rows.map((r) => (
             <TableRow key={r.cin}>
               <TableCell className="pl-4">
                 <p className="font-medium">
@@ -281,9 +361,16 @@ function AuditResultsTable({
                 const check = r.qualifications_check?.find(
                   (c) => c.qual_type === b.key
                 );
+                const lvl = matchedLevel(check, selected[b.key] ?? []);
                 return (
                   <TableCell key={b.key} className="text-center">
-                    <ResultBadge check={check} />
+                    {lvl ? (
+                      <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                        {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                 );
               })}
@@ -455,7 +542,7 @@ function CadetCheckTab() {
 
   const [search, setSearch] = useState("");
   const [selectedCins, setSelectedCins] = useState<Set<number>>(new Set());
-  const [selectedQuals, setSelectedQuals] = useState<string[]>([]);
+  const [quals, setQuals] = useState<LevelSelection>({});
   const [includeMedical, setIncludeMedical] = useState(false);
   const [includeDietary, setIncludeDietary] = useState(false);
   const [results, setResults] = useState<AuditResult[] | null>(null);
@@ -489,15 +576,9 @@ function CadetCheckTab() {
     });
   }
 
-  function toggleQual(v: string) {
-    setSelectedQuals((prev) =>
-      prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
-    );
-  }
-
   async function runCheck() {
     if (!session?.id_token) return;
-    if (selectedQuals.length === 0 && !includeMedical && !includeDietary) return;
+    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary) return;
     setLoading(true);
     setError(null);
     try {
@@ -509,7 +590,7 @@ function CadetCheckTab() {
         },
         body: JSON.stringify({
           cadet_cins: [...selectedCins],
-          qualifications: selectedQuals,
+          qualifications: Object.keys(quals),
           include_medical: includeMedical,
           include_dietary: includeDietary,
         }),
@@ -524,7 +605,7 @@ function CadetCheckTab() {
 
   const canRun =
     selectedCins.size > 0 &&
-    (selectedQuals.length > 0 || includeMedical || includeDietary);
+    (Object.keys(quals).length > 0 || includeMedical || includeDietary);
 
   return (
     <div className="flex flex-col gap-4">
@@ -561,12 +642,19 @@ function CadetCheckTab() {
             ) : (
               <div className="divide-y">
                 {filtered.map((c) => (
-                  <button
+                  <div
                     key={c.cin}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => toggleCadet(c.cin)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleCadet(c.cin);
+                      }
+                    }}
                     className={cn(
-                      "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50",
+                      "flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50",
                       selectedCins.has(c.cin) && "bg-muted/30"
                     )}
                   >
@@ -581,7 +669,7 @@ function CadetCheckTab() {
                     <span className="ml-auto text-xs text-muted-foreground">
                       {c.cin}
                     </span>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -614,8 +702,8 @@ function CadetCheckTab() {
           <CardContent className="border-t px-4 py-3">
             <CriteriaSelector
               badgeTypes={badgeTypes}
-              selectedQuals={selectedQuals}
-              onToggleQual={toggleQual}
+              selected={quals}
+              onChange={setQuals}
               includeMedical={includeMedical}
               onToggleMedical={setIncludeMedical}
               includeDietary={includeDietary}
@@ -639,7 +727,7 @@ function CadetCheckTab() {
         <AuditResultsTable
           results={results}
           badgeTypes={badgeTypes}
-          qualifications={selectedQuals}
+          selected={quals}
           includeMedical={includeMedical}
           includeDietary={includeDietary}
         />
@@ -659,7 +747,7 @@ function EventCheckTab() {
 
   const [selectedEventId, setSelectedEventId] = useState("");
   const [selectedSubAppId, setSelectedSubAppId] = useState("all");
-  const [selectedQuals, setSelectedQuals] = useState<string[]>([]);
+  const [quals, setQuals] = useState<LevelSelection>({});
   const [includeMedical, setIncludeMedical] = useState(false);
   const [includeDietary, setIncludeDietary] = useState(false);
   const [results, setResults] = useState<AuditResult[] | null>(null);
@@ -668,12 +756,6 @@ function EventCheckTab() {
 
   const selectedEvent = events.find((e) => String(e.id) === selectedEventId);
   const subApps = selectedEvent?.sub_apps ?? [];
-
-  function toggleQual(v: string) {
-    setSelectedQuals((prev) =>
-      prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
-    );
-  }
 
   function handleEventChange(val: string) {
     setSelectedEventId(val);
@@ -690,7 +772,7 @@ function EventCheckTab() {
 
   async function runCheck() {
     if (!session?.id_token || effectiveEventId === null) return;
-    if (selectedQuals.length === 0 && !includeMedical && !includeDietary) return;
+    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary) return;
     setLoading(true);
     setError(null);
     try {
@@ -702,7 +784,7 @@ function EventCheckTab() {
         },
         body: JSON.stringify({
           event_id: effectiveEventId,
-          qualifications: selectedQuals,
+          qualifications: Object.keys(quals),
           include_medical: includeMedical,
           include_dietary: includeDietary,
         }),
@@ -717,7 +799,7 @@ function EventCheckTab() {
 
   const canRun =
     effectiveEventId !== null &&
-    (selectedQuals.length > 0 || includeMedical || includeDietary);
+    (Object.keys(quals).length > 0 || includeMedical || includeDietary);
 
   const selectedSubApp = subApps.find((s) => String(s.id) === selectedSubAppId);
   const shownCadets =
@@ -823,8 +905,8 @@ function EventCheckTab() {
           <CardContent className="border-t px-4 py-3">
             <CriteriaSelector
               badgeTypes={badgeTypes}
-              selectedQuals={selectedQuals}
-              onToggleQual={toggleQual}
+              selected={quals}
+              onChange={setQuals}
               includeMedical={includeMedical}
               onToggleMedical={setIncludeMedical}
               includeDietary={includeDietary}
@@ -848,7 +930,7 @@ function EventCheckTab() {
         <AuditResultsTable
           results={results}
           badgeTypes={badgeTypes}
-          qualifications={selectedQuals}
+          selected={quals}
           includeMedical={includeMedical}
           includeDietary={includeDietary}
         />
