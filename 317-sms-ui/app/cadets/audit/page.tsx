@@ -60,6 +60,7 @@ type Cadet = {
   last_name: string;
   rank: string | null;
   flight: string | null;
+  classification: string | null;
 };
 
 type AllergyEntry = {
@@ -248,6 +249,7 @@ function AuditResultsTable({
         <TableHeader>
           <TableRow>
             <TableHead className="min-w-40 pl-4">Cadet</TableHead>
+            <TableHead className="min-w-28">Classification</TableHead>
             {qualCols.map((b) => (
               <TableHead key={b.key} className="min-w-24 text-center">
                 {b.name}
@@ -269,6 +271,11 @@ function AuditResultsTable({
                   {r.last_name}, {r.first_name}
                 </p>
                 <p className="text-xs text-muted-foreground">CIN {r.cin}</p>
+              </TableCell>
+              <TableCell>
+                <span className="text-sm">
+                  {r.classification || "Junior Cadet"}
+                </span>
               </TableCell>
               {qualCols.map((b) => {
                 const check = r.qualifications_check?.find(
