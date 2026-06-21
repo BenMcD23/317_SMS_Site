@@ -22,6 +22,7 @@ interface CurrentStats {
   by_flight: Record<string, number>;
   by_age: Record<string, number>;
   by_rank: Record<string, number>;
+  by_classification: Record<string, number>;
   badges: Record<string, Record<string, number>>;
 }
 
@@ -132,6 +133,57 @@ function AgeChart({ byAge }: { byAge: Record<string, number> }) {
               }}
             />
             <Bar dataKey="count" fill="var(--chart-1)" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Classification bar chart ─────────────────────────────────────────────────
+
+const CLASSIFICATION_ORDER = [
+  "Junior Cadet",
+  "First Class Cadet",
+  "Leading Cadet",
+  "Senior Cadet",
+  "Master Air Cadet",
+];
+
+function ClassificationChart({ byClassification }: { byClassification: Record<string, number> }) {
+  const data = [
+    ...CLASSIFICATION_ORDER,
+    ...Object.keys(byClassification).filter((k) => !CLASSIFICATION_ORDER.includes(k)),
+  ]
+    .filter((name) => (byClassification[name] ?? 0) > 0)
+    .map((name) => ({
+      // Short labels so they fit on the x-axis.
+      name: name.replace(" Cadet", "").replace("Master Air", "Master"),
+      count: byClassification[name] ?? 0,
+    }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Classification</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={data} barSize={36}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={24} tickLine={false} axisLine={false} />
+            <Tooltip
+              cursor={{ fill: "var(--muted)" }}
+              contentStyle={{
+                background: "var(--popover)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                color: "var(--popover-foreground)",
+                fontSize: 12,
+              }}
+            />
+            <Bar dataKey="count" fill="var(--chart-2)" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -321,7 +373,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
       <PageHeader title="Dashboard" description="Squadron overview and badge progression" />
-
+      {session?.role === "staff" && <QuickTools />}
       {loading ? (
         <DashboardSkeleton />
       ) : (
@@ -344,7 +396,10 @@ export default function HomePage() {
               />
             </section>
 
-            <AgeChart byAge={stats.by_age} />
+            <div className="grid gap-3 lg:grid-cols-2">
+              <AgeChart byAge={stats.by_age} />
+              <ClassificationChart byClassification={stats.by_classification ?? {}} />
+            </div>
 
             <section className="flex flex-col gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -365,8 +420,6 @@ export default function HomePage() {
           </>
         )
       )}
-
-      {session?.role === "staff" && <QuickTools />}
     </div>
   );
 }

@@ -62,7 +62,7 @@ import {
   ChevronsUpDown,
   DatabaseZap,
   ReceiptText,
-  ScrollText,
+  ShieldCheck,
 } from "lucide-react";
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
@@ -92,6 +92,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck },
       { label: "Events", href: "/cadets/events", icon: Calendar, staffOnly: true },
+      { label: "Audit", href: "/cadets/audit", icon: ShieldCheck, staffOnly: true },
     ],
   },
   {

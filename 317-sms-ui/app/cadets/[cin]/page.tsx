@@ -76,6 +76,7 @@ type CadetDetail = {
   date_of_birth: string | null;
   rank: string | null;
   flight: string | null;
+  classification: string | null;
   banned: boolean;
   qualifications: Qualification[];
   events: CadetEvent[];
@@ -407,6 +408,12 @@ export default function CadetOverviewPage() {
               <Plane className="h-3 w-3" /> Flight
             </p>
             <span className="text-sm font-medium">{cadet.flight ?? "—"}</span>
+          </div>
+          <div>
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <Award className="h-3 w-3" /> Classification
+            </p>
+            <span className="text-sm font-medium">{cadet.classification || "Junior Cadet"}</span>
           </div>
         </CardContent>
       </Card>
