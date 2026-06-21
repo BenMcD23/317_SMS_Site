@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { OWNER_EMAIL } from "@/lib/config";
 import {
   Sidebar,
   SidebarContent,
@@ -71,11 +72,13 @@ type NavLink = {
   href: string;
   icon: React.ElementType;
   staffOnly?: boolean;
+  ownerOnly?: boolean;
 };
 
 type NavSection = {
   label?: string;
   staffOnly?: boolean;
+  ownerOnly?: boolean;
   links: NavLink[];
 };
 
@@ -137,14 +140,21 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
+  {
+    label: "Developer",
+    ownerOnly: true,
+    links: [
+      { label: "API Logs", href: "/api-logs", icon: ScrollText, ownerOnly: true },
+    ],
+  },
 ];
 
-function visibleSections(role: string | undefined): NavSection[] {
-  return NAV_SECTIONS.filter((s) => role === "staff" || !s.staffOnly)
-    .map((s) => ({
-      ...s,
-      links: s.links.filter((l) => role === "staff" || !l.staffOnly),
-    }))
+function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
+  const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
+  const canSee = (item: { staffOnly?: boolean; ownerOnly?: boolean }) =>
+    (!item.ownerOnly || isOwner) && (!item.staffOnly || role === "staff");
+  return NAV_SECTIONS.filter(canSee)
+    .map((s) => ({ ...s, links: s.links.filter(canSee) }))
     .filter((s) => s.links.length > 0);
 }
 
@@ -294,7 +304,7 @@ function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { isMobile, setOpenMobile } = useSidebar();
-  const sections = visibleSections(session?.role);
+  const sections = visibleSections(session?.role, session?.user?.email ?? undefined);
 
   // On mobile the sidebar is an overlay sheet — collapse it after navigating
   const closeOnMobile = () => {

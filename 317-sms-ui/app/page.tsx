@@ -50,7 +50,7 @@ const BADGE_LABELS: Record<string, string> = {
 
 // Badge level colours are domain colours (bronze/silver/gold), not theme colours
 const LEVEL_COLOURS: Record<string, string> = {
-  None: "var(--muted)",
+  None: "var(--muted-foreground)",
   Blue: "#3b82f6",
   Bronze: "#b45309",
   Silver: "#6b7280",
@@ -217,9 +217,12 @@ function BadgeStatCard({
     new Set(history.flatMap((h) => Object.keys(h.data.badges[badgeKey] ?? {})))
   ).filter((l) => l !== "None");
 
+  // Track the held levels plus a "None" series (cadets without the badge) over time.
+  const chartLevels = [...allLevels, "None"];
+
   const chartData = history.map((h) => {
     const point: Record<string, string | number> = { date: fmtDate(h.date) };
-    for (const l of allLevels) {
+    for (const l of chartLevels) {
       point[l] = h.data.badges[badgeKey]?.[l] ?? 0;
     }
     return point;
@@ -268,8 +271,16 @@ function BadgeStatCard({
                   fontSize: 12,
                 }}
               />
-              {allLevels.map((l) => (
-                <Line key={l} type="monotone" dataKey={l} stroke={levelColor(l)} strokeWidth={2} dot={false} />
+              {chartLevels.map((l) => (
+                <Line
+                  key={l}
+                  type="monotone"
+                  dataKey={l}
+                  stroke={levelColor(l)}
+                  strokeWidth={2}
+                  dot={false}
+                  strokeDasharray={l === "None" ? "4 3" : undefined}
+                />
               ))}
             </LineChart>
           </ResponsiveContainer>
