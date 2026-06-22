@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
+import { useApiQuery } from "@/lib/use-api-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,8 +15,6 @@ import {
   Tooltip, ResponsiveContainer,
 } from "recharts";
 
-const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CurrentStats {
@@ -23,6 +22,7 @@ interface CurrentStats {
   by_flight: Record<string, number>;
   by_age: Record<string, number>;
   by_rank: Record<string, number>;
+  by_classification: Record<string, number>;
   badges: Record<string, Record<string, number>>;
 }
 
@@ -50,7 +50,7 @@ const BADGE_LABELS: Record<string, string> = {
 
 // Badge level colours are domain colours (bronze/silver/gold), not theme colours
 const LEVEL_COLOURS: Record<string, string> = {
-  None: "var(--muted)",
+  None: "var(--muted-foreground)",
   Blue: "#3b82f6",
   Bronze: "#b45309",
   Silver: "#6b7280",
@@ -70,14 +70,6 @@ function levelColor(level: string): string {
 function fmtDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-async function fetchJSON(path: string, token: string) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`${path} → ${res.status}`);
-  return res.json();
 }
 
 // ─── Stat cards ───────────────────────────────────────────────────────────────
@@ -148,6 +140,57 @@ function AgeChart({ byAge }: { byAge: Record<string, number> }) {
   );
 }
 
+// ─── Classification bar chart ─────────────────────────────────────────────────
+
+const CLASSIFICATION_ORDER = [
+  "Junior Cadet",
+  "First Class Cadet",
+  "Leading Cadet",
+  "Senior Cadet",
+  "Master Air Cadet",
+];
+
+function ClassificationChart({ byClassification }: { byClassification: Record<string, number> }) {
+  const data = [
+    ...CLASSIFICATION_ORDER,
+    ...Object.keys(byClassification).filter((k) => !CLASSIFICATION_ORDER.includes(k)),
+  ]
+    .filter((name) => (byClassification[name] ?? 0) > 0)
+    .map((name) => ({
+      // Short labels so they fit on the x-axis.
+      name: name.replace(" Cadet", "").replace("Master Air", "Master"),
+      count: byClassification[name] ?? 0,
+    }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Classification</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={data} barSize={36}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+            <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={24} tickLine={false} axisLine={false} />
+            <Tooltip
+              cursor={{ fill: "var(--muted)" }}
+              contentStyle={{
+                background: "var(--popover)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                color: "var(--popover-foreground)",
+                fontSize: 12,
+              }}
+            />
+            <Bar dataKey="count" fill="var(--chart-2)" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Badge progression card ───────────────────────────────────────────────────
 
 function BadgeStatCard({
@@ -174,9 +217,12 @@ function BadgeStatCard({
     new Set(history.flatMap((h) => Object.keys(h.data.badges[badgeKey] ?? {})))
   ).filter((l) => l !== "None");
 
+  // Track the held levels plus a "None" series (cadets without the badge) over time.
+  const chartLevels = [...allLevels, "None"];
+
   const chartData = history.map((h) => {
     const point: Record<string, string | number> = { date: fmtDate(h.date) };
-    for (const l of allLevels) {
+    for (const l of chartLevels) {
       point[l] = h.data.badges[badgeKey]?.[l] ?? 0;
     }
     return point;
@@ -225,8 +271,16 @@ function BadgeStatCard({
                   fontSize: 12,
                 }}
               />
-              {allLevels.map((l) => (
-                <Line key={l} type="monotone" dataKey={l} stroke={levelColor(l)} strokeWidth={2} dot={false} />
+              {chartLevels.map((l) => (
+                <Line
+                  key={l}
+                  type="monotone"
+                  dataKey={l}
+                  stroke={levelColor(l)}
+                  strokeWidth={2}
+                  dot={false}
+                  strokeDasharray={l === "None" ? "4 3" : undefined}
+                />
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -293,29 +347,21 @@ function DashboardSkeleton() {
 
 export default function HomePage() {
   const { data: session } = useSession({ required: true });
-  const [stats, setStats] = useState<CurrentStats | null>(null);
-  const [history, setHistory] = useState<HistoryPoint[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (session?.error) {
       signIn("google", { callbackUrl: "/" });
-      return;
     }
-    if (!session?.id_token) return;
-    const token = session.id_token as string;
+  }, [session?.error]);
 
-    Promise.all([
-      fetchJSON("/stats/current", token),
-      fetchJSON("/stats/history", token),
-    ])
-      .then(([cur, hist]) => {
-        setStats(cur);
-        setHistory(hist);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [session?.id_token]);
+  const { data: stats = null } = useApiQuery<CurrentStats>(
+    ["stats", "current"],
+    "/stats/current"
+  );
+  const { data: history = [], isLoading: loading } = useApiQuery<HistoryPoint[]>(
+    ["stats", "history"],
+    "/stats/history"
+  );
 
   const total = stats?.total_cadets ?? 0;
   const ncoCount = stats
@@ -327,7 +373,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
       <PageHeader title="Dashboard" description="Squadron overview and badge progression" />
-
+      {session?.role === "staff" && <QuickTools />}
       {loading ? (
         <DashboardSkeleton />
       ) : (
@@ -350,7 +396,10 @@ export default function HomePage() {
               />
             </section>
 
-            <AgeChart byAge={stats.by_age} />
+            <div className="grid gap-3 lg:grid-cols-2">
+              <AgeChart byAge={stats.by_age} />
+              <ClassificationChart byClassification={stats.by_classification ?? {}} />
+            </div>
 
             <section className="flex flex-col gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -371,8 +420,6 @@ export default function HomePage() {
           </>
         )
       )}
-
-      {session?.role === "staff" && <QuickTools />}
     </div>
   );
 }

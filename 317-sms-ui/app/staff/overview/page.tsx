@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,21 +23,17 @@ type StaffUser = {
 
 export default function StaffOverviewPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<StaffUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    fetch("/api/staff/users")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to load staff");
-        return res.json();
-      })
-      .then((data: StaffUser[]) => setUsers(data.filter((u) => u.role === "staff")))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: users = [], isLoading: loading, error } = useQuery<StaffUser[], Error>({
+    queryKey: ["staff", "users"],
+    queryFn: async () => {
+      const res = await fetch("/api/staff/users");
+      if (!res.ok) throw new Error("Failed to load staff");
+      const data: StaffUser[] = await res.json();
+      return data.filter((u) => u.role === "staff");
+    },
+  });
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
@@ -62,7 +59,7 @@ export default function StaffOverviewPage() {
         />
       </InputGroup>
 
-      <ErrorAlert message={error} title="Could not load staff" />
+      <ErrorAlert message={error?.message ?? null} title="Could not load staff" />
 
       {loading ? (
         <div className="flex flex-col gap-2">

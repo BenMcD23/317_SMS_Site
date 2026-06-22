@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,14 @@ import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Loader2, Clock, CheckSquare, Square, X, CalendarClock } from "lucide-react";
+import { Loader2, Clock, CheckSquare, Square, X, CalendarClock, FileText } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -43,9 +51,30 @@ const SCRAPER_TOOLS = [
   },
 ];
 
+// React Query keys whose cached data each scraper refreshes. When a run
+// completes we invalidate these so the affected pages show the new data
+// immediately instead of waiting out the 60s staleTime. Keys are prefixes, so
+// ["stats"] also invalidates ["stats","current"] / ["stats","history"].
+// Scrapers feeding pages that aren't cached yet (cadet detail, events) map to
+// [] — add their keys here if/when those pages move to useApiQuery.
+const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
+  "cadet-quali": [["cadets"], ["stats"]], // cadet info + qualifications → list & dashboard
+  "cadet-event": [],                      // attendance lives on cadet detail (uncached)
+  "317-event": [],                        // event metadata (uncached)
+  "medical": [],                          // allergies/dietary on cadet detail (uncached)
+};
+
 type LogEntry = { text: string; time: string };
-type LastRun = { ran_at: string | null; success: boolean | null; ran_by: string | null };
+type LastRun = { id: number | null; ran_at: string | null; success: boolean | null; ran_by: string | null };
 type RunningState = { running: boolean; started_by: string | null };
+type RunDetail = {
+  id: number;
+  scraper_id: string;
+  ran_at: string;
+  success: boolean;
+  ran_by: string | null;
+  logs: string;
+};
 
 const toEntry = (text: string): LogEntry => ({
   text,
@@ -348,8 +377,10 @@ function ScheduleCard({
               type="multiple"
               variant="outline"
               size="sm"
+              spacing={1}
               value={days}
               onValueChange={setDays}
+              className="flex-wrap"
             >
               {DAY_OPTIONS.map((d) => (
                 <ToggleGroupItem key={d.id} value={d.id} aria-label={d.label} className="px-2.5">
@@ -429,8 +460,74 @@ function ScheduleTab({ token }: { token: string }) {
   );
 }
 
+function RunLogsDialog({
+  runId,
+  label,
+  token,
+  open,
+  onOpenChange,
+}: {
+  runId: number | null;
+  label: string;
+  token: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [detail, setDetail] = useState<RunDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || runId == null) return;
+    setLoading(true);
+    setError(null);
+    setDetail(null);
+    apiFetch(`${API_BASE}/scraper-runs/${runId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Failed to load logs (${res.status})`);
+        setDetail(await res.json());
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load logs"))
+      .finally(() => setLoading(false));
+  }, [open, runId, token]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{label} — run logs</DialogTitle>
+          <DialogDescription>
+            {detail
+              ? `${formatLastRan(detail.ran_at)}${detail.ran_by ? ` · ${detail.ran_by}` : ""}${
+                  detail.success ? "" : " · failed"
+                }`
+              : "Logs from the most recent run."}
+          </DialogDescription>
+        </DialogHeader>
+        {loading && (
+          <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 size={14} className="animate-spin" /> Loading logs...
+          </div>
+        )}
+        {error && <p className="py-4 text-sm text-destructive">{error}</p>}
+        {detail && (
+          <ScrollArea className="h-[60vh] rounded-md border bg-muted/30">
+            <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs leading-relaxed">
+              {detail.logs?.trim() ? detail.logs : "No logs were captured for this run."}
+            </pre>
+          </ScrollArea>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ScraperPage() {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const [logsFor, setLogsFor] = useState<{ id: number; label: string } | null>(null);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<"select" | "running">("select");
@@ -557,7 +654,12 @@ export default function ScraperPage() {
       next.add(id);
       return next;
     });
-  }, []);
+    // Drop client-side caches the scraper just refreshed so pages refetch the
+    // new data (the backend already invalidated its own cache on completion).
+    for (const queryKey of SCRAPER_CACHE_KEYS[id] ?? []) {
+      queryClient.invalidateQueries({ queryKey });
+    }
+  }, [queryClient]);
 
   const allDone = activeScrapers.length > 0 && doneScrapers.size === activeScrapers.length;
 
@@ -696,6 +798,18 @@ export default function ScraperPage() {
                           Failed
                         </Badge>
                       )}
+                      {lastRun?.id != null && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLogsFor({ id: lastRun.id!, label: tool.label });
+                          }}
+                          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
+                          title="View logs from the last run"
+                        >
+                          <FileText size={12} /> Logs
+                        </button>
+                      )}
                     </div>
                   </div>
                   <p className="pl-7 text-sm text-muted-foreground">{tool.description}</p>
@@ -758,6 +872,16 @@ export default function ScraperPage() {
           {session?.id_token && <ScheduleTab token={session.id_token} />}
         </TabsContent>
       </Tabs>
+
+      {session?.id_token && (
+        <RunLogsDialog
+          runId={logsFor?.id ?? null}
+          label={logsFor?.label ?? ""}
+          token={session.id_token}
+          open={logsFor !== null}
+          onOpenChange={(o) => !o && setLogsFor(null)}
+        />
+      )}
     </div>
   );
 }

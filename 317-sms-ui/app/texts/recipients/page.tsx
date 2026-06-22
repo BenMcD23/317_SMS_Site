@@ -192,7 +192,7 @@ export default function TextRecipientsPage() {
         title="Text Recipients"
         description="Everyone on this list receives the parade night texts"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" onClick={handleExport} disabled={recipients.length === 0}>
               <Download /> Export CSV
             </Button>
