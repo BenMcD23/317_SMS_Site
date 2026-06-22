@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, RotateCcw, Paperclip, X } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -187,6 +187,10 @@ export default function MoiAssessmentPage() {
   const [submitted, setSubmitted] = useState(false);
   const [assessmentId, setAssessmentId] = useState<number | null>(null);
 
+  const [lessonPlanFile, setLessonPlanFile] = useState<File | null>(null);
+  const [lessonPlanBase64, setLessonPlanBase64] = useState<string | null>(null);
+  const [lessonPlanError, setLessonPlanError] = useState<string | null>(null);
+
   const [showDrawOverride, setShowDrawOverride] = useState(false);
   const [savedSignatureUrl, setSavedSignatureUrl] = useState<string | null>(null);
   const [overrideSignature, setOverrideSignature] = useState<string | null>(null);
@@ -247,9 +251,29 @@ export default function MoiAssessmentPage() {
     setOverrideSignature(null);
     setSubmitted(false);
     setAssessmentId(null);
+    setLessonPlanFile(null);
+    setLessonPlanBase64(null);
+    setLessonPlanError(null);
     clearDraft();
     setDraftBannerDismissed(true);
     loadAssessorName();
+  };
+
+  const handleLessonPlanChange = (file: File | null) => {
+    setLessonPlanError(null);
+    if (!file) {
+      setLessonPlanFile(null);
+      setLessonPlanBase64(null);
+      return;
+    }
+    if (file.type !== "application/pdf") {
+      setLessonPlanError("Lesson plan must be a PDF file.");
+      return;
+    }
+    setLessonPlanFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setLessonPlanBase64(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -289,6 +313,9 @@ export default function MoiAssessmentPage() {
         assessor_signature: effectiveSignature,
         cadet_signature: form.cadetSignature,
         date: form.date,
+        ...(lessonPlanBase64
+          ? { lesson_plan_pdf: lessonPlanBase64, lesson_plan_filename: lessonPlanFile?.name }
+          : {}),
       };
 
       const res = await apiFetch(`${API_BASE}/assessments/moi/add-assessment`, {
@@ -464,6 +491,42 @@ export default function MoiAssessmentPage() {
               onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Lesson plan upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Lesson Plan</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Optional. Attached to this assessment&apos;s record — when later assessments are done for
+            the same lesson, each new sheet and lesson plan builds onto the same combined PDF.
+          </p>
+          {lessonPlanFile ? (
+            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <span className="flex items-center gap-2 truncate">
+                <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{lessonPlanFile.name}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => handleLessonPlanChange(null)}
+                className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                title="Remove lesson plan"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <Input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => handleLessonPlanChange(e.target.files?.[0] ?? null)}
+            />
+          )}
+          {lessonPlanError && <p className="text-xs text-destructive">{lessonPlanError}</p>}
         </CardContent>
       </Card>
 
