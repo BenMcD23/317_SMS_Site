@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
@@ -370,6 +371,22 @@ export default function CadetOverviewPage() {
         {cadetAge !== null && <StatPill label="Age" value={cadetAge} />}
       </div>
 
+      <Tabs defaultValue="profile" className="gap-6">
+        <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="qualifications">
+            Qualifications
+            {cadet.qualifications.length > 0 && (
+              <Badge variant="secondary" className="ml-1.5 px-1.5 text-xs font-normal">
+                {cadet.qualifications.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="assessments">Assessments</TabsTrigger>
+          <TabsTrigger value="events">Events</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile" className="space-y-6">
       {/* Personal details */}
       <Card>
         <CardHeader>
@@ -418,6 +435,10 @@ export default function CadetOverviewPage() {
         </CardContent>
       </Card>
 
+      <UniformIssuancesCard baseUrl={`/api/stores/issuances/${cin}`} />
+        </TabsContent>
+
+        <TabsContent value="qualifications">
       {/* Qualifications table */}
       <Card>
         <CardHeader>
@@ -487,7 +508,9 @@ export default function CadetOverviewPage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="assessments">
       {/* Assessments */}
       <Card>
         <CardHeader>
@@ -551,7 +574,9 @@ export default function CadetOverviewPage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="events">
       {/* Events */}
       <Card>
         <CardHeader>
@@ -587,8 +612,8 @@ export default function CadetOverviewPage() {
           )}
         </CardContent>
       </Card>
-
-      <UniformIssuancesCard baseUrl={`/api/stores/issuances/${cin}`} />
+        </TabsContent>
+      </Tabs>
 
     </div>
   );

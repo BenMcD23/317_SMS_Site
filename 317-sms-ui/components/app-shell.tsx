@@ -7,7 +7,8 @@ import { usePathname } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { OWNER_EMAIL } from "@/lib/config";
+import { visibleSections, isLinkActive, currentPageTitle } from "@/lib/nav";
+import { CommandPalette } from "@/components/command-palette";
 import {
   Sidebar,
   SidebarContent,
@@ -38,147 +39,14 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
   LogOut,
-  FileText,
-  Calendar,
   Settings,
-  Users,
-  LayoutDashboard,
-  Radio,
-  HeartPulse,
-  Star,
   Sun,
   Moon,
-  ClipboardCheck,
   WifiOff,
   AlertTriangle,
-  MessageSquareText,
-  Contact,
-  Package,
-  ShoppingCart,
-  Award,
-  Newspaper,
-  BookOpen,
-  UserCog,
   ChevronsUpDown,
-  DatabaseZap,
-  ReceiptText,
-  ShieldCheck,
-  ScrollText,
+  Search,
 } from "lucide-react";
-
-// ─── Navigation ───────────────────────────────────────────────────────────────
-
-type NavLink = {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  staffOnly?: boolean;
-  ownerOnly?: boolean;
-};
-
-type NavSection = {
-  label?: string;
-  staffOnly?: boolean;
-  ownerOnly?: boolean;
-  links: NavLink[];
-};
-
-const NAV_SECTIONS: NavSection[] = [
-  {
-    links: [{ label: "Dashboard", href: "/", icon: LayoutDashboard }],
-  },
-  {
-    label: "Cadets",
-    links: [
-      { label: "Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
-      { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck },
-      { label: "Events", href: "/cadets/events", icon: Calendar, staffOnly: true },
-      { label: "Audit", href: "/cadets/audit", icon: ShieldCheck, staffOnly: true },
-    ],
-  },
-  {
-    label: "Assessment Sheets",
-    links: [
-      { label: "Leadership", href: "/assessments/leadership", icon: Star },
-      { label: "First Aid", href: "/assessments/first-aid", icon: HeartPulse },
-      { label: "Radio", href: "/assessments/radio", icon: Radio },
-      { label: "MOI", href: "/assessments/moi", icon: BookOpen },
-    ],
-  },
-  {
-    label: "Stores",
-    staffOnly: true,
-    links: [
-      { label: "Uniform Stock", href: "/stores/uniform/stock", icon: Package },
-      { label: "Uniform Orders", href: "/stores/uniform/orders", icon: ShoppingCart },
-      { label: "Badge Stock", href: "/stores/badges/stock", icon: Award },
-      { label: "Badge Orders", href: "/stores/badges/orders", icon: ShoppingCart },
-    ],
-  },
-  {
-    label: "Texts",
-    staffOnly: true,
-    links: [
-      { label: "Messages", href: "/texts/messages", icon: MessageSquareText },
-      { label: "Recipients", href: "/texts/recipients", icon: Contact },
-    ],
-  },
-  {
-    label: "Tools",
-    staffOnly: true,
-    links: [
-      { label: "JI/AO Generator", href: "/tools/ji-ao-generator", icon: FileText },
-      { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap },
-      { label: "Programme", href: "/tools/programme-updater", icon: Calendar },
-      { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper },
-      { label: "F1771e Claim", href: "/form-generators/f1771e", icon: ReceiptText },
-    ],
-  },
-  {
-    label: "Squadron",
-    links: [
-      { label: "Staff", href: "/staff/overview", icon: UserCog, staffOnly: true },
-      { label: "Settings", href: "/settings", icon: Settings },
-    ],
-  },
-  {
-    label: "Developer",
-    ownerOnly: true,
-    links: [
-      { label: "API Logs", href: "/api-logs", icon: ScrollText, ownerOnly: true },
-    ],
-  },
-];
-
-function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
-  const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
-  const canSee = (item: { staffOnly?: boolean; ownerOnly?: boolean }) =>
-    (!item.ownerOnly || isOwner) && (!item.staffOnly || role === "staff");
-  return NAV_SECTIONS.filter(canSee)
-    .map((s) => ({ ...s, links: s.links.filter(canSee) }))
-    .filter((s) => s.links.length > 0);
-}
-
-function isLinkActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-}
-
-/** Page title for the header, from the deepest matching nav link. */
-function currentPageTitle(pathname: string): string | null {
-  let best: { label: string; len: number } | null = null;
-  for (const section of NAV_SECTIONS) {
-    for (const link of section.links) {
-      if (isLinkActive(pathname, link.href) && link.href.length > (best?.len ?? -1)) {
-        best = {
-          label: section.label ? `${section.label} · ${link.label}` : link.label,
-          len: link.href.length,
-        };
-      }
-    }
-  }
-  return best?.label ?? null;
-}
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────
 
@@ -198,6 +66,26 @@ function ThemeToggle() {
       aria-label="Toggle dark mode"
     >
       {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+    </Button>
+  );
+}
+
+// ─── Command palette trigger (header) ───────────────────────────────────────────
+
+function CommandPaletteButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={onClick}
+      className="hidden h-8 gap-2 px-2.5 text-muted-foreground sm:flex"
+      aria-label="Open command palette"
+    >
+      <Search className="size-3.5" />
+      <span className="text-xs">Search…</span>
+      <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
+        ⌘K
+      </kbd>
     </Button>
   );
 }
@@ -343,7 +231,7 @@ function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       tooltip={link.label}
-                      isActive={isLinkActive(pathname, link.href)}
+                      isActive={isLinkActive(pathname, link)}
                     >
                       <Link href={link.href} onClick={closeOnMobile}>
                         <link.icon />
@@ -373,6 +261,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Global ⌘K / Ctrl+K to open the command palette
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     const token = session?.id_token as string | undefined;
@@ -405,11 +306,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {title && <span className="text-sm font-medium text-muted-foreground">{title}</span>}
           <div className="ml-auto flex items-center gap-2">
             <ApiStatusBadge status={apiStatus} />
+            <CommandPaletteButton onClick={() => setPaletteOpen(true)} />
             <ThemeToggle />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8">{children}</main>
       </SidebarInset>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </SidebarProvider>
   );
 }

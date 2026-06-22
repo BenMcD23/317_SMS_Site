@@ -128,9 +128,13 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
   h1, h2, h3, h4 {
     @apply tracking-tight;
+  }
+  /* Consistent selection colour across light/dark */
+  ::selection {
+    @apply bg-primary/20;
   }
 }

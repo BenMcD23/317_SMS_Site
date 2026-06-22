@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
-import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper } from "lucide-react";
+import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper, Users, Plane, Shield } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -78,15 +78,24 @@ function StatCard({
   label,
   value,
   detail,
+  icon: Icon,
 }: {
   label: string;
   value: React.ReactNode;
   detail?: React.ReactNode;
+  icon?: React.ElementType;
 }) {
   return (
-    <Card className="gap-2 py-5">
+    <Card className="gap-2 py-5 transition-colors hover:border-primary/30">
       <CardHeader className="pb-0">
-        <CardDescription>{label}</CardDescription>
+        <div className="flex items-center justify-between gap-2">
+          <CardDescription>{label}</CardDescription>
+          {Icon && (
+            <span className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Icon className="size-4" />
+            </span>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-1.5">
         <span className="text-2xl font-semibold tabular-nums">{value}</span>
@@ -380,15 +389,17 @@ export default function HomePage() {
         stats && (
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <StatCard label="Cadets on strength" value={total} />
+              <StatCard label="Cadets on strength" value={total} icon={Users} />
               <StatCard
                 label="Flights"
                 value={Object.keys(stats.by_flight).length}
                 detail={breakdownLine(stats.by_flight, FLIGHT_ORDER)}
+                icon={Plane}
               />
               <StatCard
                 label="NCOs"
                 value={ncoCount}
+                icon={Shield}
                 detail={breakdownLine(
                   Object.fromEntries(Object.entries(stats.by_rank).filter(([r]) => r !== "Cadet" && r !== "Unknown")),
                   RANK_ORDER,
