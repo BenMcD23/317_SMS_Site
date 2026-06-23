@@ -10,7 +10,7 @@ async function getToken(): Promise<string | undefined> {
 
 export async function GET() {
   const token = await getToken();
-  const res = await fetch(`${API_BASE}/users`, {
+  const res = await fetch(`${API_BASE}/staff`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) return NextResponse.json({ error: "Failed" }, { status: res.status });

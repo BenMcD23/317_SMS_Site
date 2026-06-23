@@ -13,32 +13,32 @@ import { ErrorAlert } from "@/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
 import { Search, ChevronRight, UserCog } from "lucide-react";
 
-type StaffUser = {
-  id: number;
-  email: string;
+type StaffMember = {
+  cin: number;
+  email: string | null;
   firstName: string | null;
   lastName: string | null;
-  role: string;
+  rank: string | null;
+  userId: number | null;
 };
 
 export default function StaffOverviewPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
-  const { data: users = [], isLoading: loading, error } = useQuery<StaffUser[], Error>({
+  const { data: users = [], isLoading: loading, error } = useQuery<StaffMember[], Error>({
     queryKey: ["staff", "users"],
     queryFn: async () => {
       const res = await fetch("/api/staff/users");
       if (!res.ok) throw new Error("Failed to load staff");
-      const data: StaffUser[] = await res.json();
-      return data.filter((u) => u.role === "staff");
+      return (await res.json()) as StaffMember[];
     },
   });
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
     const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
-    return !q || name.includes(q) || u.email.toLowerCase().includes(q);
+    return !q || name.includes(q) || (u.email ?? "").toLowerCase().includes(q);
   });
 
   return (
@@ -81,11 +81,12 @@ export default function StaffOverviewPage() {
         <Card className="overflow-hidden py-0">
           <div className="divide-y">
             {filtered.map((u) => {
-              const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+              const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || `CIN ${u.cin}`;
+              const subtitle = [u.rank, u.email].filter(Boolean).join(" · ");
               return (
                 <button
-                  key={u.id}
-                  onClick={() => router.push(`/staff/${u.id}`)}
+                  key={u.cin}
+                  onClick={() => router.push(`/staff/${u.cin}`)}
                   className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
                 >
                   <Avatar className="size-8">
@@ -95,7 +96,7 @@ export default function StaffOverviewPage() {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                    <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
                 </button>

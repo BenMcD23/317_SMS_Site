@@ -7,17 +7,18 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 
-type StaffUser = {
-  id: number;
-  email: string;
+type StaffMember = {
+  cin: number;
+  email: string | null;
   firstName: string | null;
   lastName: string | null;
-  role: string;
+  rank: string | null;
+  userId: number | null;
 };
 
 export default function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [user, setUser] = useState<StaffUser | null>(null);
+  const [user, setUser] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,8 +26,8 @@ export default function StaffDetailPage() {
     fetch("/api/staff/users")
       .then(async (res) => {
         if (!res.ok) throw new Error("Failed to load staff");
-        const all: StaffUser[] = await res.json();
-        setUser(all.find((u) => String(u.id) === id) ?? null);
+        const all: StaffMember[] = await res.json();
+        setUser(all.find((u) => String(u.cin) === id) ?? null);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -44,12 +45,19 @@ export default function StaffDetailPage() {
   if (error) return <ErrorAlert message={error} title="Could not load staff member" />;
   if (!user) return <p className="text-sm text-muted-foreground">Staff member not found.</p>;
 
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || `CIN ${user.cin}`;
+  const description = [user.rank, user.email, `CIN ${user.cin}`].filter(Boolean).join(" · ");
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <PageHeader title={name} description={user.email} />
-      <UniformIssuancesCard baseUrl={`/api/stores/issuances/user/${id}`} />
+      <PageHeader title={name} description={description} />
+      {user.userId ? (
+        <UniformIssuancesCard baseUrl={`/api/stores/issuances/user/${user.userId}`} />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No linked portal account, so no uniform issuances to show.
+        </p>
+      )}
     </div>
   );
 }
