@@ -15,6 +15,7 @@ type StaffMember = {
   lastName: string | null;
   rank: string | null;
   address: string | null;
+  attendance: number | null;
   userId: number | null;
 };
 
@@ -57,6 +58,12 @@ export default function StaffDetailPage() {
         <Card className="p-4">
           <p className="text-xs font-medium text-muted-foreground">Address</p>
           <p className="text-sm">{user.address}</p>
+        </Card>
+      )}
+      {user.attendance != null && (
+        <Card className="p-4">
+          <p className="text-xs font-medium text-muted-foreground">Parade attendance (this half-year)</p>
+          <p className="text-sm">{user.attendance}</p>
         </Card>
       )}
       {user.userId ? (
