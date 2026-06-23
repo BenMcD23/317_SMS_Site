@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -13,6 +14,7 @@ type StaffMember = {
   firstName: string | null;
   lastName: string | null;
   rank: string | null;
+  address: string | null;
   userId: number | null;
 };
 
@@ -51,6 +53,12 @@ export default function StaffDetailPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <PageHeader title={name} description={description} />
+      {user.address && (
+        <Card className="p-4">
+          <p className="text-xs font-medium text-muted-foreground">Address</p>
+          <p className="text-sm">{user.address}</p>
+        </Card>
+      )}
       {user.userId ? (
         <UniformIssuancesCard baseUrl={`/api/stores/issuances/user/${user.userId}`} />
       ) : (
