@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   CheckCircle2,
   XCircle,
@@ -88,7 +89,6 @@ function typeLabel(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Dot colour per assessment type — domain colours, used with neutral badges
 const TYPE_DOT_COLOURS: Record<string, string> = {
   "Blue Leadership": "bg-blue-500",
   first_aid: "bg-red-500",
@@ -100,9 +100,8 @@ function typeDotColour(t: string) {
   return TYPE_DOT_COLOURS[t] ?? "bg-muted-foreground/50";
 }
 
-const RETENTION_DAYS = 182; // completed assessments are deleted after ~6 months
+const RETENTION_DAYS = 182;
 
-// Days until a completed assessment is auto-deleted (null if no completion date).
 function daysUntilDeletion(uploadedAt: string | null): number | null {
   if (!uploadedAt) return null;
   const elapsedMs = Date.now() - new Date(uploadedAt).getTime();
@@ -112,13 +111,10 @@ function daysUntilDeletion(uploadedAt: string | null): number | null {
 
 type AssessmentFilter = "active" | "ready" | "completed";
 
-// Active = not yet uploaded (incomplete OR ready-but-not-uploaded)
-// Ready  = enough passes to upload but not uploaded yet
-// Completed = uploaded / manually marked complete
 function groupMatchesFilter(g: AssessmentGroup, filter: AssessmentFilter) {
   if (filter === "active") return !g.uploaded;
   if (filter === "ready") return g.can_upload && !g.uploaded;
-  return g.uploaded; // completed
+  return g.uploaded;
 }
 
 // ─── Info tooltip ─────────────────────────────────────────────────────────────
@@ -187,8 +183,6 @@ function AssessmentPdfRow({
     }
   };
 
-  // After a successful edit the stored PDF was regenerated — drop the cached
-  // blob so the next view fetches the fresh one, then refresh the overview.
   const handleSaved = () => {
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     setPdfUrl(null);
@@ -231,7 +225,6 @@ function AssessmentPdfRow({
   return (
     <div className="border-t first:border-t-0">
       <div className="flex items-center gap-3 px-4 py-2.5 pl-4 sm:pl-10 hover:bg-muted/30 transition-colors">
-        {/* Pass/fail icon */}
         <div className="shrink-0">
           {assessment.passed === true ? (
             <CheckCircle2 className="size-3.5 text-success" />
@@ -242,7 +235,6 @@ function AssessmentPdfRow({
           )}
         </div>
 
-        {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-medium">
@@ -271,7 +263,6 @@ function AssessmentPdfRow({
           </p>
         </div>
 
-        {/* Controls */}
         <div className="shrink-0 flex items-center gap-1 ml-1">
           <button
             type="button"
@@ -294,7 +285,6 @@ function AssessmentPdfRow({
             {expanded ? "Hide" : "View"}
           </button>
 
-          {/* Edit (hidden once the group is completed/locked) */}
           {canEdit ? (
             <button
               type="button"
@@ -321,7 +311,6 @@ function AssessmentPdfRow({
             </span>
           ) : null}
 
-          {/* Delete */}
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <button
@@ -353,7 +342,6 @@ function AssessmentPdfRow({
         </div>
       </div>
 
-      {/* Inline editor */}
       {editing && (
         <div className="px-4 pb-3 pl-4 sm:pl-10">
           <AssessmentEditor
@@ -366,7 +354,6 @@ function AssessmentPdfRow({
         </div>
       )}
 
-      {/* PDF viewer */}
       {expanded && (
         <div className="px-4 pb-3 pl-4 sm:pl-10">
           {pdfError ? (
@@ -390,6 +377,8 @@ function AssessmentPdfRow({
 }
 
 // ─── Upload button ────────────────────────────────────────────────────────────
+// Logs are surfaced via sonner toasts so they survive the component being
+// replaced by CompletionControl once onUploaded() triggers a data refetch.
 
 function UploadButton({
   assessmentIds,
@@ -408,55 +397,59 @@ function UploadButton({
 }) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(uploaded);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [showLogs, setShowLogs] = useState(false);
   const esRef = useRef<EventSource | null>(null);
-  const logsEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
 
   const handleUpload = async () => {
     if (!token) return;
     setLoading(true);
-    setError(null);
-    setLogs([]);
-    setShowLogs(true);
 
-    // Start SSE stream
+    const toastId = `upload-${assessmentIds[0]}`;
+    toast.loading("Connecting to SMS…", { id: toastId, duration: Infinity });
+
     const es = new EventSource(
-      `${API_BASE}/scraper-stream?token=${token}`
+      `${API_BASE}/scraper-stream?token=${encodeURIComponent(token)}`
     );
     esRef.current = es;
 
     es.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.type === "info" || msg.type === "warning") {
-          setLogs((prev) => [...prev, msg.value]);
+        if (msg.type === "info" || msg.type === "warning" || msg.type === "log") {
+          toast.loading(msg.value, { id: toastId, duration: Infinity });
         }
         if (msg.type === "status" && msg.value === "done") {
           setDone(true);
           setLoading(false);
           es.close();
+          toast.success("Upload complete", {
+            id: toastId,
+            description: "Qualification uploaded to Bader SMS.",
+            duration: 6000,
+          });
           onUploaded();
         }
         if (msg.type === "error") {
-          setError(msg.value);
           setLoading(false);
           es.close();
+          toast.error("Upload failed", {
+            id: toastId,
+            description: msg.value,
+            duration: 8000,
+          });
         }
       } catch {}
     };
     es.onerror = () => {
       es.close();
       setLoading(false);
+      toast.error("Upload failed", {
+        id: toastId,
+        description: "Connection to scraper lost.",
+        duration: 8000,
+      });
     };
 
-    // Kick off the scraper
     try {
       const res = await apiFetch(`${API_BASE}/assessments/upload-to-bader`, {
         method: "POST",
@@ -471,14 +464,14 @@ function UploadButton({
         throw new Error(detail?.detail ?? "Upload failed");
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed");
+      const msg = e instanceof Error ? e.message : "Failed";
       setLoading(false);
-      es.close();
+      esRef.current?.close();
+      toast.error("Upload failed", { id: toastId, description: msg, duration: 8000 });
     }
   };
 
-  // Cleanup on unmount
-  useEffect(() => () => esRef.current?.close(), []);
+  useEffect(() => () => { esRef.current?.close(); }, []);
 
   if (done) {
     return (
@@ -505,35 +498,14 @@ function UploadButton({
   if (session?.role === "nco") return null;
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-1.5">
-        <Button size="sm" onClick={handleUpload} disabled={loading}>
-          {loading ? (
-            <Loader2 className="animate-spin" data-icon="inline-start" />
-          ) : (
-            <Upload data-icon="inline-start" />
-          )}
-          {loading ? "Uploading…" : "Upload to SMS"}
-        </Button>
-        <InfoTooltip text="Starts a background scraper that adds this qualification and uploads the assessment PDFs directly to Bader SMS." />
-      </div>
-
-      {showLogs && logs.length > 0 && (
-        <div className="w-full max-w-72 rounded-md border bg-muted/60 p-2 text-[11px] font-mono text-muted-foreground max-h-36 overflow-y-auto">
-          {logs.map((l, i) => (
-            <div key={i} className="leading-5">{l}</div>
-          ))}
-          {loading && (
-            <div className="flex items-center gap-1.5 mt-1 text-primary">
-              <Loader2 className="h-2.5 w-2.5 animate-spin" /> Running…
-            </div>
-          )}
-          <div ref={logsEndRef} />
-        </div>
+    <Button size="sm" onClick={handleUpload} disabled={loading}>
+      {loading ? (
+        <Loader2 className="animate-spin" data-icon="inline-start" />
+      ) : (
+        <Upload data-icon="inline-start" />
       )}
-
-      {error && <p className="text-[11px] text-destructive">{error}</p>}
-    </div>
+      {loading ? "Uploading…" : "Upload to SMS"}
+    </Button>
   );
 }
 
@@ -589,7 +561,6 @@ function CompletionControl({
     }
   };
 
-  // ── Completed: show date + (staff) reopen ──────────────────────────────────
   if (uploaded) {
     return (
       <div className="flex flex-col items-end gap-1">
@@ -649,7 +620,6 @@ function CompletionControl({
     );
   }
 
-  // ── Active: (staff) mark complete manually ─────────────────────────────────
   if (!isStaff) return null;
 
   return (
@@ -688,7 +658,7 @@ function CompletionControl({
   );
 }
 
-// ─── Combined PDF (assessment sheets + lesson plans, oldest first) ───────────
+// ─── Combined PDF ─────────────────────────────────────────────────────────────
 
 function CombinedPdfButton({
   cin,
@@ -757,7 +727,8 @@ function AssessmentGroupRow({
 
   return (
     <div className="rounded-lg border bg-card">
-      <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 hover:bg-muted/40 transition-colors">
+      {/* Two-column header: left = expand + type, right = passes + actions stacked */}
+      <div className="flex w-full items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
         <div
           role="button"
           tabIndex={0}
@@ -765,7 +736,7 @@ function AssessmentGroupRow({
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
           }}
-          className="flex flex-1 items-center gap-3 cursor-pointer min-w-0"
+          className="flex flex-1 cursor-pointer items-center gap-2 min-w-0 pt-0.5"
         >
           <span className="text-muted-foreground shrink-0">
             {expanded ? (
@@ -774,19 +745,20 @@ function AssessmentGroupRow({
               <ChevronRight className="h-3.5 w-3.5" />
             )}
           </span>
-
-          <Badge variant="outline" className="shrink-0 gap-1.5">
-            <span className={cn("size-2 rounded-full", typeDotColour(group.assessment_type))} />
-            {typeLabel(group.assessment_type)}
-          </Badge>
-
-          <span className="flex-1 text-sm font-medium hidden sm:block">
-            {group.assessments.length} assessment{group.assessments.length !== 1 ? "s" : ""}
-          </span>
+          <div className="min-w-0">
+            <Badge variant="outline" className="gap-1.5">
+              <span className={cn("size-2 rounded-full", typeDotColour(group.assessment_type))} />
+              {typeLabel(group.assessment_type)}
+            </Badge>
+            <p className="mt-0.5 pl-0.5 text-xs text-muted-foreground">
+              {group.assessments.length} assessment{group.assessments.length !== 1 ? "s" : ""}
+            </p>
+          </div>
         </div>
 
-        <div className="shrink-0 ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
+        {/* Right side: passes count + upload/completion controls stacked */}
+        <div className="shrink-0 flex flex-col items-end gap-1.5">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             <span
               className={cn(
                 "font-semibold",
@@ -798,8 +770,9 @@ function AssessmentGroupRow({
             {group.assessment_type !== "MOI" && (
               <span>/{group.required_to_upload}</span>
             )}
-            <span className="hidden sm:inline"> passed</span>
+            {" passed"}
           </span>
+
           {group.uploaded ? (
             <CompletionControl
               cin={cin}
@@ -810,7 +783,7 @@ function AssessmentGroupRow({
               onChanged={onUploaded}
             />
           ) : (
-            <>
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
               <UploadButton
                 assessmentIds={group.assessments.map((a) => a.id)}
                 assessmentType={group.assessment_type}
@@ -819,6 +792,7 @@ function AssessmentGroupRow({
                 token={token}
                 onUploaded={onUploaded}
               />
+              <InfoTooltip text="Starts a background scraper that adds this qualification and uploads the assessment PDFs directly to Bader SMS." />
               <CompletionControl
                 cin={cin}
                 assessmentType={group.assessment_type}
@@ -827,7 +801,7 @@ function AssessmentGroupRow({
                 token={token}
                 onChanged={onUploaded}
               />
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -876,7 +850,7 @@ function CadetAssessmentCard({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Avatar className="size-9">
+            <Avatar className="size-9 shrink-0">
               <AvatarFallback className="text-sm">
                 {cadetInitials(cadet.first_name, cadet.last_name)}
               </AvatarFallback>
@@ -960,7 +934,6 @@ export default function AssessmentsOverviewPage() {
     }
   };
 
-  // Remove a deleted assessment from local state without refetching
   const handleAssessmentDeleted = (deletedId: number) => {
     setCadets((prev) =>
       prev
@@ -984,7 +957,6 @@ export default function AssessmentsOverviewPage() {
     fetchData();
   }, [token]);
 
-  // Assessment types present across all cadets (for the type filter chips).
   const availableTypes = Array.from(
     new Set(cadets.flatMap((c) => c.groups.map((g) => g.assessment_type)))
   );
@@ -992,8 +964,6 @@ export default function AssessmentsOverviewPage() {
   const matchesType = (g: AssessmentGroup) =>
     !typeFilter || g.assessment_type === typeFilter;
 
-  // Filter each cadet's groups by the active tab + type, then drop cadets that
-  // have no groups left (and apply the name/CIN search).
   const filtered = cadets
     .map((c) => ({
       ...c,
@@ -1010,7 +980,6 @@ export default function AssessmentsOverviewPage() {
       );
     });
 
-  // Per-tab cadet counts, respecting the active type filter so they match the list.
   const countForFilter = (f: AssessmentFilter) =>
     cadets.filter((c) =>
       c.groups.some((g) => groupMatchesFilter(g, f) && matchesType(g))
