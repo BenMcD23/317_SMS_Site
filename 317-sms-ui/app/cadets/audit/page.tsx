@@ -35,7 +35,6 @@ import { Search, ChevronDown, ChevronRight } from "lucide-react";
 
 // ─── Level styling ─────────────────────────────────────────────────────────────────
 
-// Colours for each badge level returned by the audit catalog.
 const LEVEL_STYLES: Record<string, string> = {
   blue: "border-blue-200 bg-blue-50 text-blue-700",
   bronze: "border-amber-300 bg-amber-50 text-amber-800",
@@ -120,10 +119,14 @@ type EventEntry = {
 
 // ─── Shared components ───────────────────────────────────────────────────────────
 
-// A selected criterion is a badge key → the chosen level labels for it.
 type LevelSelection = Record<string, string[]>;
 
+// "none" is a client-side pseudo-level meaning the cadet holds no qualification
+// for that badge type. It is handled entirely in the result table filter.
 function matchedLevel(check: QualCheck | undefined, levels: string[]): string | null {
+  if (levels.includes("none") && (!check || !check.has || check.level === null)) {
+    return "none";
+  }
   return check?.level && levels.includes(check.level) ? check.level : null;
 }
 
@@ -189,7 +192,10 @@ function CriteriaSelector({
   }
   function toggleAllLevels(b: BadgeType) {
     const cur = selected[b.key] ?? [];
-    setLevels(b.key, cur.length === b.levels.length ? [] : [...b.levels]);
+    const noneEntry = cur.includes("none") ? ["none"] : [];
+    const actualSelected = cur.filter((l) => l !== "none");
+    const allSel = actualSelected.length === b.levels.length && b.levels.length > 0;
+    setLevels(b.key, allSel ? noneEntry : [...b.levels, ...noneEntry]);
   }
   function selectEverything() {
     const next: LevelSelection = {};
@@ -215,7 +221,9 @@ function CriteriaSelector({
       <div className="flex flex-col gap-2.5">
         {leveled.map((b) => {
           const cur = selected[b.key] ?? [];
-          const allSel = cur.length === b.levels.length;
+          const actualSelected = cur.filter((l) => l !== "none");
+          const allSel = actualSelected.length === b.levels.length && b.levels.length > 0;
+          const noneSelected = cur.includes("none");
           return (
             <div
               key={b.key}
@@ -225,6 +233,9 @@ function CriteriaSelector({
               <div className="flex flex-wrap gap-1">
                 <LevelChip active={allSel} onClick={() => toggleAllLevels(b)}>
                   All
+                </LevelChip>
+                <LevelChip active={noneSelected} onClick={() => toggleLevel(b, "none")}>
+                  None
                 </LevelChip>
                 {b.levels.map((lvl) => (
                   <LevelChip
@@ -305,9 +316,6 @@ function AuditResultsTable({
   const qualCols = badgeTypes.filter((b) => (selected[b.key] ?? []).length > 0);
   const hasQualCriteria = qualCols.length > 0;
 
-  // Only keep cadets who hold one of the selected levels for at least one
-  // selected badge (so all-"None" cadets drop out). With no qualifications
-  // selected (medical/dietary-only audit), keep every result.
   const rows = hasQualCriteria
     ? results.filter((r) =>
         qualCols.some((b) => {
@@ -364,7 +372,9 @@ function AuditResultsTable({
                 const lvl = matchedLevel(check, selected[b.key] ?? []);
                 return (
                   <TableCell key={b.key} className="text-center">
-                    {lvl ? (
+                    {lvl === "none" ? (
+                      <span className="text-xs text-muted-foreground">None</span>
+                    ) : lvl ? (
                       <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
                         {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
                       </Badge>
@@ -610,7 +620,6 @@ function CadetCheckTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Cadet selection */}
         <Card className="flex flex-col gap-0 overflow-hidden py-0">
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm">
@@ -694,7 +703,6 @@ function CadetCheckTab() {
           </div>
         </Card>
 
-        {/* Criteria */}
         <Card className="py-0">
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm">Criteria to check</CardTitle>
@@ -810,7 +818,6 @@ function EventCheckTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Event selection */}
         <Card className="py-0">
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm">Select event</CardTitle>
@@ -897,7 +904,6 @@ function EventCheckTab() {
           </CardContent>
         </Card>
 
-        {/* Criteria */}
         <Card className="py-0">
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm">Criteria to check</CardTitle>
