@@ -15,9 +15,20 @@ type StaffMember = {
   lastName: string | null;
   rank: string | null;
   address: string | null;
-  attendance: number | null;
+  attendance: Record<string, number> | null; // { "YYYY-MM": count }
   userId: number | null;
 };
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatMonth(key: string): string {
+  const [year, month] = key.split("-");
+  const idx = Number(month) - 1;
+  return `${MONTHS[idx] ?? month} ${year}`;
+}
 
 export default function StaffDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,10 +71,21 @@ export default function StaffDetailPage() {
           <p className="text-sm">{user.address}</p>
         </Card>
       )}
-      {user.attendance != null && (
+      {user.attendance && Object.keys(user.attendance).length > 0 && (
         <Card className="p-4">
-          <p className="text-xs font-medium text-muted-foreground">Parade attendance (this half-year)</p>
-          <p className="text-sm">{user.attendance}</p>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
+            Parade attendance by month (nights attended)
+          </p>
+          <div className="divide-y">
+            {Object.entries(user.attendance)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([month, count]) => (
+                <div key={month} className="flex justify-between py-1 text-sm">
+                  <span className="text-muted-foreground">{formatMonth(month)}</span>
+                  <span className="font-medium">{count}</span>
+                </div>
+              ))}
+          </div>
         </Card>
       )}
       {user.userId ? (
