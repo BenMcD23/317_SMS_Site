@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -115,7 +115,7 @@ export default function HTDPage() {
     const s = staff.find((m) => String(m.cin) === cin);
     if (!s) return;
     setRank(s.rank ?? "");
-    setInitials((s.firstName ?? "").charAt(0).toUpperCase());
+    setInitials(((s.firstName ?? "").charAt(0) + (s.lastName ?? "").charAt(0)).toUpperCase());
     setSurname((s.lastName ?? "").toUpperCase());
     setServiceNumber(String(s.cin));
     const a = splitAddress(s.address);
@@ -174,6 +174,13 @@ export default function HTDPage() {
       setCalculating(false);
     }
   };
+
+  // Auto-fill the return distance once a staff member (and their address) is loaded.
+  // Keyed on the selection, not the address fields, so manual edits aren't overwritten.
+  useEffect(() => {
+    if (selectedCin && homeAddress.trim() && session?.id_token) calculateDistance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCin, session?.id_token]);
 
   const generateDoc = async () => {
     if (!session?.id_token) return;
@@ -271,11 +278,11 @@ export default function HTDPage() {
                 <Label htmlFor="htd-distance">Return distance (miles)</Label>
                 <Input id="htd-distance" type="number" min="0" step="0.1" value={distance}
                   onChange={(e) => setDistance(e.target.value)} />
-                <Button type="button" variant="outline" size="sm" onClick={calculateDistance}
-                  disabled={calculating} className="w-full gap-1.5">
-                  {calculating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calculator className="h-3.5 w-3.5" />}
-                  Calculate (2 × one-way to HQ)
-                </Button>
+                {calculating && (
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Calculating distance…
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
