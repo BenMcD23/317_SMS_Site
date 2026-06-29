@@ -61,6 +61,7 @@ import {
   UserCog,
   ChevronsUpDown,
   DatabaseZap,
+  DatabaseBackup,
   ReceiptText,
   ShieldCheck,
   ScrollText,
@@ -147,6 +148,7 @@ const NAV_SECTIONS: NavSection[] = [
     ownerOnly: true,
     links: [
       { label: "API Logs", href: "/api-logs", icon: ScrollText, ownerOnly: true },
+      { label: "Backups", href: "/backups", icon: DatabaseBackup, ownerOnly: true },
     ],
   },
 ];
