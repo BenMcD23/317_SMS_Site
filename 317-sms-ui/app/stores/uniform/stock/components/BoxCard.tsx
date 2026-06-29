@@ -2,8 +2,10 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, ArrowUp, GripVertical, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 import { useState } from "react";
@@ -18,6 +20,7 @@ interface BoxCardProps {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onDeleteBox?: () => void;
+  onRename?: (newLabel: string) => void;
 }
 
 export function BoxCard({
@@ -30,8 +33,17 @@ export function BoxCard({
   onMoveUp,
   onMoveDown,
   onDeleteBox,
+  onRename,
 }: BoxCardProps) {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState(box.label);
+
+  function submitRename() {
+    const next = renameValue.trim().toUpperCase();
+    if (next && next !== box.label) onRename?.(next);
+    setRenameOpen(false);
+  }
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `box-${box.label}`,
@@ -72,6 +84,47 @@ export function BoxCard({
           >
             <GripVertical className="h-5 w-5" />
           </div>
+
+          {/* Rename — top-left */}
+          {onRename && (
+            <div className="absolute top-1 left-1" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                title={isMisc ? "Rename area" : "Rename box"}
+                onClick={() => { setRenameValue(box.label); setRenameOpen(true); }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
+          {/* Rename dialog */}
+          <Dialog open={renameOpen} onOpenChange={(o) => { if (!o) setRenameOpen(false); }}>
+            <DialogContent className="sm:max-w-xs">
+              <DialogHeader>
+                <DialogTitle>Rename {isMisc ? "Area" : "Box"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-1.5">
+                <Label htmlFor={`rename-box-${box.label}`}>Label</Label>
+                <Input
+                  id={`rename-box-${box.label}`}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => { if (e.key === "Enter") submitRename(); }}
+                  maxLength={isMisc ? 20 : 10}
+                  autoFocus
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
+                <Button onClick={submitRename} disabled={!renameValue.trim() || renameValue.trim().toUpperCase() === box.label}>
+                  Save
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Arrow up — top-right */}
           <div className="absolute top-1 right-1" onClick={(e) => e.stopPropagation()}>

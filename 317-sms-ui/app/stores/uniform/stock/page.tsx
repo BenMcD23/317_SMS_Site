@@ -116,6 +116,23 @@ export default function StockPage() {
     }
   }
 
+  async function handleRenameBox(label: string, newLabel: string) {
+    const name = newLabel.trim().toUpperCase();
+    if (!name || name === label || structureCompat[name] !== undefined) return;
+    try {
+      const res = await fetch("/api/stores/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rename-box", box: label, newLabel: name }),
+      });
+      if (!res.ok) throw new Error("Failed to rename box");
+      setShelfStructure(await res.json());
+      setStock((prev) => prev.map((i) => (i.box === label ? { ...i, box: name } : i)));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
   async function handleAddBoxArea() {
     const name = newBoxAreaName.trim().toUpperCase();
     if (!name || structureCompat[name] !== undefined) return;
@@ -221,6 +238,7 @@ export default function StockPage() {
           onAddBox={() => setAddBoxAreaOpen(true)}
           editMode={editMode}
           onDeleteBox={handleDeleteBox}
+          onRenameBox={handleRenameBox}
         />
       )}
 
