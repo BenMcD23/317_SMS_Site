@@ -49,6 +49,12 @@ const SCRAPER_TOOLS = [
     label: "Medical Scraper",
     description: "Fetches allergies and dietary requirements for cadets.",
   },
+  {
+    id: "staff",
+    label: "Staff Scraper",
+    description:
+      "Fetches the squadron staff roster (name, rank, CIN, matched email) from Bader SMS into the database.",
+  },
 ];
 
 // React Query keys whose cached data each scraper refreshes. When a run
@@ -62,6 +68,7 @@ const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
   "cadet-event": [],                      // attendance lives on cadet detail (uncached)
   "317-event": [],                        // event metadata (uncached)
   "medical": [],                          // allergies/dietary on cadet detail (uncached)
+  "staff": [["staff", "users"]],          // staff roster → staff overview/detail
 };
 
 type LogEntry = { text: string; time: string };
