@@ -5,6 +5,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BoxSection, StockItem } from "@/lib/stores-types";
 import { useState } from "react";
@@ -17,6 +19,7 @@ interface SectionCardProps {
   onEditItem: (item: StockItem) => void;
   onDeleteItem: (id: string) => void;
   onDeleteSection: (box: string, section: string) => void;
+  onRenameSection: (box: string, section: string, newLabel: string) => void;
   deleteItemConfirm: string | null;
   onDeleteItemConfirm: (id: string | null) => void;
   editMode: boolean;
@@ -32,6 +35,7 @@ export function SectionCard({
   onEditItem,
   onDeleteItem,
   onDeleteSection,
+  onRenameSection,
   deleteItemConfirm,
   onDeleteItemConfirm,
   editMode,
@@ -39,6 +43,14 @@ export function SectionCard({
   onMoveDown,
 }: SectionCardProps) {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState(section.label);
+
+  function submitRename() {
+    const next = renameValue.trim();
+    if (next && next !== section.label) onRenameSection(boxLabel, section.label, next);
+    setRenameOpen(false);
+  }
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: section.label, disabled: !editMode });
@@ -99,6 +111,18 @@ export function SectionCard({
             </>
           )}
 
+          {editMode && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              title="Rename section"
+              onClick={() => { setRenameValue(section.label); setRenameOpen(true); }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+
           <Button
             size="icon"
             variant="ghost"
@@ -121,6 +145,31 @@ export function SectionCard({
           )}
         </div>
       </div>
+
+      {/* Rename section dialog */}
+      <Dialog open={renameOpen} onOpenChange={(o) => { if (!o) setRenameOpen(false); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Rename Section</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor={`rename-section-${section.label}`}>Name</Label>
+            <Input
+              id={`rename-section-${section.label}`}
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") submitRename(); }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
+            <Button onClick={submitRename} disabled={!renameValue.trim() || renameValue.trim() === section.label}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete section confirm dialog */}
       <Dialog open={deleteConfirm} onOpenChange={(o) => { if (!o) setDeleteConfirm(false); }}>

@@ -37,6 +37,7 @@ interface BoxDetailViewProps {
   onEditItem: (item: StockItem) => void;
   onDeleteItem: (id: string) => void;
   onDeleteSection: (box: string, section: string) => void;
+  onRenameSection: (box: string, section: string, newLabel: string) => void;
   onDeleteBox: (box: string) => void;
   onAddSection: (box: string, sectionName: string) => void;
   deleteItemConfirm: string | null;
@@ -90,6 +91,7 @@ export function BoxDetailView({
   onEditItem,
   onDeleteItem,
   onDeleteSection,
+  onRenameSection,
   onDeleteBox,
   onAddSection,
   deleteItemConfirm,
@@ -436,6 +438,7 @@ export function BoxDetailView({
                                 onEditItem={onEditItem}
                                 onDeleteItem={onDeleteItem}
                                 onDeleteSection={onDeleteSection}
+                                onRenameSection={onRenameSection}
                                 deleteItemConfirm={deleteItemConfirm}
                                 onDeleteItemConfirm={onDeleteItemConfirm}
                                 editMode={editMode}

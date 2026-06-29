@@ -203,6 +203,30 @@ export default function BoxPage() {
     }
   }
 
+  async function handleRenameSection(box: string, section: string, newLabel: string) {
+    const name = newLabel.trim();
+    if (!name || name === section) return;
+    const existing = structureCompat[box] ?? [];
+    if (existing.includes(name)) {
+      setError(`Section ${name} already exists in this box.`);
+      return;
+    }
+    try {
+      const res = await fetch("/api/stores/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rename-section", box, section, newLabel: name }),
+      });
+      if (!res.ok) throw new Error("Failed to rename section");
+      setShelfStructure(await res.json());
+      setStock((prev) =>
+        prev.map((i) => (i.box === box && i.section === section ? { ...i, section: name } : i))
+      );
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
   async function handleDeleteSection(box: string, section: string) {
     try {
       const res = await fetch("/api/stores/structure", {
@@ -252,6 +276,7 @@ export default function BoxPage() {
         onEditItem={openEdit}
         onDeleteItem={handleDeleteItem}
         onDeleteSection={handleDeleteSection}
+        onRenameSection={handleRenameSection}
         onDeleteBox={handleDeleteBox}
         onAddSection={handleAddSection}
         deleteItemConfirm={deleteItemConfirm}
