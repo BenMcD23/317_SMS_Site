@@ -65,6 +65,7 @@ import {
   ReceiptText,
   ShieldCheck,
   ScrollText,
+  ImagePlus,
 } from "lucide-react";
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap },
       { label: "Programme", href: "/tools/programme-updater", icon: Calendar },
       { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper },
+      { label: "Staff Photos", href: "/tools/photo-manager", icon: ImagePlus },
       { label: "F1771e Claim", href: "/form-generators/f1771e", icon: ReceiptText },
       { label: "HTD Claim", href: "/form-generators/htd", icon: ReceiptText },
     ],
