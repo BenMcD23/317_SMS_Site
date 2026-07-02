@@ -106,3 +106,32 @@ export interface BadgeGrid {
   config: { numRows: number; numCols: number };
   cells: BadgeCell[];
 }
+
+export interface LogsFormEntry {
+  id: string;
+  orderItemId: string | null;
+  itemType: string;
+  size: string;
+  cadetName: string;
+}
+
+export interface LogsForm {
+  id: string;
+  createdAt: string;
+  orderedAt: string | null;
+  entries: LogsFormEntry[];
+}
+
+export interface BadgeOrderListEntry {
+  id: string;
+  orderItemId: string | null;
+  badgeName: string;
+  cadetName: string;
+}
+
+export interface BadgeOrderList {
+  id: string;
+  createdAt: string;
+  orderedAt: string | null;
+  entries: BadgeOrderListEntry[];
+}
