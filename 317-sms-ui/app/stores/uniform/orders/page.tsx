@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw, Bell } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw, Bell, FileSpreadsheet, Download, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON } from "@/lib/stores-types";
+import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON, LogsForm } from "@/lib/stores-types";
 import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
 import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
@@ -105,7 +105,13 @@ export default function OrdersPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Tab
-  const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "completed" | "logsform">("active");
+
+  // Logs form batches
+  const [logsForms, setLogsForms] = useState<LogsForm[]>([]);
+  const [addingToLogsFormId, setAddingToLogsFormId] = useState<string | null>(null);
+  const [tieItemId, setTieItemId] = useState<string | null>(null);
+  const [expandedFormIds, setExpandedFormIds] = useState<Set<string>>(new Set());
 
   // New order dialog
   const [newOrderOpen, setNewOrderOpen] = useState(false);
@@ -167,13 +173,15 @@ export default function OrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      const [ordersRes, stockRes] = await Promise.all([
+      const [ordersRes, stockRes, formsRes] = await Promise.all([
         fetch("/api/stores/orders"),
         fetch("/api/stores/stock"),
+        fetch("/api/stores/logs-forms"),
       ]);
-      if (!ordersRes.ok || !stockRes.ok) throw new Error("Failed to fetch data");
+      if (!ordersRes.ok || !stockRes.ok || !formsRes.ok) throw new Error("Failed to fetch data");
       setOrders(await ordersRes.json());
       setStock(await stockRes.json());
+      setLogsForms(await formsRes.json());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -421,6 +429,78 @@ export default function OrdersPage() {
     setAddItemDraft(emptyDraftItem());
   }
 
+  // ── Logs form ──────────────────────────────────────────────────────────────
+
+  const openLogsForm = logsForms.find((f) => !f.orderedAt) ?? null;
+  const pastLogsForms = logsForms.filter((f) => !!f.orderedAt);
+  const onLogsFormItemIds = new Set(
+    logsForms.flatMap((f) => f.entries.map((e) => e.orderItemId)).filter(Boolean)
+  );
+
+  async function refreshLogsForms() {
+    const res = await fetch("/api/stores/logs-forms");
+    if (res.ok) setLogsForms(await res.json());
+  }
+
+  async function doAddToLogsForm(itemId: string, tieVariant?: "Short" | "Standard") {
+    setAddingToLogsFormId(itemId);
+    try {
+      const res = await fetch("/api/stores/logs-forms/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderItemId: itemId, ...(tieVariant ? { tieVariant } : {}) }),
+      });
+      if (!res.ok) throw new Error("Failed to add to logs form");
+      await refreshLogsForms();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setAddingToLogsFormId(null);
+    }
+  }
+
+  function handleAddToLogsForm(item: OrderItem) {
+    if (item.itemType === "Tie") {
+      setTieItemId(item.id);
+      return;
+    }
+    doAddToLogsForm(item.id);
+  }
+
+  async function handleRemoveLogsFormEntry(entryId: string) {
+    try {
+      const res = await fetch(`/api/stores/logs-forms/entries/${entryId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to remove entry");
+      await refreshLogsForms();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  function handleMarkLogsFormOrdered(formId: string) {
+    openConfirm(
+      "Mark this logs form as ordered? It will be locked and new items will go on a new form.",
+      async () => {
+        try {
+          const res = await fetch(`/api/stores/logs-forms/${formId}/mark-ordered`, { method: "POST" });
+          if (!res.ok) throw new Error("Failed to mark as ordered");
+          await refreshLogsForms();
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : "Unknown error");
+        }
+      }
+    );
+  }
+
+  function toggleFormExpand(id: string) {
+    setExpandedFormIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   async function handleAddToOrder(orderId: string) {
     if (!addItemDraft.itemType) return;
     const order = orders.find((o) => o.id === orderId);
@@ -459,9 +539,14 @@ export default function OrdersPage() {
       {/* Tab nav */}
       <div className="overflow-x-auto">
         <div className="flex gap-1 border-b min-w-max">
-          {(["active", "completed"] as const).map((tab) => {
-            const count = tab === "active" ? activeOrders.length : completedOrders.length;
-            const label = tab === "active" ? "Active Orders" : "Completed Orders";
+          {(["active", "completed", "logsform"] as const).map((tab) => {
+            const count =
+              tab === "active" ? activeOrders.length :
+              tab === "completed" ? completedOrders.length :
+              openLogsForm?.entries.length ?? 0;
+            const label =
+              tab === "active" ? "Active Orders" :
+              tab === "completed" ? "Completed Orders" : "Logs Form";
             return (
               <button
                 key={tab}
@@ -491,23 +576,25 @@ export default function OrdersPage() {
       </div>
 
       {/* Search + Sort controls */}
-      <div className="flex gap-2">
-        <Input
-          placeholder="Search by cadet name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-9"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="shrink-0 gap-1.5"
-          onClick={() => setSortOrder((s) => (s === "oldest" ? "newest" : "oldest"))}
-        >
-          <ArrowUpDown className="h-3.5 w-3.5" />
-          {sortOrder === "oldest" ? "Oldest first" : "Newest first"}
-        </Button>
-      </div>
+      {activeTab !== "logsform" && (
+        <div className="flex gap-2">
+          <Input
+            placeholder="Search by cadet name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            onClick={() => setSortOrder((s) => (s === "oldest" ? "newest" : "oldest"))}
+          >
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            {sortOrder === "oldest" ? "Oldest first" : "Newest first"}
+          </Button>
+        </div>
+      )}
 
       <ErrorAlert message={error} />
 
@@ -515,13 +602,13 @@ export default function OrdersPage() {
         <div className="py-12 text-center text-sm text-muted-foreground">Loading orders...</div>
       )}
 
-      {!loading && orders.length === 0 && (
+      {!loading && activeTab !== "logsform" && orders.length === 0 && (
         <p className="py-12 text-center text-sm text-muted-foreground">
           No orders yet. Create one with the button above.
         </p>
       )}
 
-      {!loading && orders.length > 0 && filteredOrders.length === 0 && (
+      {!loading && activeTab !== "logsform" && orders.length > 0 && filteredOrders.length === 0 && (
         <p className="py-12 text-center text-sm text-muted-foreground">
           {searchQuery.trim()
             ? "No orders match your search."
@@ -539,7 +626,7 @@ export default function OrdersPage() {
       )}
 
       {/* Orders list */}
-      {!loading && filteredOrders.length > 0 && (
+      {!loading && activeTab !== "logsform" && filteredOrders.length > 0 && (
         <div className="space-y-3">
           {filteredOrders.map((order) => {
             const expanded = expandedIds.has(order.id);
@@ -644,6 +731,20 @@ export default function OrdersPage() {
                                     onClick={() => stockMatch && handleRemoveFromStock(stockMatch)}>
                                     Remove from Stock
                                   </Button>
+                                  {orderItem.itemType !== "Brassard" && (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={
+                                        addingToLogsFormId === orderItem.id ||
+                                        onLogsFormItemIds.has(orderItem.id) ||
+                                        orderItem.needSizing ||
+                                        (!NO_SIZE_ITEMS.has(orderItem.itemType) && !orderItem.size)
+                                      }
+                                      onClick={() => handleAddToLogsForm(orderItem)}>
+                                      <FileSpreadsheet className="h-3 w-3 mr-1" />
+                                      {onLogsFormItemIds.has(orderItem.id) ? "On Logs Form" : "Add to Logs Form"}
+                                    </Button>
+                                  )}
                                   <Button size="sm" variant="outline"
                                     className="h-7 w-full text-xs border-primary/40 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
                                     disabled={markingAsReady === orderItem.id || !!orderItem.readyToCollect || !!orderItem.givenAt}
@@ -845,6 +946,159 @@ export default function OrdersPage() {
           })}
         </div>
       )}
+
+      {/* Logs Form tab */}
+      {!loading && activeTab === "logsform" && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="font-semibold">Current Logs Form</p>
+                  <p className="text-xs text-muted-foreground">
+                    {openLogsForm
+                      ? `Started ${formatTimestamp(openLogsForm.createdAt)}`
+                      : "Nothing added yet"}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  {openLogsForm?.entries.length ?? 0} item{(openLogsForm?.entries.length ?? 0) !== 1 ? "s" : ""}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              {!openLogsForm || openLogsForm.entries.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No items on the current logs form. Use &quot;Add to Logs Form&quot; on an order item.
+                </p>
+              ) : (
+                <>
+                  <ul className="space-y-1.5">
+                    {openLogsForm.entries.map((entry) => (
+                      <li key={entry.id}
+                        className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">
+                            {entry.itemType}
+                            {entry.size && <span className="text-muted-foreground font-normal"> · {entry.size}</span>}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{entry.cadetName}</p>
+                        </div>
+                        <Button size="icon" variant="ghost"
+                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleRemoveLogsFormEntry(entry.id)}
+                          aria-label="Remove from logs form">
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`/api/stores/logs-forms/${openLogsForm.id}/download`}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Logs Form
+                      </a>
+                    </Button>
+                    <Button size="sm"
+                      className="bg-success hover:bg-success/90 text-white"
+                      onClick={() => handleMarkLogsFormOrdered(openLogsForm.id)}>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Mark as Ordered
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {pastLogsForms.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Previous Orders
+              </p>
+              {pastLogsForms.map((form) => {
+                const expanded = expandedFormIds.has(form.id);
+                return (
+                  <Card key={form.id} className="opacity-80">
+                    <CardHeader className="pb-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">Logs Form</p>
+                            <Badge className="border-success/40 bg-success/15 text-success text-xs">
+                              <Lock className="h-3 w-3 mr-1" />
+                              Ordered
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Ordered {form.orderedAt ? formatTimestamp(form.orderedAt) : "—"}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {form.entries.length} item{form.entries.length !== 1 ? "s" : ""}
+                          </Badge>
+                          <Button size="icon" variant="ghost" className="h-8 w-8"
+                            onClick={() => toggleFormExpand(form.id)}
+                            aria-label={expanded ? "Collapse" : "Expand"}>
+                            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    {expanded && (
+                      <CardContent className="pt-4 space-y-3">
+                        <ul className="space-y-1.5">
+                          {form.entries.map((entry) => (
+                            <li key={entry.id} className="rounded-md border bg-muted/30 px-3 py-2">
+                              <p className="text-sm font-medium">
+                                {entry.itemType}
+                                {entry.size && <span className="text-muted-foreground font-normal"> · {entry.size}</span>}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{entry.cadetName}</p>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="flex justify-end pt-1">
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={`/api/stores/logs-forms/${form.id}/download`}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Download Logs Form
+                            </a>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tie variant dialog */}
+      <Dialog open={tieItemId !== null} onOpenChange={(open) => !open && setTieItemId(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Necktie Length</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Which necktie should be demanded on the logs form?
+          </p>
+          <DialogFooter>
+            <Button variant="outline"
+              onClick={() => { if (tieItemId) doAddToLogsForm(tieItemId, "Short"); setTieItemId(null); }}>
+              Short
+            </Button>
+            <Button
+              onClick={() => { if (tieItemId) doAddToLogsForm(tieItemId, "Standard"); setTieItemId(null); }}>
+              Standard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Order Dialog */}
       <Dialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
