@@ -545,14 +545,14 @@ export default function OrdersPage() {
               tab === "completed" ? completedOrders.length :
               openLogsForm?.entries.length ?? 0;
             const label =
-              tab === "active" ? "Active Orders" :
-              tab === "completed" ? "Completed Orders" : "Logs Form";
+              tab === "active" ? "Active" :
+              tab === "completed" ? "Completed" : "Logs Form";
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap flex items-center gap-1.5",
+                  "px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap flex items-center gap-1.5 sm:px-4",
                   activeTab === tab
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"

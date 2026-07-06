@@ -727,8 +727,9 @@ function AssessmentGroupRow({
 
   return (
     <div className="rounded-lg border bg-card">
-      {/* Two-column header: left = expand + type, right = passes + actions stacked */}
-      <div className="flex w-full items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+      {/* Header: stacks on mobile (type row, then passes + actions full-width),
+          two columns on sm+ (type left, passes + actions stacked right). */}
+      <div className="flex w-full flex-col gap-2 px-4 py-3 hover:bg-muted/40 transition-colors sm:flex-row sm:items-start sm:gap-3">
         <div
           role="button"
           tabIndex={0}
@@ -756,8 +757,9 @@ function AssessmentGroupRow({
           </div>
         </div>
 
-        {/* Right side: passes count + upload/completion controls stacked */}
-        <div className="shrink-0 flex flex-col items-end gap-1.5">
+        {/* Passes count + upload/completion controls. Full-width row (indented
+            under the badge) on mobile; stacked right column on sm+. */}
+        <div className="flex items-center justify-between gap-2 pl-6 sm:shrink-0 sm:flex-col sm:items-end sm:justify-start sm:gap-1.5 sm:pl-0">
           <span className="text-xs text-muted-foreground whitespace-nowrap">
             <span
               className={cn(

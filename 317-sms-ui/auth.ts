@@ -71,6 +71,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, account, user }) {
       if (account) {
+        // ponytail: dev-only fake session (AUTH_DEV_BYPASS=1); skips Google
+        // role lookup and token refresh. Backend accepts the matching
+        // dev-fake-token only when its own DEV_FAKE_AUTH=1 flag is set.
+        if (account.provider === "credentials") {
+          return {
+            ...token,
+            role: "staff" as const,
+            id_token: "dev-fake-token",
+            expires_at: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+          }
+        }
         token.id_token = account.id_token
         token.access_token = account.access_token
         token.refresh_token = account.refresh_token
@@ -109,7 +120,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.error) session.error = token.error as string
       return session
     },
-    async signIn({ user }) {
+    async signIn({ user, account }) {
+      if (account?.provider === "credentials") return true // dev bypass only
       if (!user.email) return false
       const role = await getUserRole(user.email)
       return role !== null
