@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth"
 import Google from "next-auth/providers/google"
+import Credentials from "next-auth/providers/credentials"
 
 const NCO_ALLOWED_ROUTES = ["/", "/assessments", "/cadets/assessments", "/settings"]
 
@@ -29,6 +30,19 @@ export const authConfig: NextAuthConfig = {
         },
       },
     }),
+    // ponytail: dev-only fake login for local Playwright/UI testing.
+    // Inert unless AUTH_DEV_BYPASS=1 (never set in production).
+    ...(process.env.AUTH_DEV_BYPASS === "1"
+      ? [
+          Credentials({
+            credentials: {},
+            authorize: () => ({
+              email: "ci.mcdonald@317atc.co.uk",
+              name: "Dev Bypass",
+            }),
+          }),
+        ]
+      : []),
   ],
   pages: {
     signIn: "/login",
