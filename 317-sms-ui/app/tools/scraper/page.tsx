@@ -486,42 +486,45 @@ function AttachmentChecksTab({ token }: { token: string }) {
       .catch(() => toast.error("Could not load attachment checks"));
   }, [token]);
 
-  const addDraft = () => {
-    const name = draft.trim();
-    if (!name || quals === null) return;
-    if (quals.some((q) => q.toLowerCase() === name.toLowerCase())) {
-      toast.error(`"${name}" is already in the list.`);
-      return;
-    }
-    setQuals([...quals, name].sort((a, b) => a.localeCompare(b)));
-    setDraft("");
-  };
-
-  const removeOne = (name: string) => {
-    setQuals((prev) => (prev ? prev.filter((q) => q !== name) : prev));
-  };
-
-  const handleSave = async () => {
-    if (quals === null) return;
+  // PUT the full list; on success adopt the server's copy, on failure restore. // ponytail: whole-list PUT, matches the existing endpoint
+  const persist = async (next: string[], prev: string[]) => {
     setSaving(true);
+    setQuals(next);
     try {
       const res = await apiFetch(`${API_BASE}/attachment-check-quals`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ quals }),
+        body: JSON.stringify({ quals: next }),
       });
       const data = await res.json();
       if (!res.ok) {
         toast.error(data.detail || "Could not save");
+        setQuals(prev);
         return;
       }
       setQuals(data.quals);
-      toast.success("Attachment checks saved.");
     } catch {
       toast.error("Could not reach server");
+      setQuals(prev);
     } finally {
       setSaving(false);
     }
+  };
+
+  const addDraft = () => {
+    const name = draft.trim();
+    if (!name || quals === null || saving) return;
+    if (quals.some((q) => q.toLowerCase() === name.toLowerCase())) {
+      toast.error(`"${name}" is already in the list.`);
+      return;
+    }
+    setDraft("");
+    persist([...quals, name].sort((a, b) => a.localeCompare(b)), quals);
+  };
+
+  const removeOne = (name: string) => {
+    if (quals === null || saving) return;
+    persist(quals.filter((q) => q !== name), quals);
   };
 
   if (quals === null) {
@@ -560,8 +563,8 @@ function AttachmentChecksTab({ token }: { token: string }) {
                 placeholder="Blue Leadership"
               />
             </div>
-            <Button type="button" variant="outline" onClick={addDraft} disabled={!draft.trim()}>
-              <Plus className="size-4" /> Add
+            <Button type="button" variant="outline" onClick={addDraft} disabled={!draft.trim() || saving}>
+              {saving ? <Spinner /> : <Plus className="size-4" />} Add
             </Button>
           </div>
 
@@ -585,11 +588,6 @@ function AttachmentChecksTab({ token }: { token: string }) {
               ))}
             </div>
           )}
-
-          <Button className="ml-auto" disabled={saving} onClick={handleSave}>
-            {saving && <Spinner />}
-            Save
-          </Button>
         </CardContent>
       </Card>
     </div>
