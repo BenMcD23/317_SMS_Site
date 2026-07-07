@@ -48,6 +48,7 @@ type LessonCheck = {
   name: string;
   has: boolean;
   completed_at: string | null;
+  has_qualification: boolean;
 };
 
 type TheoryResult = Cadet & {
@@ -245,10 +246,10 @@ function CadetPicker({
                   onCheckedChange={() => toggle(c.cin)}
                   onClick={(e) => e.stopPropagation()}
                 />
-                <span className="font-medium">
+                <span className="min-w-0 truncate font-medium">
                   {c.last_name}, {c.first_name}
                 </span>
-                <span className="ml-auto text-xs text-muted-foreground">{c.cin}</span>
+                <span className="ml-auto shrink-0 text-xs text-muted-foreground">{c.cin}</span>
               </div>
             ))}
           </div>
@@ -335,7 +336,7 @@ function RecordTab({ lessons }: { lessons: Lesson[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CadetPicker
           cadets={cadets}
           loading={loadingCadets}
@@ -518,24 +519,37 @@ function TheoryResultsTable({
                 const check = r.lessons_check.find((c) => c.lesson_key === k);
                 return (
                   <TableCell key={k} className="text-center">
-                    {check?.has ? (
-                      <div className="flex flex-col items-center gap-0.5">
+                    <div className="flex flex-col items-center gap-1">
+                      {check?.has ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Badge
+                            variant="outline"
+                            className="border-green-200 bg-green-50 text-green-700"
+                          >
+                            <Check className="size-3" />
+                            Theory
+                          </Badge>
+                          {check.completed_at && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatDate(check.completed_at)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                      {check?.has_qualification ? (
                         <Badge
                           variant="outline"
-                          className="border-green-200 bg-green-50 text-green-700"
+                          className="border-blue-200 bg-blue-50 text-blue-700"
                         >
                           <Check className="size-3" />
-                          Theory
+                          Qualified
                         </Badge>
-                        {check.completed_at && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {formatDate(check.completed_at)}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">No qual</span>
+                      )}
+                    </div>
                   </TableCell>
                 );
               })}
