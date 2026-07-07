@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -100,6 +99,7 @@ type AuditResult = Cadet & {
   qualifications_check?: QualCheck[];
   allergies?: AllergyEntry[];
   dietary?: DietaryEntry[];
+  missing_attachments?: string[];
 };
 
 type SubApp = {
@@ -167,6 +167,8 @@ function CriteriaSelector({
   onToggleMedical,
   includeDietary,
   onToggleDietary,
+  includeMissingAttachments,
+  onToggleMissingAttachments,
 }: {
   badgeTypes: BadgeType[];
   selected: LevelSelection;
@@ -175,6 +177,8 @@ function CriteriaSelector({
   onToggleMedical: (v: boolean) => void;
   includeDietary: boolean;
   onToggleDietary: (v: boolean) => void;
+  includeMissingAttachments: boolean;
+  onToggleMissingAttachments: (v: boolean) => void;
 }) {
   const leveled = badgeTypes.filter((b) => b.kind === "leveled");
   const boolean = badgeTypes.filter((b) => b.kind === "boolean");
@@ -253,25 +257,31 @@ function CriteriaSelector({
         })}
       </div>
 
-      {boolean.length > 0 && (
-        <>
-          <p className="border-t pt-3 text-sm font-semibold">Other</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {boolean.map((b) => (
-              <div key={b.key} className="flex items-center gap-2">
-                <Checkbox
-                  id={`qual-${b.key}`}
-                  checked={(selected[b.key] ?? []).length > 0}
-                  onCheckedChange={(v) => setLevels(b.key, v ? [...b.levels] : [])}
-                />
-                <Label htmlFor={`qual-${b.key}`} className="cursor-pointer text-sm font-normal">
-                  {b.name}
-                </Label>
-              </div>
-            ))}
+      <p className="border-t pt-3 text-sm font-semibold">Other</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {boolean.map((b) => (
+          <div key={b.key} className="flex items-center gap-2">
+            <Checkbox
+              id={`qual-${b.key}`}
+              checked={(selected[b.key] ?? []).length > 0}
+              onCheckedChange={(v) => setLevels(b.key, v ? [...b.levels] : [])}
+            />
+            <Label htmlFor={`qual-${b.key}`} className="cursor-pointer text-sm font-normal">
+              {b.name}
+            </Label>
           </div>
-        </>
-      )}
+        ))}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="include-missing-attachments"
+            checked={includeMissingAttachments}
+            onCheckedChange={(v) => onToggleMissingAttachments(!!v)}
+          />
+          <Label htmlFor="include-missing-attachments" className="cursor-pointer text-sm font-normal">
+            Missing attachments
+          </Label>
+        </div>
+      </div>
 
       <p className="border-t pt-3 text-sm font-semibold">Medical &amp; Dietary</p>
       <div className="flex flex-col gap-2">
@@ -306,24 +316,32 @@ function AuditResultsTable({
   selected,
   includeMedical,
   includeDietary,
+  includeMissingAttachments,
 }: {
   results: AuditResult[];
   badgeTypes: BadgeType[];
   selected: LevelSelection;
   includeMedical: boolean;
   includeDietary: boolean;
+  includeMissingAttachments: boolean;
 }) {
   const qualCols = badgeTypes.filter((b) => (selected[b.key] ?? []).length > 0);
   const hasQualCriteria = qualCols.length > 0;
 
-  const rows = hasQualCriteria
-    ? results.filter((r) =>
-        qualCols.some((b) => {
-          const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
-          return matchedLevel(check, selected[b.key] ?? []) !== null;
-        }),
-      )
-    : results;
+  const rows = results.filter((r) => {
+    if (
+      hasQualCriteria &&
+      !qualCols.some((b) => {
+        const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
+        return matchedLevel(check, selected[b.key] ?? []) !== null;
+      })
+    ) {
+      return false;
+    }
+    // Missing-attachments filter: only cadets who actually have some — never "None" rows.
+    if (includeMissingAttachments && !(r.missing_attachments?.length)) return false;
+    return true;
+  });
 
   if (rows.length === 0) {
     return (
@@ -348,6 +366,9 @@ function AuditResultsTable({
             )}
             {includeDietary && (
               <TableHead className="min-w-40">Dietary</TableHead>
+            )}
+            {includeMissingAttachments && (
+              <TableHead className="min-w-40">Missing attachments</TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -407,6 +428,21 @@ function AuditResultsTable({
                       {r.dietary.map((d, i) => (
                         <Badge key={i} variant="secondary" className="text-xs">
                           {d.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">None</span>
+                  )}
+                </TableCell>
+              )}
+              {includeMissingAttachments && (
+                <TableCell>
+                  {r.missing_attachments && r.missing_attachments.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {r.missing_attachments.map((q, i) => (
+                        <Badge key={i} variant="destructive" className="text-xs">
+                          {q}
                         </Badge>
                       ))}
                     </div>
@@ -555,6 +591,7 @@ function CadetCheckTab() {
   const [quals, setQuals] = useState<LevelSelection>({});
   const [includeMedical, setIncludeMedical] = useState(false);
   const [includeDietary, setIncludeDietary] = useState(false);
+  const [includeMissingAttachments, setIncludeMissingAttachments] = useState(false);
   const [results, setResults] = useState<AuditResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -588,7 +625,7 @@ function CadetCheckTab() {
 
   async function runCheck() {
     if (!session?.id_token) return;
-    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary) return;
+    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary && !includeMissingAttachments) return;
     setLoading(true);
     setError(null);
     try {
@@ -603,6 +640,7 @@ function CadetCheckTab() {
           qualifications: Object.keys(quals),
           include_medical: includeMedical,
           include_dietary: includeDietary,
+          include_missing_attachments: includeMissingAttachments,
         }),
       });
       setResults(await res.json());
@@ -615,7 +653,19 @@ function CadetCheckTab() {
 
   const canRun =
     selectedCins.size > 0 &&
-    (Object.keys(quals).length > 0 || includeMedical || includeDietary);
+    (Object.keys(quals).length > 0 || includeMedical || includeDietary || includeMissingAttachments);
+
+  // Auto-run whenever the cadet selection or criteria change — debounced so
+  // ticking several boxes fires one request, not one per tick.
+  useEffect(() => {
+    if (!canRun) {
+      setResults(null);
+      return;
+    }
+    const t = setTimeout(runCheck, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCins, quals, includeMedical, includeDietary, includeMissingAttachments]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -716,18 +766,14 @@ function CadetCheckTab() {
               onToggleMedical={setIncludeMedical}
               includeDietary={includeDietary}
               onToggleDietary={setIncludeDietary}
+              includeMissingAttachments={includeMissingAttachments}
+              onToggleMissingAttachments={setIncludeMissingAttachments}
             />
           </CardContent>
         </Card>
       </div>
 
-      <Button
-        onClick={runCheck}
-        disabled={!canRun || loading}
-        className="w-full sm:w-auto"
-      >
-        {loading ? "Checking…" : "Run Check"}
-      </Button>
+      {loading && <p className="text-sm text-muted-foreground">Checking…</p>}
 
       <ErrorAlert message={error} title="Check failed" />
 
@@ -738,6 +784,7 @@ function CadetCheckTab() {
           selected={quals}
           includeMedical={includeMedical}
           includeDietary={includeDietary}
+          includeMissingAttachments={includeMissingAttachments}
         />
       )}
     </div>
@@ -758,6 +805,7 @@ function EventCheckTab() {
   const [quals, setQuals] = useState<LevelSelection>({});
   const [includeMedical, setIncludeMedical] = useState(false);
   const [includeDietary, setIncludeDietary] = useState(false);
+  const [includeMissingAttachments, setIncludeMissingAttachments] = useState(false);
   const [results, setResults] = useState<AuditResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -780,7 +828,7 @@ function EventCheckTab() {
 
   async function runCheck() {
     if (!session?.id_token || effectiveEventId === null) return;
-    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary) return;
+    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary && !includeMissingAttachments) return;
     setLoading(true);
     setError(null);
     try {
@@ -795,6 +843,7 @@ function EventCheckTab() {
           qualifications: Object.keys(quals),
           include_medical: includeMedical,
           include_dietary: includeDietary,
+          include_missing_attachments: includeMissingAttachments,
         }),
       });
       setResults(await res.json());
@@ -807,7 +856,18 @@ function EventCheckTab() {
 
   const canRun =
     effectiveEventId !== null &&
-    (Object.keys(quals).length > 0 || includeMedical || includeDietary);
+    (Object.keys(quals).length > 0 || includeMedical || includeDietary || includeMissingAttachments);
+
+  // Auto-run whenever the event/sub-app or criteria change (debounced).
+  useEffect(() => {
+    if (!canRun) {
+      setResults(null);
+      return;
+    }
+    const t = setTimeout(runCheck, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveEventId, quals, includeMedical, includeDietary, includeMissingAttachments]);
 
   const selectedSubApp = subApps.find((s) => String(s.id) === selectedSubAppId);
   const shownCadets =
@@ -917,18 +977,14 @@ function EventCheckTab() {
               onToggleMedical={setIncludeMedical}
               includeDietary={includeDietary}
               onToggleDietary={setIncludeDietary}
+              includeMissingAttachments={includeMissingAttachments}
+              onToggleMissingAttachments={setIncludeMissingAttachments}
             />
           </CardContent>
         </Card>
       </div>
 
-      <Button
-        onClick={runCheck}
-        disabled={!canRun || loading}
-        className="w-full sm:w-auto"
-      >
-        {loading ? "Checking…" : "Run Event Check"}
-      </Button>
+      {loading && <p className="text-sm text-muted-foreground">Checking…</p>}
 
       <ErrorAlert message={error} title="Event check failed" />
 
@@ -939,6 +995,7 @@ function EventCheckTab() {
           selected={quals}
           includeMedical={includeMedical}
           includeDietary={includeDietary}
+          includeMissingAttachments={includeMissingAttachments}
         />
       )}
     </div>

@@ -15,7 +15,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Loader2, Clock, CheckSquare, Square, X, CalendarClock, FileText } from "lucide-react";
+import { Loader2, Clock, CheckSquare, Square, X, CalendarClock, FileText, Paperclip, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -467,6 +467,133 @@ function ScheduleTab({ token }: { token: string }) {
   );
 }
 
+// ─── Attachment checks tab ────────────────────────────────────────────────────
+// A squadron-wide list of exact Bader qualification names the cadet-quali
+// scraper checks for a proof attachment. Missing ones are flagged in the run
+// log and saved on each cadet's qualification.
+
+function AttachmentChecksTab({ token }: { token: string }) {
+  const [quals, setQuals] = useState<string[] | null>(null);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiFetch(`${API_BASE}/attachment-check-quals`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data: { quals: string[] }) => setQuals(data.quals))
+      .catch(() => toast.error("Could not load attachment checks"));
+  }, [token]);
+
+  // PUT the full list; on success adopt the server's copy, on failure restore. // ponytail: whole-list PUT, matches the existing endpoint
+  const persist = async (next: string[], prev: string[]) => {
+    setSaving(true);
+    setQuals(next);
+    try {
+      const res = await apiFetch(`${API_BASE}/attachment-check-quals`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ quals: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.detail || "Could not save");
+        setQuals(prev);
+        return;
+      }
+      setQuals(data.quals);
+    } catch {
+      toast.error("Could not reach server");
+      setQuals(prev);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addDraft = () => {
+    const name = draft.trim();
+    if (!name || quals === null || saving) return;
+    if (quals.some((q) => q.toLowerCase() === name.toLowerCase())) {
+      toast.error(`"${name}" is already in the list.`);
+      return;
+    }
+    setDraft("");
+    persist([...quals, name].sort((a, b) => a.localeCompare(b)), quals);
+  };
+
+  const removeOne = (name: string) => {
+    if (quals === null || saving) return;
+    persist(quals.filter((q) => q !== name), quals);
+  };
+
+  if (quals === null) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner className="size-6" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+        <Paperclip className="mt-0.5 size-4 shrink-0" />
+        When the Cadet Qualification Scraper runs, each qualification listed here is checked for a
+        proof attachment. Cadets missing one are flagged in the run log and on their qualification.
+      </p>
+
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6">
+          <div className="flex items-end gap-2">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="quali-name" className="text-xs text-muted-foreground">
+                Exact qualification name as it appears on Bader, e.g. Blue Leadership
+              </Label>
+              <Input
+                id="quali-name"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addDraft();
+                  }
+                }}
+                placeholder="Blue Leadership"
+              />
+            </div>
+            <Button type="button" variant="outline" onClick={addDraft} disabled={!draft.trim() || saving}>
+              {saving ? <Spinner /> : <Plus className="size-4" />} Add
+            </Button>
+          </div>
+
+          {quals.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No qualifications are being checked for attachments yet.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {quals.map((q) => (
+                <Badge key={q} variant="secondary" className="gap-1.5 py-1 pl-3 pr-1.5 text-sm font-normal">
+                  {q}
+                  <button
+                    onClick={() => removeOne(q)}
+                    title={`Remove ${q}`}
+                    className="cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
+                  >
+                    <X size={13} />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function RunLogsDialog({
   runId,
   label,
@@ -700,6 +827,7 @@ export default function ScraperPage() {
         <TabsList className="w-fit">
           <TabsTrigger value="run">Run</TabsTrigger>
           <TabsTrigger value="schedule">Schedule</TabsTrigger>
+          <TabsTrigger value="attachments">Attachment Checks</TabsTrigger>
         </TabsList>
 
         <TabsContent value="run" className="flex flex-col gap-6">
@@ -877,6 +1005,10 @@ export default function ScraperPage() {
 
         <TabsContent value="schedule">
           {session?.id_token && <ScheduleTab token={session.id_token} />}
+        </TabsContent>
+
+        <TabsContent value="attachments">
+          {session?.id_token && <AttachmentChecksTab token={session.id_token} />}
         </TabsContent>
       </Tabs>
 

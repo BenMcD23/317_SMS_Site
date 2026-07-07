@@ -247,7 +247,7 @@ function MessageCard({
         </div>
 
         <div className="rounded-md border bg-muted/40 p-3">
-          <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
             <span className="font-medium">Preview</span>
             <span>
               {preview.length} chars · ~{smsSegments(preview)} SMS segment{smsSegments(preview) !== 1 ? "s" : ""} + greeting
@@ -274,7 +274,7 @@ function MessageCard({
 
         {!sent && (
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <div className="flex flex-wrap gap-2 sm:items-center">
             <Button
               size="sm"
               variant="outline"
@@ -328,7 +328,7 @@ function MessageCard({
             )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:items-center">
+            <div className="flex flex-wrap gap-2 sm:ml-auto sm:items-center">
               <Dialog open={testOpen} onOpenChange={setTestOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" disabled={busy !== null}>
