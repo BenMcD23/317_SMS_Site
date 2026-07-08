@@ -54,6 +54,7 @@ export interface Order {
   timestamp: string;
   items: OrderItem[];
   completed?: boolean;
+  kitting?: boolean;
 }
 
 export interface SizingDetailsJSON {
