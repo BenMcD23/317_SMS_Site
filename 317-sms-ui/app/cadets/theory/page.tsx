@@ -18,13 +18,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
-import { Search, Check } from "lucide-react";
+import { Search, Check, X } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -435,6 +446,62 @@ function ProgressTab({ lessons }: { lessons: Lesson[] }) {
   const lessonName = (key: string) =>
     lessons.find((l) => l.key === key)?.name ?? key;
 
+  // Remove theory marks (cin, lesson) pairs — covers both fixing a mistaken mark
+  // and pruning theory that's now superseded by the actual qualification. Reuses
+  // the mark endpoint with completed:false, one call per lesson key.
+  async function removePairs(pairs: { cin: number; key: string }[]) {
+    if (!session?.id_token || pairs.length === 0) return;
+    const byKey = new Map<string, number[]>();
+    for (const { cin, key } of pairs) {
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key)!.push(cin);
+    }
+    try {
+      await Promise.all(
+        [...byKey.entries()].map(([key, cins]) =>
+          apiFetch(`${API_BASE}/cadets/theory/mark`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.id_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ cadet_cins: cins, lesson_keys: [key], completed: false }),
+          }).then(async (res) => {
+            if (!res.ok) {
+              const d = await res.json().catch(() => ({}));
+              throw new Error(d.detail ?? res.statusText);
+            }
+          })
+        )
+      );
+      const removed = new Set(pairs.map((p) => `${p.cin}:${p.key}`));
+      setResults((prev) =>
+        prev
+          ? prev
+              .map((r) => ({
+                ...r,
+                lessons_check: r.lessons_check.map((l) =>
+                  removed.has(`${r.cin}:${l.lesson_key}`)
+                    ? { ...l, has: false, completed_at: null }
+                    : l
+                ),
+              }))
+              // drop rows that no longer have any theory recorded (matches the lookup)
+              .filter((r) => r.lessons_check.some((l) => l.has))
+          : prev
+      );
+      toast.success(`Removed ${pairs.length} theory mark${pairs.length !== 1 ? "s" : ""}.`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not remove theory marks.");
+    }
+  }
+
+  const qualifiedPairs = (results ?? []).flatMap((r) =>
+    r.lessons_check
+      .filter((l) => l.has && l.has_qualification)
+      .map((l) => ({ cin: r.cin, key: l.lesson_key }))
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <Card className="py-0">
@@ -462,13 +529,85 @@ function ProgressTab({ lessons }: { lessons: Lesson[] }) {
       <ErrorAlert message={error} title="Lookup failed" />
 
       {results !== null && (
-        <TheoryResultsTable
-          results={results}
-          orderedKeys={orderedKeys}
-          lessonName={lessonName}
-        />
+        <>
+          {qualifiedPairs.length > 0 && (
+            <div className="flex flex-col gap-1.5 rounded-md border border-blue-200 bg-blue-50/50 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-blue-900 dark:bg-blue-950/40">
+              <p className="text-sm text-muted-foreground">
+                {qualifiedPairs.length} theory mark
+                {qualifiedPairs.length !== 1 ? "s are" : " is"} now covered by the actual
+                qualification.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Remove ${qualifiedPairs.length} theory mark${
+                        qualifiedPairs.length !== 1 ? "s" : ""
+                      } for cadets who now hold the qualification?`
+                    )
+                  )
+                    removePairs(qualifiedPairs);
+                }}
+              >
+                <X className="size-4" />
+                Remove qualified
+              </Button>
+            </div>
+          )}
+          <TheoryResultsTable
+            results={results}
+            orderedKeys={orderedKeys}
+            lessonName={lessonName}
+            onRemove={(cin, key) => removePairs([{ cin, key }])}
+          />
+        </>
       )}
     </div>
+  );
+}
+
+/** Theory badge that doubles as its own remove control (confirm dialog on click).
+ *  Hover swaps the tick for an ✕ so the removable affordance reads without an
+ *  extra button breaking the column's alignment. */
+function RemovableTheoryBadge({
+  description,
+  onConfirm,
+}: {
+  description: string;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button
+          type="button"
+          title="Remove this theory mark"
+          className="group/rm inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive dark:border-green-900 dark:bg-green-950 dark:text-green-400"
+        >
+          <Check className="size-3 group-hover/rm:hidden" />
+          <X className="hidden size-3 group-hover/rm:block" />
+          Theory
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove theory mark?</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            Remove
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -476,10 +615,12 @@ function TheoryResultsTable({
   results,
   orderedKeys,
   lessonName,
+  onRemove,
 }: {
   results: TheoryResult[];
   orderedKeys: string[];
   lessonName: (key: string) => string;
+  onRemove: (cin: number, key: string) => void;
 }) {
   if (results.length === 0) {
     return (
@@ -522,13 +663,10 @@ function TheoryResultsTable({
                     <div className="flex flex-col items-center gap-1">
                       {check?.has ? (
                         <div className="flex flex-col items-center gap-0.5">
-                          <Badge
-                            variant="outline"
-                            className="border-green-200 bg-green-50 text-green-700"
-                          >
-                            <Check className="size-3" />
-                            Theory
-                          </Badge>
+                          <RemovableTheoryBadge
+                            description={`Remove the theory mark for ${r.last_name}, ${r.first_name} on ${lessonName(k)}? You can re-add it later from Record Progress.`}
+                            onConfirm={() => onRemove(r.cin, k)}
+                          />
                           {check.completed_at && (
                             <span className="text-[10px] text-muted-foreground">
                               {formatDate(check.completed_at)}
@@ -541,7 +679,7 @@ function TheoryResultsTable({
                       {check?.has_qualification ? (
                         <Badge
                           variant="outline"
-                          className="border-blue-200 bg-blue-50 text-blue-700"
+                          className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400"
                         >
                           <Check className="size-3" />
                           Qualified
