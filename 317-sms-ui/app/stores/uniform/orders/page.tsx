@@ -42,6 +42,12 @@ function emptyDraftItem(): DraftItem {
   return { itemType: "", size: "", needSizing: false, sizingDetails: "" };
 }
 
+// C Flight initial kitting: 1 of each standard item, gendered variants chosen on add.
+const KIT_ITEMS: Record<"male" | "female", string[]> = {
+  male:   ["Beret", "Brassard", "Jumper", "Wedgewood Male", "Working Blue Male", "Tie", "Belt", "Trousers"],
+  female: ["Beret", "Brassard", "Jumper", "Wedgewood Female", "Working Blue Female", "Tie", "Belt", "Slacks", "Skirts"],
+};
+
 const FIT_LABELS: Record<string, string> = { bigger: "Bigger", smaller: "Smaller", same: "Same size" };
 
 function parseSizingDetails(str: string): SizingDetailsJSON | null {
@@ -105,7 +111,14 @@ export default function OrdersPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Tab
-  const [activeTab, setActiveTab] = useState<"active" | "completed" | "logsform">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "completed" | "kitting" | "logsform">("active");
+
+  // C Flight initial kitting — add cadet dialog
+  const [kittingOpen, setKittingOpen] = useState(false);
+  const [kitCadetCin, setKitCadetCin] = useState<number | null>(null);
+  const [kitCadetName, setKitCadetName] = useState("");
+  const [kitGender, setKitGender] = useState<"male" | "female">("male");
+  const [kitSubmitting, setKitSubmitting] = useState(false);
 
   // Logs form batches
   const [logsForms, setLogsForms] = useState<LogsForm[]>([]);
@@ -352,6 +365,57 @@ export default function OrdersPage() {
     }
   }
 
+  function openKitting() {
+    setKitCadetCin(null);
+    setKitCadetName("");
+    setKitGender("male");
+    setKittingOpen(true);
+  }
+
+  async function handleCreateKitting() {
+    if (!kitCadetCin) return;
+    setKitSubmitting(true);
+    try {
+      const items = KIT_ITEMS[kitGender].map((itemType) => ({
+        itemType, size: "", needSizing: false, sizingDetails: "",
+      }));
+      const res = await fetch("/api/stores/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cadetCin: kitCadetCin, kitting: true, items }),
+      });
+      if (!res.ok) throw new Error("Failed to create kitting");
+      const created = await res.json();
+      setOrders((prev) => [created, ...prev]);
+      setKittingOpen(false);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setKitSubmitting(false);
+    }
+  }
+
+  async function doPullInCFlight() {
+    setKitSubmitting(true);
+    try {
+      const res = await fetch("/api/stores/orders/kit-flight", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to pull in C Flight");
+      const created: Order[] = await res.json();
+      if (created.length > 0) setOrders((prev) => [...created, ...prev]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setKitSubmitting(false);
+    }
+  }
+
+  function handlePullInCFlight() {
+    openConfirm(
+      "Add every C Flight cadet to kitting (skipping any already here)? Each gets 1 of each item, with both male and female variants of shirts/trousers — delete the ones that don't apply.",
+      doPullInCFlight
+    );
+  }
+
   async function handleAddQmNote(orderId: string, item: OrderItem) {
     if (!noteText.trim()) return;
     setSavingNote(true);
@@ -510,10 +574,15 @@ export default function OrdersPage() {
     setAddingToOrderId(null);
   }
 
-  const activeOrders = orders.filter((o) => !o.completed);
-  const completedOrders = orders.filter((o) => !!o.completed);
+  const activeOrders = orders.filter((o) => !o.completed && !o.kitting);
+  const completedOrders = orders.filter((o) => !!o.completed && !o.kitting);
+  const kittingOrders = orders.filter((o) => !!o.kitting);
 
-  const filteredOrders = (activeTab === "active" ? activeOrders : completedOrders)
+  const tabOrders =
+    activeTab === "active" ? activeOrders :
+    activeTab === "kitting" ? kittingOrders : completedOrders;
+
+  const filteredOrders = tabOrders
     .filter((o) =>
       searchQuery.trim() === "" ||
       o.cadetName.toLowerCase().includes(searchQuery.trim().toLowerCase())
@@ -539,14 +608,16 @@ export default function OrdersPage() {
       {/* Tab nav */}
       <div className="overflow-x-auto">
         <div className="flex gap-1 border-b min-w-max">
-          {(["active", "completed", "logsform"] as const).map((tab) => {
+          {(["active", "completed", "kitting", "logsform"] as const).map((tab) => {
             const count =
               tab === "active" ? activeOrders.length :
               tab === "completed" ? completedOrders.length :
+              tab === "kitting" ? kittingOrders.length :
               openLogsForm?.entries.length ?? 0;
             const label =
               tab === "active" ? "Active" :
-              tab === "completed" ? "Completed" : "Logs Form";
+              tab === "completed" ? "Completed" :
+              tab === "kitting" ? "C Flight Kitting" : "Logs Form";
             return (
               <button
                 key={tab}
@@ -596,6 +667,19 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {activeTab === "kitting" && (
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handlePullInCFlight} size="sm" disabled={kitSubmitting}>
+            <Plus data-icon="inline-start" />
+            {kitSubmitting ? "Pulling in…" : "Pull in C Flight"}
+          </Button>
+          <Button onClick={openKitting} size="sm" variant="outline">
+            <Plus data-icon="inline-start" />
+            Add cadet
+          </Button>
+        </div>
+      )}
+
       <ErrorAlert message={error} />
 
       {loading && (
@@ -614,7 +698,9 @@ export default function OrdersPage() {
             ? "No orders match your search."
             : activeTab === "active"
               ? "No active orders."
-              : "No completed orders."}
+              : activeTab === "kitting"
+                ? "No cadets in C Flight kitting yet. Use “Add cadet” above."
+                : "No completed orders."}
         </p>
       )}
 
@@ -1181,6 +1267,46 @@ export default function OrdersPage() {
             <Button onClick={handleCreateOrder}
               disabled={submitting || !newCadetCin || newItems.filter((i) => i.itemType).length === 0}>
               {submitting ? "Creating..." : "Create Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* C Flight Kitting — Add Cadet Dialog */}
+      <Dialog open={kittingOpen} onOpenChange={setKittingOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader><DialogTitle>Add cadet to C Flight kitting</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Cadet</Label>
+              <CadetSearchInput
+                token={token}
+                selectedCin={kitCadetCin}
+                selectedName={kitCadetName}
+                onSelect={(cin, name) => { setKitCadetCin(cin || null); setKitCadetName(name); }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Kit</Label>
+              <div className="flex gap-2">
+                {(["male", "female"] as const).map((g) => (
+                  <Button key={g} type="button" variant={kitGender === g ? "default" : "outline"}
+                    size="sm" className="flex-1 capitalize" onClick={() => setKitGender(g)}>
+                    {g}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pre-fills 1 of each: {KIT_ITEMS[kitGender].join(", ")}. Sizes are set later via Edit Size.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setKittingOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateKitting} disabled={kitSubmitting || !kitCadetCin}>
+              {kitSubmitting ? "Adding..." : "Add cadet"}
             </Button>
           </DialogFooter>
         </DialogContent>
