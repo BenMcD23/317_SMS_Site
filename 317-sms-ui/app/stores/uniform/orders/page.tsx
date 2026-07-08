@@ -395,6 +395,27 @@ export default function OrdersPage() {
     }
   }
 
+  async function doPullInCFlight() {
+    setKitSubmitting(true);
+    try {
+      const res = await fetch("/api/stores/orders/kit-flight", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to pull in C Flight");
+      const created: Order[] = await res.json();
+      if (created.length > 0) setOrders((prev) => [...created, ...prev]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setKitSubmitting(false);
+    }
+  }
+
+  function handlePullInCFlight() {
+    openConfirm(
+      "Add every C Flight cadet to kitting (skipping any already here)? Each gets 1 of each item, with both male and female variants of shirts/trousers — delete the ones that don't apply.",
+      doPullInCFlight
+    );
+  }
+
   async function handleAddQmNote(orderId: string, item: OrderItem) {
     if (!noteText.trim()) return;
     setSavingNote(true);
@@ -647,10 +668,16 @@ export default function OrdersPage() {
       )}
 
       {activeTab === "kitting" && (
-        <Button onClick={openKitting} size="sm" className="self-start">
-          <Plus data-icon="inline-start" />
-          Add cadet
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handlePullInCFlight} size="sm" disabled={kitSubmitting}>
+            <Plus data-icon="inline-start" />
+            {kitSubmitting ? "Pulling in…" : "Pull in C Flight"}
+          </Button>
+          <Button onClick={openKitting} size="sm" variant="outline">
+            <Plus data-icon="inline-start" />
+            Add cadet
+          </Button>
+        </div>
       )}
 
       <ErrorAlert message={error} />
