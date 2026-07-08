@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
-import { Search, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, ChevronDown, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 // ─── Level styling ─────────────────────────────────────────────────────────────────
 
@@ -48,6 +48,12 @@ const LEVEL_STYLES: Record<string, string> = {
 
 function levelLabel(level: string): string {
   return level.charAt(0).toUpperCase() + level.slice(1);
+}
+
+function fmtDate(iso: string): string {
+  // ISO date → DD/MM/YYYY; leave anything unparseable as-is.
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB");
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────────────
@@ -93,6 +99,7 @@ type QualCheck = {
   kind: "leveled" | "boolean";
   level: string | null;
   has: boolean;
+  date_achieved: string | null; // ISO date, e.g. "2024-05-01"
 };
 
 type AuditResult = Cadet & {
@@ -328,6 +335,14 @@ function AuditResultsTable({
   const qualCols = badgeTypes.filter((b) => (selected[b.key] ?? []).length > 0);
   const hasQualCriteria = qualCols.length > 0;
 
+  // Sort by a qualification column's award date. Click cycles desc → asc → off.
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  function toggleSort(key: string) {
+    setSort((s) =>
+      s?.key !== key ? { key, dir: "desc" } : s.dir === "desc" ? { key, dir: "asc" } : null,
+    );
+  }
+
   const rows = results.filter((r) => {
     if (
       hasQualCriteria &&
@@ -343,6 +358,19 @@ function AuditResultsTable({
     return true;
   });
 
+  const dateFor = (r: AuditResult) =>
+    r.qualifications_check?.find((c) => c.qual_type === sort?.key)?.date_achieved ?? null;
+  const sortedRows = sort
+    ? [...rows].sort((a, b) => {
+        const da = dateFor(a);
+        const db = dateFor(b);
+        if (da === db) return 0;
+        if (da === null) return 1; // undated rows always last
+        if (db === null) return -1;
+        return sort.dir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+      })
+    : rows;
+
   if (rows.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">No results.</p>
@@ -356,11 +384,36 @@ function AuditResultsTable({
           <TableRow>
             <TableHead className="min-w-40 pl-4">Cadet</TableHead>
             <TableHead className="min-w-28">Classification</TableHead>
-            {qualCols.map((b) => (
-              <TableHead key={b.key} className="min-w-24 text-center">
-                {b.name}
-              </TableHead>
-            ))}
+            {qualCols.map((b) => {
+              const active = sort?.key === b.key;
+              return (
+                <TableHead key={b.key} className="min-w-24 text-center">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(b.key)}
+                    className="mx-auto inline-flex items-center gap-1 hover:text-foreground"
+                    title={
+                      !active
+                        ? `Sort by ${b.name} date awarded (newest first)`
+                        : sort!.dir === "desc"
+                          ? `Sort by ${b.name} date awarded (oldest first)`
+                          : "Clear sorting"
+                    }
+                  >
+                    {b.name}
+                    {active ? (
+                      sort!.dir === "desc" ? (
+                        <ArrowDown className="size-3" />
+                      ) : (
+                        <ArrowUp className="size-3" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="size-3 opacity-40" />
+                    )}
+                  </button>
+                </TableHead>
+              );
+            })}
             {includeMedical && (
               <TableHead className="min-w-40">Allergies</TableHead>
             )}
@@ -373,7 +426,7 @@ function AuditResultsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r) => (
+          {sortedRows.map((r) => (
             <TableRow key={r.cin}>
               <TableCell className="pl-4">
                 <p className="font-medium">
@@ -396,9 +449,16 @@ function AuditResultsTable({
                     {lvl === "none" ? (
                       <span className="text-xs text-muted-foreground">None</span>
                     ) : lvl ? (
-                      <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
-                        {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
-                      </Badge>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                          {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
+                        </Badge>
+                        {check?.date_achieved && (
+                          <span className="text-xs text-muted-foreground">
+                            {fmtDate(check.date_achieved)}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
