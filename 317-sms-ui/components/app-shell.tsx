@@ -44,7 +44,6 @@ import {
   Users,
   LayoutDashboard,
   Radio,
-  HeartPulse,
   Star,
   Sun,
   Moon,
@@ -103,7 +102,6 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Assessment Sheets",
     links: [
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
-      { label: "First Aid", href: "/assessments/first-aid", icon: HeartPulse },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
       { label: "MOI", href: "/assessments/moi", icon: BookOpen },
     ],
