@@ -6,10 +6,11 @@ import { signIn, useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
-import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper } from "lucide-react";
+import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper, Printer } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -239,6 +240,12 @@ function BadgeStatCard({
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
+        </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {sortedLevels.length === 0 ? (
             <span className="text-xs text-muted-foreground">Not yet held by any cadet</span>
@@ -258,11 +265,12 @@ function BadgeStatCard({
 
         {chartData.length >= 2 && (
           <ResponsiveContainer width="100%" height={90}>
-            <LineChart data={chartData}>
+            <LineChart data={chartData} margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickMargin={6} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={20} tickLine={false} axisLine={false} />
               <Tooltip
+                cursor={{ stroke: "var(--border)" }}
                 contentStyle={{
                   background: "var(--popover)",
                   border: "1px solid var(--border)",
@@ -279,6 +287,7 @@ function BadgeStatCard({
                   stroke={levelColor(l)}
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 3 }}
                   strokeDasharray={l === "None" ? "4 3" : undefined}
                 />
               ))}
@@ -301,7 +310,7 @@ const QUICK_TOOLS = [
 
 function QuickTools() {
   return (
-    <section className="flex flex-col gap-3">
+    <section className="no-print flex flex-col gap-3">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tools</h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {QUICK_TOOLS.map((t) => (
@@ -370,9 +379,29 @@ export default function HomePage() {
         .reduce((sum, [, n]) => sum + n, 0)
     : 0;
 
+  const printedOn = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-      <PageHeader title="Dashboard" description="Squadron overview and badge progression" />
+      <PageHeader
+        title="Dashboard"
+        description="Squadron overview and badge progression"
+        actions={
+          <Button variant="outline" size="sm" className="no-print" onClick={() => window.print()}>
+            <Printer />
+            Print / PDF
+          </Button>
+        }
+      />
+      {/* Only rendered on paper: gives the printout a heading and date. */}
+      <div className="print-only mb-2">
+        <h1 className="text-xl font-semibold">317 Squadron — Badge Progression</h1>
+        <p className="text-sm text-muted-foreground">Printed {printedOn}</p>
+      </div>
       {session?.role === "staff" && <QuickTools />}
       {loading ? (
         <DashboardSkeleton />
