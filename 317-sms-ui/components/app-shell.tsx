@@ -48,6 +48,7 @@ import {
   Sun,
   Moon,
   ClipboardCheck,
+  Shirt,
   WifiOff,
   AlertTriangle,
   MessageSquareText,
@@ -101,6 +102,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Assessment Sheets",
     links: [
+      { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
       { label: "MOI", href: "/assessments/moi", icon: BookOpen },
