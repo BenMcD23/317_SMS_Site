@@ -31,14 +31,9 @@ import {
 import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderList } from "@/lib/stores-types";
 import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName } from "../badge-types";
 import { CadetSearchInput } from "@/components/cadet-search";
+import { useConfirm } from "@/components/confirm-dialog";
+import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-function formatTimestamp(ts: string): string {
-  return new Date(ts).toLocaleString("en-AU", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-}
 
 type StockMatch = { item: BadgeItem; cell: BadgeCell };
 
@@ -144,20 +139,7 @@ export default function BadgeOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Generic confirm dialog
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmMessage, setConfirmMessage] = useState("");
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-
-  function openConfirm(message: string, action: () => void) {
-    setConfirmMessage(message);
-    setPendingAction(() => action);
-    setConfirmOpen(true);
-  }
-
-  function handleConfirm() {
-    pendingAction?.();
-    setConfirmOpen(false);
-  }
+  const { confirm: openConfirm, confirmDialog } = useConfirm();
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -1055,16 +1037,7 @@ export default function BadgeOrdersPage() {
       </Dialog>
 
       {/* Confirm Dialog */}
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Are you sure?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">{confirmMessage}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirm}>Confirm</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {confirmDialog}
     </div>
   );
 }

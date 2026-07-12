@@ -1,23 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { proxyToApi } from "@/lib/api-proxy";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-
-async function getToken(): Promise<string | undefined> {
-  const session = await auth();
-  return (session as { id_token?: string } | null)?.id_token;
-}
-
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ issuanceId: string }> }
-) {
-  const { issuanceId } = await params;
-  const token = await getToken();
-  const res = await fetch(`${API_BASE}/stores/issuances/${issuanceId}`, {
-    method: "DELETE",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (res.status === 204) return new NextResponse(null, { status: 204 });
-  return NextResponse.json({ error: "Failed" }, { status: res.status });
+export async function DELETE(_req: Request, { params }: { params: Promise<{ cin: string; issuanceId: string }> }) {
+  const { cin, issuanceId } = await params;
+  return proxyToApi(`/stores/issuances/${issuanceId}`, { method: "DELETE" });
 }

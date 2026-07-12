@@ -32,6 +32,7 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/format";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -76,12 +77,6 @@ function groupByCategory(lessons: Lesson[]): [string, Lesson[]][] {
     groups.get(l.category)!.push(l);
   }
   return [...groups.entries()];
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 // ─── Lesson selector ─────────────────────────────────────────────────────────
@@ -669,7 +664,7 @@ function TheoryResultsTable({
                           />
                           {check.completed_at && (
                             <span className="text-[10px] text-muted-foreground">
-                              {formatDate(check.completed_at)}
+                              {formatDate(check.completed_at, "")}
                             </span>
                           )}
                         </div>

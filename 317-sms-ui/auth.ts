@@ -18,25 +18,31 @@ function makeAdminClient() {
   return google.admin({ version: "directory_v1", auth })
 }
 
-async function getUserRole(userEmail: string): Promise<"staff" | "nco" | null> {
+async function isGroupMember(
+  admin: ReturnType<typeof makeAdminClient>,
+  group: string,
+  userEmail: string
+): Promise<boolean> {
   try {
-    const admin = makeAdminClient()
-
-    try {
-      await admin.members.get({ groupKey: STAFF_GROUP, memberKey: userEmail })
-      return "staff"
-    } catch {}
-
-    try {
-      await admin.members.get({ groupKey: NCO_GROUP, memberKey: userEmail })
-      return "nco"
-    } catch {}
-
-    return null
+    await admin.members.get({ groupKey: group, memberKey: userEmail })
+    return true
   } catch (e: unknown) {
-    console.error("[getUserRole] error:", e)
-    return null
+    const err = e as { code?: number | string; response?: { status?: number } }
+    const status = Number(err.code ?? err.response?.status)
+    // 404 = definitively not a member. Anything else (network, quota, auth)
+    // means the lookup itself failed — propagate so callers can tell
+    // "no role" apart from "couldn't check".
+    if (status === 404) return false
+    throw e
   }
+}
+
+/** Role from Workspace group membership. Throws if the lookup itself fails. */
+async function getUserRole(userEmail: string): Promise<"staff" | "nco" | null> {
+  const admin = makeAdminClient()
+  if (await isGroupMember(admin, STAFF_GROUP, userEmail)) return "staff"
+  if (await isGroupMember(admin, NCO_GROUP, userEmail)) return "nco"
+  return null
 }
 
 function getIdTokenExp(idToken: string): number {
@@ -86,7 +92,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.access_token = account.access_token
         token.refresh_token = account.refresh_token
         token.expires_at = account.expires_at
-        token.role = (await getUserRole(user!.email!)) ?? undefined
+        try {
+          token.role = (await getUserRole(user!.email!)) ?? undefined
+        } catch (e) {
+          console.error("[jwt] role lookup failed:", e)
+          token.role = undefined
+        }
         return token
       }
 
@@ -101,12 +112,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!refreshed.id_token && getIdTokenExp(newIdToken as string) < now + 60) {
           return { ...token, error: "RefreshAccessTokenError" }
         }
+        // Re-check group membership on each refresh (~hourly) so someone
+        // removed from staff/NCO loses access promptly instead of keeping
+        // their role for the rest of the 30-day session. If the lookup
+        // itself fails, keep the current role rather than locking them out.
+        let role = token.role
+        try {
+          role = (await getUserRole(token.email as string)) ?? undefined
+        } catch (e) {
+          console.error("[jwt] role re-check failed, keeping existing role:", e)
+        }
         return {
           ...token,
           id_token: newIdToken,
           access_token: refreshed.access_token,
           expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in,
           refresh_token: refreshed.refresh_token ?? token.refresh_token,
+          role,
           error: undefined,
         }
       } catch (e) {
@@ -123,8 +145,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider === "credentials") return true // dev bypass only
       if (!user.email) return false
-      const role = await getUserRole(user.email)
-      return role !== null
+      try {
+        return (await getUserRole(user.email)) !== null
+      } catch (e) {
+        console.error("[signIn] role lookup failed:", e)
+        return false
+      }
     },
   },
 })
