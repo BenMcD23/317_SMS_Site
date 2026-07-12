@@ -22,14 +22,21 @@ export async function proxyToApi(
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: init.method ?? "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
-    },
-    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: init.method ?? "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
+  } catch {
+    // Backend unreachable — surface a clean 503 (which the client treats as a
+    // possible outage) instead of an opaque Next.js 500.
+    return NextResponse.json({ error: "API unreachable" }, { status: 503 });
+  }
 
   if (res.status === 204) return new NextResponse(null, { status: 204 });
   const data = await res.json().catch(() => null);
@@ -47,9 +54,14 @@ export async function proxyToApiRaw(path: string): Promise<NextResponse> {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return NextResponse.json({ error: "API unreachable" }, { status: 503 });
+  }
   if (!res.ok) {
     const data = await res.json().catch(() => null);
     return NextResponse.json(data ?? { error: res.statusText }, { status: res.status });
