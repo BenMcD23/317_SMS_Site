@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import {
   CheckCircle2,
@@ -75,15 +76,6 @@ type CadetAssessments = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function typeLabel(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
