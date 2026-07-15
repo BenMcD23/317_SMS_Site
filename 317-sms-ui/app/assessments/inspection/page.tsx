@@ -22,18 +22,39 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
-import { ThumbsUp, ThumbsDown, X, Loader2 } from "lucide-react";
+import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
 type Mark = { score: string; comments: Comment[]; absent?: boolean };
-type Sheet = { date: string; marks: Record<number, Mark> };
+// order: cins in the sequence they were submitted, most-recent first (LIFO).
+type Sheet = { date: string; marks: Record<number, Mark>; order?: number[] };
 type Absence = { cin: number; date_from: string; date_to: string; reason: string | null };
+type FlightScore = { total: number; present_count: number; awol_count: number };
 
 type Cadet = {
   cin: number;
@@ -318,6 +339,7 @@ export default function InspectionPage() {
   const {
     state: sheet,
     setState: setSheet,
+    clearDraft,
     draftRestored: restored,
   } = useAssessmentDraft<Sheet>(
     "inspection",
@@ -336,6 +358,7 @@ export default function InspectionPage() {
   );
 
   const [submitting, setSubmitting] = useState(false);
+  const [flightScores, setFlightScores] = useState<Record<string, FlightScore> | null>(null);
 
   async function submit() {
     if (!session?.id_token) return;
@@ -356,7 +379,11 @@ export default function InspectionPage() {
         body: JSON.stringify({ date: sheet.date, marks }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? res.statusText);
-      const { awol } = (await res.json()) as { awol: number[] };
+      const { awol, flight_scores } = (await res.json()) as {
+        awol: number[];
+        flight_scores: Record<string, FlightScore>;
+      };
+      setFlightScores(flight_scores);
       if (awol.length) {
         const names = awol
           .map((cin) => cadets.find((c) => c.cin === cin))
@@ -382,6 +409,10 @@ export default function InspectionPage() {
   const [flight, setFlight] = useState<string | null>(null);
   const activeFlight = flight ?? flights[0] ?? null;
 
+  // Cadet currently being marked within the active flight, and the search combobox.
+  const [selectedCin, setSelectedCin] = useState<number | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
   const flightCadets = useMemo(
     () =>
       cadets
@@ -390,11 +421,65 @@ export default function InspectionPage() {
     [cadets, activeFlight]
   );
 
+  const selectedCadet = flightCadets.find((c) => c.cin === selectedCin) ?? null;
+
+  // Recorded cadets in this flight, most-recently submitted first (LIFO). Falls
+  // back to marks order for drafts saved before `order` was tracked.
+  const recordedCadets = useMemo(() => {
+    const ordered = sheet.order ?? [];
+    const extra = Object.keys(sheet.marks)
+      .map(Number)
+      .filter((cin) => !ordered.includes(cin));
+    return [...ordered, ...extra]
+      .map((cin) => flightCadets.find((c) => c.cin === cin))
+      .filter((c): c is Cadet => !!c && !!sheet.marks[c.cin]);
+  }, [sheet.order, sheet.marks, flightCadets]);
+
+  function selectFlight(f: string) {
+    setFlight(f);
+    setSelectedCin(null);
+    setSearchOpen(false);
+  }
+
   function updateMark(cin: number, fn: (m: Mark) => Mark) {
     setSheet((s) => ({
       ...s,
       marks: { ...s.marks, [cin]: fn(s.marks[cin] ?? emptyMark()) },
     }));
+  }
+
+  // "Submit cadet" — record this cadet as inspected (creating an empty mark if
+  // untouched), move them to the top of the recorded list, and return to the
+  // search so the next cadet can be found.
+  function submitCadet() {
+    if (selectedCin == null) return;
+    const cin = selectedCin;
+    setSheet((s) => ({
+      ...s,
+      marks: s.marks[cin] ? s.marks : { ...s.marks, [cin]: emptyMark() },
+      order: [cin, ...(s.order ?? []).filter((c) => c !== cin)],
+    }));
+    const c = flightCadets.find((c) => c.cin === cin);
+    if (c) toast.success(`${c.first_name} ${c.last_name} recorded`);
+    setSelectedCin(null);
+  }
+
+  // Remove a recorded cadet from the sheet entirely.
+  function removeCadet(cin: number) {
+    setSheet((s) => {
+      const marks = { ...s.marks };
+      delete marks[cin];
+      return { ...s, marks, order: (s.order ?? []).filter((c) => c !== cin) };
+    });
+    if (selectedCin === cin) setSelectedCin(null);
+  }
+
+  function clearAll() {
+    setSheet({ date: sheet.date, marks: {}, order: [] });
+    clearDraft();
+    setSelectedCin(null);
+    setFlightScores(null);
+    toast.success("Draft cleared");
   }
 
   return (
@@ -414,9 +499,36 @@ export default function InspectionPage() {
               onChange={(e) => setSheet((s) => ({ ...s, date: e.target.value }))}
               className="w-40"
             />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={Object.keys(sheet.marks).length === 0}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear draft
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear this draft?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes every recorded cadet from the current, unsaved
+                    marking session. Inspections already completed are not
+                    affected. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={clearAll}>
+                    Clear draft
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button onClick={submit} disabled={submitting}>
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              Submit
+              Complete inspection
             </Button>
           </div>
         }
@@ -426,6 +538,33 @@ export default function InspectionPage() {
         <p className="text-xs text-muted-foreground">Restored your unsaved marking session.</p>
       )}
 
+      {flightScores && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Flight scores</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {Object.entries(flightScores)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([f, s]) => (
+                <div key={f} className="rounded-lg border p-3">
+                  <div className="text-sm font-medium">{f} Flight</div>
+                  <div className="text-2xl font-bold tabular-nums">{s.total}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {s.present_count} marked
+                    {s.awol_count > 0 && (
+                      <span className="text-destructive">
+                        {" · "}
+                        {s.awol_count} AWOL (−{s.awol_count * 5})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Flight tabs */}
       <div className="flex flex-wrap gap-2">
         {flights.map((f) => (
@@ -433,7 +572,7 @@ export default function InspectionPage() {
             key={f}
             size="sm"
             variant={f === activeFlight ? "default" : "outline"}
-            onClick={() => setFlight(f)}
+            onClick={() => selectFlight(f)}
           >
             {f} Flight
           </Button>
@@ -441,25 +580,159 @@ export default function InspectionPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[520px] w-full" />
-          ))}
-        </div>
+        <Skeleton className="h-[560px] w-full max-w-md" />
       ) : flightCadets.length === 0 ? (
         <p className="text-sm text-muted-foreground">No cadets found for this flight.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {flightCadets.map((c) => (
-            <CadetCard
-              key={c.cin}
-              cadet={c}
-              mark={sheet.marks[c.cin] ?? emptyMark()}
-              update={(fn) => updateMark(c.cin, fn)}
-              hasAbsenceLog={absenceByCin.has(c.cin)}
-              absenceReason={absenceByCin.get(c.cin)?.reason ?? null}
-            />
-          ))}
+        <div className="flex flex-col gap-4">
+          {/* Cadet search */}
+          <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={searchOpen}
+                className="w-full justify-between text-muted-foreground sm:w-96"
+              >
+                <span className="flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Search cadet in {activeFlight} Flight…
+                </span>
+                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Type a name…" />
+                <CommandList>
+                  <CommandEmpty>No cadet found.</CommandEmpty>
+                  <CommandGroup>
+                    {flightCadets.map((c) => {
+                      const marked = !!sheet.marks[c.cin];
+                      return (
+                        <CommandItem
+                          key={c.cin}
+                          value={`${c.first_name} ${c.last_name} ${c.rank ?? ""}`}
+                          onSelect={() => {
+                            setSelectedCin(c.cin);
+                            setSearchOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "h-4 w-4",
+                              marked ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <span className="flex-1">
+                            {c.rank ? `${c.rank} ` : ""}
+                            {c.first_name} {c.last_name}
+                          </span>
+                          {marked && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              done
+                            </Badge>
+                          )}
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+
+          {/* Recorded cadets in this flight — most recent first */}
+          {recordedCadets.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                Recorded ({recordedCadets.length})
+              </span>
+              <ul className="divide-y rounded-md border">
+                {recordedCadets.map((c) => {
+                  const m = sheet.marks[c.cin] ?? emptyMark();
+                  const faults = m.comments.filter((x) => x.type === "fault").length;
+                  const positives = m.comments.length - faults;
+                  const absent = m.absent ?? absenceByCin.has(c.cin);
+                  return (
+                    <li
+                      key={c.cin}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 text-sm transition-colors",
+                        c.cin === selectedCin && "bg-primary/5"
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCin(c.cin)}
+                        className="flex flex-1 items-center gap-2 text-left"
+                      >
+                        <Check className="h-4 w-4 shrink-0 text-green-600" />
+                        <span className={cn("flex-1 truncate", absent && "line-through opacity-60")}>
+                          {c.rank ? `${c.rank} ` : ""}
+                          {c.first_name} {c.last_name}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          {absent ? (
+                            <Badge variant="secondary" className="text-[10px]">Absent</Badge>
+                          ) : (
+                            <>
+                              {faults > 0 && (
+                                <Badge variant="destructive" className="text-[10px]">{faults}</Badge>
+                              )}
+                              {positives > 0 && (
+                                <Badge className="bg-green-600 text-white hover:bg-green-600 text-[10px]">
+                                  {positives}
+                                </Badge>
+                              )}
+                              {m.score !== "" && (
+                                <span className="tabular-nums text-xs text-muted-foreground">
+                                  {m.score}/10
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeCadet(c.cin)}
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label={`Remove ${c.first_name} ${c.last_name}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Active cadet */}
+          {selectedCadet ? (
+            <div className="flex w-full max-w-md flex-col gap-3">
+              <CadetCard
+                cadet={selectedCadet}
+                mark={sheet.marks[selectedCadet.cin] ?? emptyMark()}
+                update={(fn) => updateMark(selectedCadet.cin, fn)}
+                hasAbsenceLog={absenceByCin.has(selectedCadet.cin)}
+                absenceReason={absenceByCin.get(selectedCadet.cin)?.reason ?? null}
+              />
+              <div className="flex gap-2">
+                <Button className="flex-1" onClick={submitCadet}>
+                  Submit cadet
+                </Button>
+                <Button variant="outline" onClick={() => setSelectedCin(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Search for a cadet above to start marking.
+            </p>
+          )}
         </div>
       )}
     </div>
