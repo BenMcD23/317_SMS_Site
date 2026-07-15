@@ -139,6 +139,8 @@ type SheetCadet = {
 type FlightGroup = {
   flight: string;
   present: number;
+  awol: number;
+  penalty: number;
   total: number;
   average: number;
   cadets: SheetCadet[];
@@ -266,6 +268,43 @@ function HistoryCadetCard({ cadet }: { cadet: SheetCadet }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Compact AWOL / absent lists shown under a flight's present cadets ─────────
+function AbsenceLists({ awol, absent }: { awol: SheetCadet[]; absent: SheetCadet[] }) {
+  const column = (title: string, people: SheetCadet[], tone: "awol" | "absent") => (
+    <div className="overflow-hidden rounded-md border">
+      <div
+        className={cn(
+          "flex items-center justify-between px-3 py-1.5 text-xs font-semibold",
+          tone === "awol"
+            ? "bg-destructive/10 text-destructive"
+            : "bg-muted text-muted-foreground"
+        )}
+      >
+        <span>{title}</span>
+        <span className="tabular-nums">{people.length}</span>
+      </div>
+      {people.length === 0 ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground">None</p>
+      ) : (
+        <ul className="divide-y">
+          {people.map((c) => (
+            <li key={c.cin} className="px-3 py-1.5 text-sm">
+              {c.rank ? `${c.rank} ` : ""}
+              {c.last_name}, {c.first_name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+  return (
+    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      {column("AWOL", awol, "awol")}
+      {column("Absent (excused)", absent, "absent")}
+    </div>
   );
 }
 
@@ -424,25 +463,40 @@ function HistoryTab() {
         <Skeleton className="h-96 w-full" />
       ) : (
         <div className="flex flex-col gap-6">
-          {detail.flights.map((fl) => (
-            <div key={fl.flight}>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-semibold">{fl.flight} Flight</h3>
-                <Badge variant="secondary">{fl.present} present</Badge>
-                <Badge variant="outline" className="tabular-nums">
-                  avg {fl.average.toFixed(2)}
-                </Badge>
-                <Badge variant="outline" className="tabular-nums">
-                  total {fl.total.toFixed(0)}
-                </Badge>
+          {detail.flights.map((fl) => {
+            const present = fl.cadets.filter((c) => !c.absent);
+            const awol = fl.cadets.filter((c) => c.awol);
+            const absent = fl.cadets.filter((c) => c.absent && !c.awol);
+            return (
+              <div key={fl.flight}>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-semibold">{fl.flight} Flight</h3>
+                  <Badge variant="secondary">{fl.present} present</Badge>
+                  {fl.awol > 0 && (
+                    <Badge variant="destructive" className="tabular-nums">
+                      {fl.awol} AWOL · −{fl.penalty}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="tabular-nums">
+                    avg {fl.average.toFixed(2)}
+                  </Badge>
+                  <Badge variant="outline" className="tabular-nums">
+                    total {fl.total.toFixed(0)}
+                  </Badge>
+                </div>
+                {present.length > 0 && (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {present.map((c) => (
+                      <HistoryCadetCard key={c.cin} cadet={c} />
+                    ))}
+                  </div>
+                )}
+                {(awol.length > 0 || absent.length > 0) && (
+                  <AbsenceLists awol={awol} absent={absent} />
+                )}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {fl.cadets.map((c) => (
-                  <HistoryCadetCard key={c.cin} cadet={c} />
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
