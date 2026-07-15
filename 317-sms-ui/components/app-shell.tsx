@@ -48,6 +48,7 @@ import {
   Sun,
   Moon,
   ClipboardCheck,
+  Shirt,
   WifiOff,
   AlertTriangle,
   MessageSquareText,
@@ -93,6 +94,7 @@ const NAV_SECTIONS: NavSection[] = [
     links: [
       { label: "Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck },
+      { label: "Inspection History", href: "/cadets/inspections", icon: Shirt, staffOnly: true },
       { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap, staffOnly: true },
       { label: "Events", href: "/cadets/events", icon: Calendar, staffOnly: true },
       { label: "Audit", href: "/cadets/audit", icon: ShieldCheck, staffOnly: true },
@@ -101,6 +103,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Assessment Sheets",
     links: [
+      { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
       { label: "MOI", href: "/assessments/moi", icon: BookOpen },

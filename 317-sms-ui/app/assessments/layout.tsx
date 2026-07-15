@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 
 const TABS = [
+  { label: "Inspection", href: "/assessments/inspection" },
   { label: "Leadership", href: "/assessments/leadership" },
   { label: "Radio", href: "/assessments/radio" },
   { label: "MOI", href: "/assessments/moi" },
