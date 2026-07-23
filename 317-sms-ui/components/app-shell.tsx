@@ -36,6 +36,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { SuggestionWidget } from "@/components/suggestion-widget";
 import {
   LogOut,
   FileText,
@@ -411,6 +412,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {title && <span className="text-sm font-medium text-muted-foreground">{title}</span>}
           <div className="ml-auto flex items-center gap-2">
             <ApiStatusBadge status={apiStatus} />
+            <SuggestionWidget />
             <ThemeToggle />
           </div>
         </header>
