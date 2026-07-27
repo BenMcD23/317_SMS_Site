@@ -42,6 +42,14 @@ export default function SettingsPage() {
   const [assessorNameLoading, setAssessorNameLoading] = useState(false);
   const [assessorNameDirty, setAssessorNameDirty] = useState(false);
 
+  // ── Bank details (committee reimbursements) ────────────────────────────────────
+  const [bank, setBank] = useState({
+    bank_account_name: "", bank_sort_code: "", bank_account_number: "",
+  });
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankDirty, setBankDirty] = useState(false);
+  const [showBankNumber, setShowBankNumber] = useState(false);
+
   useEffect(() => {
     if (!session?.id_token) return;
 
@@ -58,6 +66,16 @@ export default function SettingsPage() {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (res.ok) res.json().then((d) => setAssessorName(d.assessor_name ?? ""));
+    });
+
+    apiFetch(`${API_BASE}/settings/user-profile`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    }).then((res) => {
+      if (res.ok) res.json().then((d) => setBank({
+        bank_account_name: d.bank_account_name ?? "",
+        bank_sort_code: d.bank_sort_code ?? "",
+        bank_account_number: d.bank_account_number ?? "",
+      }));
     });
   }, [session]);
 
@@ -200,6 +218,28 @@ export default function SettingsPage() {
       }
     } catch { toast.error("Server unreachable."); }
     finally { setAssessorNameLoading(false); }
+  };
+
+  const handleBankSave = async () => {
+    if (!session?.id_token) return;
+    setBankLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/settings/user-profile`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bank),
+      });
+      if (res.ok) {
+        toast.success("Bank details saved.");
+        setBankDirty(false);
+      } else {
+        toast.error("Failed to save bank details.");
+      }
+    } catch { toast.error("Server unreachable."); }
+    finally { setBankLoading(false); }
   };
 
   const handleCredsSave = async () => {
@@ -452,6 +492,73 @@ export default function SettingsPage() {
 
             <Button className="w-full" onClick={handleCredsSave} disabled={credsLoading || !session}>
               {credsLoading ? "Saving…" : "Save Credentials"}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>}
+
+      {/* ── Bank details — staff only ─────────────────────────────────────────── */}
+      {session?.role === "staff" && <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Bank details
+        </h2>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Reimbursement Account</CardTitle>
+            <CardDescription>
+              Auto-filled into the committee payment email when you send receipts
+              off for reimbursement. Stored encrypted and only ever shared with the
+              committee for a payment request.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="bank_account_name" className="text-xs">Account Name</Label>
+              <Input
+                id="bank_account_name"
+                value={bank.bank_account_name}
+                onChange={(e) => { setBank({ ...bank, bank_account_name: e.target.value }); setBankDirty(true); }}
+                placeholder="e.g. J Bloggs"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="bank_sort_code" className="text-xs">Sort Code</Label>
+                <Input
+                  id="bank_sort_code"
+                  value={bank.bank_sort_code}
+                  onChange={(e) => { setBank({ ...bank, bank_sort_code: e.target.value }); setBankDirty(true); }}
+                  placeholder="12-34-56"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bank_account_number" className="text-xs">Account Number</Label>
+                <div className="relative">
+                  <Input
+                    id="bank_account_number"
+                    type={showBankNumber ? "text" : "password"}
+                    value={bank.bank_account_number}
+                    onChange={(e) => { setBank({ ...bank, bank_account_number: e.target.value }); setBankDirty(true); }}
+                    placeholder="12345678"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBankNumber((v) => !v)}
+                    className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showBankNumber ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleBankSave}
+              disabled={bankLoading || !bankDirty || !session}
+            >
+              {bankLoading ? "Saving…" : "Save Bank Details"}
             </Button>
           </CardContent>
         </Card>

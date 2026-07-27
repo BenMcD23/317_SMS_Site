@@ -4,11 +4,12 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
 import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
 import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper, Printer } from "lucide-react";
 import {
@@ -74,28 +75,6 @@ function fmtDate(iso: string): string {
 }
 
 // ─── Stat cards ───────────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: React.ReactNode;
-  detail?: React.ReactNode;
-}) {
-  return (
-    <Card className="gap-2 py-5">
-      <CardHeader className="pb-0">
-        <CardDescription>{label}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-1.5">
-        <span className="text-2xl font-semibold tabular-nums">{value}</span>
-        {detail && <div className="text-xs text-muted-foreground">{detail}</div>}
-      </CardContent>
-    </Card>
-  );
-}
 
 function breakdownLine(counts: Record<string, number>, order: string[]): string {
   const known = order.filter((k) => counts[k] !== undefined).map((k) => `${counts[k]} ${k}`);

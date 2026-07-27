@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { OWNER_EMAIL } from "@/lib/config";
+import { OWNER_EMAIL, isOc } from "@/lib/config";
 import {
   Sidebar,
   SidebarContent,
@@ -76,12 +76,14 @@ type NavLink = {
   icon: React.ElementType;
   staffOnly?: boolean;
   ownerOnly?: boolean;
+  ocOnly?: boolean;
 };
 
 type NavSection = {
   label?: string;
   staffOnly?: boolean;
   ownerOnly?: boolean;
+  ocOnly?: boolean;
   links: NavLink[];
 };
 
@@ -143,7 +145,15 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Squadron",
     links: [
       { label: "Staff", href: "/staff/overview", icon: UserCog, staffOnly: true },
+      { label: "Committee Requests", href: "/committee/requests", icon: ReceiptText, staffOnly: true },
       { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
+  {
+    label: "OC",
+    ocOnly: true,
+    links: [
+      { label: "OC Dashboard", href: "/oc", icon: LayoutDashboard, ocOnly: true },
     ],
   },
   {
@@ -158,8 +168,9 @@ const NAV_SECTIONS: NavSection[] = [
 
 function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
   const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
-  const canSee = (item: { staffOnly?: boolean; ownerOnly?: boolean }) =>
-    (!item.ownerOnly || isOwner) && (!item.staffOnly || role === "staff");
+  const oc = isOc(email);
+  const canSee = (item: { staffOnly?: boolean; ownerOnly?: boolean; ocOnly?: boolean }) =>
+    (!item.ownerOnly || isOwner) && (!item.staffOnly || role === "staff") && (!item.ocOnly || oc);
   return NAV_SECTIONS.filter(canSee)
     .map((s) => ({ ...s, links: s.links.filter(canSee) }))
     .filter((s) => s.links.length > 0);
