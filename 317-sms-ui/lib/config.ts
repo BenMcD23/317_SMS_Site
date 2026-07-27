@@ -9,11 +9,9 @@ export const OWNER_EMAIL = "ci.mcdonald@317atc.co.uk";
 // gate only; the backend's require_oc dependency is the real enforcement.
 export const OC_EMAIL = process.env.NEXT_PUBLIC_OC_EMAIL || "";
 
-/** True if this email is the OC (or the owner, matching the backend's is_oc). */
+/** True only if this email matches the configured OC_EMAIL (matches the backend's
+ * is_oc — no owner backdoor). False when OC_EMAIL is unset. */
 export function isOc(email?: string | null): boolean {
   const e = (email ?? "").toLowerCase();
-  if (!e) return false;
-  const allowed = [OWNER_EMAIL.toLowerCase()];
-  if (OC_EMAIL) allowed.push(OC_EMAIL.toLowerCase());
-  return allowed.includes(e);
+  return !!e && !!OC_EMAIL && e === OC_EMAIL.toLowerCase();
 }
