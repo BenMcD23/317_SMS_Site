@@ -3,6 +3,7 @@ import { authConfig } from "./auth.config"
 import { google } from "googleapis"
 
 const STAFF_GROUP = "staff@317atc.co.uk"
+const SNCO_GROUP = "snco@317atc.co.uk"
 const NCO_GROUP = "ncoteam@317atc.co.uk"
 const IMPERSONATE_EMAIL = "ci.mcdonald@317atc.co.uk"
 
@@ -18,19 +19,20 @@ function makeAdminClient() {
   return google.admin({ version: "directory_v1", auth })
 }
 
-async function getUserRole(userEmail: string): Promise<"staff" | "nco" | null> {
+async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" | null> {
   try {
     const admin = makeAdminClient()
 
-    try {
-      await admin.members.get({ groupKey: STAFF_GROUP, memberKey: userEmail })
-      return "staff"
-    } catch {}
-
-    try {
-      await admin.members.get({ groupKey: NCO_GROUP, memberKey: userEmail })
-      return "nco"
-    } catch {}
+    for (const [group, role] of [
+      [STAFF_GROUP, "staff"],
+      [SNCO_GROUP, "snco"],
+      [NCO_GROUP, "nco"],
+    ] as const) {
+      try {
+        await admin.members.get({ groupKey: group, memberKey: userEmail })
+        return role
+      } catch {}
+    }
 
     return null
   } catch (e: unknown) {

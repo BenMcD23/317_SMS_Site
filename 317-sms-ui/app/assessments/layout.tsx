@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 
 const TABS = [
+  { label: "Inspection", href: "/assessments/inspection", sncoOnly: true },
   { label: "Leadership", href: "/assessments/leadership" },
   { label: "Radio", href: "/assessments/radio" },
   { label: "MOI", href: "/assessments/moi" },
@@ -17,6 +19,10 @@ export default function AssessmentsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const tabs = TABS.filter(
+    (tab) => !tab.sncoOnly || session?.role === "staff" || session?.role === "snco"
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -28,7 +34,7 @@ export default function AssessmentsLayout({
 
       <div className="overflow-x-auto">
         <div className="flex min-w-max gap-1 border-b">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <Link
               key={tab.href}
               href={tab.href}

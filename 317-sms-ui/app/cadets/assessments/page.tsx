@@ -495,7 +495,7 @@ function UploadButton({
     );
   }
 
-  if (session?.role === "nco") return null;
+  if (session?.role !== "staff") return null;
 
   return (
     <Button size="sm" onClick={handleUpload} disabled={loading}>

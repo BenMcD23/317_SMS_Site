@@ -3,11 +3,18 @@ import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 
 const NCO_ALLOWED_ROUTES = ["/", "/assessments", "/cadets/assessments", "/settings"]
+const INSPECTION_ROUTE = "/assessments/inspection"
 
-function ncoCanAccess(pathname: string): boolean {
-  return NCO_ALLOWED_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  )
+function under(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(route + "/")
+}
+
+// staff see everything; SNCOs get the NCO routes plus inspections; NCOs get the
+// NCO routes minus inspections.
+function canAccess(role: string, pathname: string): boolean {
+  if (role === "staff") return true
+  if (under(pathname, INSPECTION_ROUTE)) return role === "snco"
+  return NCO_ALLOWED_ROUTES.some((route) => under(pathname, route))
 }
 
 export const authConfig: NextAuthConfig = {
@@ -70,8 +77,7 @@ export const authConfig: NextAuthConfig = {
       // Block users with no recognised role
       if (!auth.role) return Response.redirect(new URL("/unauthorized", nextUrl))
 
-      // NCOs can only access their permitted routes
-      if (auth.role === "nco" && !ncoCanAccess(nextUrl.pathname)) {
+      if (!canAccess(auth.role, nextUrl.pathname)) {
         return Response.redirect(new URL("/unauthorized", nextUrl))
       }
 

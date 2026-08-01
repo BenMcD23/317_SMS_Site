@@ -74,6 +74,7 @@ type NavLink = {
   href: string;
   icon: React.ElementType;
   staffOnly?: boolean;
+  sncoOnly?: boolean;
   ownerOnly?: boolean;
 };
 
@@ -101,6 +102,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Assessment Sheets",
     links: [
+      { label: "Inspection", href: "/assessments/inspection", icon: Shirt, sncoOnly: true },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
       { label: "MOI", href: "/assessments/moi", icon: BookOpen },
@@ -155,8 +157,10 @@ const NAV_SECTIONS: NavSection[] = [
 
 function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
   const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
-  const canSee = (item: { staffOnly?: boolean; ownerOnly?: boolean }) =>
-    (!item.ownerOnly || isOwner) && (!item.staffOnly || role === "staff");
+  const canSee = (item: { staffOnly?: boolean; sncoOnly?: boolean; ownerOnly?: boolean }) =>
+    (!item.ownerOnly || isOwner) &&
+    (!item.staffOnly || role === "staff") &&
+    (!item.sncoOnly || role === "staff" || role === "snco");
   return NAV_SECTIONS.filter(canSee)
     .map((s) => ({ ...s, links: s.links.filter(canSee) }))
     .filter((s) => s.links.length > 0);
