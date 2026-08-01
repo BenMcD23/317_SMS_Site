@@ -134,3 +134,31 @@
     @apply tracking-tight;
   }
 }
+
+/* Print / PDF: strip app chrome so only the page content lands on paper. */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+
+  /* Hide the sidebar (all its shadcn slots) and any top header bar. */
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"] { display: none !important; }
+
+  /* Let content flow full-width instead of being clipped by the scroll area. */
+  [data-slot="sidebar-inset"],
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Keep each card intact across page breaks. */
+  [data-slot="card"] { break-inside: avoid; }
+
+  body { background: #fff; }
+  @page { margin: 1.5cm; }
+}
+
+/* Shown only when printing (see .print-only above). */
+.print-only { display: none; }

@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { OWNER_EMAIL } from "@/lib/config";
+import { OWNER_EMAIL, isOc } from "@/lib/config";
 import {
   Sidebar,
   SidebarContent,
@@ -48,6 +48,7 @@ import {
   Sun,
   Moon,
   ClipboardCheck,
+  Shirt,
   WifiOff,
   AlertTriangle,
   MessageSquareText,
@@ -76,12 +77,14 @@ type NavLink = {
   staffOnly?: boolean;
   sncoOnly?: boolean;
   ownerOnly?: boolean;
+  ocOnly?: boolean;
 };
 
 type NavSection = {
   label?: string;
   staffOnly?: boolean;
   ownerOnly?: boolean;
+  ocOnly?: boolean;
   links: NavLink[];
 };
 
@@ -94,6 +97,7 @@ const NAV_SECTIONS: NavSection[] = [
     links: [
       { label: "Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck },
+      { label: "Inspection History", href: "/cadets/inspections", icon: Shirt, staffOnly: true },
       { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap, staffOnly: true },
       { label: "Events", href: "/cadets/events", icon: Calendar, staffOnly: true },
       { label: "Audit", href: "/cadets/audit", icon: ShieldCheck, staffOnly: true },
@@ -142,7 +146,15 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Squadron",
     links: [
       { label: "Staff", href: "/staff/overview", icon: UserCog, staffOnly: true },
+      { label: "Committee Requests", href: "/committee/requests", icon: ReceiptText, staffOnly: true },
       { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
+  {
+    label: "OC",
+    ocOnly: true,
+    links: [
+      { label: "OC Dashboard", href: "/oc", icon: LayoutDashboard, ocOnly: true },
     ],
   },
   {
@@ -157,10 +169,16 @@ const NAV_SECTIONS: NavSection[] = [
 
 function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
   const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
+<<<<<<< HEAD
   const canSee = (item: { staffOnly?: boolean; sncoOnly?: boolean; ownerOnly?: boolean }) =>
     (!item.ownerOnly || isOwner) &&
     (!item.staffOnly || role === "staff") &&
     (!item.sncoOnly || role === "staff" || role === "snco");
+=======
+  const oc = isOc(email);
+  const canSee = (item: { staffOnly?: boolean; ownerOnly?: boolean; ocOnly?: boolean }) =>
+    (!item.ownerOnly || isOwner) && (!item.staffOnly || role === "staff") && (!item.ocOnly || oc);
+>>>>>>> main
   return NAV_SECTIONS.filter(canSee)
     .map((s) => ({ ...s, links: s.links.filter(canSee) }))
     .filter((s) => s.links.length > 0);
@@ -406,7 +424,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0">
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <header className="no-print flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
           {title && <span className="text-sm font-medium text-muted-foreground">{title}</span>}

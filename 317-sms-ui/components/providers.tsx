@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
 
+import { ApiStatusOverlay } from "@/components/api-status-overlay";
+
 export function Providers({ children }: { children: React.ReactNode }) {
   // One QueryClient per browser session. staleTime keeps recently fetched data
   // "fresh" so navigating back to a page serves it instantly; gcTime keeps it
@@ -34,6 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         >
           {children}
           <Toaster position="top-right" richColors />
+          <ApiStatusOverlay />
         </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>

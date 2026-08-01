@@ -55,6 +55,12 @@ const SCRAPER_TOOLS = [
     description:
       "Fetches the squadron staff roster (name, rank, CIN, matched email) from Bader SMS into the database.",
   },
+  {
+    id: "absences",
+    label: "Absence Scraper",
+    description:
+      "Pulls current and upcoming booked absences from Bader and attaches them to cadets. Used to cross out absent cadets on the inspection sheet.",
+  },
 ];
 
 // React Query keys whose cached data each scraper refreshes. When a run
@@ -69,6 +75,7 @@ const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
   "317-event": [],                        // event metadata (uncached)
   "medical": [],                          // allergies/dietary on cadet detail (uncached)
   "staff": [["staff", "users"]],          // staff roster → staff overview/detail
+  "absences": [["absences"]],             // booked absences → inspection sheet cross-outs
 };
 
 type LogEntry = { text: string; time: string };

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Shirt, Pencil, Check, X, Loader2 } from "lucide-react";
+import { formatDate } from "@/lib/format";
 
 type Issuance = {
   id: number;
@@ -24,14 +25,6 @@ const ISSUANCE_CATEGORIES = [
   "Brassard",
   "Belt",
 ];
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 interface Props {
   /** GET + POST endpoint (e.g. /api/stores/issuances/123 or /api/stores/issuances/user/5) */

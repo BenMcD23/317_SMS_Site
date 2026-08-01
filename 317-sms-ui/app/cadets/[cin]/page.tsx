@@ -20,6 +20,7 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/format";
 import {
   Loader2,
   CheckCircle2,
@@ -84,15 +85,6 @@ type CadetDetail = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function age(dob: string | null) {
   if (!dob) return null;

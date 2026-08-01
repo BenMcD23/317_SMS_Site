@@ -29,6 +29,8 @@ import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON, LogsForm } from
 import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
 import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
+import { useConfirm } from "@/components/confirm-dialog";
+import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type DraftItem = {
@@ -83,17 +85,6 @@ function SizingDetailsDisplay({ raw }: { raw: string }) {
       ))}
     </div>
   );
-}
-
-function formatTimestamp(ts: string): string {
-  return new Date(ts).toLocaleString("en-AU", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
 }
 
 export default function OrdersPage() {
@@ -165,20 +156,7 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Confirm dialog
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmMessage, setConfirmMessage] = useState("");
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-
-  function openConfirm(message: string, action: () => void) {
-    setConfirmMessage(message);
-    setPendingAction(() => action);
-    setConfirmOpen(true);
-  }
-
-  function handleConfirm() {
-    pendingAction?.();
-    setConfirmOpen(false);
-  }
+  const { confirm: openConfirm, confirmDialog } = useConfirm();
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -1343,18 +1321,7 @@ export default function OrdersPage() {
       </Dialog>
 
       {/* Confirm Dialog */}
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">{confirmMessage}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirm}>Confirm</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {confirmDialog}
 
       {/* Edit Size / Sizing Dialog */}
       <Dialog open={editSizeOpen} onOpenChange={setEditSizeOpen}>

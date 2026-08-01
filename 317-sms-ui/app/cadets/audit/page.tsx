@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
-import { Search, ChevronDown, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 // ─── Level styling ─────────────────────────────────────────────────────────────────
 
@@ -79,11 +79,6 @@ type DietaryEntry = {
   id?: number;
   name: string;
   details: string | null;
-};
-
-type MedicalCadet = Cadet & {
-  allergies: AllergyEntry[];
-  dietary: DietaryEntry[];
 };
 
 type BadgeType = {
@@ -265,19 +260,49 @@ function CriteriaSelector({
       </div>
 
       <p className="border-t pt-3 text-sm font-semibold">Other</p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {boolean.map((b) => (
-          <div key={b.key} className="flex items-center gap-2">
-            <Checkbox
-              id={`qual-${b.key}`}
-              checked={(selected[b.key] ?? []).length > 0}
-              onCheckedChange={(v) => setLevels(b.key, v ? [...b.levels] : [])}
-            />
-            <Label htmlFor={`qual-${b.key}`} className="cursor-pointer text-sm font-normal">
-              {b.name}
-            </Label>
-          </div>
-        ))}
+      <div className="flex flex-col gap-2.5">
+        {boolean.map((b) => {
+          const cur = selected[b.key] ?? [];
+          const hasSelected = b.levels.some((l) => cur.includes(l));
+          const noneSelected = cur.includes("none");
+          return (
+            <div
+              key={b.key}
+              className="flex flex-col gap-1.5 border-b pb-2.5 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+            >
+              <span className="text-sm">{b.name}</span>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`qual-${b.key}-has`}
+                    checked={hasSelected}
+                    onCheckedChange={(v) => {
+                      // Preserve the "don't have" selection while toggling "has".
+                      const withoutLevels = cur.filter((l) => !b.levels.includes(l));
+                      setLevels(b.key, v ? [...withoutLevels, ...b.levels] : withoutLevels);
+                    }}
+                  />
+                  <Label htmlFor={`qual-${b.key}-has`} className="cursor-pointer text-sm font-normal">
+                    Has
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`qual-${b.key}-none`}
+                    checked={noneSelected}
+                    onCheckedChange={(v) => {
+                      const withoutNone = cur.filter((l) => l !== "none");
+                      setLevels(b.key, v ? [...withoutNone, "none"] : withoutNone);
+                    }}
+                  />
+                  <Label htmlFor={`qual-${b.key}-none`} className="cursor-pointer text-sm font-normal">
+                    Doesn&apos;t have
+                  </Label>
+                </div>
+              </div>
+            </div>
+          );
+        })}
         <div className="flex items-center gap-2">
           <Checkbox
             id="include-missing-attachments"
@@ -515,124 +540,6 @@ function AuditResultsTable({
           ))}
         </TableBody>
       </Table>
-    </div>
-  );
-}
-
-// ─── Tab 1: Medical Overview ──────────────────────────────────────────────────────
-
-function MedicalCadetCard({ cadet }: { cadet: MedicalCadet }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <Card className="gap-0 overflow-hidden py-0">
-      <button
-        type="button"
-        className="w-full cursor-pointer text-left"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <CardHeader className="flex flex-row items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
-          <div className="min-w-0 flex-1">
-            <CardTitle className="text-sm font-medium">
-              {cadet.rank ? `${cadet.rank} ` : ""}
-              {cadet.first_name} {cadet.last_name}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">CIN {cadet.cin}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {cadet.allergies.length > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {cadet.allergies.length}{" "}
-                allerg{cadet.allergies.length !== 1 ? "ies" : "y"}
-              </Badge>
-            )}
-            {cadet.dietary.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {cadet.dietary.length} dietary
-              </Badge>
-            )}
-            {expanded ? (
-              <ChevronDown className="size-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="size-4 text-muted-foreground" />
-            )}
-          </div>
-        </CardHeader>
-      </button>
-
-      {expanded && (
-        <CardContent className="border-t px-4 py-3">
-          {cadet.allergies.length > 0 && (
-            <div className={cn(cadet.dietary.length > 0 && "mb-4")}>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Allergies
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {cadet.allergies.map((a) => (
-                  <div key={a.id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium">{a.allergy_name}</span>
-                    {a.auto_injector === "Yes" && (
-                      <Badge variant="destructive" className="text-xs">
-                        EpiPen required
-                      </Badge>
-                    )}
-                    {a.severity && (
-                      <span className="text-muted-foreground">
-                        Severity: {a.severity}
-                      </span>
-                    )}
-                    {a.details && (
-                      <span className="text-muted-foreground">— {a.details}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {cadet.dietary.length > 0 && (
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Dietary
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {cadet.dietary.map((d) => (
-                  <div key={d.id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium">{d.name}</span>
-                    {d.details && (
-                      <span className="text-muted-foreground">— {d.details}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      )}
-    </Card>
-  );
-}
-
-function MedicalOverviewTab() {
-  const { data: cadets = [], isLoading, error } = useApiQuery<MedicalCadet[]>(
-    ["audit-medical"],
-    "/cadets/audit/medical"
-  );
-
-  return (
-    <div className="flex flex-col gap-3">
-      {isLoading &&
-        [...Array(4)].map((_, i) => <Skeleton key={i} className="h-14" />)}
-      <ErrorAlert
-        message={error?.message ?? null}
-        title="Could not load medical data"
-      />
-      {!isLoading && !error && cadets.length === 0 && (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          No cadets with medical or dietary requirements recorded.
-        </p>
-      )}
-      {!isLoading &&
-        cadets.map((c) => <MedicalCadetCard key={c.cin} cadet={c} />)}
     </div>
   );
 }
@@ -1069,17 +976,13 @@ export default function AuditPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Audit"
-        description="Review cadet medical requirements and check qualifications"
+        description="Check cadet qualifications, medical, and dietary requirements"
       />
-      <Tabs defaultValue="medical">
+      <Tabs defaultValue="cadet-check">
         <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
-          <TabsTrigger value="medical">Medical Overview</TabsTrigger>
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>
           <TabsTrigger value="event-check">Event Audit</TabsTrigger>
         </TabsList>
-        <TabsContent value="medical" className="mt-4">
-          <MedicalOverviewTab />
-        </TabsContent>
         <TabsContent value="cadet-check" className="mt-4">
           <CadetCheckTab />
         </TabsContent>
