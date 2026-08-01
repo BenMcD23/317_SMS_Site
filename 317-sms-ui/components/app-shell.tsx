@@ -169,16 +169,17 @@ const NAV_SECTIONS: NavSection[] = [
 
 function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
   const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
-<<<<<<< HEAD
-  const canSee = (item: { staffOnly?: boolean; sncoOnly?: boolean; ownerOnly?: boolean }) =>
+  const oc = isOc(email);
+  const canSee = (item: {
+    staffOnly?: boolean;
+    sncoOnly?: boolean;
+    ownerOnly?: boolean;
+    ocOnly?: boolean;
+  }) =>
     (!item.ownerOnly || isOwner) &&
     (!item.staffOnly || role === "staff") &&
-    (!item.sncoOnly || role === "staff" || role === "snco");
-=======
-  const oc = isOc(email);
-  const canSee = (item: { staffOnly?: boolean; ownerOnly?: boolean; ocOnly?: boolean }) =>
-    (!item.ownerOnly || isOwner) && (!item.staffOnly || role === "staff") && (!item.ocOnly || oc);
->>>>>>> main
+    (!item.sncoOnly || role === "staff" || role === "snco") &&
+    (!item.ocOnly || oc);
   return NAV_SECTIONS.filter(canSee)
     .map((s) => ({ ...s, links: s.links.filter(canSee) }))
     .filter((s) => s.links.length > 0);

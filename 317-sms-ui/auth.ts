@@ -19,22 +19,14 @@ function makeAdminClient() {
   return google.admin({ version: "directory_v1", auth })
 }
 
-async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" | null> {
+async function isGroupMember(
+  admin: ReturnType<typeof makeAdminClient>,
+  group: string,
+  userEmail: string
+): Promise<boolean> {
   try {
-    const admin = makeAdminClient()
-
-    for (const [group, role] of [
-      [STAFF_GROUP, "staff"],
-      [SNCO_GROUP, "snco"],
-      [NCO_GROUP, "nco"],
-    ] as const) {
-      try {
-        await admin.members.get({ groupKey: group, memberKey: userEmail })
-        return role
-      } catch {}
-    }
-
-    return null
+    await admin.members.get({ groupKey: group, memberKey: userEmail })
+    return true
   } catch (e: unknown) {
     const err = e as { code?: number | string; response?: { status?: number } }
     const status = Number(err.code ?? err.response?.status)
@@ -47,9 +39,10 @@ async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" 
 }
 
 /** Role from Workspace group membership. Throws if the lookup itself fails. */
-async function getUserRole(userEmail: string): Promise<"staff" | "nco" | null> {
+async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" | null> {
   const admin = makeAdminClient()
   if (await isGroupMember(admin, STAFF_GROUP, userEmail)) return "staff"
+  if (await isGroupMember(admin, SNCO_GROUP, userEmail)) return "snco"
   if (await isGroupMember(admin, NCO_GROUP, userEmail)) return "nco"
   return null
 }
