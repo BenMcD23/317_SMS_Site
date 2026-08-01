@@ -3,6 +3,7 @@ import { authConfig } from "./auth.config"
 import { google } from "googleapis"
 
 const STAFF_GROUP = "staff@317atc.co.uk"
+const SNCO_GROUP = "snco@317atc.co.uk"
 const NCO_GROUP = "ncoteam@317atc.co.uk"
 const IMPERSONATE_EMAIL = "ci.mcdonald@317atc.co.uk"
 
@@ -38,9 +39,10 @@ async function isGroupMember(
 }
 
 /** Role from Workspace group membership. Throws if the lookup itself fails. */
-async function getUserRole(userEmail: string): Promise<"staff" | "nco" | null> {
+async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" | null> {
   const admin = makeAdminClient()
   if (await isGroupMember(admin, STAFF_GROUP, userEmail)) return "staff"
+  if (await isGroupMember(admin, SNCO_GROUP, userEmail)) return "snco"
   if (await isGroupMember(admin, NCO_GROUP, userEmail)) return "nco"
   return null
 }
