@@ -24,6 +24,7 @@ import { ShelfStructure, ShelfBox, StockItem } from "@/lib/stores-types";
 import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
 import { SizeCombobox } from "@/components/size-combobox";
 import { BoxDetailView } from "../components/BoxDetailView";
+import { EditStockDialog } from "../components/EditStockDialog";
 
 interface ItemFormState {
   itemType: string;
@@ -105,7 +106,6 @@ export default function BoxPage() {
 
   function openEdit(item: StockItem) {
     setEditTarget(item);
-    setForm({ itemType: item.itemType, size: item.size, box: item.box, section: item.section, quantity: item.quantity });
     setEditOpen(true);
   }
 
@@ -126,31 +126,6 @@ export default function BoxPage() {
           : [...prev, created]
       );
       setAddOpen(false);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleEdit() {
-    if (!editTarget) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch(`/api/stores/stock/${editTarget.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error("Failed to update item");
-      const updated = await res.json();
-      setStock((prev) =>
-        prev
-          .filter((i) => i.id !== editTarget.id || i.id === updated.id)
-          .map((i) => (i.id === updated.id ? updated : i))
-      );
-      setEditOpen(false);
-      setEditTarget(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -321,18 +296,19 @@ export default function BoxPage() {
       </Dialog>
 
       {/* Edit Item */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Edit Stock Item</DialogTitle></DialogHeader>
-          <ItemForm form={form} setForm={setForm} boxes={boxLabels} structure={structureCompat} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleEdit} disabled={submitting || !form.itemType || !form.size}>
-              {submitting ? "Saving…" : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {shelfStructure && (
+        <EditStockDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          item={editTarget}
+          shelfStructure={shelfStructure}
+          onSuccess={(updated) => {
+            setStock((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+            setEditOpen(false);
+            setEditTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }
