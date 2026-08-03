@@ -26,6 +26,7 @@ import {
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchStreamTicket } from "@/lib/stream-ticket";
 
 const SCRAPER_TOOLS = [
   {
@@ -136,11 +137,30 @@ function ConsolePanel({
   }, [logs]);
 
   useEffect(() => {
-    const url = `${API_BASE}/scraper-stream/${scraperId}?token=${encodeURIComponent(token)}`;
-    const evtSource = new EventSource(url);
-    eventSourceRef.current = evtSource;
+    // Minting the ticket is async, so the effect can be torn down before the
+    // stream opens — `cancelled` stops us attaching to a dead component.
+    let cancelled = false;
+    let evtSource: EventSource | null = null;
 
-    evtSource.onmessage = (event) => {
+    (async () => {
+      let ticket: string;
+      try {
+        ticket = await fetchStreamTicket(token);
+      } catch {
+        if (!cancelled) {
+          setStatus("error");
+          addLog("[ERROR] Could not authorise log stream");
+          onDone(scraperId);
+        }
+        return;
+      }
+      if (cancelled) return;
+
+      const url = `${API_BASE}/scraper-stream/${scraperId}?ticket=${encodeURIComponent(ticket)}`;
+      evtSource = new EventSource(url);
+      eventSourceRef.current = evtSource;
+
+      evtSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
 
@@ -150,18 +170,18 @@ function ConsolePanel({
         if (data.type === "status" && data.value === "done") {
           setStatus("done");
           onDone(scraperId);
-          evtSource.close();
+          evtSource?.close();
         }
         if (data.type === "status" && data.value === "stopped") {
           setStatus("stopped");
           onDone(scraperId);
-          evtSource.close();
+          evtSource?.close();
         }
         if (data.type === "error") {
           setStatus("error");
           addLog(`[ERROR] ${data.value}`);
           onDone(scraperId);
-          evtSource.close();
+          evtSource?.close();
         }
         if (data.type === "log" || data.type === "info") {
           addLog(data.value);
@@ -172,14 +192,16 @@ function ConsolePanel({
       } catch {
         addLog(event.data);
       }
-    };
+      };
 
-    evtSource.onerror = () => {
-      evtSource.close();
-    };
+      evtSource.onerror = () => {
+        evtSource?.close();
+      };
+    })();
 
     return () => {
-      evtSource.close();
+      cancelled = true;
+      evtSource?.close();
     };
   }, [scraperId, token, label, addLog, onDone]);
 
