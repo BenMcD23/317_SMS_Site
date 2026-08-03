@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Search, FolderPlus, Check, Settings2, Plus } from "lucide-react";
+import { Package, Search, FolderPlus, Check, Settings2, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import {
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { ShelfView } from "./components/ShelfView";
 import { AddStockDialog } from "./components/AddStockDialog";
+import { EditStockDialog } from "./components/EditStockDialog";
 
 export default function StockPage() {
   const router = useRouter();
@@ -39,6 +40,8 @@ export default function StockPage() {
   const [addStockOpen, setAddStockOpen] = useState(false);
 
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<StockItem | null>(null);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -89,6 +92,11 @@ export default function StockPage() {
         (size === "" || i.size.toLowerCase().includes(size))
     );
   }, [searchName, searchSize, stock]);
+
+  function openEdit(item: StockItem) {
+    setEditTarget(item);
+    setEditOpen(true);
+  }
 
   async function handleDeleteItem(id: string) {
     try {
@@ -217,6 +225,7 @@ export default function StockPage() {
                       item={item}
                       isMisc={miscLabels.has(item.box)}
                       deleteConfirm={deleteItemConfirm}
+                      onEdit={openEdit}
                       onDelete={handleDeleteItem}
                       onDeleteConfirm={setDeleteItemConfirm}
                     />
@@ -276,6 +285,21 @@ export default function StockPage() {
         />
       )}
 
+      {/* Edit Stock */}
+      {shelfStructure && (
+        <EditStockDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          item={editTarget}
+          shelfStructure={shelfStructure}
+          onSuccess={(updated) => {
+            setStock((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+            setEditOpen(false);
+            setEditTarget(null);
+          }}
+        />
+      )}
+
       {/* Add Box/Area */}
       <Dialog open={addBoxAreaOpen} onOpenChange={(o) => { setAddBoxAreaOpen(o); if (!o) setNewBoxAreaName(""); }}>
         <DialogContent className="sm:max-w-sm">
@@ -330,12 +354,14 @@ function SearchResultRow({
   item,
   isMisc,
   deleteConfirm,
+  onEdit,
   onDelete,
   onDeleteConfirm,
 }: {
   item: StockItem;
   isMisc: boolean;
   deleteConfirm: string | null;
+  onEdit: (item: StockItem) => void;
   onDelete: (id: string) => void;
   onDeleteConfirm: (id: string | null) => void;
 }) {
@@ -358,10 +384,16 @@ function SearchResultRow({
               onClick={() => onDeleteConfirm(null)}>Cancel</Button>
           </>
         ) : (
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
-            onClick={() => onDeleteConfirm(item.id)} aria-label="Remove">
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          <>
+            <Button size="icon" variant="ghost" className="h-7 w-7"
+              onClick={() => onEdit(item)} aria-label="Edit">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={() => onDeleteConfirm(item.id)} aria-label="Remove">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </>
         )}
       </div>
     </li>
