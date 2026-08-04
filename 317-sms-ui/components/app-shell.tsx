@@ -48,6 +48,7 @@ import {
   Sun,
   Moon,
   ClipboardCheck,
+  ClipboardList,
   Shirt,
   WifiOff,
   AlertTriangle,
@@ -110,6 +111,13 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
       { label: "MOI", href: "/assessments/moi", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Training",
+    links: [
+      // No role flag — NCOs write the plans, staff review them.
+      { label: "Session Plans", href: "/session-plans", icon: ClipboardList },
     ],
   },
   {
