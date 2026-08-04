@@ -6,10 +6,9 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
+import { AttachmentList } from "@/components/session-plans/attachment-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,10 +23,12 @@ import {
   DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, Check, FileText, Loader2, Pencil, Send, Trash2, Undo2,
+  ArrowLeft, Check, Loader2, MessageSquare, Pencil, Send, Trash2, Undo2,
 } from "lucide-react";
 import { formatDate, formatTimestamp } from "@/lib/format";
-import { submitPlan, reviewPlan, deletePlan } from "@/lib/session-plans-api";
+import {
+  submitPlan, reviewPlan, deletePlan, addComment, deleteComment,
+} from "@/lib/session-plans-api";
 import {
   HEADER_FIELDS, PLAN_SECTIONS, STATUS_LABELS, STATUS_STYLE, contentOf,
   missingForSubmit, type SessionPlanDetail, type SessionPlanSectionKey,
@@ -49,6 +50,7 @@ export default function SessionPlanDetailPage({
   const [feedback, setFeedback] = useState<Partial<Record<SessionPlanSectionKey, string>>>({});
   const [amendOpen, setAmendOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [comment, setComment] = useState("");
 
   const { data: plan, isLoading, error } = useApiQuery<SessionPlanDetail>(
     ["session-plan", id],
@@ -75,19 +77,6 @@ export default function SessionPlanDetailPage({
       return false;
     } finally {
       setBusy(null);
-    }
-  };
-
-  const viewAttachment = async (attachmentId: number) => {
-    if (!token) return;
-    try {
-      const res = await apiFetch(`${API_BASE}/session-plans/${id}/attachments/${attachmentId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) { toast.error("Failed to open attachment."); return; }
-      window.open(URL.createObjectURL(await res.blob()), "_blank");
-    } catch {
-      toast.error("Server unreachable.");
     }
   };
 
@@ -388,26 +377,82 @@ export default function SessionPlanDetailPage({
               </div>
             )}
             {plan.attachments.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground">Attachments</p>
-                <ul className="flex flex-col divide-y">
-                  {plan.attachments.map((a) => (
-                    <li key={a.id} className="flex items-center gap-2 py-2">
-                      <FileText className="size-4 shrink-0 text-muted-foreground" />
-                      <button
-                        onClick={() => viewAttachment(a.id)}
-                        className="flex-1 truncate text-left text-sm hover:underline"
-                      >
-                        {a.filename}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Attachments — click one to preview it here
+                </p>
+                <AttachmentList planId={planId} token={token} attachments={plan.attachments} />
               </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      {/* ── Comments ────────────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Comments</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Notes from anyone who can see this plan. They don&apos;t change its status or
+            email {plan.author_name} — staff use the review box above for that.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {plan.comments.length > 0 && (
+            <ul className="flex flex-col divide-y">
+              {plan.comments.map((c) => (
+                <li key={c.id} className="flex gap-2 py-3 first:pt-0">
+                  <div className="flex-1 space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {c.author_name}
+                      {c.created_at ? ` · ${formatTimestamp(c.created_at)}` : ""}
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm">{c.body}</p>
+                  </div>
+                  {c.can_delete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      disabled={busy !== null}
+                      aria-label="Delete comment"
+                      onClick={() =>
+                        run(`comment-${c.id}`,
+                            () => deleteComment(token!, planId, c.id), "Comment deleted.")
+                      }
+                    >
+                      {busy === `comment-${c.id}`
+                        ? <Loader2 className="animate-spin" />
+                        : <Trash2 className="text-muted-foreground" />}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="space-y-2">
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Add a note on this plan…"
+              rows={2}
+              disabled={busy !== null}
+            />
+            <Button
+              size="sm"
+              disabled={busy !== null || !comment.trim()}
+              onClick={async () => {
+                const ok = await run("comment", () => addComment(token!, planId, comment),
+                                     "Comment added.");
+                if (ok) setComment("");
+              }}
+            >
+              {busy === "comment" ? <Loader2 className="animate-spin" /> : <MessageSquare />}
+              Post comment
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Timeline ────────────────────────────────────────────────────────── */}
       <Card>

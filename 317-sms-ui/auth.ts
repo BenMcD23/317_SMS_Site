@@ -85,7 +85,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (account.provider === "credentials") {
           return {
             ...token,
-            role: "staff" as const,
+            // DEV_FAKE_ROLE=nco/snco to browse as that role; defaults to staff.
+            role: (process.env.DEV_FAKE_ROLE || "staff") as "staff" | "snco" | "nco",
             id_token: "dev-fake-token",
             expires_at: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
           }

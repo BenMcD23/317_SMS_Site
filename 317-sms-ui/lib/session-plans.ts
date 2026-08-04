@@ -32,6 +32,15 @@ export interface SessionPlanAttachment {
   uploaded_at: string | null;
 }
 
+export interface SessionPlanComment {
+  id: number;
+  body: string;
+  author_name: string;
+  author_email: string;
+  created_at: string | null;
+  can_delete: boolean;
+}
+
 export interface SessionPlanSummary {
   id: number;
   session_name: string;
@@ -62,6 +71,7 @@ export interface SessionPlanDetail extends SessionPlanSummary {
   reviewed_at: string | null;
   reviewed_by: string | null;
   attachments: SessionPlanAttachment[];
+  comments: SessionPlanComment[];
   is_author: boolean;
   can_review: boolean;
   can_edit: boolean;

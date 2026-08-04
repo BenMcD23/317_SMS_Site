@@ -61,8 +61,56 @@ export function reviewPlan(
   return request<SessionPlanDetail>(token, `/${id}/${decision}`, { method: "POST", body });
 }
 
+/** Leave a note on a plan — anyone who can see it, staff or NCO. */
+export function addComment(
+  token: string,
+  id: number,
+  body: string,
+): Promise<SessionPlanDetail> {
+  return request<SessionPlanDetail>(token, `/${id}/comments`, {
+    method: "POST",
+    body: { body },
+  });
+}
+
+export function deleteComment(
+  token: string,
+  id: number,
+  commentId: number,
+): Promise<SessionPlanDetail> {
+  return request<SessionPlanDetail>(token, `/${id}/comments/${commentId}`, {
+    method: "DELETE",
+  });
+}
+
 export function deletePlan(token: string, id: number): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(token, `/${id}`, { method: "DELETE" });
+}
+
+/**
+ * Attach files to an existing plan. Multipart, so it bypasses `request` — the
+ * browser has to set its own boundary on the Content-Type.
+ */
+export async function uploadAttachments(
+  token: string,
+  id: number,
+  files: File[],
+): Promise<SessionPlanDetail> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  let res: Response;
+  try {
+    res = await apiFetch(`${API_BASE}/session-plans/${id}/attachments`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+  } catch {
+    throw new Error("Server unreachable.");
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.detail ?? "Upload failed.");
+  return data as SessionPlanDetail;
 }
 
 export function deleteAttachment(

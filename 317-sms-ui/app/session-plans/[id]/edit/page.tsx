@@ -6,16 +6,17 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
 import { SessionPlanForm } from "@/components/session-plans/session-plan-form";
+import { AttachmentList } from "@/components/session-plans/attachment-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, FileText, Loader2, Save, Send, Trash2, Upload } from "lucide-react";
-import { savePlan, submitPlan, deleteAttachment } from "@/lib/session-plans-api";
+import { ArrowLeft, Loader2, Save, Send, Upload } from "lucide-react";
+import {
+  savePlan, submitPlan, deleteAttachment, uploadAttachments,
+} from "@/lib/session-plans-api";
 import {
   ATTACHMENT_ACCEPT, MAX_ATTACHMENT_BYTES, contentOf, missingForSubmit,
   type SessionPlanContent, type SessionPlanDetail,
@@ -85,22 +86,11 @@ export default function EditSessionPlanPage({
     }
     setBusy("upload");
     try {
-      const form = new FormData();
-      chosen.forEach((f) => form.append("files", f));
-      const res = await apiFetch(`${API_BASE}/session-plans/${id}/attachments`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.detail ?? "Upload failed.");
-        return;
-      }
+      await uploadAttachments(token, planId, chosen);
       toast.success("File attached.");
       refresh();
-    } catch {
-      toast.error("Server unreachable.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed.");
     } finally {
       setBusy(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -195,27 +185,13 @@ export default function EditSessionPlanPage({
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {saved.attachments.length > 0 && (
-            <ul className="flex flex-col divide-y">
-              {saved.attachments.map((a) => (
-                <li key={a.id} className="flex items-center gap-2 py-2">
-                  <FileText className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 truncate text-sm">{a.filename}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeAttachment(a.id)}
-                    disabled={busy !== null}
-                    aria-label="Remove attachment"
-                  >
-                    {busy === `del-${a.id}`
-                      ? <Loader2 className="animate-spin" />
-                      : <Trash2 className="text-muted-foreground" />}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <AttachmentList
+            planId={planId}
+            token={token}
+            attachments={saved.attachments}
+            onRemove={removeAttachment}
+            busy={busy}
+          />
           <input
             ref={fileInputRef}
             type="file"

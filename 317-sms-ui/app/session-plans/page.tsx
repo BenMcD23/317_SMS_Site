@@ -27,8 +27,8 @@ export default function SessionPlansPage() {
     "/session-plans",
   );
 
-  // Staff care about the queue first; NCOs only ever see their own plans, so the
-  // split is only worth drawing for staff.
+  // Staff care about the review queue first; for NCOs it's just everyone's
+  // plans in one list.
   const awaiting = data?.plans.filter((p) => p.status === "submitted") ?? [];
   const rest = data?.is_staff
     ? data.plans.filter((p) => p.status !== "submitted")
@@ -41,7 +41,7 @@ export default function SessionPlansPage() {
         description={
           data?.is_staff
             ? "Plans NCOs have written — approve them or send them back for amendment"
-            : "Plan the sessions you're running and send them to staff for approval"
+            : "Plan the sessions you're running, and read everyone else's"
         }
         actions={
           <Button asChild size="sm">
@@ -84,7 +84,7 @@ export default function SessionPlansPage() {
             <PlanTable
               title={data.is_staff && awaiting.length > 0 ? "Everything else" : undefined}
               plans={rest}
-              showAuthor={data.is_staff}
+              showAuthor
             />
           )}
         </>
