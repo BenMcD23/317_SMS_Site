@@ -92,7 +92,11 @@ export default function NcoHolidaysPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader
         title="NCO Holidays"
-        description="Book your own holidays — they go straight onto the squadron's NCO Holidays calendar"
+        description={
+          data && data.min_notice_days > 0
+            ? `Book your own holidays at least ${data.min_notice_days} days ahead — they go straight onto the squadron's NCO Holidays calendar`
+            : "Book your own holidays — they go straight onto the squadron's NCO Holidays calendar"
+        }
         actions={
           <Button size="sm" onClick={() => setBookOpen(true)}>
             <Plus /> Book Holiday
@@ -244,6 +248,8 @@ export default function NcoHolidaysPage() {
         open={bookOpen}
         onOpenChange={setBookOpen}
         token={token}
+        minNoticeDays={data?.min_notice_days ?? 0}
+        earliestDate={data?.earliest_booking_date ?? null}
         onBooked={() => { setFilter("upcoming"); refresh(); }}
       />
       {confirmDialog}
@@ -255,11 +261,15 @@ function BookHolidayDialog({
   open,
   onOpenChange,
   token,
+  minNoticeDays,
+  earliestDate,
   onBooked,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   token: string | undefined;
+  minNoticeDays: number;
+  earliestDate: string | null;
   onBooked: () => void;
 }) {
   const [dateFrom, setDateFrom] = useState("");
@@ -276,7 +286,11 @@ function BookHolidayDialog({
     if (!dateTo || dateTo < value) setDateTo(value);
   };
 
-  const invalid = !dateFrom || !dateTo || dateTo < dateFrom;
+  // The picker's `min` stops most of these, but a typed date can still land
+  // inside the notice period — so check it here rather than relying on the
+  // input. Both are only a courtesy; the API is what actually enforces it.
+  const tooSoon = !!earliestDate && !!dateFrom && dateFrom < earliestDate;
+  const invalid = !dateFrom || !dateTo || dateTo < dateFrom || tooSoon;
 
   const submit = async () => {
     if (!token || invalid) return;
@@ -310,6 +324,12 @@ function BookHolidayDialog({
           <p className="text-sm text-muted-foreground">
             This books time off for you — it goes on the squadron&apos;s NCO Holidays
             calendar under your name.
+            {minNoticeDays > 0 && earliestDate && (
+              <>
+                {" "}Holidays need at least {minNoticeDays} days&apos; notice, so the
+                earliest you can book from is {formatDate(earliestDate)}.
+              </>
+            )}
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
@@ -317,6 +337,7 @@ function BookHolidayDialog({
               <Input
                 id="holiday-from"
                 type="date"
+                min={earliestDate ?? undefined}
                 value={dateFrom}
                 onChange={(e) => onFromChange(e.target.value)}
               />
@@ -326,7 +347,7 @@ function BookHolidayDialog({
               <Input
                 id="holiday-to"
                 type="date"
-                min={dateFrom || undefined}
+                min={dateFrom || earliestDate || undefined}
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
               />
@@ -343,6 +364,13 @@ function BookHolidayDialog({
               onChange={(e) => setReason(e.target.value)}
             />
           </div>
+          {tooSoon && earliestDate && (
+            <p className="text-sm text-destructive">
+              That&apos;s inside the {minNoticeDays}-day notice period — the earliest
+              you can book from is {formatDate(earliestDate)}. Speak to staff if you
+              need time off sooner.
+            </p>
+          )}
           {dateFrom && dateTo && !invalid && (
             <p className="text-sm text-muted-foreground">
               {holidayDays({ date_from: dateFrom, date_to: dateTo })} day

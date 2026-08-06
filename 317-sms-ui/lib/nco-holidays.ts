@@ -32,6 +32,10 @@ export interface NcoHolidayList {
   is_staff: boolean;
   /** False when NCO_HOLIDAY_CALENDAR_ID isn't set on the API. */
   calendar_configured: boolean;
+  /** Notice this viewer has to give before the first day off. 0 for staff. */
+  min_notice_days: number;
+  /** "YYYY-MM-DD" the viewer can book from, or null when they're exempt. */
+  earliest_booking_date: string | null;
 }
 
 export interface NewHoliday {
