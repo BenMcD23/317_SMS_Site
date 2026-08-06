@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarOff, Plus, Undo2, TriangleAlert, RefreshCw } from "lucide-react";
+import { CalendarOff, Pencil, Plus, Undo2, TriangleAlert, RefreshCw } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/empty";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
-  bookHoliday, cancelHoliday, holidayDays, needsSync, syncHoliday,
+  bookHoliday, cancelHoliday, editHoliday, holidayDays, needsSync, syncHoliday,
   type NcoHoliday, type NcoHolidayList,
 } from "@/lib/nco-holidays";
 
@@ -47,8 +47,14 @@ export default function NcoHolidaysPage() {
   const { confirm, confirmDialog } = useConfirm();
 
   const [filter, setFilter] = useState<Filter>("upcoming");
-  const [bookOpen, setBookOpen] = useState(false);
+  // Null while booking a new holiday, the booking itself while editing one —
+  // both use the same dialog, since it's the same three fields either way.
+  const [editing, setEditing] = useState<NcoHoliday | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+
+  const openBook = () => { setEditing(null); setDialogOpen(true); };
+  const openEdit = (h: NcoHoliday) => { setEditing(h); setDialogOpen(true); };
 
   const { data, isLoading, error } = useApiQuery<NcoHolidayList>(
     ["nco-holidays"],
@@ -61,7 +67,9 @@ export default function NcoHolidaysPage() {
   const holidays = useMemo(() => {
     const all = data?.holidays ?? [];
     if (filter === "mine") return all.filter((h) => h.is_mine);
-    if (filter === "all") return all;
+    // Staff-gated, so a non-staff viewer sitting on it falls back to upcoming
+    // rather than rendering the audit list without a tab to have chosen it.
+    if (filter === "all" && data?.is_staff) return all;
     const today = todayStart();
     return all.filter((h) => !h.cancelled && new Date(h.date_to) >= today);
   }, [data, filter]);
@@ -94,11 +102,11 @@ export default function NcoHolidaysPage() {
         title="NCO Holidays"
         description={
           data && data.min_notice_days > 0
-            ? `Book your own holidays at least ${data.min_notice_days} days ahead — they go straight onto the squadron's NCO Holidays calendar`
-            : "Book your own holidays — they go straight onto the squadron's NCO Holidays calendar"
+            ? `Book your holidays at least ${data.min_notice_days} days ahead — they go straight onto the squadron's NCO Holidays calendar`
+            : "Book your holidays — they go straight onto the squadron's NCO Holidays calendar"
         }
         actions={
-          <Button size="sm" onClick={() => setBookOpen(true)}>
+          <Button size="sm" onClick={openBook}>
             <Plus /> Book Holiday
           </Button>
         }
@@ -119,7 +127,8 @@ export default function NcoHolidaysPage() {
         <TabsList>
           <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
           <TabsTrigger value="mine">Mine</TabsTrigger>
-          <TabsTrigger value="all">All (audit)</TabsTrigger>
+          {/* The audit view is staff's — NCOs get upcoming and their own. */}
+          {data?.is_staff && <TabsTrigger value="all">All (audit)</TabsTrigger>}
         </TabsList>
       </Tabs>
 
@@ -142,7 +151,7 @@ export default function NcoHolidaysPage() {
                 : "Bookings stay on this list once made, even after they're cancelled."}
             </EmptyDescription>
           </EmptyHeader>
-          <Button size="sm" onClick={() => setBookOpen(true)}><Plus /> Book Holiday</Button>
+          <Button size="sm" onClick={openBook}><Plus /> Book Holiday</Button>
         </Empty>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
@@ -184,7 +193,9 @@ export default function NcoHolidaysPage() {
                         `Cancelled by ${h.cancelled_by_name ?? "someone"}` +
                         (h.cancelled_at ? ` on ${formatTimestamp(h.cancelled_at)}` : "")
                       }>
-                        Cancelled
+                        {h.cancelled_at
+                          ? `Cancelled ${formatDate(h.cancelled_at)}`
+                          : "Cancelled"}
                       </Badge>
                     ) : h.on_calendar ? (
                       <Badge variant="secondary">On calendar</Badge>
@@ -218,6 +229,16 @@ export default function NcoHolidaysPage() {
                         <RefreshCw /> Retry
                       </Button>
                     )}
+                    {h.can_edit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busyId === h.id}
+                        onClick={() => openEdit(h)}
+                      >
+                        <Pencil /> Edit
+                      </Button>
+                    )}
                     {h.can_cancel && (
                       <Button
                         variant="ghost"
@@ -240,44 +261,60 @@ export default function NcoHolidaysPage() {
       {filter === "all" && holidays.some((h) => h.cancelled) && (
         <p className="text-xs text-muted-foreground">
           Cancelled holidays stay listed for the record — hover the status badge to see
-          who removed one and when.
+          who removed one.
         </p>
       )}
 
-      <BookHolidayDialog
-        open={bookOpen}
-        onOpenChange={setBookOpen}
+      {/* Keyed so switching between booking and editing remounts it with the
+          right starting values, instead of needing an effect to reset them. */}
+      <HolidayDialog
+        key={editing?.id ?? "new"}
+        holiday={editing}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
         token={token}
         minNoticeDays={data?.min_notice_days ?? 0}
         earliestDate={data?.earliest_booking_date ?? null}
-        onBooked={() => { setFilter("upcoming"); refresh(); }}
+        onSaved={() => { setFilter("upcoming"); refresh(); }}
       />
       {confirmDialog}
     </div>
   );
 }
 
-function BookHolidayDialog({
+/** The booking form, in both its modes: `holiday` null books a new one, a
+ *  booking edits that one in place. Same three fields either way. */
+function HolidayDialog({
+  holiday,
   open,
   onOpenChange,
   token,
   minNoticeDays,
   earliestDate,
-  onBooked,
+  onSaved,
 }: {
+  holiday: NcoHoliday | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   token: string | undefined;
   minNoticeDays: number;
   earliestDate: string | null;
-  onBooked: () => void;
+  onSaved: () => void;
 }) {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [reason, setReason] = useState("");
+  // The API sends timestamps; the date inputs want "YYYY-MM-DD".
+  const asDate = (value: string) => value.slice(0, 10);
+  const originalFrom = holiday ? asDate(holiday.date_from) : "";
+
+  const [dateFrom, setDateFrom] = useState(originalFrom);
+  const [dateTo, setDateTo] = useState(holiday ? asDate(holiday.date_to) : "");
+  const [reason, setReason] = useState(holiday?.reason ?? "");
   const [submitting, setSubmitting] = useState(false);
 
-  const reset = () => { setDateFrom(""); setDateTo(""); setReason(""); };
+  const reset = () => {
+    setDateFrom(originalFrom);
+    setDateTo(holiday ? asDate(holiday.date_to) : "");
+    setReason(holiday?.reason ?? "");
+  };
 
   // The end date is nearly always the start date or later, so mirroring the
   // start saves a click on the common single-day booking.
@@ -289,26 +326,45 @@ function BookHolidayDialog({
   // The picker's `min` stops most of these, but a typed date can still land
   // inside the notice period — so check it here rather than relying on the
   // input. Both are only a courtesy; the API is what actually enforces it.
-  const tooSoon = !!earliestDate && !!dateFrom && dateFrom < earliestDate;
+  // Leaving an existing first day where it is never counts as too soon, so a
+  // holiday that's nearly here can still have its reason fixed.
+  const tooSoon =
+    !!earliestDate && !!dateFrom && dateFrom < earliestDate && dateFrom !== originalFrom;
   const invalid = !dateFrom || !dateTo || dateTo < dateFrom || tooSoon;
+  // Same reason: the picker mustn't forbid the day the booking already starts on.
+  const minFrom = earliestDate
+    ? (originalFrom && originalFrom < earliestDate ? originalFrom : earliestDate)
+    : undefined;
 
   const submit = async () => {
     if (!token || invalid) return;
     setSubmitting(true);
     try {
-      const booked = await bookHoliday(token, {
-        date_from: dateFrom, date_to: dateTo, reason: reason.trim(),
-      });
-      toast[booked.on_calendar ? "success" : "warning"](
-        booked.on_calendar
-          ? "Holiday booked and added to the calendar"
-          : "Holiday booked, but Google Calendar didn't respond — use Retry on the row",
+      const body = { date_from: dateFrom, date_to: dateTo, reason: reason.trim() };
+      const saved = holiday
+        ? await editHoliday(token, holiday.id, body)
+        : await bookHoliday(token, body);
+      // Booking over an existing holiday extends it rather than adding a row,
+      // so say which happened instead of claiming a booking that isn't there.
+      const extended = !holiday && saved.date_from.slice(0, 10) !== dateFrom;
+      const what = holiday
+        ? "Holiday updated"
+        : extended
+          ? "Holiday extended"
+          : "Holiday booked";
+      toast[saved.on_calendar ? "success" : "warning"](
+        saved.on_calendar
+          ? `${what} and the calendar entry moved`
+          : `${what}, but Google Calendar didn't respond — use Retry on the row`,
       );
-      reset();
       onOpenChange(false);
-      onBooked();
+      onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't book that holiday.");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : holiday ? "Couldn't update that holiday." : "Couldn't book that holiday.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -318,16 +374,18 @@ function BookHolidayDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Book a holiday</DialogTitle>
+          <DialogTitle>{holiday ? "Edit holiday" : "Book a holiday"}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            This books time off for you — it goes on the squadron&apos;s NCO Holidays
-            calendar under your name.
+            {holiday
+              ? "Changing these moves the entry on the squadron's NCO Holidays calendar."
+              : "This books time off for you — it goes on the squadron's NCO Holidays calendar under your name."}
             {minNoticeDays > 0 && earliestDate && (
               <>
                 {" "}Holidays need at least {minNoticeDays} days&apos; notice, so the
-                earliest you can book from is {formatDate(earliestDate)}.
+                earliest you can {holiday ? "move it to" : "book from"} is{" "}
+                {formatDate(earliestDate)}.
               </>
             )}
           </p>
@@ -337,7 +395,7 @@ function BookHolidayDialog({
               <Input
                 id="holiday-from"
                 type="date"
-                min={earliestDate ?? undefined}
+                min={minFrom}
                 value={dateFrom}
                 onChange={(e) => onFromChange(e.target.value)}
               />
@@ -347,7 +405,7 @@ function BookHolidayDialog({
               <Input
                 id="holiday-to"
                 type="date"
-                min={dateFrom || earliestDate || undefined}
+                min={dateFrom || minFrom}
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
               />
@@ -382,7 +440,9 @@ function BookHolidayDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={submit} disabled={invalid || submitting}>
-            {submitting ? "Booking…" : "Book Holiday"}
+            {holiday
+              ? (submitting ? "Saving…" : "Save Changes")
+              : (submitting ? "Booking…" : "Book Holiday")}
           </Button>
         </DialogFooter>
       </DialogContent>

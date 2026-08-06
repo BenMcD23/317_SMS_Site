@@ -23,6 +23,7 @@ export interface NcoHoliday {
   cancelled_by_name: string | null;
   is_mine: boolean;
   can_cancel: boolean;
+  can_edit: boolean;
   /** False when the booking saved but never reached Google Calendar. */
   on_calendar: boolean;
 }
@@ -83,9 +84,22 @@ async function request<T>(
   return data as T;
 }
 
-/** Book a holiday for yourself — the API won't let you book anyone else's. */
+/**
+ * Book a holiday for yourself — the API won't let you book anyone else's.
+ *
+ * Dates you already have off come back as a 409. Dates that run over the end of
+ * an existing booking extend it instead, so the holiday you get back can have a
+ * different id and wider dates than the ones you sent.
+ */
 export function bookHoliday(token: string, body: NewHoliday): Promise<NcoHoliday> {
   return request<NcoHoliday>(token, "", { method: "POST", body });
+}
+
+/** Change a booking's dates or reason, moving the calendar event with it. */
+export function editHoliday(
+  token: string, id: number, body: NewHoliday,
+): Promise<NcoHoliday> {
+  return request<NcoHoliday>(token, `/${id}`, { method: "PATCH", body });
 }
 
 /** Remove from the calendar; the record stays, stamped with who cancelled it. */
