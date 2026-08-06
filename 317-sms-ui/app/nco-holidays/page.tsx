@@ -101,14 +101,18 @@ export default function NcoHolidaysPage() {
       <PageHeader
         title="NCO Holidays"
         description={
-          data && data.min_notice_days > 0
-            ? `Book your holidays at least ${data.min_notice_days} days ahead — they go straight onto the squadron's NCO Holidays calendar`
-            : "Book your holidays — they go straight onto the squadron's NCO Holidays calendar"
+          data && !data.can_book
+            ? "The squadron's NCO absence, as it appears on the NCO Holidays calendar"
+            : data && data.min_notice_days > 0
+              ? `Book your holidays at least ${data.min_notice_days} days ahead — they go straight onto the squadron's NCO Holidays calendar`
+              : "Book your holidays — they go straight onto the squadron's NCO Holidays calendar"
         }
         actions={
-          <Button size="sm" onClick={openBook}>
-            <Plus /> Book Holiday
-          </Button>
+          data?.can_book && (
+            <Button size="sm" onClick={openBook}>
+              <Plus /> Book Holiday
+            </Button>
+          )
         }
       />
 
@@ -126,8 +130,9 @@ export default function NcoHolidaysPage() {
       <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
         <TabsList>
           <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="mine">Mine</TabsTrigger>
-          {/* The audit view is staff's — NCOs get upcoming and their own. */}
+          {/* Staff have no bookings of their own, so "Mine" would always be
+              empty for them; the audit view is theirs instead. */}
+          {data?.can_book && <TabsTrigger value="mine">Mine</TabsTrigger>}
           {data?.is_staff && <TabsTrigger value="all">All (audit)</TabsTrigger>}
         </TabsList>
       </Tabs>
@@ -146,12 +151,16 @@ export default function NcoHolidaysPage() {
               {filter === "upcoming" ? "No holidays booked" : "Nothing here yet"}
             </EmptyTitle>
             <EmptyDescription>
-              {filter === "upcoming"
-                ? "Book time off and it'll show on the squadron's NCO Holidays calendar."
-                : "Bookings stay on this list once made, even after they're cancelled."}
+              {filter !== "upcoming"
+                ? "Bookings stay on this list once made, even after they're cancelled."
+                : data?.can_book
+                  ? "Book time off and it'll show on the squadron's NCO Holidays calendar."
+                  : "No NCO has booked time off yet."}
             </EmptyDescription>
           </EmptyHeader>
-          <Button size="sm" onClick={openBook}><Plus /> Book Holiday</Button>
+          {data?.can_book && (
+            <Button size="sm" onClick={openBook}><Plus /> Book Holiday</Button>
+          )}
         </Empty>
       ) : (
         <div className="overflow-x-auto rounded-lg border">

@@ -31,6 +31,8 @@ export interface NcoHoliday {
 export interface NcoHolidayList {
   holidays: NcoHoliday[];
   is_staff: boolean;
+  /** False for staff — this list is NCO absence, which they manage, not join. */
+  can_book: boolean;
   /** False when NCO_HOLIDAY_CALENDAR_ID isn't set on the API. */
   calendar_configured: boolean;
   /** Notice this viewer has to give before the first day off. 0 for staff. */
