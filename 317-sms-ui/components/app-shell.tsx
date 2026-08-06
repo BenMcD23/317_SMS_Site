@@ -40,6 +40,7 @@ import {
   LogOut,
   FileText,
   Calendar,
+  CalendarOff,
   Settings,
   Users,
   LayoutDashboard,
@@ -118,6 +119,8 @@ const NAV_SECTIONS: NavSection[] = [
     links: [
       // No role flag — NCOs write the plans, staff review them.
       { label: "Session Plans", href: "/session-plans", icon: ClipboardList },
+      // Same again — NCOs book their own holidays, staff just see the list.
+      { label: "NCO Holidays", href: "/nco-holidays", icon: CalendarOff },
     ],
   },
   {
