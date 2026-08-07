@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import {
   Award, ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X,
   StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw, Bell,
-  ClipboardList, Copy, Check, Lock,
+  ClipboardList, Copy, Check, Lock, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,9 @@ import {
 } from "@/components/ui/dialog";
 import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderList } from "@/lib/stores-types";
 import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName } from "../badge-types";
+import { checkBadgeQualification } from "../badge-qualification";
+import { useCadetQualifications } from "../use-cadet-qualifications";
+import { QualificationCheck } from "../components/QualificationCheck";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { formatTimestamp } from "@/lib/format";
@@ -141,6 +144,10 @@ export default function BadgeOrdersPage() {
   // Generic confirm dialog
   const { confirm: openConfirm, confirmDialog } = useConfirm();
 
+  // Earned qualifications, loaded per cadet as their order is opened, so each
+  // badge can be checked against what Bader says they hold.
+  const cadetQuals = useCadetQualifications(token);
+
   useEffect(() => { fetchAll(); }, []);
 
   async function fetchAll() {
@@ -164,12 +171,17 @@ export default function BadgeOrdersPage() {
   }
 
   function toggleExpand(id: string) {
+    const expanding = !expandedIds.has(id);
     setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+    // Opening a card is the first point its badges are on screen, so that's
+    // when the cadet's qualifications are worth fetching.
+    const order = orders.find((o) => o.id === id);
+    if (expanding && order) cadetQuals.load(order.cadetCin);
   }
 
   function findBadgeStockMatch(badgeName: string): StockMatch | undefined {
@@ -352,6 +364,13 @@ export default function BadgeOrdersPage() {
 
   const currentBadgeName = newCategory ? buildBadgeName(newCategory, newSubType, newLevel) : null;
   const addBadgeName = addCategory ? buildBadgeName(addCategory, addSubType, addLevel) : null;
+
+  // Staged badges the cadet has no qualification for — surfaced as a warning
+  // before creating, not a block: the QM may still have a reason to order one.
+  const newOrderQuals = newCadetCin ? cadetQuals.get(newCadetCin) : null;
+  const unqualifiedNewBadges = newBadgeNames.filter(
+    (name) => checkBadgeQualification(name, newOrderQuals).status === "missing"
+  );
 
   function openNewOrder() {
     setNewCadetCin(null);
@@ -633,6 +652,12 @@ export default function BadgeOrdersPage() {
                                     <p className="text-xs text-muted-foreground">Out of Stock</p>
                                   )
                                 )}
+
+                                <QualificationCheck
+                                  badgeName={orderItem.badgeName}
+                                  quals={cadetQuals.get(order.cadetCin)}
+                                  loading={cadetQuals.isLoading(order.cadetCin)}
+                                />
                               </div>
 
                               {!isCompleted && (
@@ -769,7 +794,15 @@ export default function BadgeOrdersPage() {
                             onLevel={setAddLevel}
                           />
                           {addBadgeName && (
-                            <p className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium">{addBadgeName}</p>
+                            <>
+                              <p className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium">{addBadgeName}</p>
+                              <QualificationCheck
+                                badgeName={addBadgeName}
+                                quals={cadetQuals.get(order.cadetCin)}
+                                loading={cadetQuals.isLoading(order.cadetCin)}
+                                showUntracked
+                              />
+                            </>
                           )}
                           <div className="flex gap-2">
                             <Button size="sm" className="h-7 px-3 text-xs"
@@ -961,7 +994,11 @@ export default function BadgeOrdersPage() {
                 token={token}
                 selectedCin={newCadetCin}
                 selectedName={newCadetName}
-                onSelect={(cin, name) => { setNewCadetCin(cin || null); setNewCadetName(name); }}
+                onSelect={(cin, name) => {
+                  setNewCadetCin(cin || null);
+                  setNewCadetName(name);
+                  if (cin) cadetQuals.load(cin);
+                }}
               />
             </div>
 
@@ -971,12 +1008,21 @@ export default function BadgeOrdersPage() {
               {newBadgeNames.length > 0 && (
                 <ul className="space-y-1">
                   {newBadgeNames.map((name, idx) => (
-                    <li key={idx} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm">
-                      <span>{name}</span>
-                      <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground"
-                        onClick={() => setNewBadgeNames((prev) => prev.filter((_, i) => i !== idx))}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
+                    <li key={idx} className="space-y-1.5 rounded-md border px-3 py-1.5">
+                      <div className="flex items-center justify-between gap-2 text-sm">
+                        <span>{name}</span>
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground"
+                          onClick={() => setNewBadgeNames((prev) => prev.filter((_, i) => i !== idx))}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      {newCadetCin && (
+                        <QualificationCheck
+                          badgeName={name}
+                          quals={cadetQuals.get(newCadetCin)}
+                          loading={cadetQuals.isLoading(newCadetCin)}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -992,7 +1038,17 @@ export default function BadgeOrdersPage() {
                   onLevel={setNewLevel}
                 />
                 {currentBadgeName && (
-                  <p className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium">{currentBadgeName}</p>
+                  <>
+                    <p className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium">{currentBadgeName}</p>
+                    {newCadetCin && (
+                      <QualificationCheck
+                        badgeName={currentBadgeName}
+                        quals={cadetQuals.get(newCadetCin)}
+                        loading={cadetQuals.isLoading(newCadetCin)}
+                        showUntracked
+                      />
+                    )}
+                  </>
                 )}
                 <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
                   disabled={!currentBadgeName}
@@ -1003,6 +1059,17 @@ export default function BadgeOrdersPage() {
               </div>
             </div>
           </div>
+
+          {unqualifiedNewBadges.length > 0 && (
+            <div className="flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+              <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+              <p>
+                {newCadetName || "This cadet"} has no qualification recorded for{" "}
+                <span className="font-medium">{unqualifiedNewBadges.join(", ")}</span>. The order can
+                still be created.
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewOrderOpen(false)}>Cancel</Button>
