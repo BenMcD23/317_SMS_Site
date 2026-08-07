@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
-import { reauth } from "@/lib/api-fetch";
+import { AUTH_LOOP_EVENT, clearReauthMark, reauth } from "@/lib/api-fetch";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { OWNER_EMAIL, isOc } from "@/lib/config";
@@ -331,7 +331,9 @@ function ApiStatusBadge({ status }: { status: ApiStatus }) {
           <AlertTriangle className="size-3.5" />
           Session expired —&nbsp;
           <button
-            onClick={() => signIn("google", { callbackUrl: window.location.pathname })}
+            // force: an explicit click is always honoured, even inside the
+            // cooldown that stops automatic re-auth from looping.
+            onClick={() => void reauth(window.location.pathname, { force: true })}
             className="underline underline-offset-2"
           >
             sign in again
@@ -417,6 +419,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
 
+  // A re-auth that didn't clear the 401 — show the badge rather than sending
+  // the user back to Google for another lap.
+  useEffect(() => {
+    const onLoop = () => setApiStatus("auth-error");
+    window.addEventListener(AUTH_LOOP_EVENT, onLoop);
+    return () => window.removeEventListener(AUTH_LOOP_EVENT, onLoop);
+  }, []);
+
   useEffect(() => {
     const token = session?.id_token as string | undefined;
     if (!token) return;
@@ -424,10 +434,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
     fetch(`${API}/health`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
-        if (res.ok) setApiStatus("ok");
-        // 401 = expired token, a re-auth fixes it. 403 = the account is outside
-        // the Workspace, which re-auth can never fix — redirecting there just
-        // bounces the user to Google forever, so show the badge instead.
+        if (res.ok) {
+          setApiStatus("ok");
+          clearReauthMark();
+        }
+        // 401 = expired token, a re-auth usually fixes it — but reauth() only
+        // redirects if we haven't just tried; otherwise it fires AUTH_LOOP_EVENT
+        // and the badge above takes over. 403 = the account is outside the
+        // Workspace, which re-auth can never fix, so go straight to the badge.
         else if (res.status === 401) reauth("/");
         else if (res.status === 403) setApiStatus("auth-error");
         else setApiStatus("api-down");
