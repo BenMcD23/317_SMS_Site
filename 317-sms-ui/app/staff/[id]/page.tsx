@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
+import { AttendanceCard } from "@/components/attendance-card";
+import { Home, CalendarRange } from "lucide-react";
 
 type StaffMember = {
   cin: number;
@@ -49,7 +52,7 @@ export default function StaffDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
+      <div className="mx-auto max-w-5xl space-y-4">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -61,40 +64,80 @@ export default function StaffDetailPage() {
 
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || `CIN ${user.cin}`;
   const description = [user.rank, user.email, `CIN ${user.cin}`].filter(Boolean).join(" · ");
+  const htdMonths = Object.entries(user.attendance ?? {}).sort(([a], [b]) => a.localeCompare(b));
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader title={name} description={description} />
-      {user.address && (
-        <Card className="p-4">
-          <p className="text-xs font-medium text-muted-foreground">Address</p>
-          <p className="text-sm">{user.address}</p>
-        </Card>
-      )}
-      {user.attendance && Object.keys(user.attendance).length > 0 && (
-        <Card className="p-4">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">
-            Parade attendance by month (nights attended)
-          </p>
-          <div className="divide-y">
-            {Object.entries(user.attendance)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([month, count]) => (
-                <div key={month} className="flex justify-between py-1 text-sm">
-                  <span className="text-muted-foreground">{formatMonth(month)}</span>
-                  <span className="font-medium">{count}</span>
-                </div>
-              ))}
-          </div>
-        </Card>
-      )}
-      {user.userId ? (
-        <UniformIssuancesCard baseUrl={`/api/stores/issuances/user/${user.userId}`} />
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          No linked portal account, so no uniform issuances to show.
-        </p>
-      )}
+
+      <Tabs defaultValue="overview">
+        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="uniform">Uniform</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-4 flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Home className="h-4 w-4 text-muted-foreground" />
+                Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className={user.address ? "text-sm" : "text-sm italic text-muted-foreground"}>
+                {user.address ?? "No address recorded."}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* The monthly counts that prefill the HTD claim — distinct from the
+              full register on the Attendance tab, which is unbounded. */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                Parade nights per month
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {htdMonths.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No attendance recorded.</p>
+              ) : (
+                <>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Nights attended in the current HTD claim window — these are the figures
+                    the HTD form prefills.
+                  </p>
+                  <div className="divide-y">
+                    {htdMonths.map(([month, count]) => (
+                      <div key={month} className="flex justify-between py-1 text-sm">
+                        <span className="text-muted-foreground">{formatMonth(month)}</span>
+                        <span className="font-medium tabular-nums">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="attendance" className="mt-4">
+          <AttendanceCard baseUrl={`/api/staff/${user.cin}/attendance`} />
+        </TabsContent>
+
+        <TabsContent value="uniform" className="mt-4">
+          {user.userId ? (
+            <UniformIssuancesCard baseUrl={`/api/stores/issuances/user/${user.userId}`} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No linked portal account, so no uniform issuances to show.
+            </p>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
