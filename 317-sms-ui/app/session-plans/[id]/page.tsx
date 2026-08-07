@@ -23,7 +23,7 @@ import {
   DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, Check, Loader2, MessageSquare, Pencil, Send, Trash2, Undo2,
+  ArrowLeft, Check, FileDown, Loader2, MessageSquare, Pencil, Send, Trash2, Undo2,
 } from "lucide-react";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
@@ -119,9 +119,18 @@ export default function SessionPlanDetailPage({
         }
         description={`${plan.author_name} · ${formatDate(plan.session_date, "no date set")}`}
         actions={
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/session-plans"><ArrowLeft /> Back</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Plain link, not a fetch — the proxy route attaches the token
+                server-side and streams the file straight to the browser. */}
+            <Button asChild variant="outline" size="sm">
+              <a href={`/api/session-plans/${id}/pdf`}>
+                <FileDown /> Export PDF
+              </a>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/session-plans"><ArrowLeft /> Back</Link>
+            </Button>
+          </div>
         }
       />
 
