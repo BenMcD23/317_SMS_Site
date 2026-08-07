@@ -42,6 +42,7 @@ import {
   LogOut,
   FileText,
   Calendar,
+  CalendarCheck,
   CalendarOff,
   Settings,
   Users,
@@ -63,6 +64,7 @@ import {
   Newspaper,
   BookOpen,
   UserCog,
+  UserMinus,
   GraduationCap,
   ChevronsUpDown,
   DatabaseZap,
@@ -105,6 +107,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap, staffOnly: true },
       { label: "Events", href: "/cadets/events", icon: Calendar, staffOnly: true },
       { label: "Audit", href: "/cadets/audit", icon: ShieldCheck, staffOnly: true },
+      { label: "Leaving Process", href: "/cadets/leaving", icon: UserMinus, staffOnly: true },
     ],
   },
   {
@@ -159,6 +162,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Squadron",
     links: [
       { label: "Staff", href: "/staff/overview", icon: UserCog, staffOnly: true },
+      { label: "Attendance", href: "/attendance", icon: CalendarCheck, staffOnly: true },
       { label: "Committee Requests", href: "/committee/requests", icon: ReceiptText, staffOnly: true },
       { label: "Settings", href: "/settings", icon: Settings },
     ],

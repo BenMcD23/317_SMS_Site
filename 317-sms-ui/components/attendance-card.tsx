@@ -19,38 +19,21 @@ import {
 } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { AttendanceState } from "@/lib/attendance";
+import { STATE_BADGE } from "@/lib/attendance";
 
 export type AttendanceRecord = {
   id: number;
   date: string;           // ISO
   registerType: string | null;
   status: string | null;
+  state: AttendanceState; // classified by the backend
   unit: string | null;
 };
 
 const ALL_TYPES = "__all__";
 
-type AttendanceState = "present" | "authorised" | "absent";
-
-/** Statuses are scraped verbatim from Bader: every turned-up state starts
- *  "Present" ("Present Correctly Dressed", "Present Incorrectly Dressed"), and
- *  an excused non-attendance reads "Authorised Absence". Anything else is an
- *  unauthorised absence — the default so a status we haven't seen is never
- *  silently counted as attended. */
-function attendanceState(record: AttendanceRecord): AttendanceState {
-  const status = record.status ?? "";
-  if (status.startsWith("Present")) return "present";
-  if (/authoris|authoriz/i.test(status)) return "authorised";
-  return "absent";
-}
-
-const isPresent = (record: AttendanceRecord) => attendanceState(record) === "present";
-
-const STATE_BADGE: Record<AttendanceState, string> = {
-  present: "border-success/40 bg-success/10 text-success",
-  authorised: "border-warning/40 bg-warning/15 text-warning",
-  absent: "border-destructive/40 bg-destructive/10 text-destructive",
-};
+const isPresent = (record: AttendanceRecord) => record.state === "present";
 
 /** Long histories go back to 2009, so month buckets only make sense on a short
  *  span — past three years the chart switches to one bar per year. */
@@ -151,9 +134,9 @@ export function AttendanceCard({ baseUrl }: Props) {
     return true;
   }), [records, from, to, type]);
 
-  const attended = filtered.filter((r) => attendanceState(r) === "present").length;
-  const authorised = filtered.filter((r) => attendanceState(r) === "authorised").length;
-  const absent = filtered.filter((r) => attendanceState(r) === "absent").length;
+  const attended = filtered.filter((r) => r.state === "present").length;
+  const authorised = filtered.filter((r) => r.state === "authorised").length;
+  const absent = filtered.filter((r) => r.state === "absent").length;
 
   const rate = filtered.length ? Math.round((attended / filtered.length) * 100) : null;
   // An excused absence arguably shouldn't count against someone, so show that
@@ -300,7 +283,7 @@ export function AttendanceCard({ baseUrl }: Props) {
                           <TableCell>
                             <Badge
                               variant="outline"
-                              className={cn("font-normal", STATE_BADGE[attendanceState(record)])}
+                              className={cn("font-normal", STATE_BADGE[record.state])}
                             >
                               {record.status ?? "Unknown"}
                             </Badge>
