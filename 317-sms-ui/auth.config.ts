@@ -5,6 +5,15 @@ import Credentials from "next-auth/providers/credentials"
 const NCO_ALLOWED_ROUTES = ["/", "/assessments", "/cadets/assessments", "/settings"]
 const INSPECTION_ROUTE = "/assessments/inspection"
 
+// The credentials provider below signs in as the owner with no credentials at
+// all, so it must never reach a deployed build. Fail loudly rather than serve
+// with it live — mirrors the DEV_FAKE_AUTH guard in the API's core/config.py.
+if (process.env.NODE_ENV === "production" && process.env.AUTH_DEV_BYPASS === "1") {
+  throw new Error(
+    "AUTH_DEV_BYPASS=1 in a production build. The dev login bypass must never be enabled outside development.",
+  )
+}
+
 function under(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(route + "/")
 }

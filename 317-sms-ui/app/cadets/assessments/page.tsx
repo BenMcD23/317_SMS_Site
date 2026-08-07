@@ -39,6 +39,7 @@ import {
   Lock,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
+import { fetchStreamTicket } from "@/lib/stream-ticket";
 import { apiFetch } from "@/lib/api-fetch";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
 
@@ -399,8 +400,17 @@ function UploadButton({
     const toastId = `upload-${assessmentIds[0]}`;
     toast.loading("Connecting to SMS…", { id: toastId, duration: Infinity });
 
+    let ticket: string;
+    try {
+      ticket = await fetchStreamTicket(token);
+    } catch {
+      toast.error("Could not authorise upload stream", { id: toastId, duration: 4000 });
+      setLoading(false);
+      return;
+    }
+
     const es = new EventSource(
-      `${API_BASE}/scraper-stream?token=${encodeURIComponent(token)}`
+      `${API_BASE}/scraper-stream?ticket=${encodeURIComponent(ticket)}`
     );
     esRef.current = es;
 
