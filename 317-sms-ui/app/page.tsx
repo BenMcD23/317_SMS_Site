@@ -2,7 +2,9 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
+
+import { reauth } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -338,7 +340,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (session?.error) {
-      signIn("google", { callbackUrl: "/" });
+      reauth("/");
     }
   }, [session?.error]);
 

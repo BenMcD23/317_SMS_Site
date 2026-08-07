@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
+
+import { reauth } from "@/lib/api-fetch";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { OWNER_EMAIL, isOc } from "@/lib/config";
@@ -422,7 +424,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         // 401 = expired token, a re-auth fixes it. 403 = the account is outside
         // the Workspace, which re-auth can never fix — redirecting there just
         // bounces the user to Google forever, so show the badge instead.
-        else if (res.status === 401) signIn("google", { callbackUrl: "/" });
+        else if (res.status === 401) reauth("/");
         else if (res.status === 403) setApiStatus("auth-error");
         else setApiStatus("api-down");
       })

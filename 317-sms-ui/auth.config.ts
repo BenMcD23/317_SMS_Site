@@ -53,6 +53,10 @@ export const authConfig: NextAuthConfig = {
   ],
   pages: {
     signIn: "/login",
+    // Send auth failures to /login rather than @auth/core's bare "server
+    // configuration" page. If a session did get created (a raced callback
+    // throws after the cookie is set), middleware bounces /login straight to /.
+    error: "/login",
   },
   callbacks: {
     session({ session, token }) {
