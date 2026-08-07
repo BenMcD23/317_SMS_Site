@@ -419,7 +419,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     fetch(`${API}/health`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (res.ok) setApiStatus("ok");
-        else if (res.status === 401 || res.status === 403) signIn("google", { callbackUrl: "/" });
+        // 401 = expired token, a re-auth fixes it. 403 = the account is outside
+        // the Workspace, which re-auth can never fix — redirecting there just
+        // bounces the user to Google forever, so show the badge instead.
+        else if (res.status === 401) signIn("google", { callbackUrl: "/" });
+        else if (res.status === 403) setApiStatus("auth-error");
         else setApiStatus("api-down");
       })
       .catch(() => setApiStatus("api-down"));

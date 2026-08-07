@@ -91,8 +91,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             expires_at: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
           }
         }
+        // Only id_token is ever sent to the API. Storing access_token too
+        // pushed the encrypted cookie past 4096 bytes, so Auth.js chunked it
+        // into sms.session-token.0/.1 — and stale chunks from an earlier login
+        // shadow a later unchunked cookie, breaking the session permanently.
         token.id_token = account.id_token
-        token.access_token = account.access_token
         token.refresh_token = account.refresh_token
         token.expires_at = account.expires_at
         try {
@@ -128,7 +131,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           ...token,
           id_token: newIdToken,
-          access_token: refreshed.access_token,
           expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in,
           refresh_token: refreshed.refresh_token ?? token.refresh_token,
           role,
