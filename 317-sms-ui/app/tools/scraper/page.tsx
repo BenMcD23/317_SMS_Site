@@ -32,7 +32,7 @@ const SCRAPER_TOOLS = [
     id: "cadet-quali",
     label: "Cadet Qualification Scraper",
     description:
-      "Fetches all cadet information (name, email, CIN), updates the database with cadets and their qualifications, and pushes the qualifications to the Google Sheet.",
+      "Fetches all cadet information (name, email, CIN), updates the database with cadets, attendance and their qualifications, and pushes the qualifications to the Google Sheet.",
   },
   {
     id: "cadet-event",
@@ -53,7 +53,7 @@ const SCRAPER_TOOLS = [
     id: "staff",
     label: "Staff Scraper",
     description:
-      "Fetches the squadron staff roster (name, rank, CIN, matched email) from Bader SMS into the database.",
+      "Fetches the squadron staff roster (name, rank, CIN, matched email) and attendance from Bader SMS into the database.",
   },
   {
     id: "absences",
