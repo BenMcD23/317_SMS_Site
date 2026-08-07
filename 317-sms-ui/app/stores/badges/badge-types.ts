@@ -67,6 +67,12 @@ export const BADGE_CATEGORIES: BadgeCategory[] = [
     levels: ["Blue", "Bronze", "Silver", "Gold"],
   },
   {
+    id: "space",
+    name: "Space Badges",
+    prefix: "Space",
+    levels: ["Blue", "Bronze", "Silver", "Gold"],
+  },
+  {
     id: "road-marching",
     name: "Road Marching Badges",
     prefix: "Road Marching",
