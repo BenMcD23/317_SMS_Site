@@ -35,6 +35,19 @@ export interface QmNote {
   addedBy: string;
 }
 
+/** One entry in an order item's stock history — taken off the shelf, or put back. */
+export interface StockEvent {
+  id: string;
+  action: "removed" | "returned";
+  timestamp: string;
+  by: string | null;
+}
+
+/** The item is off the shelf when its most recent stock event is a removal. */
+export function isRemovedFromStock(events: StockEvent[] | undefined): boolean {
+  return events !== undefined && events.length > 0 && events[events.length - 1].action === "removed";
+}
+
 export interface OrderItem {
   id: string;
   itemType: string;
@@ -45,6 +58,7 @@ export interface OrderItem {
   givenAt: string | null;
   givenBy: string | null;
   readyToCollect: string | null;
+  stockEvents?: StockEvent[];
 }
 
 export interface Order {
@@ -78,6 +92,7 @@ export interface BadgeOrderItem {
   givenAt: string | null;
   givenBy: string | null;
   readyToCollect: string | null;
+  stockEvents?: StockEvent[];
 }
 
 export interface BadgeOrder {
