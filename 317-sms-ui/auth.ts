@@ -1,6 +1,19 @@
 import NextAuth from "next-auth"
-import { authConfig, withFreshTokens } from "./auth.config"
+import type { JWT } from "next-auth/jwt"
+import { authConfig } from "./auth.config"
 import { google } from "googleapis"
+
+// The client sends the raw Google id_token to the API, and Google only issues
+// those with a 1-hour life. Renew with this much headroom left so a token
+// handed to the browser stays valid until the next session refetch (5 minutes,
+// see components/providers.tsx) — otherwise the API 401s and the UI bounces
+// the user through Google again.
+const REFRESH_MARGIN_S = 10 * 60
+
+// How long a failed or in-flight renewal is reused before we call Google
+// again. Long enough to collapse the burst of parallel requests one page makes,
+// short enough that a blip doesn't strand the session.
+const REUSE_FLOOR_S = 30
 
 const STAFF_GROUP = "staff@317atc.co.uk"
 const SNCO_GROUP = "snco@317atc.co.uk"
@@ -47,6 +60,98 @@ async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" 
   return null
 }
 
+function idTokenExp(idToken: string): number {
+  try {
+    const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString())
+    return payload.exp ?? 0
+  } catch {
+    return 0
+  }
+}
+
+type FreshTokens = { id_token: string; expires_at: number; refresh_token: string }
+
+/**
+ * Renewals already asked for, keyed by the refresh token that started them.
+ *
+ * `auth()` inside a route handler can't persist a Set-Cookie, so proxyToApi
+ * re-runs the whole jwt callback for every API call a page makes. Without this
+ * each of those would fire its own POST to Google, and a single page could open
+ * a dozen renewals of the same session at once.
+ */
+const renewals = new Map<string, { promise: Promise<FreshTokens>; reuseUntil: number }>()
+
+async function requestTokens(refreshToken: string, currentIdToken?: string): Promise<FreshTokens> {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  })
+  if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`)
+  const refreshed = await res.json()
+
+  // Google normally returns a fresh id_token alongside the access token; if it
+  // didn't, the one we already hold has to carry us to the next renewal.
+  const idToken: string | undefined = refreshed.id_token ?? currentIdToken
+  if (!idToken) throw new Error("Token refresh returned no id_token")
+
+  // Expire on the id_token's own `exp`, not the access token's `expires_in`:
+  // the id_token is the credential the API checks, so that's the clock that
+  // decides when the session is stale. Falling back to expires_in would also
+  // quietly produce NaN whenever Google omits it.
+  const now = Math.floor(Date.now() / 1000)
+  const expiresAt = idTokenExp(idToken)
+  if (expiresAt < now + 60) throw new Error("Token refresh produced a stale id_token")
+
+  return {
+    id_token: idToken,
+    expires_at: expiresAt,
+    refresh_token: refreshed.refresh_token ?? refreshToken,
+  }
+}
+
+function renewTokens(refreshToken: string, currentIdToken?: string): Promise<FreshTokens> {
+  const now = Math.floor(Date.now() / 1000)
+  const existing = renewals.get(refreshToken)
+  if (existing && now < existing.reuseUntil) return existing.promise
+
+  const entry = { promise: requestTokens(refreshToken, currentIdToken), reuseUntil: now + REUSE_FLOOR_S }
+  renewals.set(refreshToken, entry)
+  entry.promise
+    .then((fresh) => {
+      // Hold the result until it's the one going stale, so the next renewal is
+      // driven by the token's life rather than by request volume.
+      entry.reuseUntil = Math.max(fresh.expires_at - REFRESH_MARGIN_S, entry.reuseUntil)
+    })
+    // A failure keeps REUSE_FLOOR_S of backoff instead of retrying per request.
+    .catch(() => {})
+
+  for (const [key, value] of renewals) {
+    if (value !== entry && now >= value.reuseUntil) renewals.delete(key)
+  }
+  return entry.promise
+}
+
+/** Renew the Google tokens once they're within REFRESH_MARGIN_S of expiry. */
+async function withFreshTokens(token: JWT): Promise<JWT> {
+  const now = Math.floor(Date.now() / 1000)
+  if ((token.expires_at ?? 0) > now + REFRESH_MARGIN_S) return token
+  if (!token.refresh_token) return { ...token, error: "RefreshTokenMissing" }
+
+  try {
+    const fresh = await renewTokens(token.refresh_token, token.id_token)
+    return { ...token, ...fresh, error: undefined }
+  } catch (e) {
+    console.error("[jwt] token refresh failed:", e)
+    return { ...token, error: "RefreshAccessTokenError" }
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   session: {
@@ -85,7 +190,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       const fresh = await withFreshTokens(token)
-      if (fresh.expires_at === token.expires_at || fresh.error) return fresh
+      // Identity, not expires_at: withFreshTokens hands back the very same
+      // object when nothing needed renewing.
+      if (fresh === token || fresh.error) return fresh
 
       // We actually refreshed (~hourly), so re-check group membership: someone
       // removed from staff/NCO loses access promptly instead of keeping their
