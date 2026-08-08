@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { CalendarCheck, ShieldUser, Users, UserCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
+import { Stat } from "@/components/stat";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -102,36 +105,6 @@ function monthlyStats(nights: Night[], group: Group) {
     }));
 
   return { data, byYear };
-}
-
-function Stat({ label, value, hint, tone }: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  tone?: "primary" | "success" | "warning" | "destructive";
-}) {
-  return (
-    <div className={cn(
-      "rounded-lg border px-3 py-2",
-      tone === "primary" && "border-primary/30 bg-primary/5",
-      tone === "success" && "border-success/30 bg-success/10",
-      tone === "warning" && "border-warning/30 bg-warning/10",
-      tone === "destructive" && "border-destructive/30 bg-destructive/10",
-      !tone && "bg-card",
-    )}>
-      <p className={cn(
-        "font-semibold tabular-nums",
-        tone === "primary" ? "text-2xl text-primary" : "text-xl",
-        tone === "success" && "text-success",
-        tone === "warning" && "text-warning",
-        tone === "destructive" && "text-destructive",
-      )}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
-      {hint && <p className="text-[11px] text-muted-foreground/70">{hint}</p>}
-    </div>
-  );
 }
 
 /** "12 / 15" plus the turnout, or a dash when nobody was on that register. */
@@ -255,6 +228,14 @@ export default function AttendancePage() {
       <PageHeader
         title="Attendance"
         description="Turnout per night across the squadron. Select a night to see who was on the register."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/attendance/ncos">
+              <ShieldUser className="h-4 w-4" />
+              Per NCO
+            </Link>
+          </Button>
+        }
       />
 
       {loading ? (

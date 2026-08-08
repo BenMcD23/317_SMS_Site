@@ -73,6 +73,7 @@ import {
   DatabaseBackup,
   ReceiptText,
   ShieldCheck,
+  ShieldUser,
   ScrollText,
 } from "lucide-react";
 
@@ -169,6 +170,7 @@ const NAV_SECTIONS: NavSection[] = [
     links: [
       { label: "Staff", href: "/staff/overview", icon: UserCog, staffOnly: true },
       { label: "Attendance", href: "/attendance", icon: CalendarCheck, staffOnly: true },
+      { label: "NCO Attendance", href: "/attendance/ncos", icon: ShieldUser, staffOnly: true },
       { label: "Committee Requests", href: "/committee/requests", icon: ReceiptText, staffOnly: true },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
