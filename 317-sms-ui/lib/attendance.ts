@@ -21,7 +21,23 @@ export const STATE_BADGE: Record<AttendanceState, string> = {
   absent: "border-destructive/40 bg-destructive/10 text-destructive",
 };
 
+/** One letter per state, for grids too tight for the full word. Always paired
+ *  with the label as a tooltip so the letter isn't the only signal either. */
+export const STATE_LETTER: Record<AttendanceState, string> = {
+  present: "P",
+  authorised: "A",
+  absent: "X",
+};
+
 export const EMPTY_COUNTS: StateCounts = { present: 0, authorised: 0, absent: 0 };
+
+/** Tally a set of records by state — the counting side of `STATE_*`, shared by
+ *  every view that shows a rate next to a register. */
+export function countStates(states: AttendanceState[]): StateCounts {
+  const counts = { present: 0, authorised: 0, absent: 0 };
+  for (const state of states) counts[state] += 1;
+  return counts;
+}
 
 export function addCounts(a: StateCounts, b: StateCounts): StateCounts {
   return {

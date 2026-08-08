@@ -17,10 +17,11 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Stat } from "@/components/stat";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AttendanceState } from "@/lib/attendance";
-import { STATE_BADGE } from "@/lib/attendance";
+import { countStates, rateExcludingAuthorised, rateOf, STATE_BADGE } from "@/lib/attendance";
 
 export type AttendanceRecord = {
   id: number;
@@ -67,36 +68,6 @@ function trendData(records: AttendanceRecord[]) {
   return { data, byYear };
 }
 
-function Stat({ label, value, hint, tone }: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  tone?: "primary" | "success" | "warning" | "destructive";
-}) {
-  return (
-    <div className={cn(
-      "rounded-lg border px-3 py-2",
-      tone === "primary" && "border-primary/30 bg-primary/5",
-      tone === "success" && "border-success/30 bg-success/10",
-      tone === "warning" && "border-warning/30 bg-warning/10",
-      tone === "destructive" && "border-destructive/30 bg-destructive/10",
-      !tone && "bg-card",
-    )}>
-      <p className={cn(
-        "font-semibold tabular-nums",
-        tone === "primary" ? "text-2xl text-primary" : "text-xl",
-        tone === "success" && "text-success",
-        tone === "warning" && "text-warning",
-        tone === "destructive" && "text-destructive",
-      )}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
-      {hint && <p className="text-[11px] text-muted-foreground/70">{hint}</p>}
-    </div>
-  );
-}
-
 /** Rows shown at once. Filters narrow the set; the cap just stops a 2,000-night
  *  register from putting that many rows in the DOM. */
 const ROW_LIMIT = 250;
@@ -134,15 +105,11 @@ export function AttendanceCard({ baseUrl }: Props) {
     return true;
   }), [records, from, to, type]);
 
-  const attended = filtered.filter((r) => r.state === "present").length;
-  const authorised = filtered.filter((r) => r.state === "authorised").length;
-  const absent = filtered.filter((r) => r.state === "absent").length;
-
-  const rate = filtered.length ? Math.round((attended / filtered.length) * 100) : null;
+  const counts = countStates(filtered.map((r) => r.state));
+  const rate = rateOf(counts);
   // An excused absence arguably shouldn't count against someone, so show that
   // reading too rather than picking one for the user.
-  const excusedBase = attended + absent;
-  const rateExcludingAuthorised = excusedBase ? Math.round((attended / excusedBase) * 100) : null;
+  const rateExclAuth = rateExcludingAuthorised(counts);
 
   const lastAttended = filtered.find(isPresent)?.date ?? null;   // newest first from the API
   const { data: trend, byYear } = useMemo(() => trendData(filtered), [filtered]);
@@ -213,15 +180,15 @@ export function AttendanceCard({ baseUrl }: Props) {
                 label="Attendance rate"
                 value={rate === null ? "—" : `${rate}%`}
                 hint={
-                  authorised > 0 && rateExcludingAuthorised !== null
-                    ? `${rateExcludingAuthorised}% excl. authorised`
+                  counts.authorised > 0 && rateExclAuth !== null
+                    ? `${rateExclAuth}% excl. authorised`
                     : undefined
                 }
                 tone="primary"
               />
-              <Stat label="Attended" value={attended} tone="success" />
-              <Stat label="Authorised absence" value={authorised} tone="warning" />
-              <Stat label="Absent" value={absent} tone="destructive" />
+              <Stat label="Attended" value={counts.present} tone="success" />
+              <Stat label="Authorised absence" value={counts.authorised} tone="warning" />
+              <Stat label="Absent" value={counts.absent} tone="destructive" />
               <Stat
                 label="Last attended"
                 value={lastAttended ? formatDate(lastAttended) : "—"}
