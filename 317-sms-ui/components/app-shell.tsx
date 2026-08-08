@@ -56,6 +56,7 @@ import {
   Shirt,
   WifiOff,
   AlertTriangle,
+  MessageSquare,
   MessageSquareText,
   Contact,
   Package,
@@ -129,6 +130,8 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "NCO Holidays", href: "/nco-holidays", icon: CalendarOff },
       // Staff-written and staff-only; the NCO gets their copy by email.
       { label: "NCO Appraisals", href: "/nco-appraisals", icon: UserCheck, staffOnly: true },
+      // NCOs and staff both read and write these.
+      { label: "NCO Comments", href: "/nco-comments", icon: MessageSquare },
     ],
   },
   {
