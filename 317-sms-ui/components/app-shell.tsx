@@ -64,6 +64,7 @@ import {
   Newspaper,
   BookOpen,
   UserCog,
+  UserCheck,
   UserMinus,
   GraduationCap,
   ChevronsUpDown,
@@ -126,6 +127,8 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Session Plans", href: "/session-plans", icon: ClipboardList },
       // Same again — NCOs book their own holidays, staff just see the list.
       { label: "NCO Holidays", href: "/nco-holidays", icon: CalendarOff },
+      // Staff-written and staff-only; the NCO gets their copy by email.
+      { label: "NCO Appraisals", href: "/nco-appraisals", icon: UserCheck, staffOnly: true },
     ],
   },
   {
