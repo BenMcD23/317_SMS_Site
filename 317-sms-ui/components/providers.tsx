@@ -27,7 +27,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SessionProvider refetchInterval={30 * 60} refetchOnWindowFocus={false}>
+    // The session carries the Google id_token the API authenticates with, and
+    // that only lives an hour. Refetch often enough — and on tab focus — that
+    // the browser never holds an expired one; a 401 here means a full redirect
+    // through Google, which reads to the user as "logged out again".
+    <SessionProvider refetchInterval={5 * 60}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"

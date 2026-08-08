@@ -1,5 +1,5 @@
 import NextAuth from "next-auth"
-import { authConfig } from "./auth.config"
+import { authConfig, withFreshTokens } from "./auth.config"
 import { google } from "googleapis"
 
 const STAFF_GROUP = "staff@317atc.co.uk"
@@ -47,36 +47,13 @@ async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" 
   return null
 }
 
-function getIdTokenExp(idToken: string): number {
-  try {
-    const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString())
-    return payload.exp ?? 0
-  } catch {
-    return 0
-  }
-}
-
-async function refreshGoogleToken(refreshToken: string) {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    }),
-  })
-  if (!res.ok) throw new Error("Token refresh failed")
-  return res.json()
-}
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   session: {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, account, user }) {
       if (account) {
         // ponytail: dev-only fake session (AUTH_DEV_BYPASS=1); skips Google
@@ -107,45 +84,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token
       }
 
-      const now = Math.floor(Date.now() / 1000)
-      if ((token.expires_at as number) > now + 300) return token
+      const fresh = await withFreshTokens(token)
+      if (fresh.expires_at === token.expires_at || fresh.error) return fresh
 
-      if (!token.refresh_token) return { ...token, error: "RefreshTokenMissing" }
-
+      // We actually refreshed (~hourly), so re-check group membership: someone
+      // removed from staff/NCO loses access promptly instead of keeping their
+      // role for the rest of the 30-day session. If the lookup itself fails,
+      // keep the current role rather than locking them out.
       try {
-        const refreshed = await refreshGoogleToken(token.refresh_token as string)
-        const newIdToken = refreshed.id_token ?? token.id_token
-        if (!refreshed.id_token && getIdTokenExp(newIdToken as string) < now + 60) {
-          return { ...token, error: "RefreshAccessTokenError" }
-        }
-        // Re-check group membership on each refresh (~hourly) so someone
-        // removed from staff/NCO loses access promptly instead of keeping
-        // their role for the rest of the 30-day session. If the lookup
-        // itself fails, keep the current role rather than locking them out.
-        let role = token.role
-        try {
-          role = (await getUserRole(token.email as string)) ?? undefined
-        } catch (e) {
-          console.error("[jwt] role re-check failed, keeping existing role:", e)
-        }
-        return {
-          ...token,
-          id_token: newIdToken,
-          expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in,
-          refresh_token: refreshed.refresh_token ?? token.refresh_token,
-          role,
-          error: undefined,
-        }
+        fresh.role = (await getUserRole(fresh.email as string)) ?? undefined
       } catch (e) {
-        console.error("[jwt] Token refresh failed:", e)
-        return { ...token, error: "RefreshAccessTokenError" }
+        console.error("[jwt] role re-check failed, keeping existing role:", e)
       }
-    },
-    async session({ session, token }) {
-      session.id_token = token.id_token as string
-      session.role = token.role
-      if (token.error) session.error = token.error as string
-      return session
+      return fresh
     },
     async signIn({ user, account }) {
       if (account?.provider === "credentials") return true // dev bypass only
