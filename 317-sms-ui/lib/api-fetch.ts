@@ -67,28 +67,30 @@ export function clearReauthMark() {
  *               Google for consent, the only thing that mints a fresh refresh
  *               token; automatic re-auths stay silent so the user sees a
  *               redirect flicker rather than a login screen.
+ * @returns whether the page is now navigating to Google. `false` means we
+ *          decided *not* to redirect, so the caller has to carry on and deal
+ *          with its failed request itself.
  */
 export async function reauth(
   callbackUrl = window.location.pathname,
   { force = false }: { force?: boolean } = {}
-): Promise<never> {
-  if (!isRedirecting) {
-    if (!force && reauthAttemptedRecently()) {
-      // Already went to Google and came back to the same 401 — stop circling.
-      isRedirecting = true; // suppress further attempts this page load too
-      window.dispatchEvent(new Event(AUTH_LOOP_EVENT));
-      return new Promise<never>(() => {});
-    }
-    isRedirecting = true;
-    try {
-      sessionStorage.setItem(REAUTH_MARK, String(Date.now()));
-    } catch {
-      // Best effort — the loop guard above already fails closed without it.
-    }
-    await signIn("google", { callbackUrl }, force ? { prompt: "consent" } : {});
+): Promise<boolean> {
+  if (isRedirecting) return true;
+
+  if (!force && reauthAttemptedRecently()) {
+    // Already went to Google and came back to the same 401 — stop circling.
+    window.dispatchEvent(new Event(AUTH_LOOP_EVENT));
+    return false;
   }
-  // Never resolves — the page is navigating away.
-  return new Promise<never>(() => {});
+
+  isRedirecting = true;
+  try {
+    sessionStorage.setItem(REAUTH_MARK, String(Date.now()));
+  } catch {
+    // Best effort — the loop guard above already fails closed without it.
+  }
+  await signIn("google", { callbackUrl }, force ? { prompt: "consent" } : {});
+  return true;
 }
 
 function flagPossibleOutage() {
@@ -109,7 +111,13 @@ export async function apiFetch(
   }
   if ([502, 503, 504].includes(res.status)) flagPossibleOutage();
 
-  if (res.status === 401) return reauth();
+  if (res.status === 401) {
+    // Only hang when the page really is leaving — the promise below can never
+    // settle. When reauth() declines to redirect we must return the 401 so the
+    // caller fails normally; returning the dead promise there left every query
+    // stuck loading until the user refreshed by hand.
+    if (await reauth()) return new Promise<never>(() => {});
+  }
 
   // The API accepted this token, so the last re-auth worked — reset the guard.
   if (res.ok) clearReauthMark();

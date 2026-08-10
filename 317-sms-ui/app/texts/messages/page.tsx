@@ -101,7 +101,7 @@ function ModelLine({ message }: { message: ParadeMessage }) {
     return (
       <p className="flex items-center gap-1.5 text-xs text-warning">
         <AlertTriangle className="size-3.5" />
-        Written by {message.generated_by_label} — the preferred model had hit its daily free-tier limit.
+        Written by {message.generated_by_label} — GLM 5.2 wasn&apos;t available, so a backup model wrote this one.
       </p>
     );
   }
@@ -460,7 +460,7 @@ export default function TextMessagesPage() {
 
       if (fellBack.length > 0) {
         const breakdown = models.map((m) => `${m.count} × ${m.label}`).join(", ");
-        toast.warning(`${base}. Best model hit its daily free-tier limit — fell back to a backup model.`, {
+        toast.warning(`${base}. GLM 5.2 wasn't available for all of them — some fell back to a backup model.`, {
           description: breakdown,
           duration: 10000,
         });
@@ -522,7 +522,7 @@ export default function TextMessagesPage() {
         replaceMessage(data);
         if (data.generated_with_fallback) {
           toast.warning(`Regenerated with ${data.generated_by_label}.`, {
-            description: "The preferred model had hit its daily free-tier limit.",
+            description: "GLM 5.2 wasn't available, so a backup model wrote it.",
           });
         } else {
           toast.success(`Regenerated with ${data.generated_by_label ?? "AI"}.`);
@@ -603,10 +603,12 @@ export default function TextMessagesPage() {
       <p className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0 text-warning" />
         <span>
-          The best AI model is on a free tier limited to ~20 generations a day. Generate a month once
-          and edit by hand where you can, rather than re-generating repeatedly — each night you generate
-          or regenerate uses one. If the daily limit is reached, texts are still written by a backup model
-          (you&apos;ll see a note on those).
+          Texts are written by <strong>GLM 5.2</strong> on NVIDIA&apos;s free tier — about 40 requests a
+          minute, shared across everyone using the squadron&apos;s key, with no daily cap. Generating a
+          whole month is fine: if it hits the per-minute limit it waits and carries on rather than
+          failing, so a big batch just takes a little longer. If GLM is unavailable a backup model
+          writes the text instead and you&apos;ll see a note on it — those backups <em>do</em> have
+          daily caps, so they can run out.
         </span>
       </p>
 
