@@ -63,7 +63,10 @@ export function clearReauthMark() {
  * sign-in instead.
  *
  * @param force  Bypass the cooldown — for an explicit user click on
- *               "sign in again", which should always be honoured.
+ *               "sign in again", which should always be honoured. It also asks
+ *               Google for consent, the only thing that mints a fresh refresh
+ *               token; automatic re-auths stay silent so the user sees a
+ *               redirect flicker rather than a login screen.
  */
 export async function reauth(
   callbackUrl = window.location.pathname,
@@ -82,7 +85,7 @@ export async function reauth(
     } catch {
       // Best effort — the loop guard above already fails closed without it.
     }
-    await signIn("google", { callbackUrl });
+    await signIn("google", { callbackUrl }, force ? { prompt: "consent" } : {});
   }
   // Never resolves — the page is navigating away.
   return new Promise<never>(() => {});

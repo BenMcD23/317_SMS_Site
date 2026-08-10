@@ -71,7 +71,10 @@ export default function LoginPage() {
             variant="outline"
             size="lg"
             className="w-full"
-            onClick={() => signIn("google", { redirectTo: "/" })}
+            // prompt=consent here (and only here plus "sign in again"): a
+            // deliberate login is what mints a fresh refresh token, which is
+            // what keeps the session alive without further Google screens.
+            onClick={() => signIn("google", { redirectTo: "/" }, { prompt: "consent" })}
           >
             <GoogleIcon />
             Continue with Google
@@ -80,6 +83,27 @@ export default function LoginPage() {
           <p className="text-center text-xs text-muted-foreground lg:text-left">
             Access is restricted to members of the 317 staff and NCO teams.
           </p>
+
+          {/* ponytail: dev-only role picker for the fake login. The credentials
+              provider behind it only exists when AUTH_DEV_BYPASS=1. */}
+          {process.env.NODE_ENV !== "production" && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted-foreground">Dev sign-in</p>
+              <div className="flex gap-2">
+                {(["staff", "snco", "nco"] as const).map((role) => (
+                  <Button
+                    key={role}
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 uppercase"
+                    onClick={() => signIn("credentials", { role, redirectTo: "/" })}
+                  >
+                    {role}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import type { JWT } from "next-auth/jwt"
-import { authConfig } from "./auth.config"
+import { authConfig, DEV_USERS, type DevRole } from "./auth.config"
 import { google } from "googleapis"
 
 // The client sends the raw Google id_token to the API, and Google only issues
@@ -92,7 +92,14 @@ async function requestTokens(refreshToken: string, currentIdToken?: string): Pro
       refresh_token: refreshToken,
     }),
   })
-  if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`)
+  if (!res.ok) {
+    // Google puts the reason in the body (invalid_grant = the refresh token was
+    // revoked, expired or replaced). Without it a renewal failure is
+    // indistinguishable from any other, and the user just gets bounced to
+    // Google with no trace of why.
+    const detail = await res.text().catch(() => "")
+    throw new Error(`Token refresh failed: ${res.status} ${detail}`)
+  }
   const refreshed = await res.json()
 
   // Google normally returns a fresh id_token alongside the access token; if it
@@ -155,7 +162,10 @@ async function withFreshTokens(token: JWT): Promise<JWT> {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   session: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    // Rolling — every session read re-signs the cookie for another 90 days, so
+    // regular users never reach it. Group membership is re-checked on every
+    // token renewal (~hourly), so a long session doesn't mean a stale role.
+    maxAge: 90 * 24 * 60 * 60, // 90 days
   },
   callbacks: {
     ...authConfig.callbacks,
@@ -165,11 +175,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // role lookup and token refresh. Backend accepts the matching
         // dev-fake-token only when its own DEV_FAKE_AUTH=1 flag is set.
         if (account.provider === "credentials") {
+          // The login page picks the role; the account it signed in as is what
+          // names it, and the API derives the same role from the token suffix.
+          const role = (Object.keys(DEV_USERS) as DevRole[]).find(
+            (r) => DEV_USERS[r].email === user?.email
+          ) ?? "staff"
           return {
             ...token,
-            // DEV_FAKE_ROLE=nco/snco to browse as that role; defaults to staff.
-            role: (process.env.DEV_FAKE_ROLE || "staff") as "staff" | "snco" | "nco",
-            id_token: "dev-fake-token",
+            role,
+            id_token: `dev-fake-token:${role}`,
             expires_at: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
           }
         }
