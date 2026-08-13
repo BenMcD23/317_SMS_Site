@@ -40,6 +40,8 @@ export type ScraperJobPoll = {
   finished_at: string | null;
   logs: ScraperLogLine[];
   last_seq: number;
+  /** The server truncated this page — poll again before believing `status`. */
+  has_more: boolean;
 };
 
 const POLL_MS = 1500;
@@ -119,6 +121,14 @@ export function useScraperJob(
         }
         setStatus(job.status);
         setStartedBy(job.started_by);
+
+        if (job.has_more) {
+          // Catching up on a truncated page — come straight back for the rest
+          // rather than treating a finished job's partial log as the whole of
+          // it, which is what a backgrounded tab through a long run produces.
+          timer = setTimeout(tick, 0);
+          return;
+        }
 
         if (isFinished(job.status)) {
           onFinishedRef.current?.(job);
