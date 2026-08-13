@@ -34,6 +34,17 @@ block, stop and extract it instead.
 - **Client fetches** to internal API routes go through `apiFetch` (`lib/api-fetch.ts`)
   so 401s trigger re-auth and outages notify the status overlay.
 
+- **File uploads** go through `prepareUpload` / `prepareUploads`
+  (`lib/compress-image.ts`) before the `FormData` is built. The API runs on
+  Lambda, which caps a request body at 6 MB; these shrink images and produce a
+  user-facing message for anything still too big. Don't hand-roll a
+  `file.size > ...` check — the limit lives in one place.
+
+- **Scraper job logs** are followed with `useScraperJob` (`lib/scraper-logs.ts`),
+  which polls `/scraper-logs/{job_id}?after=<seq>`. There is no SSE any more:
+  scrapers run on the home box and log to the database, so there is no stream
+  to hold open.
+
 ## Comments explain *why*, not *what*
 
 Every shared helper opens with a short doc comment saying what it is and why it

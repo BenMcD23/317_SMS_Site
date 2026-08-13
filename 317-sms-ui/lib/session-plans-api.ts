@@ -2,6 +2,7 @@
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { prepareUploads } from "@/lib/compress-image";
 import type { SessionPlanContent, SessionPlanDetail } from "@/lib/session-plans";
 
 /**
@@ -96,8 +97,11 @@ export async function uploadAttachments(
   id: number,
   files: File[],
 ): Promise<SessionPlanDetail> {
+  // Compress images and reject anything still over the API's payload limit
+  // before we build the body — the error message is written for the user.
+  const prepared = await prepareUploads(files);
   const form = new FormData();
-  files.forEach((f) => form.append("files", f));
+  prepared.forEach((f) => form.append("files", f));
   let res: Response;
   try {
     res = await apiFetch(`${API_BASE}/session-plans/${id}/attachments`, {

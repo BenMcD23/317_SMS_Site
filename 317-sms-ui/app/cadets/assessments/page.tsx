@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useScraperJob } from "@/lib/scraper-logs";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
 
 const EDITABLE_TYPES = ["Blue Leadership", "Blue Radio", "MOI"];
@@ -390,57 +391,55 @@ function UploadButton({
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(uploaded);
-  const esRef = useRef<EventSource | null>(null);
+  // The upload is a Playwright job, so it runs on the scraper machine like any
+  // other scrape: the endpoint queues it and hands back a job id to follow.
+  const [jobId, setJobId] = useState<number | null>(null);
+  const lastErrorRef = useRef<string | null>(null);
+
+  const toastId = `upload-${assessmentIds[0]}`;
+
+  useScraperJob(jobId, token, {
+    onLines: (lines) => {
+      for (const line of lines) {
+        if (line.type === "error") lastErrorRef.current = line.value;
+        if (line.type === "info" || line.type === "warning" || line.type === "log") {
+          toast.loading(line.value, { id: toastId, duration: Infinity });
+        }
+      }
+    },
+    onFinished: (job) => {
+      setJobId(null);
+      setLoading(false);
+      if (job.status === "done") {
+        setDone(true);
+        toast.success("Upload complete", {
+          id: toastId,
+          description: "Qualification uploaded to Bader SMS.",
+          duration: 6000,
+        });
+        onUploaded();
+        return;
+      }
+      if (job.status === "cancelled") {
+        toast.warning("Upload stopped", { id: toastId, duration: 6000 });
+        return;
+      }
+      toast.error("Upload failed", {
+        id: toastId,
+        description: lastErrorRef.current ?? "The scraper did not finish.",
+        duration: 8000,
+      });
+    },
+  });
 
   const handleUpload = async () => {
     if (!token) return;
     setLoading(true);
-
-    const toastId = `upload-${assessmentIds[0]}`;
-    toast.loading("Connecting to SMS…", { id: toastId, duration: Infinity });
-
-    const es = new EventSource(
-      `${API_BASE}/scraper-stream?token=${encodeURIComponent(token)}`
-    );
-    esRef.current = es;
-
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "info" || msg.type === "warning" || msg.type === "log") {
-          toast.loading(msg.value, { id: toastId, duration: Infinity });
-        }
-        if (msg.type === "status" && msg.value === "done") {
-          setDone(true);
-          setLoading(false);
-          es.close();
-          toast.success("Upload complete", {
-            id: toastId,
-            description: "Qualification uploaded to Bader SMS.",
-            duration: 6000,
-          });
-          onUploaded();
-        }
-        if (msg.type === "error") {
-          setLoading(false);
-          es.close();
-          toast.error("Upload failed", {
-            id: toastId,
-            description: msg.value,
-            duration: 8000,
-          });
-        }
-      } catch {}
-    };
-    es.onerror = () => {
-      es.close();
-      setLoading(false);
-      toast.error("Upload failed", {
-        id: toastId,
-        description: "Connection to scraper lost.",
-        duration: 8000,
-      });
-    };
+    lastErrorRef.current = null;
+    toast.loading("Queued — waiting for the scraper machine…", {
+      id: toastId,
+      duration: Infinity,
+    });
 
     try {
       const res = await apiFetch(`${API_BASE}/assessments/upload-to-bader`, {
@@ -451,19 +450,15 @@ function UploadButton({
         },
         body: JSON.stringify({ assessment_ids: assessmentIds }),
       });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(detail?.detail ?? "Upload failed");
-      }
+      const data = await res.json().catch(() => ({ detail: res.statusText }));
+      if (!res.ok) throw new Error(data?.detail ?? "Upload failed");
+      setJobId(data.job_id);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed";
       setLoading(false);
-      esRef.current?.close();
       toast.error("Upload failed", { id: toastId, description: msg, duration: 8000 });
     }
   };
-
-  useEffect(() => () => { esRef.current?.close(); }, []);
 
   if (done) {
     return (

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Upload, RefreshCw, FileText } from "lucide-react";
 import { API_BASE } from "@/lib/config";
+import { prepareUpload } from "@/lib/compress-image";
 import type { Newsletter } from "./types";
 
 const MONTHS = [
@@ -125,6 +126,19 @@ export function NewsletterDialog({
       }
     }
 
+    // Newsletters are PDFs, so there's nothing to compress — but the API's
+    // payload limit still applies, and a clear refusal beats an opaque failure
+    // part-way through the upload.
+    let pdf: File | null = null;
+    if (file) {
+      try {
+        pdf = await prepareUpload(file);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "That file is too large to upload.");
+        return;
+      }
+    }
+
     setLoading(true);
 
     const formData = new FormData();
@@ -132,7 +146,7 @@ export function NewsletterDialog({
     formData.append("date", `${month} ${year}`);
     formData.append("description", description.trim());
     formData.append("cover_color", coverColor);
-    if (file) formData.append("file", file);
+    if (pdf) formData.append("file", pdf);
     if (mode === "add") formData.append("issue", issue);
 
     const url =

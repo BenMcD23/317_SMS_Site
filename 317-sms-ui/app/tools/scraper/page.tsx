@@ -26,6 +26,7 @@ import {
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useScraperJob } from "@/lib/scraper-logs";
 
 const SCRAPER_TOOLS = [
   {
@@ -80,7 +81,12 @@ const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
 
 type LogEntry = { text: string; time: string };
 type LastRun = { id: number | null; ran_at: string | null; success: boolean | null; ran_by: string | null };
-type RunningState = { running: boolean; started_by: string | null };
+type RunningState = {
+  running: boolean;
+  started_by: string | null;
+  job_id: number | null;
+  status: string | null;
+};
 type RunDetail = {
   id: number;
   scraper_id: string;
@@ -90,9 +96,11 @@ type RunDetail = {
   logs: string;
 };
 
-const toEntry = (text: string): LogEntry => ({
+const toEntry = (text: string, ts?: string): LogEntry => ({
   text,
-  time: new Date().toLocaleTimeString(),
+  // The line's own timestamp, so a batch that arrives together in one poll
+  // still shows when each line actually happened on the worker.
+  time: new Date(ts ?? Date.now()).toLocaleTimeString(),
 });
 
 function formatLastRan(isoString: string | null): string {
@@ -113,78 +121,44 @@ function formatLastRan(isoString: string | null): string {
 
 function ConsolePanel({
   scraperId,
+  jobId,
   label,
   token,
   onDone,
 }: {
   scraperId: string;
+  jobId: number;
   label: string;
   token: string;
   onDone: (id: string) => void;
 }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [status, setStatus] = useState<"running" | "done" | "error" | "stopping" | "stopped">("running");
+  const [stopping, setStopping] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
-  const addLog = useCallback((text: string) => {
-    setLogs((prev) => [...prev, toEntry(text)]);
-  }, []);
+  const { status, error } = useScraperJob(jobId, token, {
+    onLines: (lines) =>
+      setLogs((prev) => [
+        ...prev,
+        ...lines
+          // "done"/"stopped" are the job's own outcome, already shown in the
+          // header badge — printing them in the console just adds noise.
+          .filter((line) => !(line.type === "status" && line.value !== "running"))
+          .map((line) =>
+            line.type === "status"
+              ? toEntry(`> ${label} started`, line.ts)
+              : toEntry(line.type === "error" ? `[ERROR] ${line.value}` : line.value, line.ts),
+          ),
+      ]),
+    onFinished: () => onDone(scraperId),
+  });
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
-  useEffect(() => {
-    const url = `${API_BASE}/scraper-stream/${scraperId}?token=${encodeURIComponent(token)}`;
-    const evtSource = new EventSource(url);
-    eventSourceRef.current = evtSource;
-
-    evtSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.type === "status" && data.value === "running") {
-          addLog(`> ${label} started`);
-        }
-        if (data.type === "status" && data.value === "done") {
-          setStatus("done");
-          onDone(scraperId);
-          evtSource.close();
-        }
-        if (data.type === "status" && data.value === "stopped") {
-          setStatus("stopped");
-          onDone(scraperId);
-          evtSource.close();
-        }
-        if (data.type === "error") {
-          setStatus("error");
-          addLog(`[ERROR] ${data.value}`);
-          onDone(scraperId);
-          evtSource.close();
-        }
-        if (data.type === "log" || data.type === "info") {
-          addLog(data.value);
-        }
-        if (data.type === "warning") {
-          addLog(data.value);
-        }
-      } catch {
-        addLog(event.data);
-      }
-    };
-
-    evtSource.onerror = () => {
-      evtSource.close();
-    };
-
-    return () => {
-      evtSource.close();
-    };
-  }, [scraperId, token, label, addLog, onDone]);
-
   const handleStop = async () => {
-    setStatus("stopping");
+    setStopping(true);
     try {
       const res = await apiFetch(`${API_BASE}/stop-scraper/${scraperId}`, {
         method: "POST",
@@ -193,66 +167,73 @@ function ConsolePanel({
       if (!res.ok) {
         const data = await res.json();
         toast.error(data.detail || "Could not stop scraper");
-        setStatus("running");
+        setStopping(false);
       }
+      // Otherwise leave "Stopping…" up: the worker polls the flag, so it takes
+      // a second or two, and the poll below will report the real outcome.
     } catch {
       toast.error("Could not reach server");
-      setStatus("running");
+      setStopping(false);
     }
   };
 
-  const borderColor =
-    status === "done"
-      ? "border-success/40"
-      : status === "error"
-      ? "border-destructive/40"
-      : status === "stopped"
-      ? "border-warning/40"
-      : "border-primary/30";
+  const done = status === "done";
+  const failed = status === "failed";
+  const cancelled = status === "cancelled";
+  const inFlight = !done && !failed && !cancelled;
 
-  const headerBg =
-    status === "done"
-      ? "bg-success/10"
-      : status === "error"
-      ? "bg-destructive/10"
-      : status === "stopped"
-      ? "bg-warning/10"
-      : "bg-primary/10";
+  const borderColor = done
+    ? "border-success/40"
+    : failed
+    ? "border-destructive/40"
+    : cancelled
+    ? "border-warning/40"
+    : "border-primary/30";
+
+  const headerBg = done
+    ? "bg-success/10"
+    : failed
+    ? "bg-destructive/10"
+    : cancelled
+    ? "bg-warning/10"
+    : "bg-primary/10";
+
+  const statusLabel = done
+    ? "Done"
+    : failed
+    ? "Failed"
+    : cancelled
+    ? "Stopped"
+    : stopping
+    ? "Stopping…"
+    : status === "queued"
+    ? "Queued"
+    : "Running";
 
   return (
     <div className={cn("flex flex-col overflow-hidden rounded-lg border", borderColor)}>
       <div className={cn("flex items-center gap-2 px-3 py-2 text-sm font-medium", headerBg)}>
-        {(status === "running" || status === "stopping") && (
-          <Loader2 size={13} className="shrink-0 animate-spin text-primary" />
-        )}
-        {status === "done" && <span className="shrink-0 text-success">✓</span>}
-        {status === "error" && <span className="shrink-0 text-destructive">✗</span>}
-        {status === "stopped" && <span className="shrink-0 text-warning">■</span>}
+        {inFlight && <Loader2 size={13} className="shrink-0 animate-spin text-primary" />}
+        {done && <span className="shrink-0 text-success">✓</span>}
+        {failed && <span className="shrink-0 text-destructive">✗</span>}
+        {cancelled && <span className="shrink-0 text-warning">■</span>}
         <span className="truncate">{label}</span>
         <Badge
           variant="outline"
           className={cn(
             "ml-auto",
-            status === "done"
+            done
               ? "border-success/40 bg-success/10 text-success"
-              : status === "error"
+              : failed
               ? "border-destructive/40 bg-destructive/10 text-destructive"
-              : status === "stopped"
+              : cancelled
               ? "border-warning/40 bg-warning/10 text-warning"
               : "border-primary/40 bg-primary/10 text-primary"
           )}
         >
-          {status === "running"
-            ? "Running"
-            : status === "stopping"
-            ? "Stopping…"
-            : status === "done"
-            ? "Done"
-            : status === "stopped"
-            ? "Stopped"
-            : "Error"}
+          {statusLabel}
         </Badge>
-        {(status === "running") && (
+        {inFlight && !stopping && (
           <button
             onClick={handleStop}
             title="Stop scraper"
@@ -284,8 +265,13 @@ function ConsolePanel({
           </div>
         ))}
         {logs.length === 0 && (
-          <span className="text-gray-600 animate-pulse">_ Connecting...</span>
+          <span className="text-gray-600 animate-pulse">
+            {status === "queued"
+              ? "_ Queued — waiting for the scraper machine to pick this up..."
+              : "_ Connecting..."}
+          </span>
         )}
+        {error && <div className="mt-1 text-yellow-400">[WARN] {error}</div>}
         <div ref={logsEndRef} />
       </ScrollArea>
     </div>
@@ -672,7 +658,10 @@ export default function ScraperPage() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<"select" | "running">("select");
-  const [activeScrapers, setActiveScrapers] = useState<string[]>([]);
+  // A run is a queued job now, so each console follows a job id rather than a
+  // scraper name — that's also what lets you re-attach to a run someone else
+  // started, or to one still waiting for the scraper machine.
+  const [activeScrapers, setActiveScrapers] = useState<{ id: string; jobId: number }[]>([]);
   const [doneScrapers, setDoneScrapers] = useState<Set<string>>(new Set());
   const [lastRuns, setLastRuns] = useState<Record<string, LastRun>>({});
   const [runningState, setRunningState] = useState<Record<string, RunningState>>({});
@@ -750,6 +739,7 @@ export default function ScraperPage() {
     setIsStarting(true);
     const ids = Array.from(selected);
     const failures: string[] = [];
+    const started: { id: string; jobId: number }[] = [];
 
     await Promise.all(
       ids.map(async (name) => {
@@ -758,10 +748,12 @@ export default function ScraperPage() {
             method: "GET",
             headers: { Authorization: `Bearer ${session.id_token}` },
           });
+          const data = await res.json();
           if (!res.ok) {
-            const data = await res.json();
             failures.push(`${name}: ${data.detail || "Server error"}`);
+            return;
           }
+          started.push({ id: name, jobId: data.job_id });
         } catch {
           failures.push(`${name}: Could not reach server`);
         }
@@ -774,7 +766,6 @@ export default function ScraperPage() {
       failures.forEach((f) => toast.error(f));
     }
 
-    const started = ids.filter((id) => !failures.some((f) => f.startsWith(id)));
     if (started.length > 0) {
       setActiveScrapers(started);
       setDoneScrapers(new Set());
@@ -783,8 +774,11 @@ export default function ScraperPage() {
   };
 
   const handleViewRunning = () => {
-    const ids = externallyRunning.map((t) => t.id);
-    setActiveScrapers(ids);
+    setActiveScrapers(
+      externallyRunning
+        .map((t) => ({ id: t.id, jobId: runningState[t.id]?.job_id }))
+        .filter((s): s is { id: string; jobId: number } => s.jobId != null)
+    );
     setDoneScrapers(new Set());
     setPhase("running");
   };
@@ -985,12 +979,13 @@ export default function ScraperPage() {
                 : "grid-cols-1 md:grid-cols-2"
             }`}
           >
-            {activeScrapers.map((id) => {
+            {activeScrapers.map(({ id, jobId }) => {
               const tool = SCRAPER_TOOLS.find((t) => t.id === id)!;
               return (
                 <ConsolePanel
-                  key={id}
+                  key={jobId}
                   scraperId={id}
+                  jobId={jobId}
                   label={tool.label}
                   token={session.id_token!}
                   onDone={handleScraperDone}

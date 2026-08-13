@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { prepareUpload } from "@/lib/compress-image";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -154,6 +155,15 @@ export default function SettingsPage() {
         fileToSave = signatureFile;
       }
       if (!fileToSave) return;
+
+      // A drawn signature is tiny and passes straight through; an uploaded
+      // photo of one is what needs shrinking under the API's payload limit.
+      try {
+        fileToSave = await prepareUpload(fileToSave);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "That image is too large to upload.");
+        return;
+      }
 
       const formData = new FormData();
       formData.append("file", fileToSave);

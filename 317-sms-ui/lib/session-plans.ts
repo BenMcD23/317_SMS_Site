@@ -216,7 +216,6 @@ export const STATUS_STYLE: Record<
 };
 
 export const ATTACHMENT_ACCEPT = "image/png,image/jpeg,image/webp,application/pdf";
-export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 /** Strip a detail response down to just the editable content. */
 export function contentOf(plan: SessionPlanDetail): SessionPlanContent {

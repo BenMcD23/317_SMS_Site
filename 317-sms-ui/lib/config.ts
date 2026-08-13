@@ -1,4 +1,12 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+/**
+ * The API's origin. In deployed environments this is the Lambda Function URL —
+ * AWS shows it *with* a trailing slash, and every caller here concatenates
+ * `${API_BASE}/path`, so it's stripped once rather than trusting whoever pasted
+ * it into Vercel to have noticed.
+ */
+export const API_BASE = (
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+).replace(/\/+$/, "");
 
 // Sole owner/maintainer — gates developer-only views (e.g. /api-logs).
 // Mirrors OWNER_EMAIL in the API's core/config.py.

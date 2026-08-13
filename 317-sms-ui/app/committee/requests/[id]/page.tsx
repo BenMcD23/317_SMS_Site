@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { prepareUploads } from "@/lib/compress-image";
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +32,6 @@ import {
 } from "@/lib/committee";
 
 const RECEIPT_ACCEPT = "image/png,image/jpeg,application/pdf";
-const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 
 interface BankProfile {
   bank_account_name: string;
@@ -139,15 +139,18 @@ export default function CommitteeRequestDetailPage({
 
   const uploadReceipts = async (files: FileList) => {
     if (!token) return;
-    const chosen = Array.from(files);
-    for (const f of chosen) {
-      if (f.size > MAX_RECEIPT_BYTES) {
-        toast.error(`${f.name}: each receipt must be under 5 MB.`);
-        return;
-      }
-    }
     setBusy("upload");
     try {
+      // Receipts are the realistic >6 MB case — someone photographs one on a
+      // phone. prepareUploads shrinks what it can and gives a clear message
+      // for what it can't, instead of the API refusing the body.
+      let chosen: File[];
+      try {
+        chosen = await prepareUploads(Array.from(files));
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "That file is too large to upload.");
+        return;
+      }
       const form = new FormData();
       chosen.forEach((f) => form.append("files", f));
       const res = await apiFetch(`${API_BASE}/committee-requests/${id}/receipts`, {

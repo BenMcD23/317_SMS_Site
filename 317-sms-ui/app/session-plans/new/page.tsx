@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, FileText, Loader2, Save, Send, Trash2, Upload } from "lucide-react";
 import { savePlan, submitPlan, uploadAttachments } from "@/lib/session-plans-api";
+import { prepareUploads } from "@/lib/compress-image";
 import {
-  ATTACHMENT_ACCEPT, EMPTY_PLAN, MAX_ATTACHMENT_BYTES, missingForSubmit,
+  ATTACHMENT_ACCEPT, EMPTY_PLAN, missingForSubmit,
   type SessionPlanContent,
 } from "@/lib/session-plans";
 
@@ -32,11 +33,15 @@ export default function NewSessionPlanPage() {
 
   // Nothing to attach files to until the plan exists, so they queue here and go
   // up straight after it's created.
-  const addFiles = (chosen: FileList) => {
-    const picked = Array.from(chosen);
-    const tooBig = picked.find((f) => f.size > MAX_ATTACHMENT_BYTES);
-    if (tooBig) {
-      toast.error(`${tooBig.name}: each file must be under 5 MB.`);
+  const addFiles = async (chosen: FileList) => {
+    // Compress as they're picked rather than at upload time, so a too-large
+    // file is rejected while the user is still looking at the file picker —
+    // and so the queued files are already within the API's payload limit.
+    let picked: File[];
+    try {
+      picked = await prepareUploads(Array.from(chosen));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "That file is too large to upload.");
       return;
     }
     setFiles((current) => [...current, ...picked]);
@@ -95,7 +100,8 @@ export default function NewSessionPlanPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Attachments</CardTitle>
           <p className="text-sm text-muted-foreground">
-            A map, a diagram, anything else staff should see. PNG, JPEG, WebP or PDF, up to 5 MB each.
+            A map, a diagram, anything else staff should see. PNG, JPEG, WebP or PDF.
+            Large photos are shrunk automatically; anything still over 5 MB is refused.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">

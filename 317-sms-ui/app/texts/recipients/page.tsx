@@ -27,6 +27,7 @@ import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { prepareUpload } from "@/lib/compress-image";
 
 type Recipient = {
   id: number;
@@ -136,8 +137,17 @@ export default function TextRecipientsPage() {
     if (!importFile) return;
     setImporting(true);
     try {
+      // A CSV can't be compressed, but it still has to fit the API's payload
+      // limit — better a clear message here than an opaque failure mid-upload.
+      let file: File;
+      try {
+        file = await prepareUpload(importFile);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "That file is too large to upload.");
+        return;
+      }
       const form = new FormData();
-      form.append("file", importFile);
+      form.append("file", file);
       form.append("mode", importMode);
       const resp = await apiFetch(`${API_BASE}/texts/recipients/import`, {
         method: "POST",

@@ -18,7 +18,7 @@ import {
   savePlan, submitPlan, deleteAttachment, uploadAttachments,
 } from "@/lib/session-plans-api";
 import {
-  ATTACHMENT_ACCEPT, MAX_ATTACHMENT_BYTES, contentOf, missingForSubmit,
+  ATTACHMENT_ACCEPT, contentOf, missingForSubmit,
   type SessionPlanContent, type SessionPlanDetail,
 } from "@/lib/session-plans";
 
@@ -78,15 +78,11 @@ export default function EditSessionPlanPage({
 
   const uploadFiles = async (files: FileList) => {
     if (!token) return;
-    const chosen = Array.from(files);
-    const tooBig = chosen.find((f) => f.size > MAX_ATTACHMENT_BYTES);
-    if (tooBig) {
-      toast.error(`${tooBig.name}: each file must be under 5 MB.`);
-      return;
-    }
     setBusy("upload");
     try {
-      await uploadAttachments(token, planId, chosen);
+      // uploadAttachments compresses images and throws a message meant for the
+      // user if a file still won't fit the API's payload limit.
+      await uploadAttachments(token, planId, Array.from(files));
       toast.success("File attached.");
       refresh();
     } catch (e) {
@@ -181,7 +177,8 @@ export default function EditSessionPlanPage({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Attachments</CardTitle>
           <p className="text-sm text-muted-foreground">
-            A map, a diagram, anything else staff should see. PNG, JPEG, WebP or PDF, up to 5 MB each.
+            A map, a diagram, anything else staff should see. PNG, JPEG, WebP or PDF.
+            Large photos are shrunk automatically; anything still over 5 MB is refused.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
