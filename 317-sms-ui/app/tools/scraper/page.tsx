@@ -37,12 +37,8 @@ const SCRAPER_TOOLS = [
   {
     id: "cadet-event",
     label: "Cadet Event Scraper",
-    description: "Extracts attendance lists for currently active SMS events.",
-  },
-  {
-    id: "317-event",
-    label: "317 Event Scraper",
-    description: "Pulls full event metadata into the local database.",
+    description:
+      "Extracts attendance lists for currently active SMS events, and pulls the full event details (dates, location, cost, dress, description) for any event run by 317 (Failsworth & Newton Heath) into the local database.",
   },
   {
     id: "medical",
@@ -71,8 +67,7 @@ const SCRAPER_TOOLS = [
 // [] — add their keys here if/when those pages move to useApiQuery.
 const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
   "cadet-quali": [["cadets"], ["stats"]], // cadet info + qualifications → list & dashboard
-  "cadet-event": [],                      // attendance lives on cadet detail (uncached)
-  "317-event": [],                        // event metadata (uncached)
+  "cadet-event": [],                      // attendance + 317 event metadata (uncached)
   "medical": [],                          // allergies/dietary on cadet detail (uncached)
   "staff": [["staff", "users"]],          // staff roster → staff overview/detail
   "absences": [["absences"]],             // booked absences → inspection sheet cross-outs
