@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
   Award, ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X,
   StickyNote, ArrowUpDown, PackageCheck, PackageMinus, PackagePlus,
-  CheckCircle2, RotateCcw, Bell, ClipboardList, Copy, Check, Lock,
+  CheckCircle2, RotateCcw, Bell, ClipboardList, Copy, Check, Lock, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderList, isRemovedFromStock } from "@/lib/stores-types";
+import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderList, BadgeOrderListEntry, isRemovedFromStock } from "@/lib/stores-types";
 import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName } from "../badge-types";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -37,6 +37,14 @@ import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type StockMatch = { item: BadgeItem; cell: BadgeCell };
+
+/** An order list entry resolved back to the order item it was created from. */
+type OrderItemRef = { order: BadgeOrder; item: BadgeOrderItem };
+
+/** Note composers are keyed so the one in an order and the one on the order list stay independent. */
+function entryNoteKey(entryId: string) {
+  return `list:${entryId}`;
+}
 
 function BadgePicker({
   category, subType, level, onCategory, onSubType, onLevel,
@@ -142,10 +150,30 @@ export default function BadgeOrdersPage() {
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Jumping from an order list entry back to the order item it came from
+  const [pendingJumpItemId, setPendingJumpItemId] = useState<string | null>(null);
+  const [highlightItemId, setHighlightItemId] = useState<string | null>(null);
+
   // Generic confirm dialog
   const { confirm: openConfirm, confirmDialog } = useConfirm();
 
   useEffect(() => { fetchAll(); }, []);
+
+  // Runs once the target order has been switched to and expanded, so the row is in the DOM.
+  useEffect(() => {
+    if (!pendingJumpItemId) return;
+    const el = document.getElementById(`badge-order-item-${pendingJumpItemId}`);
+    setPendingJumpItemId(null);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightItemId(pendingJumpItemId);
+  }, [pendingJumpItemId]);
+
+  useEffect(() => {
+    if (!highlightItemId) return;
+    const timer = setTimeout(() => setHighlightItemId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [highlightItemId]);
 
   async function fetchAll() {
     setLoading(true);
@@ -399,6 +427,29 @@ export default function BadgeOrdersPage() {
 
   // ── Order list ─────────────────────────────────────────────────────────────
 
+  // Order list entries only keep the id of the order item they were made from, so
+  // resolve that back to the live order/item to link to it and to reach its QM notes.
+  const orderItemRefs = useMemo(() => {
+    const map = new Map<string, OrderItemRef>();
+    for (const order of orders) {
+      for (const item of order.items) map.set(item.id, { order, item });
+    }
+    return map;
+  }, [orders]);
+
+  function resolveEntry(entry: BadgeOrderListEntry): OrderItemRef | undefined {
+    return entry.orderItemId ? orderItemRefs.get(entry.orderItemId) : undefined;
+  }
+
+  function goToOrderItem(ref: OrderItemRef) {
+    setActiveTab(ref.order.completed ? "completed" : "active");
+    setSearchQuery("");
+    setExpandedIds((prev) => new Set(prev).add(ref.order.id));
+    setAddingNoteItemId(null);
+    setNoteText("");
+    setPendingJumpItemId(ref.item.id);
+  }
+
   const openOrderList = orderLists.find((l) => !l.orderedAt) ?? null;
   const pastOrderLists = orderLists.filter((l) => !!l.orderedAt);
   const onOrderListItemIds = new Set(
@@ -466,6 +517,115 @@ export default function BadgeOrdersPage() {
       else next.add(id);
       return next;
     });
+  }
+
+  /**
+   * One row on an order list. The badge/cadet text links back to the order item the
+   * entry was created from, and its QM notes are shown and editable inline so the
+   * order list can be worked through without leaving the tab.
+   */
+  function renderOrderListEntry(entry: BadgeOrderListEntry, options: { removable: boolean }) {
+    const ref = resolveEntry(entry);
+    const notes = ref?.item.qmNotes ?? [];
+    const canEditNotes = !!ref && !ref.order.completed;
+    const noteKey = entryNoteKey(entry.id);
+    const isAddingNoteHere = addingNoteItemId === noteKey;
+
+    return (
+      <li key={entry.id} className="rounded-md border bg-muted/30 px-3 py-2 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          {ref ? (
+            <button
+              type="button"
+              onClick={() => goToOrderItem(ref)}
+              className="group min-w-0 flex-1 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title={`Go to ${ref.order.cadetName}'s order`}
+            >
+              <p className="text-sm">
+                <span className="font-medium underline-offset-2 group-hover:underline">{entry.badgeName}</span>
+                <span className="text-muted-foreground"> — {entry.cadetName}</span>
+                <ExternalLink className="ml-1.5 inline h-3 w-3 shrink-0 align-[-1px] text-muted-foreground" />
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                Ordered {formatTimestamp(ref.order.timestamp)}
+                {ref.order.completed && " · order completed"}
+              </p>
+            </button>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm">
+                <span className="font-medium">{entry.badgeName}</span>
+                <span className="text-muted-foreground"> — {entry.cadetName}</span>
+              </p>
+              <p className="text-[10px] text-muted-foreground">Original order no longer available</p>
+            </div>
+          )}
+
+          {options.removable && (
+            <Button size="icon" variant="ghost"
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+              onClick={() => handleRemoveOrderListEntry(entry.id)}
+              aria-label="Remove from order list">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+
+        {(notes.length > 0 || canEditNotes) && (
+          <div className="space-y-1.5 border-t pt-2">
+            {notes.map((note) => (
+              <div key={note.id} className="rounded border bg-background px-2.5 py-1.5 space-y-0.5">
+                <p className="text-xs whitespace-pre-wrap">{note.content}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-muted-foreground">
+                    {note.addedBy} · {formatTimestamp(note.timestamp)}
+                  </p>
+                  {canEditNotes && (
+                    <Button size="icon" variant="ghost"
+                      className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteQmNote(ref!.order.id, ref!.item, note.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {canEditNotes && (
+              isAddingNoteHere ? (
+                <div className="space-y-1.5">
+                  <textarea
+                    className="w-full rounded-md border bg-background px-3 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                    rows={3}
+                    placeholder="Type your note..."
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="h-7 px-3 text-xs"
+                      disabled={!noteText.trim() || savingNote}
+                      onClick={() => handleAddQmNote(ref!.order.id, ref!.item)}>
+                      {savingNote ? "Saving..." : "Save Note"}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+                      onClick={() => { setAddingNoteItemId(null); setNoteText(""); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button size="sm" variant="outline" className="h-7 w-full px-2 text-xs"
+                  onClick={() => { setAddingNoteItemId(noteKey); setNoteText(""); }}>
+                  <StickyNote className="mr-1.5 h-3 w-3" />
+                  Add QM Note
+                </Button>
+              )
+            )}
+          </div>
+        )}
+      </li>
+    );
   }
 
   async function handleAddToOrder(orderId: string) {
@@ -615,7 +775,14 @@ export default function BadgeOrdersPage() {
                         const isAddingNoteHere = addingNoteItemId === orderItem.id;
 
                         return (
-                          <li key={orderItem.id} className="rounded-md border bg-muted/30 p-3 space-y-2">
+                          <li
+                            key={orderItem.id}
+                            id={`badge-order-item-${orderItem.id}`}
+                            className={cn(
+                              "rounded-md border bg-muted/30 p-3 space-y-2 transition-colors",
+                              highlightItemId === orderItem.id && "border-primary bg-primary/10 ring-2 ring-primary/40"
+                            )}
+                          >
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1 space-y-1.5">
                                 <p className="text-sm font-medium">
@@ -869,21 +1036,7 @@ export default function BadgeOrdersPage() {
               ) : (
                 <>
                   <ul className="space-y-1.5">
-                    {openOrderList.entries.map((entry) => (
-                      <li key={entry.id}
-                        className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
-                        <p className="min-w-0 flex-1 text-sm">
-                          <span className="font-medium">{entry.badgeName}</span>
-                          <span className="text-muted-foreground"> — {entry.cadetName}</span>
-                        </p>
-                        <Button size="icon" variant="ghost"
-                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveOrderListEntry(entry.id)}
-                          aria-label="Remove from order list">
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </li>
-                    ))}
+                    {openOrderList.entries.map((entry) => renderOrderListEntry(entry, { removable: true }))}
                   </ul>
                   <div className="flex justify-end gap-2 pt-1">
                     <Button size="sm" variant="outline" onClick={() => handleCopyList(openOrderList)}>
@@ -942,12 +1095,7 @@ export default function BadgeOrdersPage() {
                     {expanded && (
                       <CardContent className="pt-4 space-y-3">
                         <ul className="space-y-1.5">
-                          {list.entries.map((entry) => (
-                            <li key={entry.id} className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                              <span className="font-medium">{entry.badgeName}</span>
-                              <span className="text-muted-foreground"> — {entry.cadetName}</span>
-                            </li>
-                          ))}
+                          {list.entries.map((entry) => renderOrderListEntry(entry, { removable: false }))}
                         </ul>
                         <div className="flex justify-end pt-1">
                           <Button size="sm" variant="outline" onClick={() => handleCopyList(list)}>
