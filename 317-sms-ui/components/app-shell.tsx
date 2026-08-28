@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
-import { reauth } from "@/lib/api-fetch";
+import { AUTH_LOOP_EVENT, clearReauthMark, reauth } from "@/lib/api-fetch";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { OWNER_EMAIL, isOc } from "@/lib/config";
+import { canAccess } from "@/lib/access";
 import {
   Sidebar,
   SidebarContent,
@@ -56,6 +57,7 @@ import {
   Shirt,
   WifiOff,
   AlertTriangle,
+  MessageSquare,
   MessageSquareText,
   Contact,
   Package,
@@ -64,6 +66,7 @@ import {
   Newspaper,
   BookOpen,
   UserCog,
+  UserCheck,
   UserMinus,
   GraduationCap,
   ChevronsUpDown,
@@ -71,24 +74,24 @@ import {
   DatabaseBackup,
   ReceiptText,
   ShieldCheck,
+  ShieldUser,
   ScrollText,
 } from "lucide-react";
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
+// No per-role flags here: a link is shown when the role can actually reach the
+// route, decided by canAccess — the same rule middleware enforces.
 type NavLink = {
   label: string;
   href: string;
   icon: React.ElementType;
-  staffOnly?: boolean;
-  sncoOnly?: boolean;
   ownerOnly?: boolean;
   ocOnly?: boolean;
 };
 
 type NavSection = {
   label?: string;
-  staffOnly?: boolean;
   ownerOnly?: boolean;
   ocOnly?: boolean;
   links: NavLink[];
@@ -101,19 +104,19 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Cadets",
     links: [
-      { label: "Overview", href: "/cadets/overview", icon: Users, staffOnly: true },
+      { label: "Overview", href: "/cadets/overview", icon: Users },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck },
-      { label: "Inspection History", href: "/cadets/inspections", icon: Shirt, staffOnly: true },
-      { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap, staffOnly: true },
-      { label: "Events", href: "/cadets/events", icon: Calendar, staffOnly: true },
-      { label: "Audit", href: "/cadets/audit", icon: ShieldCheck, staffOnly: true },
-      { label: "Leaving Process", href: "/cadets/leaving", icon: UserMinus, staffOnly: true },
+      { label: "Inspection History", href: "/cadets/inspections", icon: Shirt },
+      { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap },
+      { label: "Events", href: "/cadets/events", icon: Calendar },
+      { label: "Audit", href: "/cadets/audit", icon: ShieldCheck },
+      { label: "Leaving Process", href: "/cadets/leaving", icon: UserMinus },
     ],
   },
   {
     label: "Assessment Sheets",
     links: [
-      { label: "Inspection", href: "/assessments/inspection", icon: Shirt, sncoOnly: true },
+      { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
       { label: "MOI", href: "/assessments/moi", icon: BookOpen },
@@ -122,15 +125,15 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Training",
     links: [
-      // No role flag — NCOs write the plans, staff review them.
       { label: "Session Plans", href: "/session-plans", icon: ClipboardList },
-      // Same again — NCOs book their own holidays, staff just see the list.
       { label: "NCO Holidays", href: "/nco-holidays", icon: CalendarOff },
+      // Staff-only (see lib/access.ts); the NCO gets their copy by email.
+      { label: "NCO Appraisals", href: "/nco-appraisals", icon: UserCheck },
+      { label: "NCO Comments", href: "/nco-comments", icon: MessageSquare },
     ],
   },
   {
     label: "Stores",
-    staffOnly: true,
     links: [
       { label: "Uniform Stock", href: "/stores/uniform/stock", icon: Package },
       { label: "Uniform Orders", href: "/stores/uniform/orders", icon: ShoppingCart },
@@ -140,7 +143,6 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Texts",
-    staffOnly: true,
     links: [
       { label: "Messages", href: "/texts/messages", icon: MessageSquareText },
       { label: "Recipients", href: "/texts/recipients", icon: Contact },
@@ -148,7 +150,6 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Tools",
-    staffOnly: true,
     links: [
       { label: "JI/AO Generator", href: "/tools/ji-ao-generator", icon: FileText },
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap },
@@ -161,9 +162,10 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Squadron",
     links: [
-      { label: "Staff", href: "/staff/overview", icon: UserCog, staffOnly: true },
-      { label: "Attendance", href: "/attendance", icon: CalendarCheck, staffOnly: true },
-      { label: "Committee Requests", href: "/committee/requests", icon: ReceiptText, staffOnly: true },
+      { label: "Staff", href: "/staff/overview", icon: UserCog },
+      { label: "Attendance", href: "/attendance", icon: CalendarCheck },
+      { label: "NCO Attendance", href: "/attendance/ncos", icon: ShieldUser },
+      { label: "Committee Requests", href: "/committee/requests", icon: ReceiptText },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
@@ -187,18 +189,13 @@ const NAV_SECTIONS: NavSection[] = [
 function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
   const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
   const oc = isOc(email);
-  const canSee = (item: {
-    staffOnly?: boolean;
-    sncoOnly?: boolean;
-    ownerOnly?: boolean;
-    ocOnly?: boolean;
-  }) =>
-    (!item.ownerOnly || isOwner) &&
-    (!item.staffOnly || role === "staff") &&
-    (!item.sncoOnly || role === "staff" || role === "snco") &&
-    (!item.ocOnly || oc);
+  const canSee = (item: { ownerOnly?: boolean; ocOnly?: boolean }) =>
+    (!item.ownerOnly || isOwner) && (!item.ocOnly || oc);
   return NAV_SECTIONS.filter(canSee)
-    .map((s) => ({ ...s, links: s.links.filter(canSee) }))
+    .map((s) => ({
+      ...s,
+      links: s.links.filter((l) => canSee(l) && canAccess(role, l.href)),
+    }))
     .filter((s) => s.links.length > 0);
 }
 
@@ -331,7 +328,9 @@ function ApiStatusBadge({ status }: { status: ApiStatus }) {
           <AlertTriangle className="size-3.5" />
           Session expired —&nbsp;
           <button
-            onClick={() => signIn("google", { callbackUrl: window.location.pathname })}
+            // force: an explicit click is always honoured, even inside the
+            // cooldown that stops automatic re-auth from looping.
+            onClick={() => void reauth(window.location.pathname, { force: true })}
             className="underline underline-offset-2"
           >
             sign in again
@@ -417,17 +416,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [apiStatus, setApiStatus] = useState<ApiStatus>("checking");
 
+  // A re-auth that didn't clear the 401 — show the badge rather than sending
+  // the user back to Google for another lap.
+  useEffect(() => {
+    const onLoop = () => setApiStatus("auth-error");
+    window.addEventListener(AUTH_LOOP_EVENT, onLoop);
+    return () => window.removeEventListener(AUTH_LOOP_EVENT, onLoop);
+  }, []);
+
   useEffect(() => {
     const token = session?.id_token as string | undefined;
     if (!token) return;
 
+    // The server told us it couldn't renew this token, so it's already dead —
+    // don't spend a request proving it and don't let the 401 handler treat it
+    // as a surprise. One silent re-auth fixes it; if that's already been tried,
+    // reauth() falls through to the badge instead of circling.
+    if (session?.error) {
+      void reauth(window.location.pathname);
+      return;
+    }
+
     const API = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
     fetch(`${API}/health`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
-        if (res.ok) setApiStatus("ok");
-        // 401 = expired token, a re-auth fixes it. 403 = the account is outside
-        // the Workspace, which re-auth can never fix — redirecting there just
-        // bounces the user to Google forever, so show the badge instead.
+        if (res.ok) {
+          setApiStatus("ok");
+          clearReauthMark();
+        }
+        // 401 = expired token, a re-auth usually fixes it — but reauth() only
+        // redirects if we haven't just tried; otherwise it fires AUTH_LOOP_EVENT
+        // and the badge above takes over. 403 = the account is outside the
+        // Workspace, which re-auth can never fix, so go straight to the badge.
         else if (res.status === 401) reauth("/");
         else if (res.status === 403) setApiStatus("auth-error");
         else setApiStatus("api-down");

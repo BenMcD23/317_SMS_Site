@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, CheckCircle2, RotateCcw, Bell, FileSpreadsheet, Download, Lock } from "lucide-react";
+import { ShoppingCart, ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, PackageMinus, PackagePlus, CheckCircle2, RotateCcw, Bell, FileSpreadsheet, Download, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
@@ -25,11 +25,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON, LogsForm } from "@/lib/stores-types";
+import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON, LogsForm, isRemovedFromStock } from "@/lib/stores-types";
 import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
 import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
+import { StockHistory } from "@/components/stock-history";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -151,6 +152,9 @@ export default function OrdersPage() {
   // Mark as ready to collect
   const [markingAsReady, setMarkingAsReady] = useState<string | null>(null);
 
+  // Remove from stock (order item id of the row whose removal is in flight)
+  const [removingStock, setRemovingStock] = useState<string | null>(null);
+
   // Sort and search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
   const [searchQuery, setSearchQuery] = useState("");
@@ -196,25 +200,44 @@ export default function OrdersPage() {
     return stock.find((s) => s.itemType === itemType && s.size === size);
   }
 
-  async function doRemoveFromStock(stockItem: StockItem) {
+  // The backend adjusts the stock count and appends to the item's stock history
+  // together, so the count and the history can't disagree.
+  async function doStockAction(order: Order, item: OrderItem, action: "remove" | "return", stockItem?: StockItem) {
+    setRemovingStock(item.id);
     try {
-      const res = await fetch(`/api/stores/stock/${stockItem.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/stores/orders/${order.id}/items/${item.id}/stock`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: stockItem.quantity - 1 }),
+        body: JSON.stringify({ action, stockItemId: stockItem?.id, by: currentUser }),
       });
-      if (!res.ok) throw new Error("Failed to update stock");
-      const updated = await res.json();
-      setStock((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail ?? "Failed to update stock");
+      const updatedOrder: Order = data.order;
+      const updatedStock: StockItem = data.stockItem;
+      setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+      setStock((prev) =>
+        prev.some((s) => s.id === updatedStock.id)
+          ? prev.map((s) => (s.id === updatedStock.id ? updatedStock : s))
+          : [...prev, updatedStock]
+      );
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setRemovingStock(null);
     }
   }
 
-  function handleRemoveFromStock(stockItem: StockItem) {
+  function handleRemoveFromStock(order: Order, item: OrderItem, stockItem: StockItem) {
     openConfirm(
       `Remove one ${stockItem.itemType} (${stockItem.size}) from stock?`,
-      () => doRemoveFromStock(stockItem)
+      () => doStockAction(order, item, "remove", stockItem)
+    );
+  }
+
+  function handleReturnToStock(order: Order, item: OrderItem) {
+    openConfirm(
+      `Put one ${item.itemType}${item.size ? ` (${item.size})` : ""} back into stock?`,
+      () => doStockAction(order, item, "return")
     );
   }
 
@@ -737,6 +760,7 @@ export default function OrdersPage() {
                       {order.items.map((orderItem) => {
                         const stockMatch = findStockMatch(orderItem.itemType, orderItem.size);
                         const inStock = stockMatch && stockMatch.quantity > 0;
+                        const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
                         const isAddingNoteHere = addingNoteItemId === orderItem.id;
 
                         return (
@@ -789,12 +813,23 @@ export default function OrdersPage() {
                                       {orderItem.needSizing ? "Enter Size" : "Edit Size"}
                                     </Button>
                                   )}
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                                    disabled={!stockMatch || !inStock}
-                                    onClick={() => stockMatch && handleRemoveFromStock(stockMatch)}>
-                                    Remove from Stock
-                                  </Button>
+                                  {removedFromStock ? (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={removingStock === orderItem.id}
+                                      onClick={() => handleReturnToStock(order, orderItem)}>
+                                      <PackagePlus className="h-3 w-3 mr-1" />
+                                      Add Back to Stock
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                                      disabled={removingStock === orderItem.id || !stockMatch || !inStock}
+                                      onClick={() => stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)}>
+                                      <PackageMinus className="h-3 w-3 mr-1" />
+                                      Remove from Stock
+                                    </Button>
+                                  )}
                                   {orderItem.itemType !== "Brassard" && (
                                     <Button size="sm" variant="outline"
                                       className="h-7 w-full text-xs disabled:opacity-40"
@@ -853,6 +888,9 @@ export default function OrdersPage() {
                                 </p>
                               </div>
                             )}
+
+                            {/* Stock history */}
+                            <StockHistory events={orderItem.stockEvents} />
 
                             {/* QM Notes */}
                             <div className="space-y-1.5 border-t pt-2">

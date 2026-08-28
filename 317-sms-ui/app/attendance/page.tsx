@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { CalendarCheck, Users, UserCog } from "lucide-react";
+import { CalendarCheck, ShieldUser, Users, UserCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -22,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
+import { Stat } from "@/components/stat";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +38,9 @@ type Night = {
   date: string;                 // "YYYY-MM-DD"
   registerType: string | null;
   cadets: StateCounts;
+  // The NCO team, a subset of `cadets`. Optional so a backend that predates it
+  // leaves the NCO filter empty rather than breaking the page.
+  ncos?: StateCounts;
   staff: StateCounts;
 };
 
@@ -42,6 +48,7 @@ type Person = {
   cin: number;
   name: string;
   rank: string | null;
+  isNco: boolean;               // set by the backend, which owns the rank rule
   status: string | null;
   state: AttendanceState;
   registerType: string | null;
@@ -54,13 +61,16 @@ type NightDetail = {
   staff: Person[];
 };
 
-type Group = "all" | "cadets" | "staff";
+type Group = "all" | "cadets" | "ncos" | "staff";
 
 const ALL_TYPES = "__all__";
 const ROW_LIMIT = 200;
 
 function countsFor(night: Night, group: Group): StateCounts {
   if (group === "cadets") return night.cadets;
+  // NCOs are picked out by rank on the backend, so the one definition of the NCO
+  // team serves this page and the appraisals page alike.
+  if (group === "ncos") return night.ncos ?? EMPTY_COUNTS;
   if (group === "staff") return night.staff;
   return addCounts(night.cadets, night.staff);
 }
@@ -95,36 +105,6 @@ function monthlyStats(nights: Night[], group: Group) {
     }));
 
   return { data, byYear };
-}
-
-function Stat({ label, value, hint, tone }: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  tone?: "primary" | "success" | "warning" | "destructive";
-}) {
-  return (
-    <div className={cn(
-      "rounded-lg border px-3 py-2",
-      tone === "primary" && "border-primary/30 bg-primary/5",
-      tone === "success" && "border-success/30 bg-success/10",
-      tone === "warning" && "border-warning/30 bg-warning/10",
-      tone === "destructive" && "border-destructive/30 bg-destructive/10",
-      !tone && "bg-card",
-    )}>
-      <p className={cn(
-        "font-semibold tabular-nums",
-        tone === "primary" ? "text-2xl text-primary" : "text-xl",
-        tone === "success" && "text-success",
-        tone === "warning" && "text-warning",
-        tone === "destructive" && "text-destructive",
-      )}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
-      {hint && <p className="text-[11px] text-muted-foreground/70">{hint}</p>}
-    </div>
-  );
 }
 
 /** "12 / 15" plus the turnout, or a dash when nobody was on that register. */
@@ -248,6 +228,14 @@ export default function AttendancePage() {
       <PageHeader
         title="Attendance"
         description="Turnout per night across the squadron. Select a night to see who was on the register."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/attendance/ncos">
+              <ShieldUser className="h-4 w-4" />
+              Per NCO
+            </Link>
+          </Button>
+        }
       />
 
       {loading ? (
@@ -284,6 +272,7 @@ export default function AttendancePage() {
                 <SelectContent>
                   <SelectItem value="all">Cadets &amp; staff</SelectItem>
                   <SelectItem value="cadets">Cadets only</SelectItem>
+                  <SelectItem value="ncos">NCOs only</SelectItem>
                   <SelectItem value="staff">Staff only</SelectItem>
                 </SelectContent>
               </Select>
@@ -381,7 +370,9 @@ export default function AttendancePage() {
                         <TableRow>
                           <TableHead className="pl-6">Date</TableHead>
                           <TableHead>Register</TableHead>
-                          <TableHead>Cadets</TableHead>
+                          {/* The cadet column follows the filter, so "NCOs only"
+                              reads as the NCO turnout rather than the whole flight. */}
+                          <TableHead>{group === "ncos" ? "NCOs" : "Cadets"}</TableHead>
                           <TableHead>Staff</TableHead>
                           <TableHead className="text-right">Turnout</TableHead>
                         </TableRow>
@@ -401,7 +392,9 @@ export default function AttendancePage() {
                               <TableCell className="text-muted-foreground">
                                 {night.registerType ?? "—"}
                               </TableCell>
-                              <TableCell><HeadCount counts={night.cadets} /></TableCell>
+                              <TableCell>
+                                <HeadCount counts={countsFor(night, group === "ncos" ? "ncos" : "cadets")} />
+                              </TableCell>
                               <TableCell><HeadCount counts={night.staff} /></TableCell>
                               <TableCell className="text-right tabular-nums font-medium">
                                 {nightRate === null ? "—" : `${nightRate}%`}
@@ -441,11 +434,21 @@ export default function AttendancePage() {
             </div>
           ) : (
             <div className="flex flex-col gap-5">
-              {group !== "staff" && (
-                <RosterList people={detail.cadets} icon={Users} title="Cadets" />
-              )}
-              {group !== "cadets" && (
-                <RosterList people={detail.staff} icon={UserCog} title="Staff" />
+              {group === "ncos" ? (
+                <RosterList
+                  people={detail.cadets.filter((p) => p.isNco)}
+                  icon={ShieldUser}
+                  title="NCOs"
+                />
+              ) : (
+                <>
+                  {group !== "staff" && (
+                    <RosterList people={detail.cadets} icon={Users} title="Cadets" />
+                  )}
+                  {group !== "cadets" && (
+                    <RosterList people={detail.staff} icon={UserCog} title="Staff" />
+                  )}
+                </>
               )}
             </div>
           )}

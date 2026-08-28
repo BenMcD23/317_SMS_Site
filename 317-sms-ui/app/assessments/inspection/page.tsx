@@ -334,7 +334,11 @@ function CadetCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function InspectionPage() {
   const { data: session } = useSession();
-  const { data: cadets = [], isLoading } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
+  const {
+    data: cadets = [],
+    isLoading,
+    error: cadetsError,
+  } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
 
   const {
     state: sheet,
@@ -581,6 +585,13 @@ export default function InspectionPage() {
 
       {isLoading ? (
         <Skeleton className="h-[560px] w-full max-w-md" />
+      ) : cadetsError ? (
+        // Say why the roster is empty. A 403 here used to read as "no cadets in
+        // this flight", which sent us looking at the flight data instead of the
+        // permission that was actually blocking it.
+        <p className="text-sm text-destructive">
+          Couldn&apos;t load the cadet roster: {cadetsError.message}
+        </p>
       ) : flightCadets.length === 0 ? (
         <p className="text-sm text-muted-foreground">No cadets found for this flight.</p>
       ) : (

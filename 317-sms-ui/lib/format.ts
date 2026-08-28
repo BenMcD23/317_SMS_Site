@@ -10,6 +10,13 @@ export function formatDate(iso: string | null | undefined, fallback = "—"): st
   });
 }
 
+/** "5 Jan" — for column headings and chips, where the year is already implied
+ *  by the range being looked at. */
+export function formatShortDate(iso: string | null | undefined, fallback = "—"): string {
+  if (!iso) return fallback;
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 /** "05 Jan 2026, 19:30" — used on order timelines. */
 export function formatTimestamp(ts: string): string {
   return new Date(ts).toLocaleString("en-AU", {

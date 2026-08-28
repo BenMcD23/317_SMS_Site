@@ -28,13 +28,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderList } from "@/lib/stores-types";
+import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderList, isRemovedFromStock } from "@/lib/stores-types";
 import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName } from "../badge-types";
 import { checkBadgeQualification } from "../badge-qualification";
 import { useCadetQualifications } from "../use-cadet-qualifications";
 import { QualificationCheck } from "../components/QualificationCheck";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
+import { StockHistory } from "@/components/stock-history";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -137,6 +138,9 @@ export default function BadgeOrdersPage() {
   const [markGivenItem, setMarkGivenItem] = useState<BadgeOrderItem | null>(null);
   const [markingAsReady, setMarkingAsReady] = useState<string | null>(null);
 
+  // Remove from / add back to stock (order item id of the row whose call is in flight)
+  const [removingStock, setRemovingStock] = useState<string | null>(null);
+
   // Sort + search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
   const [searchQuery, setSearchQuery] = useState("");
@@ -193,41 +197,39 @@ export default function BadgeOrdersPage() {
     return undefined;
   }
 
-  async function doRemoveFromStock(match: StockMatch) {
-    const { item } = match;
+  // The backend adjusts the grid count and appends to the item's stock history
+  // together, so the count and the history can't disagree.
+  async function doStockAction(order: BadgeOrder, orderItem: BadgeOrderItem, action: "remove" | "return", match?: StockMatch) {
+    setRemovingStock(orderItem.id);
     try {
-      const newQty = item.quantity - 1;
-      if (newQty <= 0) {
-        const res = await fetch(`/api/stores/badges/items/${item.id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to remove from stock");
-        setGrid((prev) =>
-          prev
-            ? { ...prev, cells: prev.cells.map((c) => ({ ...c, items: c.items.filter((i) => i.id !== item.id) })) }
-            : prev
-        );
-      } else {
-        const res = await fetch(`/api/stores/badges/items/${item.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quantity: newQty }),
-        });
-        if (!res.ok) throw new Error("Failed to update stock");
-        const updated = await res.json();
-        setGrid((prev) =>
-          prev
-            ? { ...prev, cells: prev.cells.map((c) => ({ ...c, items: c.items.map((i) => (i.id === updated.id ? updated : i)) })) }
-            : prev
-        );
-      }
+      const res = await fetch(`/api/stores/badges/orders/${order.id}/items/${orderItem.id}/stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, itemId: match?.item.id, by: currentUser }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.detail ?? "Failed to update stock");
+      const updatedOrder: BadgeOrder = data.order;
+      setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+      setGrid(data.badges);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setRemovingStock(null);
     }
   }
 
-  function handleRemoveFromStock(match: StockMatch) {
+  function handleRemoveFromStock(order: BadgeOrder, orderItem: BadgeOrderItem, match: StockMatch) {
     openConfirm(
       `Remove one "${match.item.name}" from badge stock?`,
-      () => doRemoveFromStock(match)
+      () => doStockAction(order, orderItem, "remove", match)
+    );
+  }
+
+  function handleReturnToStock(order: BadgeOrder, orderItem: BadgeOrderItem) {
+    openConfirm(
+      `Put one "${orderItem.badgeName}" back into badge stock?`,
+      () => doStockAction(order, orderItem, "return")
     );
   }
 
@@ -628,6 +630,7 @@ export default function BadgeOrdersPage() {
                     <ul className="space-y-2">
                       {order.items.map((orderItem) => {
                         const stockMatch = findBadgeStockMatch(orderItem.badgeName);
+                        const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
                         const isAddingNoteHere = addingNoteItemId === orderItem.id;
 
                         return (
@@ -662,12 +665,23 @@ export default function BadgeOrdersPage() {
 
                               {!isCompleted && (
                                 <div className="flex shrink-0 flex-col gap-1.5 items-end w-36">
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                                    disabled={!stockMatch}
-                                    onClick={() => stockMatch && handleRemoveFromStock(stockMatch)}>
-                                    Remove from Stock
-                                  </Button>
+                                  {removedFromStock ? (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={removingStock === orderItem.id}
+                                      onClick={() => handleReturnToStock(order, orderItem)}>
+                                      <PackagePlus className="h-3 w-3 mr-1" />
+                                      Add Back to Stock
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                                      disabled={removingStock === orderItem.id || !stockMatch}
+                                      onClick={() => stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)}>
+                                      <PackageMinus className="h-3 w-3 mr-1" />
+                                      Remove from Stock
+                                    </Button>
+                                  )}
                                   <Button size="sm" variant="outline"
                                     className="h-7 w-full text-xs disabled:opacity-40"
                                     disabled={addingToListId === orderItem.id || onOrderListItemIds.has(orderItem.id)}
@@ -719,6 +733,9 @@ export default function BadgeOrdersPage() {
                                 </p>
                               </div>
                             )}
+
+                            {/* Stock history */}
+                            <StockHistory events={orderItem.stockEvents} />
 
                             <div className="space-y-1.5 border-t pt-2">
                               {(orderItem.qmNotes ?? []).length > 0 && (

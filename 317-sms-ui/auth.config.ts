@@ -1,21 +1,17 @@
 import type { NextAuthConfig } from "next-auth"
 import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
+import { canAccess } from "./lib/access"
 
-const NCO_ALLOWED_ROUTES = ["/", "/assessments", "/cadets/assessments", "/settings"]
-const INSPECTION_ROUTE = "/assessments/inspection"
+/** Accounts the dev bypass can log in as — must match the API's
+ *  `_dev_fake_email` so the fake token resolves to the same role there. */
+export const DEV_USERS = {
+  staff: { email: "ci.mcdonald@317atc.co.uk", name: "Dev Staff" },
+  snco: { email: "dev.snco@317atc.co.uk", name: "Dev SNCO" },
+  nco: { email: "dev.nco@317atc.co.uk", name: "Dev NCO" },
+} as const
 
-function under(pathname: string, route: string): boolean {
-  return pathname === route || pathname.startsWith(route + "/")
-}
-
-// staff see everything; SNCOs get the NCO routes plus inspections; NCOs get the
-// NCO routes minus inspections.
-function canAccess(role: string, pathname: string): boolean {
-  if (role === "staff") return true
-  if (under(pathname, INSPECTION_ROUTE)) return role === "snco"
-  return NCO_ALLOWED_ROUTES.some((route) => under(pathname, route))
-}
+export type DevRole = keyof typeof DEV_USERS
 
 export const authConfig: NextAuthConfig = {
   cookies: {
@@ -30,23 +26,26 @@ export const authConfig: NextAuthConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      authorization: {
-        params: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
+      // access_type=offline is what asks for a refresh token. `prompt` is
+      // deliberately absent: an automatic re-auth (a renewal that failed, or a
+      // token that died while the tab was closed) then completes as a silent
+      // Google redirect instead of a consent screen the user has to click
+      // through — which is what "it asks me to log in every time" actually was.
+      // The two places that mean "log in properly" — the login button and the
+      // explicit "sign in again" — pass prompt=consent themselves, and that is
+      // what mints a fresh refresh token.
+      authorization: { params: { access_type: "offline" } },
     }),
     // ponytail: dev-only fake login for local Playwright/UI testing.
     // Inert unless AUTH_DEV_BYPASS=1 (never set in production).
     ...(process.env.AUTH_DEV_BYPASS === "1"
       ? [
           Credentials({
-            credentials: {},
-            authorize: () => ({
-              email: "ci.mcdonald@317atc.co.uk",
-              name: "Dev Bypass",
-            }),
+            credentials: { role: {} },
+            authorize: (c) => {
+              const role = String(c?.role ?? "staff")
+              return { id: role, ...(DEV_USERS[role as DevRole] ?? DEV_USERS.staff) }
+            },
           }),
         ]
       : []),
@@ -59,8 +58,12 @@ export const authConfig: NextAuthConfig = {
     error: "/login",
   },
   callbacks: {
+    // No `jwt` callback here on purpose. This config is what middleware runs,
+    // and middleware must not renew tokens: see the note in middleware.ts.
     session({ session, token }) {
+      session.id_token = token.id_token
       session.role = token.role
+      session.error = token.error
       return session
     },
     authorized({ auth, request: { nextUrl } }) {

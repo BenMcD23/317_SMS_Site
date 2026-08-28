@@ -1,6 +1,19 @@
 import NextAuth from "next-auth"
-import { authConfig } from "./auth.config"
+import type { JWT } from "next-auth/jwt"
+import { authConfig, DEV_USERS, type DevRole } from "./auth.config"
 import { google } from "googleapis"
+
+// The client sends the raw Google id_token to the API, and Google only issues
+// those with a 1-hour life. Renew with this much headroom left so a token
+// handed to the browser stays valid until the next session refetch (5 minutes,
+// see components/providers.tsx) — otherwise the API 401s and the UI bounces
+// the user through Google again.
+const REFRESH_MARGIN_S = 10 * 60
+
+// How long a failed or in-flight renewal is reused before we call Google
+// again. Long enough to collapse the burst of parallel requests one page makes,
+// short enough that a blip doesn't strand the session.
+const REUSE_FLOOR_S = 30
 
 const STAFF_GROUP = "staff@317atc.co.uk"
 const SNCO_GROUP = "snco@317atc.co.uk"
@@ -47,7 +60,7 @@ async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" 
   return null
 }
 
-function getIdTokenExp(idToken: string): number {
+function idTokenExp(idToken: string): number {
   try {
     const payload = JSON.parse(Buffer.from(idToken.split(".")[1], "base64url").toString())
     return payload.exp ?? 0
@@ -56,7 +69,19 @@ function getIdTokenExp(idToken: string): number {
   }
 }
 
-async function refreshGoogleToken(refreshToken: string) {
+type FreshTokens = { id_token: string; expires_at: number; refresh_token: string }
+
+/**
+ * Renewals already asked for, keyed by the refresh token that started them.
+ *
+ * `auth()` inside a route handler can't persist a Set-Cookie, so proxyToApi
+ * re-runs the whole jwt callback for every API call a page makes. Without this
+ * each of those would fire its own POST to Google, and a single page could open
+ * a dozen renewals of the same session at once.
+ */
+const renewals = new Map<string, { promise: Promise<FreshTokens>; reuseUntil: number }>()
+
+async function requestTokens(refreshToken: string, currentIdToken?: string): Promise<FreshTokens> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -67,27 +92,98 @@ async function refreshGoogleToken(refreshToken: string) {
       refresh_token: refreshToken,
     }),
   })
-  if (!res.ok) throw new Error("Token refresh failed")
-  return res.json()
+  if (!res.ok) {
+    // Google puts the reason in the body (invalid_grant = the refresh token was
+    // revoked, expired or replaced). Without it a renewal failure is
+    // indistinguishable from any other, and the user just gets bounced to
+    // Google with no trace of why.
+    const detail = await res.text().catch(() => "")
+    throw new Error(`Token refresh failed: ${res.status} ${detail}`)
+  }
+  const refreshed = await res.json()
+
+  // Google normally returns a fresh id_token alongside the access token; if it
+  // didn't, the one we already hold has to carry us to the next renewal.
+  const idToken: string | undefined = refreshed.id_token ?? currentIdToken
+  if (!idToken) throw new Error("Token refresh returned no id_token")
+
+  // Expire on the id_token's own `exp`, not the access token's `expires_in`:
+  // the id_token is the credential the API checks, so that's the clock that
+  // decides when the session is stale. Falling back to expires_in would also
+  // quietly produce NaN whenever Google omits it.
+  const now = Math.floor(Date.now() / 1000)
+  const expiresAt = idTokenExp(idToken)
+  if (expiresAt < now + 60) throw new Error("Token refresh produced a stale id_token")
+
+  return {
+    id_token: idToken,
+    expires_at: expiresAt,
+    refresh_token: refreshed.refresh_token ?? refreshToken,
+  }
+}
+
+function renewTokens(refreshToken: string, currentIdToken?: string): Promise<FreshTokens> {
+  const now = Math.floor(Date.now() / 1000)
+  const existing = renewals.get(refreshToken)
+  if (existing && now < existing.reuseUntil) return existing.promise
+
+  const entry = { promise: requestTokens(refreshToken, currentIdToken), reuseUntil: now + REUSE_FLOOR_S }
+  renewals.set(refreshToken, entry)
+  entry.promise
+    .then((fresh) => {
+      // Hold the result until it's the one going stale, so the next renewal is
+      // driven by the token's life rather than by request volume.
+      entry.reuseUntil = Math.max(fresh.expires_at - REFRESH_MARGIN_S, entry.reuseUntil)
+    })
+    // A failure keeps REUSE_FLOOR_S of backoff instead of retrying per request.
+    .catch(() => {})
+
+  for (const [key, value] of renewals) {
+    if (value !== entry && now >= value.reuseUntil) renewals.delete(key)
+  }
+  return entry.promise
+}
+
+/** Renew the Google tokens once they're within REFRESH_MARGIN_S of expiry. */
+async function withFreshTokens(token: JWT): Promise<JWT> {
+  const now = Math.floor(Date.now() / 1000)
+  if ((token.expires_at ?? 0) > now + REFRESH_MARGIN_S) return token
+  if (!token.refresh_token) return { ...token, error: "RefreshTokenMissing" }
+
+  try {
+    const fresh = await renewTokens(token.refresh_token, token.id_token)
+    return { ...token, ...fresh, error: undefined }
+  } catch (e) {
+    console.error("[jwt] token refresh failed:", e)
+    return { ...token, error: "RefreshAccessTokenError" }
+  }
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   session: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    // Rolling — every session read re-signs the cookie for another 90 days, so
+    // regular users never reach it. Group membership is re-checked on every
+    // token renewal (~hourly), so a long session doesn't mean a stale role.
+    maxAge: 90 * 24 * 60 * 60, // 90 days
   },
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, account, user }) {
       if (account) {
         // ponytail: dev-only fake session (AUTH_DEV_BYPASS=1); skips Google
         // role lookup and token refresh. Backend accepts the matching
         // dev-fake-token only when its own DEV_FAKE_AUTH=1 flag is set.
         if (account.provider === "credentials") {
+          // The login page picks the role; the account it signed in as is what
+          // names it, and the API derives the same role from the token suffix.
+          const role = (Object.keys(DEV_USERS) as DevRole[]).find(
+            (r) => DEV_USERS[r].email === user?.email
+          ) ?? "staff"
           return {
             ...token,
-            // DEV_FAKE_ROLE=nco/snco to browse as that role; defaults to staff.
-            role: (process.env.DEV_FAKE_ROLE || "staff") as "staff" | "snco" | "nco",
-            id_token: "dev-fake-token",
+            role,
+            id_token: `dev-fake-token:${role}`,
             expires_at: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
           }
         }
@@ -107,45 +203,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return token
       }
 
-      const now = Math.floor(Date.now() / 1000)
-      if ((token.expires_at as number) > now + 300) return token
+      const fresh = await withFreshTokens(token)
+      // Identity, not expires_at: withFreshTokens hands back the very same
+      // object when nothing needed renewing.
+      if (fresh === token || fresh.error) return fresh
 
-      if (!token.refresh_token) return { ...token, error: "RefreshTokenMissing" }
-
+      // We actually refreshed (~hourly), so re-check group membership: someone
+      // removed from staff/NCO loses access promptly instead of keeping their
+      // role for the rest of the 30-day session. If the lookup itself fails,
+      // keep the current role rather than locking them out.
       try {
-        const refreshed = await refreshGoogleToken(token.refresh_token as string)
-        const newIdToken = refreshed.id_token ?? token.id_token
-        if (!refreshed.id_token && getIdTokenExp(newIdToken as string) < now + 60) {
-          return { ...token, error: "RefreshAccessTokenError" }
-        }
-        // Re-check group membership on each refresh (~hourly) so someone
-        // removed from staff/NCO loses access promptly instead of keeping
-        // their role for the rest of the 30-day session. If the lookup
-        // itself fails, keep the current role rather than locking them out.
-        let role = token.role
-        try {
-          role = (await getUserRole(token.email as string)) ?? undefined
-        } catch (e) {
-          console.error("[jwt] role re-check failed, keeping existing role:", e)
-        }
-        return {
-          ...token,
-          id_token: newIdToken,
-          expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in,
-          refresh_token: refreshed.refresh_token ?? token.refresh_token,
-          role,
-          error: undefined,
-        }
+        fresh.role = (await getUserRole(fresh.email as string)) ?? undefined
       } catch (e) {
-        console.error("[jwt] Token refresh failed:", e)
-        return { ...token, error: "RefreshAccessTokenError" }
+        console.error("[jwt] role re-check failed, keeping existing role:", e)
       }
-    },
-    async session({ session, token }) {
-      session.id_token = token.id_token as string
-      session.role = token.role
-      if (token.error) session.error = token.error as string
-      return session
+      return fresh
     },
     async signIn({ user, account }) {
       if (account?.provider === "credentials") return true // dev bypass only
