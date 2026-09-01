@@ -14,6 +14,23 @@ export const DEV_USERS = {
 export type DevRole = keyof typeof DEV_USERS
 
 export const authConfig: NextAuthConfig = {
+  session: {
+    // Rolling — every session read re-signs the cookie for another full year,
+    // so the only way to reach this is to not open the app for a year. Nothing
+    // upstream caps it: the cookie is ours, and the Google credential inside it
+    // is renewed from the refresh token (see auth.ts) rather than expiring with
+    // the session. Group membership is re-checked on every token renewal
+    // (~hourly), so a long session doesn't mean a stale role.
+    //
+    // Lives here rather than in auth.ts so middleware decodes sessions on the
+    // same terms the Node routes sign them with.
+    maxAge: 365 * 24 * 60 * 60, // 1 year
+    // How stale the cookie's own expiry may get before a session read re-signs
+    // it. Auth.js defaults to 24h, which let a cookie read 23 hours after the
+    // last write still carry the older deadline; hourly keeps the rolling
+    // window genuinely rolling without a Set-Cookie on every 5-minute poll.
+    updateAge: 60 * 60, // 1 hour
+  },
   cookies: {
     sessionToken: { name: "sms.session-token", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
     callbackUrl: { name: "sms.callback-url", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
@@ -31,9 +48,11 @@ export const authConfig: NextAuthConfig = {
       // token that died while the tab was closed) then completes as a silent
       // Google redirect instead of a consent screen the user has to click
       // through — which is what "it asks me to log in every time" actually was.
-      // The two places that mean "log in properly" — the login button and the
-      // explicit "sign in again" — pass prompt=consent themselves, and that is
-      // what mints a fresh refresh token.
+      // The places that mean "log in properly" pass prompt=consent themselves,
+      // and that is what mints a fresh refresh token: the login button, the
+      // explicit "sign in again", and a re-auth after the refresh grant itself
+      // died (RefreshTokenExpired), where a silent redirect would hand back a
+      // session with no way to renew.
       authorization: { params: { access_type: "offline" } },
     }),
     // ponytail: dev-only fake login for local Playwright/UI testing.

@@ -430,10 +430,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     // The server told us it couldn't renew this token, so it's already dead —
     // don't spend a request proving it and don't let the 401 handler treat it
-    // as a surprise. One silent re-auth fixes it; if that's already been tried,
+    // as a surprise. One re-auth fixes it; if that's already been tried,
     // reauth() falls through to the badge instead of circling.
+    //
+    // RefreshTokenExpired means the refresh grant itself is gone, and only the
+    // consent screen issues a new one — a silent re-auth would come back
+    // without a refresh token and strand the session again within the hour.
     if (session?.error) {
-      void reauth(window.location.pathname);
+      void reauth(window.location.pathname, {
+        consent: session.error === "RefreshTokenExpired",
+      });
       return;
     }
 

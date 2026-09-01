@@ -62,18 +62,23 @@ export function clearReauthMark() {
  * Once that's detected we stop redirecting and let the UI ask for a manual
  * sign-in instead.
  *
- * @param force  Bypass the cooldown — for an explicit user click on
- *               "sign in again", which should always be honoured. It also asks
- *               Google for consent, the only thing that mints a fresh refresh
- *               token; automatic re-auths stay silent so the user sees a
- *               redirect flicker rather than a login screen.
+ * @param force    Bypass the cooldown — for an explicit user click on
+ *                 "sign in again", which should always be honoured. Implies
+ *                 `consent`.
+ * @param consent  Ask Google for the consent screen, the only thing that mints
+ *                 a fresh refresh token. Needed when the grant we had is dead:
+ *                 a silent re-auth returns no refresh token, so it would hand
+ *                 back a session that strands itself again an hour later. The
+ *                 cooldown still applies, so a consent screen that doesn't fix
+ *                 anything can't become a loop. Ordinary expiry re-auths leave
+ *                 this off and the user sees a redirect flicker, not a login.
  * @returns whether the page is now navigating to Google. `false` means we
  *          decided *not* to redirect, so the caller has to carry on and deal
  *          with its failed request itself.
  */
 export async function reauth(
   callbackUrl = window.location.pathname,
-  { force = false }: { force?: boolean } = {}
+  { force = false, consent = force }: { force?: boolean; consent?: boolean } = {}
 ): Promise<boolean> {
   if (isRedirecting) return true;
 
@@ -89,7 +94,7 @@ export async function reauth(
   } catch {
     // Best effort — the loop guard above already fails closed without it.
   }
-  await signIn("google", { callbackUrl }, force ? { prompt: "consent" } : {});
+  await signIn("google", { callbackUrl }, consent ? { prompt: "consent" } : {});
   return true;
 }
 
