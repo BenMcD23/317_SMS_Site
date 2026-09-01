@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +21,17 @@ import {
   DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/page-header";
 import { Sparkles, Send, RefreshCw, Save, CheckCircle2, Undo2, AlertTriangle, ChevronDown, Cpu, Info } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { streamSse } from "@/lib/sse";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +58,30 @@ type ParadeMessage = {
 type ModelUsage = { model: string; label: string; count: number; fallback: boolean };
 
 type Editable = Pick<ParadeMessage, "uniform" | "dnco" | "main_message" | "c_flight_message">;
+
+/** One event from POST /texts/generate/stream — a night lands as soon as it's written. */
+type GenerateEvent =
+  | { type: "start"; parade_dates: string[] }
+  | { type: "message"; message: ParadeMessage }
+  | { type: "skipped"; parade_date: string }
+  | { type: "error"; parade_date: string; error: string }
+  | { type: "fatal"; error: string }
+  | { type: "done"; generated: number; skipped_sent: number; failed: number; models_used: ModelUsage[] };
+
+/** What a single-message regeneration should rewrite. "programme" re-reads the
+ *  programme doc for that night first; the rest reuse the data already stored. */
+type RegenChoice = "all" | "main" | "c_flight" | "programme";
+
+const REGEN_OPTIONS: { choice: RegenChoice; label: string; title: string; blurb: string }[] = [
+  { choice: "all", label: "Both messages", title: "Regenerate both messages?",
+    blurb: "Replaces both messages — including any edits — with fresh AI versions of the programme data already stored on this night." },
+  { choice: "main", label: "Main flight message only", title: "Regenerate the main flight message?",
+    blurb: "Rewrites the main flight message. The C Flight message and the uniform line are left exactly as they are." },
+  { choice: "c_flight", label: "C Flight message only", title: "Regenerate the C Flight message?",
+    blurb: "Rewrites the C Flight message. The main flight message and the uniform line are left exactly as they are." },
+  { choice: "programme", label: "Re-read the programme first", title: "Re-read the programme and regenerate?",
+    blurb: "Reads this night's entry from the programme doc again and rewrites both messages from it — use this if the programme has changed since this night was last generated." },
+];
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -94,14 +123,15 @@ function StatusBadge({ status }: { status: ParadeMessage["status"] }) {
   return <Badge variant="secondary">Draft</Badge>;
 }
 
-/** Small line showing which AI model wrote this message, flagged if it fell back. */
+/** Small line showing which AI model wrote this message, flagged if it fell back.
+ *  The model in front changes; nothing here names it, the API sends the label. */
 function ModelLine({ message }: { message: ParadeMessage }) {
   if (!message.generated_by_label) return null;
   if (message.generated_with_fallback) {
     return (
       <p className="flex items-center gap-1.5 text-xs text-warning">
         <AlertTriangle className="size-3.5" />
-        Written by {message.generated_by_label} — GLM 5.2 wasn&apos;t available, so a backup model wrote this one.
+        Written by {message.generated_by_label} — a backup, as the usual model wasn&apos;t available.
       </p>
     );
   }
@@ -119,10 +149,12 @@ function MessageCard({
   message,
   onPatch,
   onAction,
+  onRegenerate,
 }: {
   message: ParadeMessage;
   onPatch: (id: number, body: Partial<Editable> & { status?: "draft" | "ready" }) => Promise<boolean>;
-  onAction: (id: number, action: "regenerate" | "send" | "test-send", body?: object) => Promise<boolean>;
+  onAction: (id: number, action: "send" | "test-send", body?: object) => Promise<boolean>;
+  onRegenerate: (message: ParadeMessage, choice: RegenChoice) => Promise<boolean>;
 }) {
   const [edit, setEdit] = useState<Editable>({
     uniform: message.uniform,
@@ -133,6 +165,9 @@ function MessageCard({
   const [busy, setBusy] = useState<string | null>(null);
   const [testPhone, setTestPhone] = useState("");
   const [testOpen, setTestOpen] = useState(false);
+  // The regenerate choice waiting on its confirmation — one dialog, worded for
+  // whichever menu item opened it.
+  const [regen, setRegen] = useState<RegenChoice | null>(null);
 
   // Refresh local edits when the server copy changes (regenerate, month switch)
   useEffect(() => {
@@ -153,6 +188,7 @@ function MessageCard({
   const sent = message.status === "sent";
   const preview = previewText(edit);
   const failures = (message.send_results ?? []).filter((r) => r.status === "failed");
+  const regenOption = REGEN_OPTIONS.find((o) => o.choice === regen);
 
   const run = async (key: string, fn: () => Promise<boolean>) => {
     setBusy(key);
@@ -284,23 +320,44 @@ function MessageCard({
               {busy === "save" ? <Spinner /> : <Save />} Save
             </Button>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" disabled={busy !== null}>
                   {busy === "regenerate" ? <Spinner /> : <RefreshCw />} Regenerate
+                  <ChevronDown />
                 </Button>
-              </AlertDialogTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {REGEN_OPTIONS.map((option) => (
+                  <Fragment key={option.choice}>
+                    {/* The programme re-read is a different kind of action — it
+                        goes back to Google Docs — so it sits on its own. */}
+                    {option.choice === "programme" && <DropdownMenuSeparator />}
+                    <DropdownMenuItem onSelect={() => setRegen(option.choice)}>
+                      {option.label}
+                    </DropdownMenuItem>
+                  </Fragment>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <AlertDialog open={regen !== null} onOpenChange={(open) => !open && setRegen(null)}>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Regenerate with AI?</AlertDialogTitle>
+                  <AlertDialogTitle>{regenOption?.title}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This replaces the current message text (including any edits) with a fresh AI
-                    version from the programme data, and sets the night back to draft.
+                    {regenOption?.blurb} The night goes back to draft.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => run("regenerate", () => onAction(message.id, "regenerate"))}>
+                  <AlertDialogAction
+                    onClick={() => {
+                      const choice = regen;
+                      setRegen(null);
+                      if (choice) run("regenerate", () => onRegenerate(message, choice));
+                    }}
+                  >
                     Regenerate
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -410,6 +467,11 @@ export default function TextMessagesPage() {
   const [messages, setMessages] = useState<ParadeMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  // Nights the AI wouldn't write, by parade date — each gets a card of its own
+  // with a retry, so one bad night doesn't mean re-running the whole month.
+  const [failed, setFailed] = useState<Record<string, string>>({});
+  const [retrying, setRetrying] = useState<string | null>(null);
 
   const authHeaders = useMemo(
     () => ({ Authorization: `Bearer ${session?.id_token}`, "Content-Type": "application/json" }),
@@ -428,6 +490,7 @@ export default function TextMessagesPage() {
         return;
       }
       setMessages(await resp.json());
+      setFailed({});
     } catch {
       toast.error("Server unreachable.");
     } finally {
@@ -439,39 +502,140 @@ export default function TextMessagesPage() {
     loadMessages();
   }, [loadMessages]);
 
+  /** Slot a night into the list in parade order, replacing any existing copy.
+   *  Generation streams nights back in the order the AI finishes them, so cards
+   *  arrive out of order — sorting on the way in keeps one from jumping about
+   *  the page once it's on screen. */
+  const upsertMessage = (updated: ParadeMessage) =>
+    setMessages((prev) =>
+      [...prev.filter((m) => m.id !== updated.id), updated]
+        .sort((a, b) => a.parade_date.localeCompare(b.parade_date))
+    );
+
   const handleGenerate = async () => {
     setGenerating(true);
+    setProgress({ done: 0, total: 0 });
+    setFailed({});
     try {
-      const resp = await apiFetch(`${API_BASE}/texts/generate?month=${month}&year=${year}`, {
+      const resp = await apiFetch(`${API_BASE}/texts/generate/stream?month=${month}&year=${year}`, {
         method: "POST",
         headers: authHeaders,
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => null);
+        toast.error(data?.detail || "Generation failed.");
+        return;
+      }
+
+      // Each night is shown the moment the API sends it rather than after the
+      // whole month is written — the first one lands in a few seconds.
+      let done = 0;
+      let total = 0;
+      for await (const event of streamSse<GenerateEvent>(resp)) {
+        if (event.type === "start") {
+          total = event.parade_dates.length;
+          setProgress({ done: 0, total });
+        } else if (event.type === "message") {
+          upsertMessage(event.message);
+          setProgress({ done: ++done, total });
+        } else if (event.type === "skipped") {
+          setProgress({ done: ++done, total });
+        } else if (event.type === "error") {
+          setFailed((prev) => ({ ...prev, [event.parade_date]: event.error }));
+          setProgress({ done: ++done, total });
+        } else if (event.type === "fatal") {
+          toast.error(`Generation stopped: ${event.error}`);
+        } else if (event.type === "done") {
+          const models = event.models_used;
+          const base =
+            `Generated ${event.generated} message${event.generated !== 1 ? "s" : ""}` +
+            (event.skipped_sent ? ` (${event.skipped_sent} already sent, left alone)` : "");
+
+          if (event.failed > 0) {
+            toast.warning(`${base} — ${event.failed} couldn't be written.`, {
+              description: "Retry those nights on their own from the cards below.",
+              duration: 10000,
+            });
+          } else if (models.some((m) => m.fallback)) {
+            toast.warning(`${base}. Some fell back to a backup model.`, {
+              description: models.map((m) => `${m.count} × ${m.label}`).join(", "),
+              duration: 10000,
+            });
+          } else {
+            toast.success(base, models.length ? { description: `Written by ${models[0].label}` } : undefined);
+          }
+        }
+      }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  /** Regenerate one message on its own. "programme" goes back to the programme
+   *  doc for that night; the others reuse the data already stored on it. */
+  const handleRegenerate = async (message: ParadeMessage, choice: RegenChoice): Promise<boolean> => {
+    const path =
+      choice === "programme"
+        ? "/texts/generate/night"
+        : `/texts/messages/${message.id}/regenerate`;
+    const body =
+      choice === "programme"
+        ? { parade_date: message.parade_date.slice(0, 10) }
+        : { part: choice };
+
+    try {
+      const resp = await apiFetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast.error(data.detail || "Regeneration failed.");
+        return false;
+      }
+      upsertMessage(data);
+      if (data.generated_with_fallback) {
+        toast.warning(`Regenerated with ${data.generated_by_label}.`, {
+          description: "A backup model — the usual one wasn't available.",
+        });
+      } else {
+        toast.success(`Regenerated with ${data.generated_by_label ?? "AI"}.`);
+      }
+      return true;
+    } catch {
+      toast.error("Server unreachable.");
+      return false;
+    }
+  };
+
+  /** Second go at a night the batch couldn't write, straight from the programme. */
+  const retryNight = async (paradeDate: string) => {
+    setRetrying(paradeDate);
+    try {
+      const resp = await apiFetch(`${API_BASE}/texts/generate/night`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ parade_date: paradeDate.slice(0, 10) }),
       });
       const data = await resp.json();
       if (!resp.ok) {
         toast.error(data.detail || "Generation failed.");
         return;
       }
-
-      const models: ModelUsage[] = data.models_used ?? [];
-      const fellBack = models.filter((m) => m.fallback);
-      const base =
-        `Generated ${data.generated} message${data.generated !== 1 ? "s" : ""}` +
-        (data.skipped_sent ? ` (${data.skipped_sent} already sent, left alone)` : "");
-
-      if (fellBack.length > 0) {
-        const breakdown = models.map((m) => `${m.count} × ${m.label}`).join(", ");
-        toast.warning(`${base}. GLM 5.2 wasn't available for all of them — some fell back to a backup model.`, {
-          description: breakdown,
-          duration: 10000,
-        });
-      } else {
-        toast.success(base, models.length ? { description: `Written by ${models[0].label}` } : undefined);
-      }
-      await loadMessages();
+      upsertMessage(data);
+      setFailed((prev) => {
+        const rest = { ...prev };
+        delete rest[paradeDate];
+        return rest;
+      });
+      toast.success(`Written by ${data.generated_by_label ?? "AI"}.`);
     } catch {
       toast.error("Server unreachable.");
     } finally {
-      setGenerating(false);
+      setRetrying(null);
     }
   };
 
@@ -504,7 +668,7 @@ export default function TextMessagesPage() {
 
   const handleAction = async (
     id: number,
-    action: "regenerate" | "send" | "test-send",
+    action: "send" | "test-send",
     body?: object
   ): Promise<boolean> => {
     try {
@@ -518,16 +682,7 @@ export default function TextMessagesPage() {
         toast.error(data.detail || "Action failed.");
         return false;
       }
-      if (action === "regenerate") {
-        replaceMessage(data);
-        if (data.generated_with_fallback) {
-          toast.warning(`Regenerated with ${data.generated_by_label}.`, {
-            description: "GLM 5.2 wasn't available, so a backup model wrote it.",
-          });
-        } else {
-          toast.success(`Regenerated with ${data.generated_by_label ?? "AI"}.`);
-        }
-      } else if (action === "send") {
+      if (action === "send") {
         replaceMessage(data.message);
         if (data.failed > 0) toast.warning(`Sent to ${data.sent}, but ${data.failed} failed — see card for details.`);
         else toast.success(`Sent to ${data.sent} recipient${data.sent !== 1 ? "s" : ""}.`);
@@ -580,7 +735,11 @@ export default function TextMessagesPage() {
           <AlertDialogTrigger asChild>
             <Button className="ml-auto" disabled={generating || !session}>
               {generating ? <Spinner /> : <Sparkles />}
-              {generating ? "Generating…" : "Generate from programme"}
+              {!generating
+                ? "Generate from programme"
+                : progress.total
+                  ? `Writing night ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…`
+                  : "Reading programme…"}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -603,18 +762,40 @@ export default function TextMessagesPage() {
       <p className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0 text-warning" />
         <span>
-          Texts are written by <strong>GLM 5.2</strong> on NVIDIA&apos;s free tier — about 40 requests a
-          minute, shared across everyone using the squadron&apos;s key, with no daily cap. Generating a
-          whole month is fine: if it hits the per-minute limit it waits and carries on rather than
-          failing, so a big batch just takes a little longer. If GLM is unavailable a backup model
-          writes the text instead and you&apos;ll see a note on it — those backups <em>do</em> have
-          daily caps, so they can run out.
+          These drafts are AI-written and can get things wrong — read every one before you mark it
+          ready to send.
         </span>
       </p>
 
+      {Object.entries(failed).sort(([a], [b]) => a.localeCompare(b)).map(([paradeDate, error]) => (
+        <Card key={paradeDate} className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="text-base">{formatParadeDate(paradeDate)}</CardTitle>
+            <CardAction>
+              <Badge variant="destructive">Not written</Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="flex items-start gap-2 text-sm text-destructive">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              {error}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-fit"
+              disabled={retrying !== null}
+              onClick={() => retryNight(paradeDate)}
+            >
+              {retrying === paradeDate ? <Spinner /> : <RefreshCw />} Try this night again
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="size-6" /></div>
-      ) : messages.length === 0 ? (
+      ) : messages.length === 0 && Object.keys(failed).length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyTitle>No messages for {MONTHS[Number(month) - 1]} {year}</EmptyTitle>
@@ -625,7 +806,13 @@ export default function TextMessagesPage() {
         </Empty>
       ) : (
         messages.map((m) => (
-          <MessageCard key={m.id} message={m} onPatch={handlePatch} onAction={handleAction} />
+          <MessageCard
+            key={m.id}
+            message={m}
+            onPatch={handlePatch}
+            onAction={handleAction}
+            onRegenerate={handleRegenerate}
+          />
         ))
       )}
     </div>
