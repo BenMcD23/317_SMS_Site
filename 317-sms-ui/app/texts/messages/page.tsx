@@ -35,7 +35,8 @@ import { streamSse } from "@/lib/sse";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SendResult = { phone: string; status: "sent" | "failed"; error?: string };
+// `name` is absent on messages sent before recipients were tied to accounts.
+type SendResult = { phone: string; name?: string; status: "sent" | "failed"; error?: string };
 
 type ParadeMessage = {
   id: number;
@@ -300,7 +301,8 @@ function MessageCard({
               <div className="mt-2 flex flex-col gap-1 text-destructive">
                 {failures.map((f) => (
                   <span key={f.phone} className="flex items-center gap-1.5">
-                    <AlertTriangle className="size-3.5" /> {f.phone}: {f.error}
+                    <AlertTriangle className="size-3.5" />
+                    {f.name ? `${f.name} (${f.phone})` : f.phone}: {f.error}
                   </span>
                 ))}
               </div>

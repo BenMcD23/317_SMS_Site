@@ -42,6 +42,13 @@ export default function SettingsPage() {
   const [assessorNameLoading, setAssessorNameLoading] = useState(false);
   const [assessorNameDirty, setAssessorNameDirty] = useState(false);
 
+  // ── Parade night text number ─────────────────────────────────────────────────
+  const [phone, setPhone] = useState("");
+  const [phoneKind, setPhoneKind] = useState<"staff" | "cadet" | null>(null);
+  const [phoneLinked, setPhoneLinked] = useState<boolean | null>(null);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneDirty, setPhoneDirty] = useState(false);
+
   // ── Bank details (committee reimbursements) ────────────────────────────────────
   const [bank, setBank] = useState({
     bank_account_name: "", bank_sort_code: "", bank_account_number: "",
@@ -66,6 +73,17 @@ export default function SettingsPage() {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (res.ok) res.json().then((d) => setAssessorName(d.assessor_name ?? ""));
+    });
+
+    apiFetch(`${API_BASE}/settings/phone-number`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    }).then((res) => {
+      if (!res.ok) return;
+      res.json().then((d) => {
+        setPhone(d.phone_number ?? "");
+        setPhoneKind(d.kind ?? null);
+        setPhoneLinked(Boolean(d.kind));
+      });
     });
 
     apiFetch(`${API_BASE}/settings/user-profile`, {
@@ -220,6 +238,30 @@ export default function SettingsPage() {
     finally { setAssessorNameLoading(false); }
   };
 
+  const handlePhoneSave = async () => {
+    if (!session?.id_token) return;
+    setPhoneLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/settings/phone-number`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone_number: phone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPhone(data.phone_number ?? "");
+        setPhoneDirty(false);
+        toast.success(data.phone_number ? "Phone number saved." : "Phone number removed.");
+      } else {
+        toast.error(data.detail ?? "Failed to save phone number.");
+      }
+    } catch { toast.error("Server unreachable."); }
+    finally { setPhoneLoading(false); }
+  };
+
   const handleBankSave = async () => {
     if (!session?.id_token) return;
     setBankLoading(true);
@@ -267,7 +309,7 @@ export default function SettingsPage() {
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 pb-16">
       <PageHeader
         title="Settings"
-        description="Your assessor identity, signature and Bader credentials"
+        description="Your assessor identity, signature, text number and Bader credentials"
       />
 
       {/* ── Assessor identity ─────────────────────────────────────────────────── */}
@@ -402,6 +444,59 @@ export default function SettingsPage() {
                 </Button>
               )}
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ── Parade night texts ───────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Parade night texts
+        </h2>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Your Mobile Number</CardTitle>
+            <CardDescription>
+              The number the parade night texts go to. Saving one puts you on the
+              recipients list; clearing it takes you off again.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {phoneLinked === false ? (
+              <p className="text-sm text-muted-foreground">
+                Your account isn&apos;t linked to a squadron record yet, so there&apos;s
+                nowhere to save a number. It links itself once your email shows up on
+                the next roster scrape.
+              </p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    id="phone_number"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={phone}
+                    onChange={(e) => { setPhone(e.target.value); setPhoneDirty(true); }}
+                    placeholder="07700 900000"
+                    className="flex-1 max-w-sm"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handlePhoneSave}
+                    disabled={phoneLoading || !phoneDirty || !session}
+                  >
+                    {phoneLoading ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {phoneKind === "cadet"
+                    ? "Saved against your cadet record — the same number the portal shows you."
+                    : "Saved against your staff record on the squadron roster."}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </section>
