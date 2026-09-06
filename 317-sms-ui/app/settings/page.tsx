@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageHeader } from "@/components/page-header";
 import { toast } from "sonner";
-import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw } from "lucide-react";
+import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw, ExternalLink } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -48,6 +48,11 @@ export default function SettingsPage() {
   const [phoneLinked, setPhoneLinked] = useState<boolean | null>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneDirty, setPhoneDirty] = useState(false);
+  // Empty until staff have set one on the Recipients page — the join prompt
+  // only appears when there's somewhere to send people.
+  const [inviteUrl, setInviteUrl] = useState("");
+  // The number on file, as opposed to what's currently typed in the box.
+  const [savedPhone, setSavedPhone] = useState("");
 
   // ── Bank details (committee reimbursements) ────────────────────────────────────
   const [bank, setBank] = useState({
@@ -81,8 +86,10 @@ export default function SettingsPage() {
       if (!res.ok) return;
       res.json().then((d) => {
         setPhone(d.phone_number ?? "");
+        setSavedPhone(d.phone_number ?? "");
         setPhoneKind(d.kind ?? null);
         setPhoneLinked(Boolean(d.kind));
+        setInviteUrl(d.whatsapp_invite_url ?? "");
       });
     });
 
@@ -253,6 +260,8 @@ export default function SettingsPage() {
       const data = await res.json();
       if (res.ok) {
         setPhone(data.phone_number ?? "");
+        setSavedPhone(data.phone_number ?? "");
+        setInviteUrl(data.whatsapp_invite_url ?? "");
         setPhoneDirty(false);
         toast.success(data.phone_number ? "Phone number saved." : "Phone number removed.");
       } else {
@@ -495,6 +504,21 @@ export default function SettingsPage() {
                     ? "Saved against your cadet record — the same number the portal shows you."
                     : "Saved against your staff record on the squadron roster."}
                 </p>
+
+                {savedPhone && inviteUrl && (
+                  <div className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-4">
+                    <p className="text-sm font-semibold">Join the WhatsApp community</p>
+                    <p className="text-xs text-muted-foreground">
+                      Optional, and separate from the texts — you get those either way.
+                      Open it on the phone your WhatsApp is on.
+                    </p>
+                    <Button asChild size="sm" variant="outline" className="w-fit">
+                      <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+                        Open invite <ExternalLink className="size-3.5" />
+                      </a>
+                    </Button>
+                  </div>
+                )}
               </>
             )}
           </CardContent>

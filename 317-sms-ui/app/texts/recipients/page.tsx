@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -23,7 +24,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
-import { Plus, Pencil, Trash2, Download, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Upload, MessageCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
@@ -67,6 +68,11 @@ export default function TextRecipientsPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
   const [importing, setImporting] = useState(false);
+  // The WhatsApp community invite link. Set here, shown to cadets on the portal
+  // and to staff in Settings once they've saved a number.
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [savedInviteUrl, setSavedInviteUrl] = useState("");
+  const [inviteSaving, setInviteSaving] = useState(false);
 
   const authHeaders = useMemo(
     () => ({ Authorization: `Bearer ${session?.id_token}`, "Content-Type": "application/json" }),
@@ -92,6 +98,43 @@ export default function TextRecipientsPage() {
   useEffect(() => {
     loadRecipients();
   }, [loadRecipients]);
+
+  useEffect(() => {
+    if (!session?.id_token) return;
+    apiFetch(`${API_BASE}/texts/settings`, { headers: authHeaders })
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setInviteUrl(data.whatsapp_invite_url ?? "");
+        setSavedInviteUrl(data.whatsapp_invite_url ?? "");
+      })
+      .catch(() => {
+        // The list is the point of this page; a missing link isn't worth a toast.
+      });
+  }, [session?.id_token, authHeaders]);
+
+  const handleInviteSave = async () => {
+    setInviteSaving(true);
+    try {
+      const resp = await apiFetch(`${API_BASE}/texts/settings`, {
+        method: "PATCH",
+        headers: authHeaders,
+        body: JSON.stringify({ whatsapp_invite_url: inviteUrl }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast.error(data.detail || "Save failed.");
+        return;
+      }
+      setInviteUrl(data.whatsapp_invite_url ?? "");
+      setSavedInviteUrl(data.whatsapp_invite_url ?? "");
+      toast.success(data.whatsapp_invite_url ? "Invite link saved." : "Invite link removed.");
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setInviteSaving(false);
+    }
+  };
 
   const counts = useMemo(() => ({
     cadet: recipients.filter((r) => r.source === "cadet").length,
@@ -241,6 +284,47 @@ export default function TextRecipientsPage() {
         land here on their own. Add a number by hand only for someone with no account,
         like a parent.
       </p>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MessageCircle className="size-4 text-muted-foreground" />
+            WhatsApp community
+          </CardTitle>
+          <CardDescription>
+            Cadets and staff are shown this link once they&apos;ve saved a number, so they
+            can join themselves — WhatsApp has no way for us to add anyone directly.
+            Paste the community&apos;s invite link here; leave it empty to hide the prompt.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Input
+              value={inviteUrl}
+              onChange={(e) => setInviteUrl(e.target.value)}
+              placeholder="https://chat.whatsapp.com/…"
+              className="flex-1 font-mono text-sm"
+            />
+            <Button
+              onClick={handleInviteSave}
+              disabled={inviteSaving || inviteUrl.trim() === savedInviteUrl}
+            >
+              {inviteSaving && <Spinner />}
+              Save
+            </Button>
+          </div>
+          {savedInviteUrl && (
+            <a
+              href={savedInviteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-fit items-center gap-1.5 text-xs text-muted-foreground underline underline-offset-4"
+            >
+              Check the link works <ExternalLink className="size-3" />
+            </a>
+          )}
+        </CardContent>
+      </Card>
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner className="size-6" /></div>
