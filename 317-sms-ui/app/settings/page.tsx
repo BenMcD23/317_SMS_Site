@@ -509,7 +509,6 @@ export default function SettingsPage() {
                   <div className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-4">
                     <p className="text-sm font-semibold">Join the WhatsApp community</p>
                     <p className="text-xs text-muted-foreground">
-                      Optional, and separate from the texts — you get those either way.
                       Open it on the phone your WhatsApp is on.
                     </p>
                     <Button asChild size="sm" variant="outline" className="w-fit">
