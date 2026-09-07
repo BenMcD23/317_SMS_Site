@@ -14,6 +14,7 @@ import { Home, CalendarRange } from "lucide-react";
 type StaffMember = {
   cin: number;
   email: string | null;
+  phoneNumber: string | null;
   firstName: string | null;
   lastName: string | null;
   rank: string | null;
@@ -63,7 +64,9 @@ export default function StaffDetailPage() {
   if (!user) return <p className="text-sm text-muted-foreground">Staff member not found.</p>;
 
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || `CIN ${user.cin}`;
-  const description = [user.rank, user.email, `CIN ${user.cin}`].filter(Boolean).join(" · ");
+  const description = [user.rank, user.email, user.phoneNumber, `CIN ${user.cin}`]
+    .filter(Boolean)
+    .join(" · ");
   const htdMonths = Object.entries(user.attendance ?? {}).sort(([a], [b]) => a.localeCompare(b));
 
   return (

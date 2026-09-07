@@ -32,6 +32,7 @@ import {
   X,
   User,
   Mail,
+  Phone,
   Calendar,
   Shield,
   Award,
@@ -76,6 +77,7 @@ type CadetDetail = {
   first_name: string;
   last_name: string;
   email: string | null;
+  phone_number: string | null;
   date_of_birth: string | null;
   rank: string | null;
   flight: string | null;
@@ -256,11 +258,12 @@ export default function CadetOverviewPage() {
       },
       body: JSON.stringify({ [field]: value || null }),
     });
-    if (!res.ok) {
-      const detail = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(detail?.detail ?? "Failed to save");
-    }
-    setCadet((prev) => prev ? { ...prev, [field]: value || null } : prev);
+    const data = await res.json().catch(() => ({ detail: res.statusText }));
+    if (!res.ok) throw new Error(data?.detail ?? "Failed to save");
+    // Take back what was stored: a mobile is normalised server-side, so echoing
+    // the typed value here would show spaces that aren't in the database.
+    const stored = data?.values ?? { [field]: value || null };
+    setCadet((prev) => (prev ? { ...prev, ...stored } : prev));
   };
 
   const [banLoading, setBanLoading] = useState(false);
@@ -391,6 +394,14 @@ export default function CadetOverviewPage() {
               icon={Mail}
               placeholder="No email set"
               type="email"
+            />
+            <EditableField
+              label="Mobile"
+              value={cadet.phone_number}
+              onSave={(v) => patchField("phone_number", v)}
+              icon={Phone}
+              placeholder="No number set"
+              type="tel"
             />
             <div>
               <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">

@@ -46,6 +46,35 @@ type Recipient = {
 // member's comes off the roster, so those fields are read-only below.
 type ExtraForm = { rank: string; surname: string; phone_number: string };
 
+// What /cadets/search answers with, trimmed to what the picker shows.
+type CadetHit = {
+  cin: number;
+  first_name: string;
+  last_name: string;
+  rank: string | null;
+  flight: string | null;
+};
+
+// What /staff answers with. Only the roster fields the picker needs.
+type StaffRow = {
+  cin: number;
+  firstName: string;
+  lastName: string;
+  rank: string | null;
+};
+
+// Either roster's people, once they're something to pick. `key` is the
+// recipient key the number gets PATCHed onto.
+type PersonHit = { key: string; label: string; hint: string | null };
+
+const ADD_MODE_LABEL = {
+  cadet: "A cadet",
+  staff: "A staff member",
+  extra: "Someone with no account",
+} as const;
+
+type AddMode = keyof typeof ADD_MODE_LABEL;
+
 const EMPTY_FORM: ExtraForm = { rank: "", surname: "", phone_number: "" };
 
 const SOURCE_LABEL: Record<Source, string> = {
@@ -64,6 +93,12 @@ export default function TextRecipientsPage() {
   const [editing, setEditing] = useState<Recipient | null>(null);
   const [form, setForm] = useState<ExtraForm>(EMPTY_FORM);
   const [deleting, setDeleting] = useState<Recipient | null>(null);
+  // Adding under an account vs adding someone with no account behind them.
+  const [addMode, setAddMode] = useState<AddMode>("cadet");
+  const [query, setQuery] = useState("");
+  const [cadetHits, setCadetHits] = useState<CadetHit[]>([]);
+  const [staffRoster, setStaffRoster] = useState<StaffRow[]>([]);
+  const [picked, setPicked] = useState<PersonHit | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
@@ -113,6 +148,69 @@ export default function TextRecipientsPage() {
       });
   }, [session?.id_token, authHeaders]);
 
+  // Cadet search for the add dialog. Hundreds of cadets, so the roster stays on
+  // the server. Debounced because it fires per keystroke, and abandoned on the
+  // next one so a slow reply can't overwrite a newer list.
+  useEffect(() => {
+    const q = query.trim();
+    if (addMode !== "cadet" || !session?.id_token || q.length < 2) {
+      setCadetHits([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(q)}`, {
+        headers: authHeaders,
+        signal: controller.signal,
+      })
+        .then((resp) => (resp.ok ? resp.json() : []))
+        .then(setCadetHits)
+        .catch(() => {
+          // Aborted, or the server is down — the empty list says enough.
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, addMode, session?.id_token, authHeaders]);
+
+  // Staff are a few dozen, so the whole roster comes down once and the filtering
+  // happens below — a search endpoint for that many rows would earn nothing.
+  useEffect(() => {
+    if (addMode !== "staff" || !session?.id_token || staffRoster.length) return;
+    apiFetch(`${API_BASE}/staff`, { headers: authHeaders })
+      .then((resp) => (resp.ok ? resp.json() : []))
+      .then(setStaffRoster)
+      .catch(() => {
+        // Same as above: an empty picker is the visible failure.
+      });
+  }, [addMode, session?.id_token, authHeaders, staffRoster.length]);
+
+  // Whichever roster is being searched, as one list for the picker.
+  const hits: PersonHit[] = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const name = (rank: string | null, first: string, last: string) =>
+      `${rank ? `${rank} ` : ""}${first} ${last}`;
+
+    if (addMode === "staff") {
+      return staffRoster
+        .filter((p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(q))
+        .slice(0, 10)
+        .map((p) => ({
+          key: `staff:${p.cin}`,
+          label: name(p.rank, p.firstName, p.lastName),
+          hint: null,
+        }));
+    }
+    return cadetHits.map((c) => ({
+      key: `cadet:${c.cin}`,
+      label: name(c.rank, c.first_name, c.last_name),
+      hint: c.flight,
+    }));
+  }, [addMode, query, cadetHits, staffRoster]);
+
   const handleInviteSave = async () => {
     setInviteSaving(true);
     try {
@@ -142,32 +240,45 @@ export default function TextRecipientsPage() {
     extra: recipients.filter((r) => r.source === "extra").length,
   }), [recipients]);
 
+  const resetPicker = () => {
+    setAddMode("cadet");
+    setQuery("");
+    setCadetHits([]);
+    setPicked(null);
+  };
+
   const openAdd = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    resetPicker();
     setDialogOpen(true);
   };
 
   const openEdit = (r: Recipient) => {
     setEditing(r);
     setForm({ rank: r.rank, surname: r.surname, phone_number: r.phone_number });
+    resetPicker();
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const url = editing
-        ? `${API_BASE}/texts/recipients/${encodeURIComponent(editing.key)}`
+      // Adding under an account isn't a new row: the number goes onto the person
+      // the same way it would if they'd saved it themselves.
+      const addingToPerson = !editing && addMode !== "extra";
+      const key = editing?.key ?? picked?.key ?? "";
+      const url = editing || addingToPerson
+        ? `${API_BASE}/texts/recipients/${encodeURIComponent(key)}`
         : `${API_BASE}/texts/recipients`;
       // Only an extra's rank and surname are ours to change; for a cadet or
       // staff member the number is the whole of the edit.
       const body =
-        editing && editing.source !== "extra"
+        addingToPerson || (editing && editing.source !== "extra")
           ? { phone_number: form.phone_number }
           : form;
       const resp = await apiFetch(url, {
-        method: editing ? "PATCH" : "POST",
+        method: editing || addingToPerson ? "PATCH" : "POST",
         headers: authHeaders,
         body: JSON.stringify(body),
       });
@@ -399,13 +510,85 @@ export default function TextRecipientsPage() {
               {editing ? `Edit ${editing.name || "recipient"}` : "Add a number"}
             </DialogTitle>
             <DialogDescription>
-              {editingExtra
+              {!editing && addMode !== "extra"
+                ? "The number goes onto their own record, so the greeting comes from the roster and stays right as they’re promoted."
+                : editingExtra
                 ? "Rank and surname are used in the text greeting, e.g. “Sgt Smith”."
                 : "The greeting comes from their record on the squadron roster, so only the number is editable here."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            {editingExtra && (
+            {!editing && (
+              <Field>
+                <FieldLabel htmlFor="add-mode">Who is this number for?</FieldLabel>
+                <Select
+                  value={addMode}
+                  onValueChange={(v) => {
+                    setAddMode(v as AddMode);
+                    setPicked(null);
+                    setQuery("");
+                  }}
+                >
+                  <SelectTrigger id="add-mode" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ADD_MODE_LABEL).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+            {!editing && addMode !== "extra" && (
+              <Field>
+                <FieldLabel htmlFor="person-search">
+                  {addMode === "cadet" ? "Cadet" : "Staff member"}
+                </FieldLabel>
+                {picked ? (
+                  <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                    <span>{picked.label}</span>
+                    <Button size="sm" variant="ghost" onClick={() => setPicked(null)}>
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      id="person-search"
+                      placeholder="Search by name"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      autoComplete="off"
+                    />
+                    {hits.length > 0 && (
+                      <div className="max-h-44 overflow-y-auto rounded-md border">
+                        {hits.map((h) => (
+                          <button
+                            key={h.key}
+                            type="button"
+                            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                            onClick={() => { setPicked(h); setQuery(""); }}
+                          >
+                            <span>{h.label}</span>
+                            {h.hint && (
+                              <span className="text-xs text-muted-foreground">{h.hint}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {query.trim().length >= 2 && hits.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nobody by that name on the {addMode} roster. If they
+                        aren’t on it, add them as someone with no account instead.
+                      </p>
+                    )}
+                  </>
+                )}
+              </Field>
+            )}
+            {editingExtra && (editing || addMode === "extra") && (
               <>
                 <Field>
                   <FieldLabel htmlFor="rank">Rank</FieldLabel>
@@ -441,7 +624,14 @@ export default function TextRecipientsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving || !form.phone_number.trim()}>
+            <Button
+              onClick={handleSave}
+              disabled={
+                saving ||
+                !form.phone_number.trim() ||
+                (!editing && addMode !== "extra" && !picked)
+              }
+            >
               {saving && <Spinner />}
               {editing ? "Save changes" : "Add number"}
             </Button>
