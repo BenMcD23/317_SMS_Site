@@ -33,25 +33,13 @@ export const BADGE_CATEGORIES: BadgeCategory[] = [
   {
     id: "music",
     name: "Music Badges",
-    subTypes: [
-      "Bugler / Non-Valved Trumpeter",
-      "Bandsman",
-      "Piper",
-      "Drummer",
-      "Marksmanship",
-    ],
+    prefix: "Music",
     levels: ["Blue", "Bronze", "Silver", "Gold"],
   },
   {
     id: "shooting",
     name: "Shooting Badges",
-    subTypes: [
-      "Shooting",
-      "Trained Shot",
-      "Marksman",
-      "Advanced Marksman",
-      "Competition Marksman",
-    ],
+    prefix: "Shooting",
     levels: ["Blue", "Bronze", "Silver", "Gold"],
   },
   {
@@ -76,7 +64,7 @@ export const BADGE_CATEGORIES: BadgeCategory[] = [
     id: "road-marching",
     name: "Road Marching Badges",
     prefix: "Road Marching",
-    levels: ["Bronze", "Silver", "Gold (Nijmegen)"],
+    levels: ["Blue", "Bronze", "Silver", "Gold (Nijmegen)"],
   },
   {
     id: "first-aid",
