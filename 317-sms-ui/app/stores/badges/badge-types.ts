@@ -86,6 +86,25 @@ export const BADGE_CATEGORIES: BadgeCategory[] = [
   },
 ];
 
+/** Where a badge was gained. Camp and Sector Training Weekend also collect the dates attended. */
+export const GAINED_WHERE_OPTIONS = [
+  { value: "camp",                     label: "On Camp",                   needsDates: true },
+  { value: "sector_training_weekend",  label: "Sector Training Weekend",   needsDates: true },
+  { value: "wing_training_weekend",    label: "Wing Training Weekend",     needsDates: false },
+  { value: "on_sqn",                   label: "On Sqn",                    needsDates: false },
+  { value: "other",                    label: "Other",                     needsDates: false },
+] as const;
+
+export type GainedWhere = (typeof GAINED_WHERE_OPTIONS)[number]["value"];
+
+export function gainedWhereLabel(value: string | null | undefined): string | null {
+  return GAINED_WHERE_OPTIONS.find((o) => o.value === value)?.label ?? null;
+}
+
+export function gainedWhereNeedsDates(value: string | null | undefined): boolean {
+  return GAINED_WHERE_OPTIONS.find((o) => o.value === value)?.needsDates ?? false;
+}
+
 /** Parse a badge name string back into category/subType/level */
 export function parseBadgeName(name: string): {
   category: BadgeCategory | null;
