@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -438,7 +439,11 @@ export default function TextRecipientsPage() {
       </Card>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Spinner className="size-6" /></div>
+        <div className="flex flex-col gap-2">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
       ) : recipients.length === 0 ? (
         <Empty>
           <EmptyHeader>

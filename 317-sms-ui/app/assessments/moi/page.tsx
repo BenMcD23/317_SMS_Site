@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, RotateCcw, Paperclip, X } from "lucide-react";
 
@@ -421,6 +422,77 @@ export default function MoiAssessmentPage() {
         </div>
       )}
 
+      {sigLoading ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Skeleton className="h-9 w-full sm:col-span-2" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-28" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-9 w-full" />
+            </CardContent>
+          </Card>
+
+          <Skeleton className="h-16 w-full rounded-lg" />
+
+          {SECTIONS.map((s) => (
+            <Card key={s.id}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-5 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {s.questions.map((q) => (
+                  <Skeleton key={q.id} className="h-11 w-full" />
+                ))}
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-36" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-24" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <Skeleton className="h-14 w-32" />
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3">
+            <Skeleton className="h-10 flex-1 sm:w-48 sm:flex-none" />
+            <Skeleton className="h-10 w-28" />
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Candidate details */}
       <Card>
         <CardHeader>
@@ -732,6 +804,8 @@ export default function MoiAssessmentPage() {
           Reset Form
         </Button>
       </div>
+        </>
+      )}
     </div>
   );
 }

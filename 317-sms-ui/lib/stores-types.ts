@@ -93,6 +93,10 @@ export interface BadgeOrderItem {
   givenBy: string | null;
   readyToCollect: string | null;
   stockEvents?: StockEvent[];
+  gainedWhere?: string | null;
+  gainedWhereDetail?: string | null;
+  gainedDateFrom?: string | null;
+  gainedDateTo?: string | null;
 }
 
 export interface BadgeOrder {

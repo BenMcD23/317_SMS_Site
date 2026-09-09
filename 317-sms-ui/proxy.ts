@@ -20,7 +20,7 @@ const SESSION_COOKIE = "sms.session-token"
  * callback (so nothing here waits on Google), and the session cookie is dropped
  * from the response below. The Node routes handle renewal and expiry.
  */
-export default async function middleware(request: NextRequest, event: NextFetchEvent) {
+export default async function proxy(request: NextRequest, event: NextFetchEvent) {
   const handle = auth as unknown as (
     request: NextRequest,
     event: NextFetchEvent
