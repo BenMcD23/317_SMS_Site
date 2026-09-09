@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { toast } from "sonner";
 import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw, ExternalLink } from "lucide-react";
@@ -16,6 +17,12 @@ import { apiFetch } from "@/lib/api-fetch";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
+
+  // ── Initial page load ───────────────────────────────────────────────────────
+  // Signature, assessor name, phone number and bank details are fetched
+  // independently below; this flips false once all four have settled so the
+  // form isn't shown with fields still silently populating.
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // ── Credentials ─────────────────────────────────────────────────────────────
   const [credsLoading, setCredsLoading] = useState(false);
@@ -65,7 +72,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!session?.id_token) return;
 
-    apiFetch(`${API_BASE}/get-signature`, {
+    const signatureFetch = apiFetch(`${API_BASE}/get-signature`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (res.ok) res.blob().then((blob) => {
@@ -74,13 +81,13 @@ export default function SettingsPage() {
       });
     });
 
-    apiFetch(`${API_BASE}/settings/assessor-name`, {
+    const assessorNameFetch = apiFetch(`${API_BASE}/settings/assessor-name`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (res.ok) res.json().then((d) => setAssessorName(d.assessor_name ?? ""));
     });
 
-    apiFetch(`${API_BASE}/settings/phone-number`, {
+    const phoneFetch = apiFetch(`${API_BASE}/settings/phone-number`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (!res.ok) return;
@@ -93,7 +100,7 @@ export default function SettingsPage() {
       });
     });
 
-    apiFetch(`${API_BASE}/settings/user-profile`, {
+    const bankFetch = apiFetch(`${API_BASE}/settings/user-profile`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (res.ok) res.json().then((d) => setBank({
@@ -101,6 +108,10 @@ export default function SettingsPage() {
         bank_sort_code: d.bank_sort_code ?? "",
         bank_account_number: d.bank_account_number ?? "",
       }));
+    });
+
+    Promise.allSettled([signatureFetch, assessorNameFetch, phoneFetch, bankFetch]).then(() => {
+      setInitialLoading(false);
     });
   }, [session]);
 
@@ -321,6 +332,89 @@ export default function SettingsPage() {
         description="Your assessor identity, signature, text number and Bader credentials"
       />
 
+      {initialLoading ? (
+        <>
+          <section className="flex flex-col gap-3">
+            <Skeleton className="h-4 w-36" />
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="mt-1 h-4 w-64" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 flex-1 max-w-sm" />
+                  <Skeleton className="h-9 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="mt-1 h-4 w-72" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-24 w-64" />
+                <Skeleton className="h-9 w-full" />
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <Skeleton className="h-4 w-44" />
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="mt-1 h-4 w-80" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 flex-1 max-w-sm" />
+                  <Skeleton className="h-9 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <Skeleton className="h-4 w-32" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="mt-1 h-4 w-72" />
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-9 w-full" />
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <Skeleton className="h-4 w-28" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="mt-1 h-4 w-full" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-9 w-full" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Skeleton className="h-9 w-full" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                  <Skeleton className="h-9 w-full" />
+                </CardContent>
+              </Card>
+            </section>
+          )}
+        </>
+      ) : (
+        <>
       {/* ── Assessor identity ─────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -681,6 +775,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </section>}
+        </>
+      )}
 
     </div>
   );

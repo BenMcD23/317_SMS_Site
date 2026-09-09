@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
@@ -77,6 +78,7 @@ function monthsForHalf(halfId: string, attendance: Record<string, number> | null
 export default function HTDPage() {
   const { data: session } = useSession();
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staffLoading, setStaffLoading] = useState(true);
   const [selectedCin, setSelectedCin] = useState<string>("");
 
   const [rank, setRank] = useState("");
@@ -101,7 +103,8 @@ export default function HTDPage() {
     fetch("/api/staff/users")
       .then((res) => (res.ok ? res.json() : []))
       .then((data: StaffMember[]) => setStaff(data))
-      .catch(() => toast.error("Could not load staff list."));
+      .catch(() => toast.error("Could not load staff list."))
+      .finally(() => setStaffLoading(false));
   }, []);
 
   const selected = useMemo(
@@ -235,18 +238,22 @@ export default function HTDPage() {
           <CardTitle className="text-base">Staff member</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedCin} onValueChange={onSelectStaff}>
-            <SelectTrigger><SelectValue placeholder="Select a staff member" /></SelectTrigger>
-            <SelectContent>
-              {[...staff]
-                .sort((a, b) => (a.lastName ?? "").localeCompare(b.lastName ?? ""))
-                .map((s) => (
-                  <SelectItem key={s.cin} value={String(s.cin)}>
-                    {[s.rank, s.firstName, s.lastName].filter(Boolean).join(" ")}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          {staffLoading ? (
+            <Skeleton className="h-9 w-full" />
+          ) : (
+            <Select value={selectedCin} onValueChange={onSelectStaff}>
+              <SelectTrigger><SelectValue placeholder="Select a staff member" /></SelectTrigger>
+              <SelectContent>
+                {[...staff]
+                  .sort((a, b) => (a.lastName ?? "").localeCompare(b.lastName ?? ""))
+                  .map((s) => (
+                    <SelectItem key={s.cin} value={String(s.cin)}>
+                      {[s.rank, s.firstName, s.lastName].filter(Boolean).join(" ")}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          )}
         </CardContent>
       </Card>
 

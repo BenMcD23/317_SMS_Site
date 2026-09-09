@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
@@ -297,6 +298,64 @@ export default function RadioAssessmentPage() {
         </div>
       )}
 
+      {sigLoading ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-16" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-9 w-full" />
+            </CardContent>
+          </Card>
+
+          <Skeleton className="h-16 w-full rounded-lg" />
+
+          <div className="space-y-2">
+            {CRITERIA.map((c) => (
+              <Skeleton key={c.id} className="h-14 w-full rounded-lg" />
+            ))}
+          </div>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-36" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-9 w-full max-w-xs" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-20" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-11 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-24" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <Skeleton className="h-14 w-32" />
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3">
+            <Skeleton className="h-10 flex-1 sm:w-48 sm:flex-none" />
+            <Skeleton className="h-10 w-28" />
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Cadet */}
       <Card>
         <CardHeader>
@@ -447,6 +506,8 @@ export default function RadioAssessmentPage() {
           Reset Form
         </Button>
       </div>
+        </>
+      )}
     </div>
   );
 }

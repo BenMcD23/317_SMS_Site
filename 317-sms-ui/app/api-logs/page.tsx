@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
   EmptyContent,
@@ -92,8 +92,25 @@ export default function ApiLogsPage() {
   // ── Access control (defence in depth — the API also enforces owner-only) ──
   if (status === "loading") {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner />
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-8 w-24" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-9 w-full" />
+            <div className="flex flex-col gap-2 rounded-md border p-2">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-[68vh] w-full" />
+        </div>
       </div>
     );
   }
@@ -134,8 +151,19 @@ export default function ApiLogsPage() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {runs === null && loading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Spinner /> Loading…
+        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-9 w-full" />
+            <div className="flex flex-col gap-2 rounded-md border p-2">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-5 w-72" />
+            <Skeleton className="h-[64vh] w-full" />
+          </div>
         </div>
       )}
 

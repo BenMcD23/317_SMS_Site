@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -334,7 +335,11 @@ export default function BadgeStockPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="py-12 text-center text-sm text-muted-foreground">Loading badge stock…</div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full" />
+          ))}
+        </div>
       )}
 
       {/* Search results */}

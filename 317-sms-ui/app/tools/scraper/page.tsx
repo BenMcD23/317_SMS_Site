@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -443,8 +444,21 @@ function ScheduleTab({ token }: { token: string }) {
 
   if (!schedules) {
     return (
-      <div className="flex justify-center py-12">
-        <Spinner className="size-6" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-4 w-full max-w-xl" />
+        {[...Array(SCRAPER_TOOLS.length)].map((_, i) => (
+          <div key={i} className="rounded-lg border p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <div className="flex flex-wrap items-end gap-4">
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-56" />
+              <Skeleton className="h-8 w-28" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -531,8 +545,18 @@ function AttachmentChecksTab({ token }: { token: string }) {
 
   if (quals === null) {
     return (
-      <div className="flex justify-center py-12">
-        <Spinner className="size-6" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-4 w-full max-w-xl" />
+        <Card>
+          <CardContent className="flex flex-col gap-4 pt-6">
+            <Skeleton className="h-9 w-full" />
+            <div className="flex flex-wrap gap-2">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-7 w-24 rounded-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -643,8 +667,10 @@ function RunLogsDialog({
           </DialogDescription>
         </DialogHeader>
         {loading && (
-          <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 size={14} className="animate-spin" /> Loading logs...
+          <div className="space-y-2 rounded-md border bg-muted/30 p-4">
+            {[...Array(10)].map((_, i) => (
+              <Skeleton key={i} className="h-3.5 w-full" style={{ width: `${65 + ((i * 13) % 30)}%` }} />
+            ))}
           </div>
         )}
         {error && <p className="py-4 text-sm text-destructive">{error}</p>}

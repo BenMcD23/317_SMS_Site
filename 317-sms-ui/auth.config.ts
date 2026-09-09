@@ -78,7 +78,7 @@ export const authConfig: NextAuthConfig = {
   },
   callbacks: {
     // No `jwt` callback here on purpose. This config is what middleware runs,
-    // and middleware must not renew tokens: see the note in middleware.ts.
+    // and middleware must not renew tokens: see the note in proxy.ts.
     session({ session, token }) {
       session.id_token = token.id_token
       session.role = token.role

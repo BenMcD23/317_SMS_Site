@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -684,7 +685,25 @@ export default function OrdersPage() {
       <ErrorAlert message={error} />
 
       {loading && (
-        <div className="py-12 text-center text-sm text-muted-foreground">Loading orders...</div>
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Skeleton className="h-5 w-14" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4" />
+            </Card>
+          ))}
+        </div>
       )}
 
       {!loading && activeTab !== "logsform" && orders.length === 0 && (
