@@ -30,7 +30,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderList, BadgeOrderListEntry, isRemovedFromStock } from "@/lib/stores-types";
-import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName } from "../badge-types";
+import {
+  BADGE_CATEGORIES,
+  BadgeCategory,
+  buildBadgeName,
+  GAINED_WHERE_OPTIONS,
+  gainedWhereNeedsDates,
+  gainedWhereLabel,
+} from "../badge-types";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StockHistory } from "@/components/stock-history";
@@ -94,6 +101,88 @@ function BadgePicker({
   );
 }
 
+// ─── Gained where ─────────────────────────────────────────────────────────────
+
+type GainedWhereState = {
+  gainedWhere: string | null;
+  gainedWhereDetail: string;
+  gainedDateFrom: string;
+  gainedDateTo: string;
+};
+
+function emptyGainedWhere(): GainedWhereState {
+  return { gainedWhere: null, gainedWhereDetail: "", gainedDateFrom: "", gainedDateTo: "" };
+}
+
+function isGainedWhereComplete(g: GainedWhereState): boolean {
+  if (!g.gainedWhere) return false;
+  if (g.gainedWhere === "other" && !g.gainedWhereDetail.trim()) return false;
+  if (gainedWhereNeedsDates(g.gainedWhere) && (!g.gainedDateFrom || !g.gainedDateTo)) return false;
+  return true;
+}
+
+function GainedWhereFields({ value, onChange }: { value: GainedWhereState; onChange: (v: GainedWhereState) => void }) {
+  const needsDates = gainedWhereNeedsDates(value.gainedWhere);
+  return (
+    <div className="space-y-2">
+      <Select
+        value={value.gainedWhere ?? ""}
+        onValueChange={(v) => onChange({ ...value, gainedWhere: v, gainedWhereDetail: "", gainedDateFrom: "", gainedDateTo: "" })}
+      >
+        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Gained where…" /></SelectTrigger>
+        <SelectContent>
+          {GAINED_WHERE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+
+      {value.gainedWhere === "other" && (
+        <Input
+          className="h-8 text-sm"
+          placeholder="What was it?"
+          value={value.gainedWhereDetail}
+          onChange={(e) => onChange({ ...value, gainedWhereDetail: e.target.value })}
+        />
+      )}
+
+      {needsDates && (
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="date"
+            className="h-8 text-sm"
+            value={value.gainedDateFrom}
+            max={value.gainedDateTo || undefined}
+            onChange={(e) => onChange({ ...value, gainedDateFrom: e.target.value })}
+          />
+          <Input
+            type="date"
+            className="h-8 text-sm"
+            value={value.gainedDateTo}
+            min={value.gainedDateFrom || undefined}
+            onChange={(e) => onChange({ ...value, gainedDateTo: e.target.value })}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function gainedWhereSummary(g: { gainedWhere?: string | null; gainedWhereDetail?: string | null; gainedDateFrom?: string | null; gainedDateTo?: string | null }): string | null {
+  const label = g.gainedWhere === "other" ? g.gainedWhereDetail : gainedWhereLabel(g.gainedWhere);
+  if (!label) return null;
+  if (g.gainedDateFrom && g.gainedDateTo) {
+    return `${label} (${g.gainedDateFrom.slice(0, 10)} – ${g.gainedDateTo.slice(0, 10)})`;
+  }
+  return label;
+}
+
+type NewBadgeEntry = {
+  badgeName: string;
+  gainedWhere: string | null;
+  gainedWhereDetail: string;
+  gainedDateFrom: string;
+  gainedDateTo: string;
+};
+
 export default function BadgeOrdersPage() {
   const { data: session } = useSession();
   const token = (session as { id_token?: string } | null)?.id_token ?? null;
@@ -120,10 +209,11 @@ export default function BadgeOrdersPage() {
   const [newOrderOpen, setNewOrderOpen] = useState(false);
   const [newCadetCin, setNewCadetCin] = useState<number | null>(null);
   const [newCadetName, setNewCadetName] = useState("");
-  const [newBadgeNames, setNewBadgeNames] = useState<string[]>([]);
+  const [newBadges, setNewBadges] = useState<NewBadgeEntry[]>([]);
   const [newCategory, setNewCategory] = useState<BadgeCategory | null>(null);
   const [newSubType, setNewSubType] = useState<string | null>(null);
   const [newLevel, setNewLevel] = useState<string | null>(null);
+  const [newGainedWhere, setNewGainedWhere] = useState<GainedWhereState>(emptyGainedWhere());
   const [submitting, setSubmitting] = useState(false);
 
   // Add badge to existing order (inline)
@@ -131,6 +221,7 @@ export default function BadgeOrdersPage() {
   const [addCategory, setAddCategory] = useState<BadgeCategory | null>(null);
   const [addSubType, setAddSubType] = useState<string | null>(null);
   const [addLevel, setAddLevel] = useState<string | null>(null);
+  const [addGainedWhere, setAddGainedWhere] = useState<GainedWhereState>(emptyGainedWhere());
 
   // QM notes
   const [addingNoteItemId, setAddingNoteItemId] = useState<string | null>(null);
@@ -387,19 +478,19 @@ export default function BadgeOrdersPage() {
   function openNewOrder() {
     setNewCadetCin(null);
     setNewCadetName("");
-    setNewBadgeNames([]);
-    setNewCategory(null); setNewSubType(null); setNewLevel(null);
+    setNewBadges([]);
+    setNewCategory(null); setNewSubType(null); setNewLevel(null); setNewGainedWhere(emptyGainedWhere());
     setNewOrderOpen(true);
   }
 
   function handleAddBadgeToNew() {
-    if (!currentBadgeName) return;
-    setNewBadgeNames((prev) => [...prev, currentBadgeName]);
-    setNewCategory(null); setNewSubType(null); setNewLevel(null);
+    if (!currentBadgeName || !isGainedWhereComplete(newGainedWhere)) return;
+    setNewBadges((prev) => [...prev, { badgeName: currentBadgeName, ...newGainedWhere }]);
+    setNewCategory(null); setNewSubType(null); setNewLevel(null); setNewGainedWhere(emptyGainedWhere());
   }
 
   async function handleCreateOrder() {
-    if (!newCadetCin || newBadgeNames.length === 0) return;
+    if (!newCadetCin || newBadges.length === 0) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/stores/badges/orders", {
@@ -407,7 +498,13 @@ export default function BadgeOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cadetCin: newCadetCin,
-          items: newBadgeNames.map((badgeName) => ({ badgeName })),
+          items: newBadges.map((b) => ({
+            badgeName: b.badgeName,
+            gainedWhere: b.gainedWhere,
+            gainedWhereDetail: b.gainedWhereDetail,
+            gainedDateFrom: b.gainedDateFrom,
+            gainedDateTo: b.gainedDateTo,
+          })),
         }),
       });
       if (!res.ok) throw new Error("Failed to create order");
@@ -423,7 +520,7 @@ export default function BadgeOrdersPage() {
 
   function startAddToOrder(orderId: string) {
     setAddingToOrderId(orderId);
-    setAddCategory(null); setAddSubType(null); setAddLevel(null);
+    setAddCategory(null); setAddSubType(null); setAddLevel(null); setAddGainedWhere(emptyGainedWhere());
   }
 
   // ── Order list ─────────────────────────────────────────────────────────────
@@ -630,10 +727,16 @@ export default function BadgeOrdersPage() {
   }
 
   async function handleAddToOrder(orderId: string) {
-    if (!addBadgeName) return;
+    if (!addBadgeName || !isGainedWhereComplete(addGainedWhere)) return;
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    const newItem: BadgeOrderItem = { id: "", badgeName: addBadgeName, qmNotes: [], givenAt: null, givenBy: null, readyToCollect: null };
+    const newItem: BadgeOrderItem = {
+      id: "", badgeName: addBadgeName, qmNotes: [], givenAt: null, givenBy: null, readyToCollect: null,
+      gainedWhere: addGainedWhere.gainedWhere,
+      gainedWhereDetail: addGainedWhere.gainedWhereDetail,
+      gainedDateFrom: addGainedWhere.gainedDateFrom,
+      gainedDateTo: addGainedWhere.gainedDateTo,
+    };
     await patchOrder(orderId, { items: [...order.items, newItem] });
     setAddingToOrderId(null);
   }
@@ -814,6 +917,9 @@ export default function BadgeOrdersPage() {
                                     </Badge>
                                   )}
                                 </p>
+                                {gainedWhereSummary(orderItem) && (
+                                  <p className="text-xs text-muted-foreground">{gainedWhereSummary(orderItem)}</p>
+                                )}
 
                                 {!isCompleted && (
                                   stockMatch ? (
@@ -976,9 +1082,12 @@ export default function BadgeOrdersPage() {
                           {addBadgeName && (
                             <p className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium">{addBadgeName}</p>
                           )}
+                          {addBadgeName && (
+                            <GainedWhereFields value={addGainedWhere} onChange={setAddGainedWhere} />
+                          )}
                           <div className="flex gap-2">
                             <Button size="sm" className="h-7 px-3 text-xs"
-                              disabled={!addBadgeName}
+                              disabled={!addBadgeName || !isGainedWhereComplete(addGainedWhere)}
                               onClick={() => handleAddToOrder(order.id)}>
                               Add
                             </Button>
@@ -1154,13 +1263,16 @@ export default function BadgeOrdersPage() {
             <div className="space-y-2">
               <Label>Badges</Label>
 
-              {newBadgeNames.length > 0 && (
+              {newBadges.length > 0 && (
                 <ul className="space-y-1">
-                  {newBadgeNames.map((name, idx) => (
+                  {newBadges.map((b, idx) => (
                     <li key={idx} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm">
-                      <span>{name}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block">{b.badgeName}</span>
+                        <span className="block text-xs text-muted-foreground">{gainedWhereSummary(b)}</span>
+                      </span>
                       <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground"
-                        onClick={() => setNewBadgeNames((prev) => prev.filter((_, i) => i !== idx))}>
+                        onClick={() => setNewBadges((prev) => prev.filter((_, i) => i !== idx))}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </li>
@@ -1180,8 +1292,11 @@ export default function BadgeOrdersPage() {
                 {currentBadgeName && (
                   <p className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium">{currentBadgeName}</p>
                 )}
+                {currentBadgeName && (
+                  <GainedWhereFields value={newGainedWhere} onChange={setNewGainedWhere} />
+                )}
                 <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
-                  disabled={!currentBadgeName}
+                  disabled={!currentBadgeName || !isGainedWhereComplete(newGainedWhere)}
                   onClick={handleAddBadgeToNew}>
                   <Plus className="mr-1 h-3.5 w-3.5" />
                   Add Badge
@@ -1193,7 +1308,7 @@ export default function BadgeOrdersPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewOrderOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateOrder}
-              disabled={submitting || !newCadetCin || newBadgeNames.length === 0}>
+              disabled={submitting || !newCadetCin || newBadges.length === 0}>
               {submitting ? "Creating..." : "Create Order"}
             </Button>
           </DialogFooter>
