@@ -117,6 +117,10 @@ export default function BadgeOrdersPage() {
   const [markingReceivedId, setMarkingReceivedId] = useState<string | null>(null);
   const [showReceived, setShowReceived] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  // Order-list shortcuts from the order item itself — keyed by order item id,
+  // separate from the Order List tab's own in-flight state (keyed by entry id).
+  const [sendingToOrderedId, setSendingToOrderedId] = useState<string | null>(null);
+  const [markingReceivedQuickId, setMarkingReceivedQuickId] = useState<string | null>(null);
 
   // New order dialog
   const [newOrderOpen, setNewOrderOpen] = useState(false);
@@ -461,12 +465,22 @@ export default function BadgeOrdersPage() {
     return orderListEntries.find((e) => e.orderItemId === itemId);
   }
 
-  function orderListLabelFor(itemId: string): string {
+  function orderListStageFor(itemId: string): "none" | "toOrder" | "ordered" | "received" {
     const entry = orderListEntryFor(itemId);
-    if (!entry) return "Add to Order List";
-    if (entry.receivedAt) return "Received";
-    if (entry.orderedAt) return "Ordered";
-    return "On Order List";
+    if (!entry) return "none";
+    if (entry.receivedAt) return "received";
+    if (entry.orderedAt) return "ordered";
+    return "toOrder";
+  }
+
+  /** An order can only be completed once every non-replacement badge has been
+   * received — replacements skip that requirement, same as they skip stock. */
+  function canCompleteOrder(order: BadgeOrder): boolean {
+    return order.items.every((item) => {
+      if (!item.givenAt) return false;
+      if (item.replacement) return true;
+      return !!orderListEntryFor(item.id)?.receivedAt;
+    });
   }
 
   async function refreshOrderListEntries() {
@@ -474,15 +488,43 @@ export default function BadgeOrdersPage() {
     if (res.ok) setOrderListEntries(await res.json());
   }
 
+  // Raw calls shared by the Order List tab's own buttons and the order item's
+  // "skip ahead" shortcuts below — both need the same create/advance requests,
+  // just triggered from different places and chained differently.
+  async function createOrderListEntry(item: BadgeOrderItem): Promise<BadgeOrderListEntry> {
+    const res = await fetch("/api/stores/badges/order-lists/entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderItemId: item.id, by: currentUser }),
+    });
+    if (!res.ok) throw new Error("Failed to add to order list");
+    return res.json();
+  }
+
+  async function markEntryOrdered(entryId: string): Promise<BadgeOrderListEntry> {
+    const res = await fetch(`/api/stores/badges/order-lists/entries/${entryId}/mark-ordered`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ by: currentUser }),
+    });
+    if (!res.ok) throw new Error("Failed to mark as ordered");
+    return res.json();
+  }
+
+  async function markEntryReceived(entryId: string): Promise<BadgeOrderListEntry> {
+    const res = await fetch(`/api/stores/badges/order-lists/entries/${entryId}/mark-received`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ by: currentUser }),
+    });
+    if (!res.ok) throw new Error("Failed to mark as received");
+    return res.json();
+  }
+
   async function handleAddToOrderList(item: BadgeOrderItem) {
     setAddingToListId(item.id);
     try {
-      const res = await fetch("/api/stores/badges/order-lists/entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderItemId: item.id, by: currentUser }),
-      });
-      if (!res.ok) throw new Error("Failed to add to order list");
+      await createOrderListEntry(item);
       await refreshOrderListEntries();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -504,12 +546,7 @@ export default function BadgeOrdersPage() {
   async function handleMarkEntryOrdered(entryId: string) {
     setMarkingOrderedId(entryId);
     try {
-      const res = await fetch(`/api/stores/badges/order-lists/entries/${entryId}/mark-ordered`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ by: currentUser }),
-      });
-      if (!res.ok) throw new Error("Failed to mark as ordered");
+      await markEntryOrdered(entryId);
       await refreshOrderListEntries();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -521,17 +558,44 @@ export default function BadgeOrdersPage() {
   async function handleMarkEntryReceived(entryId: string) {
     setMarkingReceivedId(entryId);
     try {
-      const res = await fetch(`/api/stores/badges/order-lists/entries/${entryId}/mark-received`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ by: currentUser }),
-      });
-      if (!res.ok) throw new Error("Failed to mark as received");
+      await markEntryReceived(entryId);
       await refreshOrderListEntries();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setMarkingReceivedId(null);
+    }
+  }
+
+  /** Straight from the order item to "ordered" — skips the to-order queue, but
+   * still creates the entry first so added_by is stamped just like normal. */
+  async function handleSendToOrdered(item: BadgeOrderItem) {
+    setSendingToOrderedId(item.id);
+    try {
+      const entry = orderListEntryFor(item.id) ?? (await createOrderListEntry(item));
+      if (!entry.orderedAt) await markEntryOrdered(entry.id);
+      await refreshOrderListEntries();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setSendingToOrderedId(null);
+    }
+  }
+
+  /** Straight from the order item to "received", from whatever stage it's
+   * currently at — walks it through any skipped stages first so the audit
+   * trail (added/ordered/received, each by whoever clicked) stays complete. */
+  async function handleMarkReceivedQuick(item: BadgeOrderItem) {
+    setMarkingReceivedQuickId(item.id);
+    try {
+      let entry = orderListEntryFor(item.id) ?? (await createOrderListEntry(item));
+      if (!entry.orderedAt) entry = await markEntryOrdered(entry.id);
+      if (!entry.receivedAt) await markEntryReceived(entry.id);
+      await refreshOrderListEntries();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setMarkingReceivedQuickId(null);
     }
   }
 
@@ -730,7 +794,7 @@ export default function BadgeOrdersPage() {
       {/* Tabs */}
       <div className="overflow-x-auto">
         <div className="flex gap-1 border-b min-w-max">
-          {(["active", "completed", "orderlist"] as const).map((tab) => {
+          {(["active", "orderlist", "completed"] as const).map((tab) => {
             const count =
               tab === "active" ? activeOrders.length :
               tab === "completed" ? completedOrders.length :
@@ -837,6 +901,8 @@ export default function BadgeOrdersPage() {
                         const stockMatch = findBadgeStockMatch(orderItem.badgeName);
                         const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
                         const isAddingNoteHere = addingNoteItemId === orderItem.id;
+                        const orderListEntry = orderListEntryFor(orderItem.id);
+                        const orderListStage = orderListStageFor(orderItem.id);
 
                         return (
                           <li
@@ -888,13 +954,35 @@ export default function BadgeOrdersPage() {
                                       Remove from Stock
                                     </Button>
                                   )}
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 w-full text-xs disabled:opacity-40"
-                                    disabled={addingToListId === orderItem.id || !!orderListEntryFor(orderItem.id)}
-                                    onClick={() => handleAddToOrderList(orderItem)}>
-                                    <ClipboardList className="h-3 w-3 mr-1" />
-                                    {orderListLabelFor(orderItem.id)}
-                                  </Button>
+                                  {orderListStage === "none" && (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={addingToListId === orderItem.id}
+                                      onClick={() => handleAddToOrderList(orderItem)}>
+                                      <ClipboardList className="h-3 w-3 mr-1" />
+                                      Add to Order List
+                                    </Button>
+                                  )}
+                                  {(orderListStage === "none" || orderListStage === "toOrder") && (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={sendingToOrderedId === orderItem.id}
+                                      onClick={() => handleSendToOrdered(orderItem)}>
+                                      <Truck className="h-3 w-3 mr-1" />
+                                      {sendingToOrderedId === orderItem.id
+                                        ? "Sending..."
+                                        : orderListStage === "toOrder" ? "Mark as Ordered" : "Send to Ordered"}
+                                    </Button>
+                                  )}
+                                  {orderListStage !== "received" && (
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={markingReceivedQuickId === orderItem.id}
+                                      onClick={() => handleMarkReceivedQuick(orderItem)}>
+                                      <Inbox className="h-3 w-3 mr-1" />
+                                      {markingReceivedQuickId === orderItem.id ? "Marking..." : "Mark as Received"}
+                                    </Button>
+                                  )}
                                   <Button size="sm" variant="outline"
                                     className="h-7 w-full text-xs border-primary/40 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
                                     disabled={markingAsReady === orderItem.id || !!orderItem.readyToCollect || !!orderItem.givenAt}
@@ -937,6 +1025,38 @@ export default function BadgeOrdersPage() {
                                   Given {formatTimestamp(orderItem.givenAt)}
                                   {orderItem.givenBy && <> · {orderItem.givenBy}</>}
                                 </p>
+                              </div>
+                            )}
+
+                            {/* Order list stamps — added/ordered/received, each its own line so
+                                the audit trail reads the same as it does on the Order List tab */}
+                            {orderListEntry && (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2.5 py-1.5">
+                                  <ClipboardList className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                  <p className="text-xs text-muted-foreground">
+                                    Added to order list {formatTimestamp(orderListEntry.addedAt)}
+                                    {orderListEntry.addedBy && <> · {orderListEntry.addedBy}</>}
+                                  </p>
+                                </div>
+                                {orderListEntry.orderedAt && (
+                                  <div className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2.5 py-1.5">
+                                    <Truck className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                    <p className="text-xs text-muted-foreground">
+                                      Marked ordered {formatTimestamp(orderListEntry.orderedAt)}
+                                      {orderListEntry.orderedBy && <> · {orderListEntry.orderedBy}</>}
+                                    </p>
+                                  </div>
+                                )}
+                                {orderListEntry.receivedAt && (
+                                  <div className="flex items-center gap-1.5 rounded-md bg-success/10 border border-success/30 px-2.5 py-1.5">
+                                    <Inbox className="h-3 w-3 shrink-0 text-success" />
+                                    <p className="text-xs text-success">
+                                      Marked received {formatTimestamp(orderListEntry.receivedAt)}
+                                      {orderListEntry.receivedBy && <> · {orderListEntry.receivedBy}</>}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -1057,7 +1177,9 @@ export default function BadgeOrdersPage() {
                             Delete Order
                           </Button>
                           <Button size="sm"
-                            className="bg-success hover:bg-success/90 text-white"
+                            className="bg-success hover:bg-success/90 text-white disabled:opacity-40"
+                            disabled={!canCompleteOrder(order)}
+                            title={canCompleteOrder(order) ? undefined : "Every badge must be given, and received unless it's a replacement"}
                             onClick={() => handleCompleteOrder(order.id, order.cadetName)}>
                             <CheckCircle2 className="mr-2 h-4 w-4" />
                             Complete Order
