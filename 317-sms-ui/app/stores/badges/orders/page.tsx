@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderListEntry, isRemovedFromStock } from "@/lib/stores-types";
 import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName } from "../badge-types";
 import { CadetSearchInput } from "@/components/cadet-search";
@@ -473,14 +474,21 @@ export default function BadgeOrdersPage() {
     return "toOrder";
   }
 
-  /** An order can only be completed once every non-replacement badge has been
-   * received — replacements skip that requirement, same as they skip stock. */
-  function canCompleteOrder(order: BadgeOrder): boolean {
-    return order.items.every((item) => {
-      if (!item.givenAt) return false;
-      if (item.replacement) return true;
-      return !!orderListEntryFor(item.id)?.receivedAt;
-    });
+  /** Reasons Complete Order is disabled for this order, empty when it's ready.
+   * Every badge must be given, and every non-replacement badge must also have
+   * been marked received — replacements skip that requirement, same as they
+   * skip stock. */
+  function completeOrderBlockers(order: BadgeOrder): string[] {
+    const notGiven = order.items.filter((i) => !i.givenAt);
+    const notReceived = order.items.filter((i) => !i.replacement && !orderListEntryFor(i.id)?.receivedAt);
+    const blockers: string[] = [];
+    if (notGiven.length > 0) {
+      blockers.push(`${notGiven.length} badge${notGiven.length !== 1 ? "s" : ""} not yet given`);
+    }
+    if (notReceived.length > 0) {
+      blockers.push(`${notReceived.length} badge${notReceived.length !== 1 ? "s" : ""} not yet received`);
+    }
+    return blockers;
   }
 
   async function refreshOrderListEntries() {
@@ -873,6 +881,7 @@ export default function BadgeOrdersPage() {
             const expanded = expandedIds.has(order.id);
             const isCompleted = !!order.completed;
             const isAddingHere = addingToOrderId === order.id;
+            const completeBlockers = completeOrderBlockers(order);
 
             return (
               <Card key={order.id} className={isCompleted ? "opacity-80" : undefined}>
@@ -1176,14 +1185,30 @@ export default function BadgeOrdersPage() {
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Order
                           </Button>
-                          <Button size="sm"
-                            className="bg-success hover:bg-success/90 text-white disabled:opacity-40"
-                            disabled={!canCompleteOrder(order)}
-                            title={canCompleteOrder(order) ? undefined : "Every badge must be given, and received unless it's a replacement"}
-                            onClick={() => handleCompleteOrder(order.id, order.cadetName)}>
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Complete Order
-                          </Button>
+                          {completeBlockers.length > 0 ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                {/* Complete Order is disabled below, which stops it from receiving
+                                    hover/focus — this span is what the tooltip actually anchors to. */}
+                                <span tabIndex={0} className="inline-flex">
+                                  <Button size="sm"
+                                    className="bg-success hover:bg-success/90 text-white disabled:pointer-events-none disabled:opacity-40"
+                                    disabled>
+                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    Complete Order
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Can&apos;t complete — {completeBlockers.join(", ")}</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Button size="sm"
+                              className="bg-success hover:bg-success/90 text-white"
+                              onClick={() => handleCompleteOrder(order.id, order.cadetName)}>
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Complete Order
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>
