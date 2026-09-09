@@ -138,16 +138,18 @@ export interface LogsForm {
   entries: LogsFormEntry[];
 }
 
+/** A badge queued for the supplier order. Moves through its own
+ * queued → ordered → received stages, one badge at a time, each stamped
+ * with who made the move. */
 export interface BadgeOrderListEntry {
   id: string;
   orderItemId: string | null;
   badgeName: string;
   cadetName: string;
-}
-
-export interface BadgeOrderList {
-  id: string;
-  createdAt: string;
+  addedAt: string;
+  addedBy: string | null;
   orderedAt: string | null;
-  entries: BadgeOrderListEntry[];
+  orderedBy: string | null;
+  receivedAt: string | null;
+  receivedBy: string | null;
 }
