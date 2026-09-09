@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -796,7 +797,29 @@ export default function TextMessagesPage() {
       ))}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Spinner className="size-6" /></div>
+        <div className="flex flex-col gap-6">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-48" />
+                <CardAction>
+                  <Skeleton className="h-5 w-24" />
+                </CardAction>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Skeleton className="h-9 w-full" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : messages.length === 0 && Object.keys(failed).length === 0 ? (
         <Empty>
           <EmptyHeader>

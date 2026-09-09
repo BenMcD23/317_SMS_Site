@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -197,8 +198,22 @@ export default function BackupsPage() {
   // ── Access control (defence in depth — the API also enforces owner-only) ──
   if (status === "loading") {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner />
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-32" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-12" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -245,8 +260,10 @@ export default function BackupsPage() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {backups === null && loading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Spinner /> Loading…
+        <div className="flex flex-col gap-2">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-12" />
+          ))}
         </div>
       )}
 

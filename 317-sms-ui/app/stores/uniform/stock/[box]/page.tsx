@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ShelfStructure, ShelfBox, StockItem } from "@/lib/stores-types";
 import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
 import { SizeCombobox } from "@/components/size-combobox";
@@ -220,7 +221,19 @@ export default function BoxPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>;
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 pb-16">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-8 w-8 rounded-md" />
+          <Skeleton className="h-6 w-32" />
+        </div>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+          {[...Array(12)].map((_, i) => (
+            <Skeleton key={i} className="aspect-square w-full" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!selectedBox) {

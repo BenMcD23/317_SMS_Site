@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   Loader2,
@@ -341,6 +342,56 @@ export default function LeadershipAssessmentPage() {
         </div>
       )}
 
+      {sigLoading ? (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-36" />
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full sm:col-span-2" />
+            </CardContent>
+          </Card>
+
+          <Skeleton className="h-16 w-full rounded-lg" />
+
+          <div className="space-y-3">
+            {QUESTIONS.map((q) => (
+              <Skeleton key={q.id} className="h-24 w-full rounded-lg" />
+            ))}
+          </div>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-24" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <Skeleton className="h-14 w-32" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-36" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-24 w-full" />
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3">
+            <Skeleton className="h-10 flex-1 sm:w-48 sm:flex-none" />
+            <Skeleton className="h-10 w-28" />
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Exercise details */}
       <Card>
         <CardHeader>
@@ -495,6 +546,8 @@ export default function LeadershipAssessmentPage() {
           Reset Form
         </Button>
       </div>
+        </>
+      )}
     </div>
   );
 }
