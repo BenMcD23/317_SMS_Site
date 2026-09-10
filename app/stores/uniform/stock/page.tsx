@@ -1,0 +1,401 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Search, FolderPlus, Check, Settings2, Plus, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
+import { ErrorAlert } from "@/components/error-alert";
+import { Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ShelfStructure, StockItem } from "@/lib/stores-types";
+import { ShelfView } from "./components/ShelfView";
+import { AddStockDialog } from "./components/AddStockDialog";
+import { EditStockDialog } from "./components/EditStockDialog";
+
+export default function StockPage() {
+  const router = useRouter();
+  const [shelfStructure, setShelfStructure] = useState<ShelfStructure | null>(null);
+  const [stock, setStock] = useState<StockItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [searchName, setSearchName] = useState("");
+  const [searchSize, setSearchSize] = useState("");
+
+  const [addBoxAreaOpen, setAddBoxAreaOpen] = useState(false);
+  const [newBoxAreaName, setNewBoxAreaName] = useState("");
+  const [addBoxAreaType, setAddBoxAreaType] = useState<"box" | "area">("box");
+  const [editMode, setEditMode] = useState(false);
+  const [addStockOpen, setAddStockOpen] = useState(false);
+
+  const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<StockItem | null>(null);
+
+  useEffect(() => { loadAll(); }, []);
+
+  async function loadAll() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [stockRes, structRes] = await Promise.all([
+        fetch("/api/stores/stock"),
+        fetch("/api/stores/structure"),
+      ]);
+      if (!stockRes.ok || !structRes.ok) throw new Error("Failed to load data");
+      const [stockData, structData] = await Promise.all([stockRes.json(), structRes.json()]);
+      setStock(stockData);
+      setShelfStructure(structData);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const totalCount = stock.reduce((sum, i) => sum + i.quantity, 0);
+  const isSearching = searchName.trim() !== "";
+
+  // All labels (for duplicate checking)
+  const structureCompat = useMemo(
+    () =>
+      Object.fromEntries(
+        shelfStructure?.boxes.map((b) => [b.label, b.sections.map((s) => s.label)]) ?? []
+      ),
+    [shelfStructure]
+  );
+
+  // Set of level-0 labels for search result badge
+  const miscLabels = useMemo(
+    () => new Set((shelfStructure?.boxes ?? []).filter((b) => b.shelfLevel === 0).map((b) => b.label)),
+    [shelfStructure]
+  );
+
+  const searchResults = useMemo(() => {
+    if (!searchName.trim()) return [];
+    const name = searchName.toLowerCase();
+    const size = searchSize.trim().toLowerCase();
+    return stock.filter(
+      (i) =>
+        i.itemType.toLowerCase().includes(name) &&
+        (size === "" || i.size.toLowerCase().includes(size))
+    );
+  }, [searchName, searchSize, stock]);
+
+  function openEdit(item: StockItem) {
+    setEditTarget(item);
+    setEditOpen(true);
+  }
+
+  async function handleDeleteItem(id: string) {
+    try {
+      const res = await fetch(`/api/stores/stock/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete item");
+      setStock((prev) => prev.filter((i) => i.id !== id));
+      setDeleteItemConfirm(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  async function handleDeleteBox(label: string) {
+    try {
+      const res = await fetch("/api/stores/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-box", box: label }),
+      });
+      if (!res.ok) throw new Error("Failed to delete box");
+      setShelfStructure(await res.json());
+      setStock((prev) => prev.filter((i) => i.box !== label));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  async function handleRenameBox(label: string, newLabel: string) {
+    const name = newLabel.trim().toUpperCase();
+    if (!name || name === label || structureCompat[name] !== undefined) return;
+    try {
+      const res = await fetch("/api/stores/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rename-box", box: label, newLabel: name }),
+      });
+      if (!res.ok) throw new Error("Failed to rename box");
+      setShelfStructure(await res.json());
+      setStock((prev) => prev.map((i) => (i.box === label ? { ...i, box: name } : i)));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  async function handleAddBoxArea() {
+    const name = newBoxAreaName.trim().toUpperCase();
+    if (!name || structureCompat[name] !== undefined) return;
+    try {
+      const res = await fetch("/api/stores/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: addBoxAreaType === "box" ? "add-box" : "add-area", box: name }),
+      });
+      if (!res.ok) throw new Error(`Failed to add ${addBoxAreaType}`);
+      setShelfStructure(await res.json());
+      setAddBoxAreaOpen(false);
+      setNewBoxAreaName("");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Uniform Stock"
+        description={loading ? "Loading…" : `${totalCount} items across ${stock.length} lines`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setAddBoxAreaOpen(true)}>
+              <FolderPlus data-icon="inline-start" />
+              Add box/area
+            </Button>
+            <Button size="sm" onClick={() => setAddStockOpen(true)}>
+              <Plus data-icon="inline-start" />
+              Add stock
+            </Button>
+          </>
+        }
+      />
+
+      {/* Search */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by item name…"
+            className="pl-9"
+            value={searchName}
+            onChange={(e) => { setSearchName(e.target.value); if (!e.target.value.trim()) setSearchSize(""); }}
+          />
+        </div>
+        {isSearching && (
+          <Input
+            placeholder="Size…"
+            className="w-24 sm:w-36"
+            value={searchSize}
+            onChange={(e) => setSearchSize(e.target.value)}
+          />
+        )}
+      </div>
+
+      <ErrorAlert message={error} />
+
+      {/* Loading */}
+      {loading && (
+        <div className="py-12 text-center text-sm text-muted-foreground">Loading stock…</div>
+      )}
+
+      {/* Search results */}
+      {!loading && isSearching && (
+        <div>
+          <p className="mb-3 text-sm text-muted-foreground">
+            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchName}{searchSize ? ` · size: ${searchSize}` : ""}&rdquo;
+          </p>
+          {searchResults.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No items match your search.</p>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <ul className="divide-y">
+                  {searchResults.map((item) => (
+                    <SearchResultRow
+                      key={item.id}
+                      item={item}
+                      isMisc={miscLabels.has(item.box)}
+                      deleteConfirm={deleteItemConfirm}
+                      onEdit={openEdit}
+                      onDelete={handleDeleteItem}
+                      onDeleteConfirm={setDeleteItemConfirm}
+                    />
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Shelf + Other Areas view */}
+      {!loading && !isSearching && shelfStructure && (
+        <ShelfView
+          structure={shelfStructure}
+          stock={stock}
+          onSelectBox={(label) => router.push(`/stores/uniform/stock/${label}`)}
+          onStructureChange={(s) => setShelfStructure(s)}
+          onAddBox={() => setAddBoxAreaOpen(true)}
+          editMode={editMode}
+          onDeleteBox={handleDeleteBox}
+          onRenameBox={handleRenameBox}
+        />
+      )}
+
+      {/* Edit Arrangement — bottom centre */}
+      {!loading && !isSearching && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant={editMode ? "default" : "outline"}
+            className="gap-2 px-6"
+            onClick={() => setEditMode((m) => !m)}
+          >
+            {editMode ? (
+              <>
+                <Check className="h-4 w-4" />
+                Done Editing
+              </>
+            ) : (
+              <>
+                <Settings2 className="h-4 w-4" />
+                Edit Arrangement
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Add Stock */}
+      {shelfStructure && (
+        <AddStockDialog
+          open={addStockOpen}
+          onOpenChange={setAddStockOpen}
+          stock={stock}
+          shelfStructure={shelfStructure}
+          onSuccess={loadAll}
+        />
+      )}
+
+      {/* Edit Stock */}
+      {shelfStructure && (
+        <EditStockDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          item={editTarget}
+          shelfStructure={shelfStructure}
+          onSuccess={(updated) => {
+            setStock((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+            setEditOpen(false);
+            setEditTarget(null);
+          }}
+        />
+      )}
+
+      {/* Add Box/Area */}
+      <Dialog open={addBoxAreaOpen} onOpenChange={(o) => { setAddBoxAreaOpen(o); if (!o) setNewBoxAreaName(""); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Add Box / Area</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="flex rounded-md border overflow-hidden">
+              <button
+                type="button"
+                className={`flex-1 cursor-pointer py-1.5 text-sm transition-colors ${addBoxAreaType === "box" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                onClick={() => { setAddBoxAreaType("box"); setNewBoxAreaName(""); }}
+              >
+                Box
+              </button>
+              <button
+                type="button"
+                className={`flex-1 cursor-pointer py-1.5 text-sm transition-colors ${addBoxAreaType === "area" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                onClick={() => { setAddBoxAreaType("area"); setNewBoxAreaName(""); }}
+              >
+                Misc Area
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="newBoxArea">Label</Label>
+              <Input
+                id="newBoxArea"
+                placeholder={addBoxAreaType === "box" ? "e.g. H" : "e.g. CUPBOARD"}
+                value={newBoxAreaName}
+                onChange={(e) => setNewBoxAreaName(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && handleAddBoxArea()}
+                maxLength={addBoxAreaType === "box" ? 10 : 20}
+              />
+              {newBoxAreaName.trim() && structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined && (
+                <p className="text-xs text-destructive">{newBoxAreaName.trim().toUpperCase()} already exists.</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddBoxAreaOpen(false); setNewBoxAreaName(""); }}>Cancel</Button>
+            <Button onClick={handleAddBoxArea} disabled={!newBoxAreaName.trim() || structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined}>
+              Add {addBoxAreaType === "box" ? "Box" : "Area"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Search result row ──────────────────────────────────────────────────────────
+
+function SearchResultRow({
+  item,
+  isMisc,
+  deleteConfirm,
+  onEdit,
+  onDelete,
+  onDeleteConfirm,
+}: {
+  item: StockItem;
+  isMisc: boolean;
+  deleteConfirm: string | null;
+  onEdit: (item: StockItem) => void;
+  onDelete: (id: string) => void;
+  onDeleteConfirm: (id: string | null) => void;
+}) {
+  return (
+    <li className="flex items-center gap-3 px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{item.itemType}</p>
+        <p className="text-xs text-muted-foreground">{item.size}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Badge variant="outline" className="text-xs">
+          {isMisc ? item.box : `Box ${item.box}`} §{item.section}
+        </Badge>
+        <Badge variant="secondary" className="text-xs">qty: {item.quantity}</Badge>
+        {deleteConfirm === item.id ? (
+          <>
+            <Button size="sm" variant="destructive" className="h-7 px-2 text-xs"
+              onClick={() => onDelete(item.id)}>Confirm</Button>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
+              onClick={() => onDeleteConfirm(null)}>Cancel</Button>
+          </>
+        ) : (
+          <>
+            <Button size="icon" variant="ghost" className="h-7 w-7"
+              onClick={() => onEdit(item)} aria-label="Edit">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={() => onDeleteConfirm(item.id)} aria-label="Remove">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        )}
+      </div>
+    </li>
+  );
+}

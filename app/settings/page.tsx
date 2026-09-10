@@ -1,0 +1,784 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/page-header";
+import { toast } from "sonner";
+import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw, ExternalLink } from "lucide-react";
+import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
+
+export default function SettingsPage() {
+  const { data: session } = useSession();
+
+  // ── Initial page load ───────────────────────────────────────────────────────
+  // Signature, assessor name, phone number and bank details are fetched
+  // independently below; this flips false once all four have settled so the
+  // form isn't shown with fields still silently populating.
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // ── Credentials ─────────────────────────────────────────────────────────────
+  const [credsLoading, setCredsLoading] = useState(false);
+  const [showRolePass, setShowRolePass] = useState(false);
+  const [showPersPass, setShowPersPass] = useState(false);
+  const [creds, setCreds] = useState({
+    role_user: "", role_pass: "", pers_user: "", pers_pass: "",
+  });
+
+  // ── Signature ────────────────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [sigLoading, setSigLoading] = useState(false);
+  const [hasSavedSignature, setHasSavedSignature] = useState(false);
+  const [signatureMode, setSignatureMode] = useState<"draw" | "upload">("draw");
+  const [hasDrawn, setHasDrawn] = useState(false);
+  const [drawnDataUrl, setDrawnDataUrl] = useState<string | null>(null);
+
+  // ── Assessor name ────────────────────────────────────────────────────────────
+  const [assessorName, setAssessorName] = useState("");
+  const [assessorNameLoading, setAssessorNameLoading] = useState(false);
+  const [assessorNameDirty, setAssessorNameDirty] = useState(false);
+
+  // ── Parade night text number ─────────────────────────────────────────────────
+  const [phone, setPhone] = useState("");
+  const [phoneKind, setPhoneKind] = useState<"staff" | "cadet" | null>(null);
+  const [phoneLinked, setPhoneLinked] = useState<boolean | null>(null);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneDirty, setPhoneDirty] = useState(false);
+  // Empty until staff have set one on the Recipients page — the join prompt
+  // only appears when there's somewhere to send people.
+  const [inviteUrl, setInviteUrl] = useState("");
+  // The number on file, as opposed to what's currently typed in the box.
+  const [savedPhone, setSavedPhone] = useState("");
+
+  // ── Bank details (committee reimbursements) ────────────────────────────────────
+  const [bank, setBank] = useState({
+    bank_account_name: "", bank_sort_code: "", bank_account_number: "",
+  });
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankDirty, setBankDirty] = useState(false);
+  const [showBankNumber, setShowBankNumber] = useState(false);
+
+  useEffect(() => {
+    if (!session?.id_token) return;
+
+    const signatureFetch = apiFetch(`${API_BASE}/get-signature`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    }).then((res) => {
+      if (res.ok) res.blob().then((blob) => {
+        setSignaturePreview(URL.createObjectURL(blob));
+        setHasSavedSignature(true);
+      });
+    });
+
+    const assessorNameFetch = apiFetch(`${API_BASE}/settings/assessor-name`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    }).then((res) => {
+      if (res.ok) res.json().then((d) => setAssessorName(d.assessor_name ?? ""));
+    });
+
+    const phoneFetch = apiFetch(`${API_BASE}/settings/phone-number`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    }).then((res) => {
+      if (!res.ok) return;
+      res.json().then((d) => {
+        setPhone(d.phone_number ?? "");
+        setSavedPhone(d.phone_number ?? "");
+        setPhoneKind(d.kind ?? null);
+        setPhoneLinked(Boolean(d.kind));
+        setInviteUrl(d.whatsapp_invite_url ?? "");
+      });
+    });
+
+    const bankFetch = apiFetch(`${API_BASE}/settings/user-profile`, {
+      headers: { Authorization: `Bearer ${session.id_token}` },
+    }).then((res) => {
+      if (res.ok) res.json().then((d) => setBank({
+        bank_account_name: d.bank_account_name ?? "",
+        bank_sort_code: d.bank_sort_code ?? "",
+        bank_account_number: d.bank_account_number ?? "",
+      }));
+    });
+
+    Promise.allSettled([signatureFetch, assessorNameFetch, phoneFetch, bankFetch]).then(() => {
+      setInitialLoading(false);
+    });
+  }, [session]);
+
+  useEffect(() => {
+    if (signatureMode !== "draw") return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const getPos = (e: MouseEvent | TouchEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+      return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+    };
+    const start = (e: MouseEvent | TouchEvent) => { drawingRef.current = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+    const move = (e: MouseEvent | TouchEvent) => { if (!drawingRef.current) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+    const stop = () => { if (!drawingRef.current) return; drawingRef.current = false; setHasDrawn(true); setDrawnDataUrl(canvas.toDataURL()); };
+
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    canvas.addEventListener("mouseup", stop);
+    canvas.addEventListener("mouseleave", stop);
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", stop);
+    return () => {
+      canvas.removeEventListener("mousedown", start);
+      canvas.removeEventListener("mousemove", move);
+      canvas.removeEventListener("mouseup", stop);
+      canvas.removeEventListener("mouseleave", stop);
+      canvas.removeEventListener("touchstart", start);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", stop);
+    };
+  }, [signatureMode]);
+
+  const clearDraw = () => {
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d")!.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+    setDrawnDataUrl(null);
+  };
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/png", "image/jpeg"].includes(file.type)) {
+      toast.error("Please upload a PNG or JPEG image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2 MB.");
+      return;
+    }
+    setSignatureFile(file);
+    setSignaturePreview(URL.createObjectURL(file));
+  };
+
+  const handleSignatureSave = async () => {
+    if (!session?.id_token) return;
+    setSigLoading(true);
+    try {
+      let fileToSave: File | null = null;
+      if (signatureMode === "draw" && drawnDataUrl) {
+        const blob = await (await fetch(drawnDataUrl)).blob();
+        fileToSave = new File([blob], "signature.png", { type: "image/png" });
+      } else if (signatureMode === "upload" && signatureFile) {
+        fileToSave = signatureFile;
+      }
+      if (!fileToSave) return;
+
+      const formData = new FormData();
+      formData.append("file", fileToSave);
+      const res = await apiFetch(`${API_BASE}/save-signature`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.id_token}` },
+        body: formData,
+      });
+      if (res.ok) {
+        toast.success("Signature saved.");
+        setHasSavedSignature(true);
+        if (signatureMode === "draw" && drawnDataUrl) {
+          setSignaturePreview(drawnDataUrl);
+          clearDraw();
+        } else {
+          setSignatureFile(null);
+        }
+      } else {
+        const err = await res.json();
+        toast.error(err.detail ?? "Failed to save signature.");
+      }
+    } catch { toast.error("Server unreachable."); }
+    finally { setSigLoading(false); }
+  };
+
+  const handleSignatureDelete = async () => {
+    if (!session?.id_token) return;
+    setSigLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/delete-signature`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.id_token}` },
+      });
+      if (res.ok) {
+        setSignaturePreview(null);
+        setSignatureFile(null);
+        setHasSavedSignature(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        toast.success("Signature removed.");
+      }
+    } catch { toast.error("Server unreachable."); }
+    finally { setSigLoading(false); }
+  };
+
+  const handleAssessorNameSave = async () => {
+    if (!session?.id_token) return;
+    setAssessorNameLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/settings/assessor-name`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assessor_name: assessorName }),
+      });
+      if (res.ok) {
+        toast.success("Assessor name saved.");
+        setAssessorNameDirty(false);
+      } else {
+        toast.error("Failed to save assessor name.");
+      }
+    } catch { toast.error("Server unreachable."); }
+    finally { setAssessorNameLoading(false); }
+  };
+
+  const handlePhoneSave = async () => {
+    if (!session?.id_token) return;
+    setPhoneLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/settings/phone-number`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone_number: phone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPhone(data.phone_number ?? "");
+        setSavedPhone(data.phone_number ?? "");
+        setInviteUrl(data.whatsapp_invite_url ?? "");
+        setPhoneDirty(false);
+        toast.success(data.phone_number ? "Phone number saved." : "Phone number removed.");
+      } else {
+        toast.error(data.detail ?? "Failed to save phone number.");
+      }
+    } catch { toast.error("Server unreachable."); }
+    finally { setPhoneLoading(false); }
+  };
+
+  const handleBankSave = async () => {
+    if (!session?.id_token) return;
+    setBankLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/settings/user-profile`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bank),
+      });
+      if (res.ok) {
+        toast.success("Bank details saved.");
+        setBankDirty(false);
+      } else {
+        toast.error("Failed to save bank details.");
+      }
+    } catch { toast.error("Server unreachable."); }
+    finally { setBankLoading(false); }
+  };
+
+  const handleCredsSave = async () => {
+    if (!session?.id_token) {
+      toast.error("No ID Token found. Please log out and back in.");
+      return;
+    }
+    setCredsLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/save-credentials`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.id_token}`,
+        },
+        body: JSON.stringify(creds),
+      });
+      if (res.ok) toast.success("Credentials saved!");
+      else toast.error("Failed to save credentials.");
+    } catch { toast.error("Server unreachable."); }
+    finally { setCredsLoading(false); }
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 pb-16">
+      <PageHeader
+        title="Settings"
+        description="Your assessor identity, signature, text number and Bader credentials"
+      />
+
+      {initialLoading ? (
+        <>
+          <section className="flex flex-col gap-3">
+            <Skeleton className="h-4 w-36" />
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="mt-1 h-4 w-64" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 flex-1 max-w-sm" />
+                  <Skeleton className="h-9 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="mt-1 h-4 w-72" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-24 w-64" />
+                <Skeleton className="h-9 w-full" />
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <Skeleton className="h-4 w-44" />
+            <Card>
+              <CardHeader className="pb-3">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="mt-1 h-4 w-80" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 flex-1 max-w-sm" />
+                  <Skeleton className="h-9 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <Skeleton className="h-4 w-32" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="mt-1 h-4 w-72" />
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-9 w-full" />
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <Skeleton className="h-4 w-28" />
+              <Card>
+                <CardHeader className="pb-3">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="mt-1 h-4 w-full" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-9 w-full" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Skeleton className="h-9 w-full" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                  <Skeleton className="h-9 w-full" />
+                </CardContent>
+              </Card>
+            </section>
+          )}
+        </>
+      ) : (
+        <>
+      {/* ── Assessor identity ─────────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Assessor identity
+        </h2>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Display Name</CardTitle>
+            <CardDescription>
+              Appears as the assessor name on all generated assessment sheets.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                value={assessorName}
+                onChange={(e) => {
+                  setAssessorName(e.target.value);
+                  setAssessorNameDirty(true);
+                }}
+                placeholder="e.g. Sgt J. Bloggs"
+                className="flex-1 max-w-sm"
+              />
+              <Button
+                size="sm"
+                onClick={handleAssessorNameSave}
+                disabled={assessorNameLoading || !assessorName.trim() || !assessorNameDirty}
+              >
+                {assessorNameLoading ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Signature</CardTitle>
+            <CardDescription>
+              Embedded in assessment PDFs. Draw one below or upload an image.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Saved preview */}
+            {hasSavedSignature && signaturePreview && !hasDrawn && !signatureFile && (
+              <div className="relative w-fit overflow-hidden rounded-lg border bg-white p-4">
+                <Badge
+                  variant="outline"
+                  className="absolute right-2 top-2 gap-1 border-success/40 bg-success/10 text-success"
+                >
+                  <CheckCircle2 className="size-3" /> Saved
+                </Badge>
+                {/* eslint-disable-next-line @next/next/no-img-element -- data: URL preview, not an optimisable asset */}
+                <img src={signaturePreview} alt="Signature preview" className="max-h-20 object-contain" />
+              </div>
+            )}
+
+            {/* Mode toggle */}
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={signatureMode}
+              onValueChange={(v) => {
+                if (!v) return;
+                if (v === "draw") { setSignatureMode("draw"); setSignatureFile(null); }
+                else { setSignatureMode("upload"); clearDraw(); }
+              }}
+            >
+              <ToggleGroupItem value="draw">
+                <PenLine /> Draw
+              </ToggleGroupItem>
+              <ToggleGroupItem value="upload">
+                <Upload /> Upload
+              </ToggleGroupItem>
+            </ToggleGroup>
+
+            {/* Draw mode */}
+            {signatureMode === "draw" && (
+              <div className="space-y-1.5">
+                <div className="relative overflow-hidden rounded-md border bg-white">
+                  <canvas
+                    ref={canvasRef}
+                    width={560}
+                    height={120}
+                    className="w-full cursor-crosshair touch-none"
+                    style={{ height: "80px" }}
+                  />
+                  {!hasDrawn && (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                      Sign here
+                    </span>
+                  )}
+                </div>
+                {hasDrawn && (
+                  <button type="button" onClick={clearDraw} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
+                    <RotateCcw className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Upload mode */}
+            {signatureMode === "upload" && (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-8 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted/30 hover:text-foreground"
+              >
+                <Upload className="h-6 w-6" />
+                <span className="font-medium">{signatureFile ? signatureFile.name : "Click to upload signature"}</span>
+                <span className="text-xs">PNG or JPEG · max 2 MB</span>
+              </div>
+            )}
+
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              {(hasDrawn || signatureFile) && (
+                <Button size="sm" onClick={handleSignatureSave} disabled={sigLoading}>
+                  {sigLoading ? "Saving…" : "Save signature"}
+                </Button>
+              )}
+              {hasSavedSignature && (
+                <Button
+                  variant="ghost" size="sm"
+                  onClick={handleSignatureDelete} disabled={sigLoading}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ── Parade night texts ───────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Parade night texts
+        </h2>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Your Mobile Number</CardTitle>
+            <CardDescription>
+              The number the parade night texts go to. Saving one puts you on the
+              recipients list; clearing it takes you off again.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {phoneLinked === false ? (
+              <p className="text-sm text-muted-foreground">
+                Your account isn&apos;t linked to a squadron record yet, so there&apos;s
+                nowhere to save a number. It links itself once your email shows up on
+                the next roster scrape.
+              </p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    id="phone_number"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={phone}
+                    onChange={(e) => { setPhone(e.target.value); setPhoneDirty(true); }}
+                    placeholder="07700 900000"
+                    className="flex-1 max-w-sm"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handlePhoneSave}
+                    disabled={phoneLoading || !phoneDirty || !session}
+                  >
+                    {phoneLoading ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {phoneKind === "cadet"
+                    ? "Saved against your cadet record — the same number the portal shows you."
+                    : "Saved against your staff record on the squadron roster."}
+                </p>
+
+                {savedPhone && inviteUrl && (
+                  <div className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-4">
+                    <p className="text-sm font-semibold">Join the WhatsApp community</p>
+                    <p className="text-xs text-muted-foreground">
+                      Open it on the phone your WhatsApp is on.
+                    </p>
+                    <Button asChild size="sm" variant="outline" className="w-fit">
+                      <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+                        Open invite <ExternalLink className="size-3.5" />
+                      </a>
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ── Bader credentials — staff only ────────────────────────────────────── */}
+      {session?.role === "staff" && <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Bader credentials
+        </h2>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Login Settings</CardTitle>
+            <CardDescription>
+              Used by the SMS scraper to log in to Bader on your behalf.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Role account */}
+            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+              <p className="text-sm font-semibold">Role Account</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="role_user" className="text-xs">Username</Label>
+                  <Input
+                    id="role_user"
+                    value={creds.role_user}
+                    onChange={(e) => setCreds({ ...creds, role_user: e.target.value })}
+                    placeholder="e.g. 317_adj"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="role_pass" className="text-xs">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="role_pass"
+                      type={showRolePass ? "text" : "password"}
+                      value={creds.role_pass}
+                      onChange={(e) => setCreds({ ...creds, role_pass: e.target.value })}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRolePass((v) => !v)}
+                      className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showRolePass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Personal account */}
+            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+              <p className="text-sm font-semibold">Personal Account</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pers_user" className="text-xs">Username</Label>
+                  <Input
+                    id="pers_user"
+                    value={creds.pers_user}
+                    onChange={(e) => setCreds({ ...creds, pers_user: e.target.value })}
+                    placeholder="e.g. j.bloggs100"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pers_pass" className="text-xs">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="pers_pass"
+                      type={showPersPass ? "text" : "password"}
+                      value={creds.pers_pass}
+                      onChange={(e) => setCreds({ ...creds, pers_pass: e.target.value })}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPersPass((v) => !v)}
+                      className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPersPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button className="w-full" onClick={handleCredsSave} disabled={credsLoading || !session}>
+              {credsLoading ? "Saving…" : "Save Credentials"}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>}
+
+      {/* ── Bank details — staff only ─────────────────────────────────────────── */}
+      {session?.role === "staff" && <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Bank details
+        </h2>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Reimbursement Account</CardTitle>
+            <CardDescription>
+              Auto-filled into the committee payment email when you send receipts
+              off for reimbursement. Stored encrypted and only ever shared with the
+              committee for a payment request.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="bank_account_name" className="text-xs">Account Name</Label>
+              <Input
+                id="bank_account_name"
+                value={bank.bank_account_name}
+                onChange={(e) => { setBank({ ...bank, bank_account_name: e.target.value }); setBankDirty(true); }}
+                placeholder="e.g. J Bloggs"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="bank_sort_code" className="text-xs">Sort Code</Label>
+                <Input
+                  id="bank_sort_code"
+                  value={bank.bank_sort_code}
+                  onChange={(e) => { setBank({ ...bank, bank_sort_code: e.target.value }); setBankDirty(true); }}
+                  placeholder="12-34-56"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bank_account_number" className="text-xs">Account Number</Label>
+                <div className="relative">
+                  <Input
+                    id="bank_account_number"
+                    type={showBankNumber ? "text" : "password"}
+                    value={bank.bank_account_number}
+                    onChange={(e) => { setBank({ ...bank, bank_account_number: e.target.value }); setBankDirty(true); }}
+                    placeholder="12345678"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBankNumber((v) => !v)}
+                    className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showBankNumber ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleBankSave}
+              disabled={bankLoading || !bankDirty || !session}
+            >
+              {bankLoading ? "Saving…" : "Save Bank Details"}
+            </Button>
+          </CardContent>
+        </Card>
+      </section>}
+        </>
+      )}
+
+    </div>
+  );
+}
