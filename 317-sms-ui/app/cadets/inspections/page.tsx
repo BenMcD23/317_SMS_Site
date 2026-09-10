@@ -116,6 +116,13 @@ type HistoryResp = {
   cadets: CadetHistory[];
 };
 
+type Uniform = "no1" | "mtp";
+const UNIFORM_LABELS: Record<Uniform, string> = { no1: "No.1 Dress", mtp: "MTP" };
+const UNIFORM_FIGURES: Record<Uniform, string> = {
+  no1: "/inspection-figure.png",
+  mtp: "/inspection-figure-mtp.png",
+};
+
 type SheetSummary = {
   id: number;
   date: string;
@@ -123,6 +130,7 @@ type SheetSummary = {
   submitted_at: string | null;
   cadet_count: number;
   present: number;
+  uniform: Uniform;
 };
 type SheetCadet = {
   cin: number;
@@ -150,6 +158,7 @@ type SheetDetail = {
   date: string;
   submitted_by: string | null;
   submitted_at: string | null;
+  uniform: Uniform;
   flights: FlightGroup[];
 };
 
@@ -173,7 +182,7 @@ function numberComments(faults: Note[], positives: Note[]): NumberedNote[] {
 }
 
 // ─── Read-only figure with numbered fault/positive markers ────────────────────
-function InspectionFigureView({ notes }: { notes: NumberedNote[] }) {
+function InspectionFigureView({ notes, figureSrc }: { notes: NumberedNote[]; figureSrc: string }) {
   const byRegion = new Map<string, NumberedNote[]>();
   for (const note of notes) {
     const r = REGIONS[note.region] ? note.region : "Trousers";
@@ -185,7 +194,7 @@ function InspectionFigureView({ notes }: { notes: NumberedNote[] }) {
     <div className="relative w-[80px] shrink-0 select-none" style={{ aspectRatio: "512 / 1536" }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/inspection-figure.png"
+        src={figureSrc}
         alt="Cadet in uniform"
         className="h-full w-full object-contain dark:opacity-90 dark:invert"
         draggable={false}
@@ -214,13 +223,13 @@ function InspectionFigureView({ notes }: { notes: NumberedNote[] }) {
 }
 
 // ─── One cadet row in the per-date inspection view ────────────────────────────
-function HistoryCadetCard({ cadet }: { cadet: SheetCadet }) {
+function HistoryCadetCard({ cadet, figureSrc }: { cadet: SheetCadet; figureSrc: string }) {
   const notes = numberComments(cadet.faults, cadet.positives);
 
   return (
     <Card>
       <CardContent className="flex gap-3 p-3">
-        <InspectionFigureView notes={notes} />
+        <InspectionFigureView notes={notes} figureSrc={figureSrc} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -409,7 +418,7 @@ function HistoryTab() {
           <SelectContent>
             {sheets.map((s) => (
               <SelectItem key={s.id} value={String(s.id)}>
-                {s.date} · {s.present}/{s.cadet_count} present
+                {s.date} · {s.present}/{s.cadet_count} present · {UNIFORM_LABELS[s.uniform] ?? s.uniform}
               </SelectItem>
             ))}
           </SelectContent>
@@ -463,6 +472,9 @@ function HistoryTab() {
         <Skeleton className="h-96 w-full" />
       ) : (
         <div className="flex flex-col gap-6">
+          <div>
+            <Badge variant="outline">{UNIFORM_LABELS[detail.uniform] ?? detail.uniform}</Badge>
+          </div>
           {detail.flights.map((fl) => {
             const present = fl.cadets.filter((c) => !c.absent);
             const awol = fl.cadets.filter((c) => c.awol);
@@ -487,7 +499,11 @@ function HistoryTab() {
                 {present.length > 0 && (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {present.map((c) => (
-                      <HistoryCadetCard key={c.cin} cadet={c} />
+                      <HistoryCadetCard
+                        key={c.cin}
+                        cadet={c}
+                        figureSrc={UNIFORM_FIGURES[detail.uniform] ?? UNIFORM_FIGURES.no1}
+                      />
                     ))}
                   </div>
                 )}
