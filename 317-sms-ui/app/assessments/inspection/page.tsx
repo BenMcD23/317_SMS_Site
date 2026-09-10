@@ -18,6 +18,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
@@ -51,8 +58,14 @@ import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
 type Mark = { score: string; comments: Comment[]; absent?: boolean };
+type Uniform = "blues" | "mtp";
 // order: cins in the sequence they were submitted, most-recent first (LIFO).
-type Sheet = { date: string; marks: Record<number, Mark>; order?: number[] };
+type Sheet = {
+  date: string;
+  marks: Record<number, Mark>;
+  order?: number[];
+  uniform?: Uniform;
+};
 type Absence = { cin: number; date_from: string; date_to: string; reason: string | null };
 type FlightScore = { total: number; present_count: number; awol_count: number };
 
@@ -64,14 +77,31 @@ type Cadet = {
   flight: string | null;
 };
 
-// Clickable bands over the figure — top/height as % of image height, full width.
-const REGIONS = [
-  { id: "Beret / Headdress", top: 0, height: 14 },
-  { id: "Hair / Face", top: 14, height: 6 },
-  { id: "Jumper / Shirt / Tie", top: 20, height: 27 },
-  { id: "Trousers", top: 47, height: 42 },
-  { id: "Shoes", top: 89, height: 11 },
+// The two orders of dress a sheet can be marked against. Both figures share the
+// same 512x1536 framing, so the region bands below sit at the same top/height
+// for either — only the labels for the shirt and footwear regions differ.
+const UNIFORMS: { id: Uniform; label: string; figure: string }[] = [
+  { id: "blues", label: "Blues", figure: "/inspection-figure.png" },
+  { id: "mtp", label: "MTP", figure: "/inspection-figure-mtp.png" },
 ];
+
+// Clickable bands over the figure — top/height as % of image height, full width.
+const REGIONS_BY_UNIFORM: Record<Uniform, { id: string; top: number; height: number }[]> = {
+  blues: [
+    { id: "Beret / Headdress", top: 0, height: 14 },
+    { id: "Hair / Face", top: 14, height: 6 },
+    { id: "Jumper / Shirt / Tie", top: 20, height: 27 },
+    { id: "Trousers", top: 47, height: 42 },
+    { id: "Shoes", top: 89, height: 11 },
+  ],
+  mtp: [
+    { id: "Beret / Headdress", top: 0, height: 14 },
+    { id: "Hair / Face", top: 14, height: 6 },
+    { id: "Undershirt / Overshirt", top: 20, height: 27 },
+    { id: "Trousers", top: 47, height: 42 },
+    { id: "Boots", top: 89, height: 11 },
+  ],
+};
 
 const emptyMark = (): Mark => ({ score: "", comments: [] });
 
@@ -81,22 +111,26 @@ function InspectionFigure({
   onAdd,
   onRemove,
   disabled = false,
+  figureSrc,
+  regions,
 }: {
   comments: Comment[];
   onAdd: (region: string, type: Comment["type"], text: string) => void;
   onRemove: (id: string) => void;
   disabled?: boolean;
+  figureSrc: string;
+  regions: (typeof REGIONS_BY_UNIFORM)[Uniform];
 }) {
   return (
     <div className="relative mx-auto w-[200px] select-none" style={{ aspectRatio: "512 / 1536" }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/inspection-figure.png"
+        src={figureSrc}
         alt="Cadet in uniform"
         className="h-full w-full object-contain dark:opacity-90 dark:invert"
         draggable={false}
       />
-      {REGIONS.map((r) => {
+      {regions.map((r) => {
         const regionComments = comments.filter((c) => c.region === r.id);
         const faults = regionComments.filter((c) => c.type === "fault").length;
         const positives = regionComments.length - faults;
@@ -126,7 +160,7 @@ function RegionButton({
   onRemove,
   disabled = false,
 }: {
-  region: (typeof REGIONS)[number];
+  region: (typeof REGIONS_BY_UNIFORM)[Uniform][number];
   faults: number;
   positives: number;
   regionComments: Comment[];
@@ -253,12 +287,16 @@ function CadetCard({
   update,
   hasAbsenceLog,
   absenceReason,
+  figureSrc,
+  regions,
 }: {
   cadet: Cadet;
   mark: Mark;
   update: (fn: (m: Mark) => Mark) => void;
   hasAbsenceLog: boolean;
   absenceReason: string | null;
+  figureSrc: string;
+  regions: (typeof REGIONS_BY_UNIFORM)[Uniform];
 }) {
   const faults = mark.comments.filter((c) => c.type === "fault").length;
   const positives = mark.comments.length - faults;
@@ -295,6 +333,8 @@ function CadetCard({
           )}
         </label>
         <InspectionFigure
+          figureSrc={figureSrc}
+          regions={regions}
           comments={mark.comments}
           onAdd={(region, type, text) =>
             update((m) => ({
@@ -347,10 +387,13 @@ export default function InspectionPage() {
     draftRestored: restored,
   } = useAssessmentDraft<Sheet>(
     "inspection",
-    { date: new Date().toISOString().slice(0, 10), marks: {} },
+    { date: new Date().toISOString().slice(0, 10), marks: {}, uniform: "blues" },
     session?.user?.email,
     (s) => Object.keys(s.marks).length > 0
   );
+  const uniform = sheet.uniform ?? "blues";
+  const figureSrc = UNIFORMS.find((u) => u.id === uniform)?.figure ?? UNIFORMS[0].figure;
+  const regions = REGIONS_BY_UNIFORM[uniform];
 
   const { data: absences = [] } = useApiQuery<Absence[]>(
     ["absences", sheet.date],
@@ -380,7 +423,7 @@ export default function InspectionPage() {
           Authorization: `Bearer ${session.id_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ date: sheet.date, marks }),
+        body: JSON.stringify({ date: sheet.date, marks, uniform }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? res.statusText);
       const { awol, flight_scores } = (await res.json()) as {
@@ -479,7 +522,7 @@ export default function InspectionPage() {
   }
 
   function clearAll() {
-    setSheet({ date: sheet.date, marks: {}, order: [] });
+    setSheet({ date: sheet.date, marks: {}, order: [], uniform });
     clearDraft();
     setSelectedCin(null);
     setFlightScores(null);
@@ -493,6 +536,24 @@ export default function InspectionPage() {
         description="Tap a part of the uniform to log a fault or a positive. Scores save automatically."
         actions={
           <div className="flex items-center gap-2">
+            <Label htmlFor="insp-uniform" className="text-sm">
+              Uniform
+            </Label>
+            <Select
+              value={uniform}
+              onValueChange={(v) => setSheet((s) => ({ ...s, uniform: v as Uniform }))}
+            >
+              <SelectTrigger id="insp-uniform" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {UNIFORMS.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Label htmlFor="insp-date" className="text-sm">
               Date
             </Label>
@@ -729,6 +790,8 @@ export default function InspectionPage() {
                 update={(fn) => updateMark(selectedCadet.cin, fn)}
                 hasAbsenceLog={absenceByCin.has(selectedCadet.cin)}
                 absenceReason={absenceByCin.get(selectedCadet.cin)?.reason ?? null}
+                figureSrc={figureSrc}
+                regions={regions}
               />
               <div className="flex gap-2">
                 <Button className="flex-1" onClick={submitCadet}>
