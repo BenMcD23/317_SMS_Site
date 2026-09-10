@@ -58,7 +58,7 @@ import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
 type Mark = { score: string; comments: Comment[]; absent?: boolean };
-type Uniform = "no1" | "mtp";
+type Uniform = "blues" | "mtp";
 // order: cins in the sequence they were submitted, most-recent first (LIFO).
 type Sheet = {
   date: string;
@@ -78,20 +78,30 @@ type Cadet = {
 };
 
 // The two orders of dress a sheet can be marked against. Both figures share the
-// same 512x1536 framing, so the REGIONS bands below apply to either unchanged.
+// same 512x1536 framing, so the region bands below sit at the same top/height
+// for either — only the labels for the shirt and footwear regions differ.
 const UNIFORMS: { id: Uniform; label: string; figure: string }[] = [
-  { id: "no1", label: "No.1 Dress", figure: "/inspection-figure.png" },
+  { id: "blues", label: "Blues", figure: "/inspection-figure.png" },
   { id: "mtp", label: "MTP", figure: "/inspection-figure-mtp.png" },
 ];
 
 // Clickable bands over the figure — top/height as % of image height, full width.
-const REGIONS = [
-  { id: "Beret / Headdress", top: 0, height: 14 },
-  { id: "Hair / Face", top: 14, height: 6 },
-  { id: "Jumper / Shirt / Tie", top: 20, height: 27 },
-  { id: "Trousers", top: 47, height: 42 },
-  { id: "Shoes", top: 89, height: 11 },
-];
+const REGIONS_BY_UNIFORM: Record<Uniform, { id: string; top: number; height: number }[]> = {
+  blues: [
+    { id: "Beret / Headdress", top: 0, height: 14 },
+    { id: "Hair / Face", top: 14, height: 6 },
+    { id: "Jumper / Shirt / Tie", top: 20, height: 27 },
+    { id: "Trousers", top: 47, height: 42 },
+    { id: "Shoes", top: 89, height: 11 },
+  ],
+  mtp: [
+    { id: "Beret / Headdress", top: 0, height: 14 },
+    { id: "Hair / Face", top: 14, height: 6 },
+    { id: "Undershirt / Overshirt", top: 20, height: 27 },
+    { id: "Trousers", top: 47, height: 42 },
+    { id: "Boots", top: 89, height: 11 },
+  ],
+};
 
 const emptyMark = (): Mark => ({ score: "", comments: [] });
 
@@ -102,12 +112,14 @@ function InspectionFigure({
   onRemove,
   disabled = false,
   figureSrc,
+  regions,
 }: {
   comments: Comment[];
   onAdd: (region: string, type: Comment["type"], text: string) => void;
   onRemove: (id: string) => void;
   disabled?: boolean;
   figureSrc: string;
+  regions: (typeof REGIONS_BY_UNIFORM)[Uniform];
 }) {
   return (
     <div className="relative mx-auto w-[200px] select-none" style={{ aspectRatio: "512 / 1536" }}>
@@ -118,7 +130,7 @@ function InspectionFigure({
         className="h-full w-full object-contain dark:opacity-90 dark:invert"
         draggable={false}
       />
-      {REGIONS.map((r) => {
+      {regions.map((r) => {
         const regionComments = comments.filter((c) => c.region === r.id);
         const faults = regionComments.filter((c) => c.type === "fault").length;
         const positives = regionComments.length - faults;
@@ -148,7 +160,7 @@ function RegionButton({
   onRemove,
   disabled = false,
 }: {
-  region: (typeof REGIONS)[number];
+  region: (typeof REGIONS_BY_UNIFORM)[Uniform][number];
   faults: number;
   positives: number;
   regionComments: Comment[];
@@ -276,6 +288,7 @@ function CadetCard({
   hasAbsenceLog,
   absenceReason,
   figureSrc,
+  regions,
 }: {
   cadet: Cadet;
   mark: Mark;
@@ -283,6 +296,7 @@ function CadetCard({
   hasAbsenceLog: boolean;
   absenceReason: string | null;
   figureSrc: string;
+  regions: (typeof REGIONS_BY_UNIFORM)[Uniform];
 }) {
   const faults = mark.comments.filter((c) => c.type === "fault").length;
   const positives = mark.comments.length - faults;
@@ -320,6 +334,7 @@ function CadetCard({
         </label>
         <InspectionFigure
           figureSrc={figureSrc}
+          regions={regions}
           comments={mark.comments}
           onAdd={(region, type, text) =>
             update((m) => ({
@@ -372,12 +387,13 @@ export default function InspectionPage() {
     draftRestored: restored,
   } = useAssessmentDraft<Sheet>(
     "inspection",
-    { date: new Date().toISOString().slice(0, 10), marks: {}, uniform: "no1" },
+    { date: new Date().toISOString().slice(0, 10), marks: {}, uniform: "blues" },
     session?.user?.email,
     (s) => Object.keys(s.marks).length > 0
   );
-  const uniform = sheet.uniform ?? "no1";
+  const uniform = sheet.uniform ?? "blues";
   const figureSrc = UNIFORMS.find((u) => u.id === uniform)?.figure ?? UNIFORMS[0].figure;
+  const regions = REGIONS_BY_UNIFORM[uniform];
 
   const { data: absences = [] } = useApiQuery<Absence[]>(
     ["absences", sheet.date],
@@ -775,6 +791,7 @@ export default function InspectionPage() {
                 hasAbsenceLog={absenceByCin.has(selectedCadet.cin)}
                 absenceReason={absenceByCin.get(selectedCadet.cin)?.reason ?? null}
                 figureSrc={figureSrc}
+                regions={regions}
               />
               <div className="flex gap-2">
                 <Button className="flex-1" onClick={submitCadet}>

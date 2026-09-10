@@ -116,10 +116,10 @@ type HistoryResp = {
   cadets: CadetHistory[];
 };
 
-type Uniform = "no1" | "mtp";
-const UNIFORM_LABELS: Record<Uniform, string> = { no1: "No.1 Dress", mtp: "MTP" };
+type Uniform = "blues" | "mtp";
+const UNIFORM_LABELS: Record<Uniform, string> = { blues: "Blues", mtp: "MTP" };
 const UNIFORM_FIGURES: Record<Uniform, string> = {
-  no1: "/inspection-figure.png",
+  blues: "/inspection-figure.png",
   mtp: "/inspection-figure-mtp.png",
 };
 
@@ -163,12 +163,22 @@ type SheetDetail = {
 };
 
 // Clickable bands on the marking page — reused here to place fault markers.
-const REGIONS: Record<string, { top: number; height: number }> = {
-  "Beret / Headdress": { top: 0, height: 14 },
-  "Hair / Face": { top: 14, height: 6 },
-  "Jumper / Shirt / Tie": { top: 20, height: 27 },
-  Trousers: { top: 47, height: 42 },
-  Shoes: { top: 89, height: 11 },
+// Positions are the same for either uniform; only the shirt/footwear labels differ.
+const REGIONS_BY_UNIFORM: Record<Uniform, Record<string, { top: number; height: number }>> = {
+  blues: {
+    "Beret / Headdress": { top: 0, height: 14 },
+    "Hair / Face": { top: 14, height: 6 },
+    "Jumper / Shirt / Tie": { top: 20, height: 27 },
+    Trousers: { top: 47, height: 42 },
+    Shoes: { top: 89, height: 11 },
+  },
+  mtp: {
+    "Beret / Headdress": { top: 0, height: 14 },
+    "Hair / Face": { top: 14, height: 6 },
+    "Undershirt / Overshirt": { top: 20, height: 27 },
+    Trousers: { top: 47, height: 42 },
+    Boots: { top: 89, height: 11 },
+  },
 };
 
 type NumberedNote = { n: number; type: "fault" | "positive"; region: string; text: string };
@@ -182,10 +192,18 @@ function numberComments(faults: Note[], positives: Note[]): NumberedNote[] {
 }
 
 // ─── Read-only figure with numbered fault/positive markers ────────────────────
-function InspectionFigureView({ notes, figureSrc }: { notes: NumberedNote[]; figureSrc: string }) {
+function InspectionFigureView({
+  notes,
+  figureSrc,
+  regions,
+}: {
+  notes: NumberedNote[];
+  figureSrc: string;
+  regions: Record<string, { top: number; height: number }>;
+}) {
   const byRegion = new Map<string, NumberedNote[]>();
   for (const note of notes) {
-    const r = REGIONS[note.region] ? note.region : "Trousers";
+    const r = regions[note.region] ? note.region : "Trousers";
     if (!byRegion.has(r)) byRegion.set(r, []);
     byRegion.get(r)!.push(note);
   }
@@ -200,7 +218,7 @@ function InspectionFigureView({ notes, figureSrc }: { notes: NumberedNote[]; fig
         draggable={false}
       />
       {[...byRegion.entries()].map(([region, items]) => {
-        const band = REGIONS[region];
+        const band = regions[region];
         return items.map((note, j) => {
           const top = band.top + (band.height * (j + 1)) / (items.length + 1);
           return (
@@ -223,13 +241,21 @@ function InspectionFigureView({ notes, figureSrc }: { notes: NumberedNote[]; fig
 }
 
 // ─── One cadet row in the per-date inspection view ────────────────────────────
-function HistoryCadetCard({ cadet, figureSrc }: { cadet: SheetCadet; figureSrc: string }) {
+function HistoryCadetCard({
+  cadet,
+  figureSrc,
+  regions,
+}: {
+  cadet: SheetCadet;
+  figureSrc: string;
+  regions: Record<string, { top: number; height: number }>;
+}) {
   const notes = numberComments(cadet.faults, cadet.positives);
 
   return (
     <Card>
       <CardContent className="flex gap-3 p-3">
-        <InspectionFigureView notes={notes} figureSrc={figureSrc} />
+        <InspectionFigureView notes={notes} figureSrc={figureSrc} regions={regions} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -502,7 +528,8 @@ function HistoryTab() {
                       <HistoryCadetCard
                         key={c.cin}
                         cadet={c}
-                        figureSrc={UNIFORM_FIGURES[detail.uniform] ?? UNIFORM_FIGURES.no1}
+                        figureSrc={UNIFORM_FIGURES[detail.uniform] ?? UNIFORM_FIGURES.blues}
+                        regions={REGIONS_BY_UNIFORM[detail.uniform] ?? REGIONS_BY_UNIFORM.blues}
                       />
                     ))}
                   </div>
