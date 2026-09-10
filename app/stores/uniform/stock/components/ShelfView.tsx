@@ -25,25 +25,17 @@ interface ShelfViewProps {
   onRenameBox: (label: string, newLabel: string) => void;
 }
 
-function DropGap({
-  id,
-  isOver,
-  isDragging,
-}: {
-  id: string;
-  isOver: boolean;
-  isDragging: boolean;
-}) {
+function DropGap({ id, isOver, isDragging }: { id: string; isOver: boolean; isDragging: boolean }) {
   const { setNodeRef } = useDroppable({ id });
   return (
     <div
       ref={setNodeRef}
       className={`shrink-0 self-stretch rounded transition-all ${
         isOver
-          ? "w-16 bg-primary/30 border-2 border-primary/60"
+          ? "bg-primary/30 border-primary/60 w-16 border-2"
           : isDragging
-          ? "w-10 bg-primary/5 border border-dashed border-primary/30"
-          : "w-2"
+            ? "bg-primary/5 border-primary/30 w-10 border border-dashed"
+            : "w-2"
       }`}
     />
   );
@@ -87,75 +79,69 @@ function ShelfRow({
 
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium text-muted-foreground px-1">
-        {levelLabels[level]}
-      </p>
+      <p className="text-muted-foreground px-1 text-xs font-medium">{levelLabels[level]}</p>
       <div
         className={`overflow-x-auto rounded-lg transition-all duration-150 ${
           isDragging && isTargetLevel
-            ? "ring-2 ring-primary ring-offset-2 bg-primary/5"
+            ? "ring-primary bg-primary/5 ring-2 ring-offset-2"
             : isDragging
-            ? "ring-1 ring-border/60"
-            : ""
+              ? "ring-border/60 ring-1"
+              : ""
         }`}
       >
         {/* Inner container sized to content so plank always spans all boxes */}
         <div className="relative w-max min-w-full pb-2">
-        {/* Shelf plank */}
-        <div className="absolute bottom-0 left-0 right-0 h-2 rounded bg-border" />
+          {/* Shelf plank */}
+          <div className="bg-border absolute right-0 bottom-0 left-0 h-2 rounded" />
 
-        {/* Boxes row */}
-        <div className="flex items-stretch min-h-[100px]">
-          {editMode && (
-            <DropGap
-              id={`gap-${level}-0`}
-              isOver={overId === `gap-${level}-0`}
-              isDragging={isDragging}
-            />
-          )}
+          {/* Boxes row */}
+          <div className="flex min-h-[100px] items-stretch">
+            {editMode && (
+              <DropGap id={`gap-${level}-0`} isOver={overId === `gap-${level}-0`} isDragging={isDragging} />
+            )}
 
-          {boxes.map((box, idx) => (
-            <div
-              key={box.label}
-              className="relative flex items-stretch"
-              style={{
-                flex: "1 1 100px",
-                minWidth: "100px",
-                opacity: activeId === box.label ? 0.4 : 1,
-              }}
-            >
-              <div className="w-full h-full">
-                <BoxCard
-                  box={box}
-                  stock={stock}
-                  onClick={() => onSelectBox(box.label)}
-                  editMode={editMode}
-                  isMisc={level === 0}
-                  onMoveUp={level < 3 ? () => onMoveBox(box.label, 1) : undefined}
-                  onMoveDown={level > 0 ? () => onMoveBox(box.label, -1) : undefined}
-                  onDeleteBox={editMode ? () => onDeleteBox(box.label) : undefined}
-                  onRename={editMode ? (newLabel) => onRenameBox(box.label, newLabel) : undefined}
-                />
+            {boxes.map((box, idx) => (
+              <div
+                key={box.label}
+                className="relative flex items-stretch"
+                style={{
+                  flex: "1 1 100px",
+                  minWidth: "100px",
+                  opacity: activeId === box.label ? 0.4 : 1,
+                }}
+              >
+                <div className="h-full w-full">
+                  <BoxCard
+                    box={box}
+                    stock={stock}
+                    onClick={() => onSelectBox(box.label)}
+                    editMode={editMode}
+                    isMisc={level === 0}
+                    onMoveUp={level < 3 ? () => onMoveBox(box.label, 1) : undefined}
+                    onMoveDown={level > 0 ? () => onMoveBox(box.label, -1) : undefined}
+                    onDeleteBox={editMode ? () => onDeleteBox(box.label) : undefined}
+                    onRename={editMode ? (newLabel) => onRenameBox(box.label, newLabel) : undefined}
+                  />
+                </div>
+
+                {editMode && (
+                  <DropGap
+                    id={`gap-${level}-${idx + 1}`}
+                    isOver={overId === `gap-${level}-${idx + 1}`}
+                    isDragging={isDragging}
+                  />
+                )}
               </div>
+            ))}
 
-              {editMode && (
-                <DropGap
-                  id={`gap-${level}-${idx + 1}`}
-                  isOver={overId === `gap-${level}-${idx + 1}`}
-                  isDragging={isDragging}
-                />
-              )}
-            </div>
-          ))}
-
-          {boxes.length === 0 && (
-            <div className="flex items-center justify-center w-full pb-3">
-              <p className="text-xs text-muted-foreground/50 italic">
-                {editMode ? "Drop a box here" : "Empty"}
-              </p>
-            </div>
-          )}
-        </div>
+            {boxes.length === 0 && (
+              <div className="flex w-full items-center justify-center pb-3">
+                <p className="text-muted-foreground/50 text-xs italic">
+                  {editMode ? "Drop a box here" : "Empty"}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -174,16 +160,12 @@ export function ShelfView({
   const [activeBox, setActiveBox] = useState<ShelfBox | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const isDragging = activeBox !== null;
 
   const boxesByLevel = (level: 0 | 1 | 2 | 3) =>
-    structure.boxes
-      .filter((b) => b.shelfLevel === level)
-      .sort((a, b) => a.shelfPosition - b.shelfPosition);
+    structure.boxes.filter((b) => b.shelfLevel === level).sort((a, b) => a.shelfPosition - b.shelfPosition);
 
   function parseGapId(id: string): { level: number; insertAt: number } | null {
     const m = id.match(/^gap-(\d)-(\d+)$/);
@@ -204,9 +186,7 @@ export function ShelfView({
     setActiveBox(null);
     setOverId(null);
 
-    const box: ShelfBox | undefined = (
-      event.active.data.current as { box: ShelfBox }
-    )?.box;
+    const box: ShelfBox | undefined = (event.active.data.current as { box: ShelfBox })?.box;
     if (!box || !event.over) return;
 
     const gap = parseGapId(String(event.over.id));
@@ -227,9 +207,7 @@ export function ShelfView({
       }
       if (b.shelfLevel === box.shelfLevel && b.label !== box.label) {
         const sorted = structure.boxes
-          .filter(
-            (x) => x.shelfLevel === box.shelfLevel && x.label !== box.label
-          )
+          .filter((x) => x.shelfLevel === box.shelfLevel && x.label !== box.label)
           .sort((a, b) => a.shelfPosition - b.shelfPosition);
         const idx = sorted.findIndex((x) => x.label === b.label);
         return { ...b, shelfPosition: idx };
@@ -320,15 +298,7 @@ export function ShelfView({
     >
       {shelfContent}
       <DragOverlay>
-        {activeBox && (
-          <BoxCard
-            box={activeBox}
-            stock={stock}
-            onClick={() => {}}
-            overlay
-            editMode={true}
-          />
-        )}
+        {activeBox && <BoxCard box={activeBox} stock={stock} onClick={() => {}} overlay editMode={true} />}
       </DragOverlay>
     </DndContext>
   );

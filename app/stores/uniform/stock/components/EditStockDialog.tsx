@@ -1,23 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
@@ -61,10 +49,7 @@ export function EditStockDialog({
   const { itemTypes, noSizeItems } = useReference();
   const needsSize = itemType !== "" && !noSizeItems.has(itemType);
 
-  const boxOptions = useMemo(
-    () => shelfStructure.boxes.map((b) => b.label),
-    [shelfStructure]
-  );
+  const boxOptions = useMemo(() => shelfStructure.boxes.map((b) => b.label), [shelfStructure]);
 
   const sectionOptions = useMemo(() => {
     if (!box) return [];
@@ -76,7 +61,7 @@ export function EditStockDialog({
 
   function handleItemTypeChange(v: string) {
     setItemType(v);
-    setSize(noSizeItems.has(v) ? "N/A" : (noSizeItems.has(itemType) ? "" : size));
+    setSize(noSizeItems.has(v) ? "N/A" : noSizeItems.has(itemType) ? "" : size);
   }
 
   function handleBoxChange(v: string) {
@@ -117,7 +102,12 @@ export function EditStockDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Stock Item</DialogTitle>
@@ -132,7 +122,9 @@ export function EditStockDialog({
               </SelectTrigger>
               <SelectContent>
                 {itemTypes.map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -159,20 +151,28 @@ export function EditStockDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {boxOptions.map((b) => (
-                    <SelectItem key={b} value={b}>Box {b}</SelectItem>
+                    <SelectItem key={b} value={b}>
+                      Box {b}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Section</Label>
-              <Select value={section} onValueChange={setSection} disabled={!box || sectionOptions.length === 0}>
+              <Select
+                value={section}
+                onValueChange={setSection}
+                disabled={!box || sectionOptions.length === 0}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={sectionOptions.length === 0 ? "No sections" : "Section"} />
                 </SelectTrigger>
                 <SelectContent>
                   {sectionOptions.map((s) => (
-                    <SelectItem key={s} value={s}>Section {s}</SelectItem>
+                    <SelectItem key={s} value={s}>
+                      Section {s}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -191,11 +191,13 @@ export function EditStockDialog({
             />
           </div>
 
-          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+          {submitError && <p className="text-destructive text-sm">{submitError}</p>}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={submitting || !isValid}>
             {submitting ? "Saving…" : "Save Changes"}
           </Button>

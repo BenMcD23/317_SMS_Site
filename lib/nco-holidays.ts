@@ -66,7 +66,7 @@ export function holidayDays(h: { date_from: string; date_to: string }): number {
 async function request<T>(
   token: string,
   path: string,
-  init: { method: string; body?: unknown } = { method: "POST" },
+  init: { method: string; body?: unknown } = { method: "POST" }
 ): Promise<T> {
   let res: Response;
   try {
@@ -98,9 +98,7 @@ export function bookHoliday(token: string, body: NewHoliday): Promise<NcoHoliday
 }
 
 /** Change a booking's dates or reason, moving the calendar event with it. */
-export function editHoliday(
-  token: string, id: number, body: NewHoliday,
-): Promise<NcoHoliday> {
+export function editHoliday(token: string, id: number, body: NewHoliday): Promise<NcoHoliday> {
   return request<NcoHoliday>(token, `/${id}`, { method: "PATCH", body });
 }
 

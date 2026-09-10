@@ -6,9 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  ArrowLeft, FileDown, FileText, Mail, Pencil, Save, Sparkles, Trash2, X,
-} from "lucide-react";
+import { ArrowLeft, FileDown, FileText, Mail, Pencil, Save, Sparkles, Trash2, X } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -21,13 +19,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
 import {
-  APPRAISAL_SECTIONS, deleteAppraisal, downloadAppraisal, draftFrom, emailAppraisal,
-  updateAppraisal, type Appraisal, type AppraisalDraft,
+  APPRAISAL_SECTIONS,
+  deleteAppraisal,
+  downloadAppraisal,
+  draftFrom,
+  emailAppraisal,
+  updateAppraisal,
+  type Appraisal,
+  type AppraisalDraft,
 } from "@/lib/nco-appraisals";
 
 export default function AppraisalDetailPage() {
@@ -56,11 +65,9 @@ export default function AppraisalDetailPage() {
     setEditing(true);
   }
 
-  const { data, isLoading, error } = useApiQuery<Appraisal>(
-    ["nco-appraisal", id],
-    `/nco-appraisals/${id}`,
-    { enabled: Number.isFinite(id) },
-  );
+  const { data, isLoading, error } = useApiQuery<Appraisal>(["nco-appraisal", id], `/nco-appraisals/${id}`, {
+    enabled: Number.isFinite(id),
+  });
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["nco-appraisal", id] });
     queryClient.invalidateQueries({ queryKey: ["nco-appraisals"] });
@@ -114,20 +121,17 @@ export default function AppraisalDetailPage() {
   }
 
   function remove() {
-    confirm(
-      `Delete the appraisal for ${data?.nco_name ?? "this NCO"}? This can't be undone.`,
-      async () => {
-        if (!token) return;
-        try {
-          await deleteAppraisal(token, id);
-          queryClient.invalidateQueries({ queryKey: ["nco-appraisals"] });
-          toast.success("Appraisal deleted.");
-          router.push("/nco-appraisals");
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Couldn't delete the appraisal.");
-        }
-      },
-    );
+    confirm(`Delete the appraisal for ${data?.nco_name ?? "this NCO"}? This can't be undone.`, async () => {
+      if (!token) return;
+      try {
+        await deleteAppraisal(token, id);
+        queryClient.invalidateQueries({ queryKey: ["nco-appraisals"] });
+        toast.success("Appraisal deleted.");
+        router.push("/nco-appraisals");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't delete the appraisal.");
+      }
+    });
   }
 
   if (isLoading) {
@@ -182,19 +186,11 @@ export default function AppraisalDetailPage() {
                 <Pencil className="size-4" />
                 Edit
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => download("docx")}
-                disabled={downloading !== null}
-              >
+              <Button variant="outline" onClick={() => download("docx")} disabled={downloading !== null}>
                 <FileText className="size-4" />
                 {downloading === "docx" ? "Building…" : "Word"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => download("pdf")}
-                disabled={downloading !== null}
-              >
+              <Button variant="outline" onClick={() => download("pdf")} disabled={downloading !== null}>
                 <FileDown className="size-4" />
                 {downloading === "pdf" ? "Building…" : "PDF"}
               </Button>
@@ -259,7 +255,7 @@ export default function AppraisalDetailPage() {
               </Badge>
             )}
             {data.emailed_at && (
-              <Badge variant="outline" className="gap-1 text-muted-foreground">
+              <Badge variant="outline" className="text-muted-foreground gap-1">
                 <Mail className="size-3" />
                 Sent to {data.emailed_to} on {formatTimestamp(data.emailed_at)}
               </Badge>
@@ -273,11 +269,9 @@ export default function AppraisalDetailPage() {
               </CardHeader>
               <CardContent>
                 {data[section.key].trim() ? (
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {data[section.key]}
-                  </p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{data[section.key]}</p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Not filled in.</p>
+                  <p className="text-muted-foreground text-sm">Not filled in.</p>
                 )}
               </CardContent>
             </Card>
@@ -297,8 +291,7 @@ export default function AppraisalDetailPage() {
           <DialogHeader>
             <DialogTitle>Email this appraisal</DialogTitle>
             <DialogDescription>
-              Sends the appraisal as a PDF attachment. Replies come back to you, not
-              to the noreply mailbox.
+              Sends the appraisal as a PDF attachment. Replies come back to you, not to the noreply mailbox.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
@@ -311,13 +304,15 @@ export default function AppraisalDetailPage() {
               placeholder="cadet@317atc.co.uk"
             />
             {!data.cadet_email && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 This NCO has no email address on record, so you&apos;ll need to type one.
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEmailOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={send} disabled={sending || !emailTo.trim()}>
               <Mail className="size-4" />
               {sending ? "Sending…" : "Send PDF"}
@@ -334,7 +329,7 @@ export default function AppraisalDetailPage() {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
       <p className="text-sm font-medium">{value || "—"}</p>
     </div>
   );

@@ -102,10 +102,7 @@ function flagPossibleOutage() {
   window.dispatchEvent(new Event(API_OUTAGE_EVENT));
 }
 
-export async function apiFetch(
-  url: string,
-  options: RequestInit = {}
-): Promise<Response> {
+export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(url, options);

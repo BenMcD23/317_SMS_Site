@@ -1,7 +1,7 @@
-import type { NextAuthConfig } from "next-auth"
-import Google from "next-auth/providers/google"
-import Credentials from "next-auth/providers/credentials"
-import { canAccess } from "./lib/access"
+import type { NextAuthConfig } from "next-auth";
+import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
+import { canAccess } from "./lib/access";
 
 /** Accounts the dev bypass can log in as — must match the API's
  *  `_dev_fake_email` so the fake token resolves to the same role there. */
@@ -9,9 +9,9 @@ export const DEV_USERS = {
   staff: { email: "ci.mcdonald@317atc.co.uk", name: "Dev Staff" },
   snco: { email: "dev.snco@317atc.co.uk", name: "Dev SNCO" },
   nco: { email: "dev.nco@317atc.co.uk", name: "Dev NCO" },
-} as const
+} as const;
 
-export type DevRole = keyof typeof DEV_USERS
+export type DevRole = keyof typeof DEV_USERS;
 
 export const authConfig: NextAuthConfig = {
   session: {
@@ -32,12 +32,60 @@ export const authConfig: NextAuthConfig = {
     updateAge: 60 * 60, // 1 hour
   },
   cookies: {
-    sessionToken: { name: "sms.session-token", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
-    callbackUrl: { name: "sms.callback-url", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
-    csrfToken: { name: "sms.csrf-token", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
-    pkceCodeVerifier: { name: "sms.pkce.code_verifier", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
-    state: { name: "sms.state", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
-    nonce: { name: "sms.nonce", options: { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" } },
+    sessionToken: {
+      name: "sms.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: "sms.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: "sms.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    pkceCodeVerifier: {
+      name: "sms.pkce.code_verifier",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    state: {
+      name: "sms.state",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    nonce: {
+      name: "sms.nonce",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   },
   providers: [
     Google({
@@ -62,8 +110,8 @@ export const authConfig: NextAuthConfig = {
           Credentials({
             credentials: { role: {} },
             authorize: (c) => {
-              const role = String(c?.role ?? "staff")
-              return { id: role, ...(DEV_USERS[role as DevRole] ?? DEV_USERS.staff) }
+              const role = String(c?.role ?? "staff");
+              return { id: role, ...(DEV_USERS[role as DevRole] ?? DEV_USERS.staff) };
             },
           }),
         ]
@@ -80,34 +128,34 @@ export const authConfig: NextAuthConfig = {
     // No `jwt` callback here on purpose. This config is what middleware runs,
     // and middleware must not renew tokens: see the note in proxy.ts.
     session({ session, token }) {
-      session.id_token = token.id_token
-      session.role = token.role
-      session.error = token.error
-      return session
+      session.id_token = token.id_token;
+      session.role = token.role;
+      session.error = token.error;
+      return session;
     },
     authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user
-      const isLoginPage = nextUrl.pathname === "/login"
-      const isUnauthorizedPage = nextUrl.pathname === "/unauthorized"
+      const isLoggedIn = !!auth?.user;
+      const isLoginPage = nextUrl.pathname === "/login";
+      const isUnauthorizedPage = nextUrl.pathname === "/unauthorized";
 
       if (isLoginPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl))
-        return true
+        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
+        return true;
       }
 
-      if (!isLoggedIn) return Response.redirect(new URL("/login", nextUrl))
+      if (!isLoggedIn) return Response.redirect(new URL("/login", nextUrl));
 
       // Always allow the unauthorized page for logged-in users
-      if (isUnauthorizedPage) return true
+      if (isUnauthorizedPage) return true;
 
       // Block users with no recognised role
-      if (!auth.role) return Response.redirect(new URL("/unauthorized", nextUrl))
+      if (!auth.role) return Response.redirect(new URL("/unauthorized", nextUrl));
 
       if (!canAccess(auth.role, nextUrl.pathname)) {
-        return Response.redirect(new URL("/unauthorized", nextUrl))
+        return Response.redirect(new URL("/unauthorized", nextUrl));
       }
 
-      return true
+      return true;
     },
   },
-}
+};

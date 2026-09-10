@@ -41,23 +41,27 @@ export function UserMenu() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" tooltip={user?.name ?? "Account"}>
               <Avatar className="size-8 rounded-md">
-                <AvatarFallback className="rounded-md bg-sidebar-primary text-xs text-sidebar-primary-foreground">
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground rounded-md text-xs">
                   {initials(user?.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-sm font-medium">{user?.name ?? "Signed out"}</span>
-                <span className="truncate text-xs text-sidebar-foreground/60">
-                  {session?.role ? ROLE_LABELS[session.role] ?? session.role : ""}
+                <span className="text-sidebar-foreground/60 truncate text-xs">
+                  {session?.role ? (ROLE_LABELS[session.role] ?? session.role) : ""}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-(--radix-dropdown-menu-trigger-width) min-w-56">
+          <DropdownMenuContent
+            side="top"
+            align="start"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
+          >
             <DropdownMenuLabel className="font-normal">
               <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-muted-foreground">{user?.email}</p>
+              <p className="text-muted-foreground text-xs">{user?.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

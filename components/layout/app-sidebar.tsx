@@ -6,7 +6,14 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ChevronRight, Loader2 } from "lucide-react";
 
-import { isGroup, isGroupActive, isLinkActive, visibleSections, type NavGroup, type NavLink } from "@/lib/navigation";
+import {
+  isGroup,
+  isGroupActive,
+  isLinkActive,
+  visibleSections,
+  type NavGroup,
+  type NavLink,
+} from "@/lib/navigation";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -143,7 +150,7 @@ export function AppSidebar() {
                 </div>
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate text-sm font-semibold">317 Squadron</span>
-                  <span className="truncate text-xs text-sidebar-foreground/60">Management System</span>
+                  <span className="text-sidebar-foreground/60 truncate text-xs">Management System</span>
                 </div>
               </Link>
             </SidebarMenuButton>

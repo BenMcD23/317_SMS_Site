@@ -3,15 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { useApiQuery } from "@/lib/use-api-query";
 import { API_BASE } from "@/lib/config";
@@ -24,33 +16,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,13 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { flightBadgeClass } from "@/lib/cadet-format";
 import { toast } from "sonner";
 import {
@@ -198,7 +161,7 @@ function InspectionFigureView({ notes }: { notes: NumberedNote[] }) {
             <span
               key={note.n}
               className={cn(
-                "absolute left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-bold text-white ring-2 ring-background",
+                "ring-background absolute left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-bold text-white ring-2",
                 note.type === "fault" ? "bg-destructive" : "bg-green-600"
               )}
               style={{ top: `${top}%` }}
@@ -227,9 +190,7 @@ function HistoryCadetCard({ cadet }: { cadet: SheetCadet }) {
               <div className="truncate text-sm font-medium">
                 {cadet.last_name}, {cadet.first_name}
               </div>
-              {cadet.rank && (
-                <div className="text-xs text-muted-foreground">{cadet.rank}</div>
-              )}
+              {cadet.rank && <div className="text-muted-foreground text-xs">{cadet.rank}</div>}
             </div>
             {cadet.absent ? (
               <Badge variant={cadet.awol ? "destructive" : "secondary"}>
@@ -243,9 +204,7 @@ function HistoryCadetCard({ cadet }: { cadet: SheetCadet }) {
           </div>
 
           {notes.length === 0 ? (
-            !cadet.absent && (
-              <p className="mt-2 text-xs text-muted-foreground">No faults logged.</p>
-            )
+            !cadet.absent && <p className="text-muted-foreground mt-2 text-xs">No faults logged.</p>
           ) : (
             <ul className="mt-2 flex flex-col gap-1">
               {notes.map((note) => (
@@ -278,16 +237,14 @@ function AbsenceLists({ awol, absent }: { awol: SheetCadet[]; absent: SheetCadet
       <div
         className={cn(
           "flex items-center justify-between px-3 py-1.5 text-xs font-semibold",
-          tone === "awol"
-            ? "bg-destructive/10 text-destructive"
-            : "bg-muted text-muted-foreground"
+          tone === "awol" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
         )}
       >
         <span>{title}</span>
         <span className="tabular-nums">{people.length}</span>
       </div>
       {people.length === 0 ? (
-        <p className="px-3 py-2 text-xs text-muted-foreground">None</p>
+        <p className="text-muted-foreground px-3 py-2 text-xs">None</p>
       ) : (
         <ul className="divide-y">
           {people.map((c) => (
@@ -429,18 +386,14 @@ function HistoryTab() {
         </Button>
       </div>
 
-      <AlertDialog
-        open={confirmDelete}
-        onOpenChange={(o) => !o && !deleting && setConfirmDelete(false)}
-      >
+      <AlertDialog open={confirmDelete} onOpenChange={(o) => !o && !deleting && setConfirmDelete(false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this inspection?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes the inspection from{" "}
-              <strong>{selectedSheet?.date}</strong>
-              {selectedSheet ? ` (${selectedSheet.cadet_count} cadets)` : ""}. All scores and
-              comments for this date will be lost and it cannot be undone.
+              This permanently deletes the inspection from <strong>{selectedSheet?.date}</strong>
+              {selectedSheet ? ` (${selectedSheet.cadet_count} cadets)` : ""}. All scores and comments for
+              this date will be lost and it cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -451,7 +404,7 @@ function HistoryTab() {
                 deleteSheet();
               }}
               disabled={deleting}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90 text-white"
             >
               {deleting ? "Deleting…" : "Delete inspection"}
             </AlertDialogAction>
@@ -491,9 +444,7 @@ function HistoryTab() {
                     ))}
                   </div>
                 )}
-                {(awol.length > 0 || absent.length > 0) && (
-                  <AbsenceLists awol={awol} absent={absent} />
-                )}
+                {(awol.length > 0 || absent.length > 0) && <AbsenceLists awol={awol} absent={absent} />}
               </div>
             );
           })}
@@ -504,12 +455,7 @@ function HistoryTab() {
 }
 
 // ─── Leaderboard sorting ──────────────────────────────────────────────────────
-type SortKey =
-  | "name"
-  | "attendance_avg"
-  | "score_avg"
-  | "overall"
-  | "overall_rank";
+type SortKey = "name" | "attendance_avg" | "score_avg" | "overall" | "overall_rank";
 
 function SortHead({
   label,
@@ -533,17 +479,13 @@ function SortHead({
         type="button"
         onClick={() => onSort(col)}
         className={cn(
-          "inline-flex items-center gap-1 hover:text-foreground",
+          "hover:text-foreground inline-flex items-center gap-1",
           active ? "text-foreground" : "text-muted-foreground"
         )}
       >
         {label}
         {active &&
-          (dir === "asc" ? (
-            <ChevronUp className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ))}
+          (dir === "asc" ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
       </button>
     </TableHead>
   );
@@ -585,7 +527,7 @@ function AiMarkdown({ text }: { text: string }) {
     } else {
       flush(`u-${i}`);
       blocks.push(
-        <p key={i} className="text-sm text-muted-foreground">
+        <p key={i} className="text-muted-foreground text-sm">
           {line}
         </p>
       );
@@ -610,9 +552,9 @@ function faultTally(timeline: TimelineEntry[]) {
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-lg border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-muted-foreground text-xs">{label}</div>
       <div className="text-xl font-semibold tabular-nums">{value}</div>
-      {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+      {sub && <div className="text-muted-foreground text-xs">{sub}</div>}
     </div>
   );
 }
@@ -683,13 +625,7 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
             <LineChart data={chartData} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis
-                domain={[0, 10]}
-                tick={{ fontSize: 11 }}
-                width={32}
-                tickLine={false}
-                axisLine={false}
-              />
+              <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} width={32} tickLine={false} axisLine={false} />
               <Tooltip
                 contentStyle={{
                   background: "var(--popover)",
@@ -710,15 +646,13 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Not enough scored inspections to chart a trend yet.
-          </p>
+          <p className="text-muted-foreground text-sm">Not enough scored inspections to chart a trend yet.</p>
         )}
       </div>
 
       <div>
         <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-          <ThumbsDown className="h-4 w-4 text-destructive" />
+          <ThumbsDown className="text-destructive h-4 w-4" />
           Recurring faults by area
           {totalPositives > 0 && (
             <span className="ml-auto inline-flex items-center gap-1 text-xs font-normal text-green-600">
@@ -728,50 +662,46 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
           )}
         </h3>
         {faults.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No faults logged — spotless.</p>
+          <p className="text-muted-foreground text-sm">No faults logged — spotless.</p>
         ) : (
           <div className="flex flex-col gap-1.5">
             {faults.map(([region, count]) => (
               <div key={region} className="flex items-center gap-2 text-sm">
                 <span className="w-40 shrink-0 truncate">{region}</span>
-                <div className="h-4 flex-1 overflow-hidden rounded bg-muted">
+                <div className="bg-muted h-4 flex-1 overflow-hidden rounded">
                   <div
-                    className="h-full rounded bg-destructive/70"
+                    className="bg-destructive/70 h-full rounded"
                     style={{ width: `${(count / maxFaults) * 100}%` }}
                   />
                 </div>
-                <span className="w-6 text-right tabular-nums text-muted-foreground">{count}</span>
+                <span className="text-muted-foreground w-6 text-right tabular-nums">{count}</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="rounded-lg border bg-muted/30 p-4">
+      <div className="bg-muted/30 rounded-lg border p-4">
         <div className="flex items-center justify-between gap-2">
           <h3 className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Sparkles className="text-primary h-4 w-4" />
             AI trend analysis
           </h3>
           <Button size="sm" onClick={analyse} disabled={ai.loading}>
-            {ai.loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
+            {ai.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {ai.text ? "Regenerate" : "Analyse"}
           </Button>
         </div>
         <div className="mt-3">
           {ai.loading && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Reasoning over {cadet.first_name}&apos;s inspection history…
             </p>
           )}
-          {ai.error && <p className="text-sm text-destructive">{ai.error}</p>}
+          {ai.error && <p className="text-destructive text-sm">{ai.error}</p>}
           {ai.text && <AiMarkdown text={ai.text} />}
           {!ai.loading && !ai.error && !ai.text && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Uses the Groq LLM to spot recurring uniform issues and score trends.
             </p>
           )}
@@ -783,10 +713,7 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
 
 // ─── Leaderboard tab ──────────────────────────────────────────────────────────
 function LeaderboardTab() {
-  const { data, isLoading, error } = useApiQuery<HistoryResp>(
-    ["inspection-history"],
-    "/inspections/history"
-  );
+  const { data, isLoading, error } = useApiQuery<HistoryResp>(["inspection-history"], "/inspections/history");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("overall_rank");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
@@ -901,7 +828,7 @@ function LeaderboardTab() {
                     <div className="font-medium">
                       {c.last_name}, {c.first_name}
                     </div>
-                    {c.rank && <div className="text-xs text-muted-foreground">{c.rank}</div>}
+                    {c.rank && <div className="text-muted-foreground text-xs">{c.rank}</div>}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     {c.flight && (
@@ -912,11 +839,11 @@ function LeaderboardTab() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {c.attendance_avg.toFixed(0)}%
-                    <span className="ml-1 text-xs text-muted-foreground">#{c.attendance_rank}</span>
+                    <span className="text-muted-foreground ml-1 text-xs">#{c.attendance_rank}</span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {c.score_avg.toFixed(2)}
-                    <span className="ml-1 text-xs text-muted-foreground">#{c.score_rank}</span>
+                    <span className="text-muted-foreground ml-1 text-xs">#{c.score_rank}</span>
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
                     {c.overall.toFixed(2)}
@@ -928,7 +855,7 @@ function LeaderboardTab() {
               ))}
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-muted-foreground text-center">
                     No cadets match your search.
                   </TableCell>
                 </TableRow>

@@ -1,23 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
 
@@ -57,10 +45,7 @@ export function AddStockDialog({
     return sizes[itemType] ?? [];
   }, [itemType, noSizeItems, sizes]);
 
-  const boxOptions = useMemo(
-    () => shelfStructure.boxes.map((b) => b.label),
-    [shelfStructure]
-  );
+  const boxOptions = useMemo(() => shelfStructure.boxes.map((b) => b.label), [shelfStructure]);
 
   const sectionOptions = useMemo(() => {
     if (!box) return [];
@@ -68,11 +53,7 @@ export function AddStockDialog({
   }, [box, shelfStructure]);
 
   const isValid =
-    itemType !== "" &&
-    (!needsSize || size !== "") &&
-    quantity >= 1 &&
-    box !== "" &&
-    section !== "";
+    itemType !== "" && (!needsSize || size !== "") && quantity >= 1 && box !== "" && section !== "";
 
   // Auto-suggestion
   useEffect(() => {
@@ -82,9 +63,7 @@ export function AddStockDialog({
     const effectiveSize = needsSize ? size : "N/A";
 
     // Priority 1: exact match (same type + size)
-    const exact = stock.find(
-      (i) => i.itemType === itemType && i.size === effectiveSize
-    );
+    const exact = stock.find((i) => i.itemType === itemType && i.size === effectiveSize);
     if (exact) {
       setBox(exact.box);
       setSection(exact.section);
@@ -103,7 +82,10 @@ export function AddStockDialog({
       let bestKey = "";
       let bestCount = 0;
       for (const [key, count] of freq) {
-        if (count > bestCount) { bestCount = count; bestKey = key; }
+        if (count > bestCount) {
+          bestCount = count;
+          bestKey = key;
+        }
       }
       const [bestBox, bestSection] = bestKey.split("|||");
       setBox(bestBox);
@@ -120,8 +102,7 @@ export function AddStockDialog({
 
   // Reset section if it no longer exists in the selected box
   useEffect(() => {
-    const sections =
-      shelfStructure.boxes.find((b) => b.label === box)?.sections.map((s) => s.label) ?? [];
+    const sections = shelfStructure.boxes.find((b) => b.label === box)?.sections.map((s) => s.label) ?? [];
     if (section !== "" && !sections.includes(section)) {
       setSection("");
     }
@@ -211,7 +192,9 @@ export function AddStockDialog({
               </SelectTrigger>
               <SelectContent>
                 {itemTypes.map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -226,7 +209,9 @@ export function AddStockDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {sizeOptions.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -254,7 +239,9 @@ export function AddStockDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {boxOptions.map((b) => (
-                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -271,7 +258,9 @@ export function AddStockDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {sectionOptions.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -279,20 +268,20 @@ export function AddStockDialog({
           </div>
 
           {showHint && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {suggestionSource === "exact"
                 ? "Suggested: existing stock for this item and size — quantities will be merged."
                 : "Suggested: co-located with other items of this type."}
             </p>
           )}
 
-          {submitError && (
-            <p className="text-sm text-destructive">{submitError}</p>
-          )}
+          {submitError && <p className="text-destructive text-sm">{submitError}</p>}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
           <Button onClick={handleSubmit} disabled={!isValid || submitting}>
             {submitting ? "Adding…" : "Add Stock"}
           </Button>

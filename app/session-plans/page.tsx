@@ -6,15 +6,11 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Plus, ClipboardList } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import {
-  type SessionPlanSummary, STATUS_LABELS, STATUS_STYLE,
-} from "@/lib/session-plans";
+import { type SessionPlanSummary, STATUS_LABELS, STATUS_STYLE } from "@/lib/session-plans";
 
 interface ListResponse {
   plans: SessionPlanSummary[];
@@ -22,17 +18,12 @@ interface ListResponse {
 }
 
 export default function SessionPlansPage() {
-  const { data, isLoading, error } = useApiQuery<ListResponse>(
-    ["session-plans"],
-    "/session-plans",
-  );
+  const { data, isLoading, error } = useApiQuery<ListResponse>(["session-plans"], "/session-plans");
 
   // Staff care about the review queue first; for NCOs it's just everyone's
   // plans in one list.
   const awaiting = data?.plans.filter((p) => p.status === "submitted") ?? [];
-  const rest = data?.is_staff
-    ? data.plans.filter((p) => p.status !== "submitted")
-    : (data?.plans ?? []);
+  const rest = data?.is_staff ? data.plans.filter((p) => p.status !== "submitted") : (data?.plans ?? []);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -54,31 +45,33 @@ export default function SessionPlansPage() {
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
         </div>
       ) : error ? (
-        <p className="text-sm text-destructive">Failed to load session plans: {error.message}</p>
+        <p className="text-destructive text-sm">Failed to load session plans: {error.message}</p>
       ) : !data || data.plans.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon"><ClipboardList /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <ClipboardList />
+            </EmptyMedia>
             <EmptyTitle>No session plans yet</EmptyTitle>
             <EmptyDescription>
               Write up a session you&apos;re running and send it to staff for approval.
             </EmptyDescription>
           </EmptyHeader>
           <Button asChild size="sm">
-            <Link href="/session-plans/new"><Plus /> New Plan</Link>
+            <Link href="/session-plans/new">
+              <Plus /> New Plan
+            </Link>
           </Button>
         </Empty>
       ) : (
         <>
           {data.is_staff && awaiting.length > 0 && (
-            <PlanTable
-              title={`Awaiting your review (${awaiting.length})`}
-              plans={awaiting}
-              showAuthor
-            />
+            <PlanTable title={`Awaiting your review (${awaiting.length})`} plans={awaiting} showAuthor />
           )}
           {rest.length > 0 && (
             <PlanTable
@@ -104,7 +97,7 @@ function PlanTable({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      {title && <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>}
+      {title && <h2 className="text-muted-foreground text-sm font-medium">{title}</h2>}
       <div className="overflow-x-auto rounded-lg border">
         <Table>
           <TableHeader>
@@ -124,7 +117,9 @@ function PlanTable({
                 <TableRow
                   key={p.id}
                   className="cursor-pointer"
-                  onClick={() => { window.location.href = `/session-plans/${p.id}`; }}
+                  onClick={() => {
+                    window.location.href = `/session-plans/${p.id}`;
+                  }}
                 >
                   <TableCell className="max-w-[16rem] truncate font-medium">
                     <Link href={`/session-plans/${p.id}`} className="hover:underline">

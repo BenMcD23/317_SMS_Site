@@ -11,13 +11,7 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { Trash2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { ShelfView } from "./components/ShelfView";
 import { AddStockDialog } from "./components/AddStockDialog";
@@ -43,7 +37,9 @@ export default function StockPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<StockItem | null>(null);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    loadAll();
+  }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -70,9 +66,7 @@ export default function StockPage() {
   // All labels (for duplicate checking)
   const structureCompat = useMemo(
     () =>
-      Object.fromEntries(
-        shelfStructure?.boxes.map((b) => [b.label, b.sections.map((s) => s.label)]) ?? []
-      ),
+      Object.fromEntries(shelfStructure?.boxes.map((b) => [b.label, b.sections.map((s) => s.label)]) ?? []),
     [shelfStructure]
   );
 
@@ -87,9 +81,7 @@ export default function StockPage() {
     const name = searchName.toLowerCase();
     const size = searchSize.trim().toLowerCase();
     return stock.filter(
-      (i) =>
-        i.itemType.toLowerCase().includes(name) &&
-        (size === "" || i.size.toLowerCase().includes(size))
+      (i) => i.itemType.toLowerCase().includes(name) && (size === "" || i.size.toLowerCase().includes(size))
     );
   }, [searchName, searchSize, stock]);
 
@@ -159,7 +151,6 @@ export default function StockPage() {
     }
   }
 
-
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
@@ -182,12 +173,15 @@ export default function StockPage() {
       {/* Search */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Search by item name…"
             className="pl-9"
             value={searchName}
-            onChange={(e) => { setSearchName(e.target.value); if (!e.target.value.trim()) setSearchSize(""); }}
+            onChange={(e) => {
+              setSearchName(e.target.value);
+              if (!e.target.value.trim()) setSearchSize("");
+            }}
           />
         </div>
         {isSearching && (
@@ -203,18 +197,17 @@ export default function StockPage() {
       <ErrorAlert message={error} />
 
       {/* Loading */}
-      {loading && (
-        <div className="py-12 text-center text-sm text-muted-foreground">Loading stock…</div>
-      )}
+      {loading && <div className="text-muted-foreground py-12 text-center text-sm">Loading stock…</div>}
 
       {/* Search results */}
       {!loading && isSearching && (
         <div>
-          <p className="mb-3 text-sm text-muted-foreground">
-            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchName}{searchSize ? ` · size: ${searchSize}` : ""}&rdquo;
+          <p className="text-muted-foreground mb-3 text-sm">
+            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchName}
+            {searchSize ? ` · size: ${searchSize}` : ""}&rdquo;
           </p>
           {searchResults.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No items match your search.</p>
+            <p className="text-muted-foreground py-6 text-center text-sm">No items match your search.</p>
           ) : (
             <Card>
               <CardContent className="p-0">
@@ -301,22 +294,36 @@ export default function StockPage() {
       )}
 
       {/* Add Box/Area */}
-      <Dialog open={addBoxAreaOpen} onOpenChange={(o) => { setAddBoxAreaOpen(o); if (!o) setNewBoxAreaName(""); }}>
+      <Dialog
+        open={addBoxAreaOpen}
+        onOpenChange={(o) => {
+          setAddBoxAreaOpen(o);
+          if (!o) setNewBoxAreaName("");
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Add Box / Area</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add Box / Area</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
-            <div className="flex rounded-md border overflow-hidden">
+            <div className="flex overflow-hidden rounded-md border">
               <button
                 type="button"
                 className={`flex-1 cursor-pointer py-1.5 text-sm transition-colors ${addBoxAreaType === "box" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                onClick={() => { setAddBoxAreaType("box"); setNewBoxAreaName(""); }}
+                onClick={() => {
+                  setAddBoxAreaType("box");
+                  setNewBoxAreaName("");
+                }}
               >
                 Box
               </button>
               <button
                 type="button"
                 className={`flex-1 cursor-pointer py-1.5 text-sm transition-colors ${addBoxAreaType === "area" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
-                onClick={() => { setAddBoxAreaType("area"); setNewBoxAreaName(""); }}
+                onClick={() => {
+                  setAddBoxAreaType("area");
+                  setNewBoxAreaName("");
+                }}
               >
                 Misc Area
               </button>
@@ -331,14 +338,30 @@ export default function StockPage() {
                 onKeyDown={(e) => e.key === "Enter" && handleAddBoxArea()}
                 maxLength={addBoxAreaType === "box" ? 10 : 20}
               />
-              {newBoxAreaName.trim() && structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined && (
-                <p className="text-xs text-destructive">{newBoxAreaName.trim().toUpperCase()} already exists.</p>
-              )}
+              {newBoxAreaName.trim() &&
+                structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined && (
+                  <p className="text-destructive text-xs">
+                    {newBoxAreaName.trim().toUpperCase()} already exists.
+                  </p>
+                )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setAddBoxAreaOpen(false); setNewBoxAreaName(""); }}>Cancel</Button>
-            <Button onClick={handleAddBoxArea} disabled={!newBoxAreaName.trim() || structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddBoxAreaOpen(false);
+                setNewBoxAreaName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddBoxArea}
+              disabled={
+                !newBoxAreaName.trim() || structureCompat[newBoxAreaName.trim().toUpperCase()] !== undefined
+              }
+            >
               Add {addBoxAreaType === "box" ? "Box" : "Area"}
             </Button>
           </DialogFooter>
@@ -369,28 +392,52 @@ function SearchResultRow({
     <li className="flex items-center gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.itemType}</p>
-        <p className="text-xs text-muted-foreground">{item.size}</p>
+        <p className="text-muted-foreground text-xs">{item.size}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Badge variant="outline" className="text-xs">
           {isMisc ? item.box : `Box ${item.box}`} §{item.section}
         </Badge>
-        <Badge variant="secondary" className="text-xs">qty: {item.quantity}</Badge>
+        <Badge variant="secondary" className="text-xs">
+          qty: {item.quantity}
+        </Badge>
         {deleteConfirm === item.id ? (
           <>
-            <Button size="sm" variant="destructive" className="h-7 px-2 text-xs"
-              onClick={() => onDelete(item.id)}>Confirm</Button>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-              onClick={() => onDeleteConfirm(null)}>Cancel</Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 px-2 text-xs"
+              onClick={() => onDelete(item.id)}
+            >
+              Confirm
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => onDeleteConfirm(null)}
+            >
+              Cancel
+            </Button>
           </>
         ) : (
           <>
-            <Button size="icon" variant="ghost" className="h-7 w-7"
-              onClick={() => onEdit(item)} aria-label="Edit">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={() => onEdit(item)}
+              aria-label="Edit"
+            >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={() => onDeleteConfirm(item.id)} aria-label="Remove">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-destructive hover:text-destructive h-7 w-7"
+              onClick={() => onDeleteConfirm(item.id)}
+              aria-label="Remove"
+            >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </>

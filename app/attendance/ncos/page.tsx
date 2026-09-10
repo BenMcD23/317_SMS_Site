@@ -6,18 +6,12 @@ import { ShieldUser } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorAlert } from "@/components/error-alert";
 import { PageHeader } from "@/components/page-header";
 import { Stat } from "@/components/stat";
@@ -25,14 +19,23 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { formatDate, formatShortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
-  addCounts, countStates, EMPTY_COUNTS, rateExcludingAuthorised, rateOf, STATE_BADGE, STATE_LABEL,
-  STATE_LETTER, totalOf, type AttendanceState, type StateCounts,
+  addCounts,
+  countStates,
+  EMPTY_COUNTS,
+  rateExcludingAuthorised,
+  rateOf,
+  STATE_BADGE,
+  STATE_LABEL,
+  STATE_LETTER,
+  totalOf,
+  type AttendanceState,
+  type StateCounts,
 } from "@/lib/attendance";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type NcoNight = {
-  date: string;                 // "YYYY-MM-DD"
+  date: string; // "YYYY-MM-DD"
   registerType: string | null;
   status: string | null;
   state: AttendanceState;
@@ -42,7 +45,7 @@ type Nco = {
   cin: number;
   name: string;
   rank: string | null;
-  nights: NcoNight[];           // newest first
+  nights: NcoNight[]; // newest first
 };
 
 type NcoAttendance = {
@@ -77,13 +80,17 @@ function monthRange(offset = 0) {
  *  colour is reinforcement rather than the only signal. */
 function StateCell({ night }: { night: NcoNight | undefined }) {
   if (!night) {
-    return <span className="text-muted-foreground/50" title="Not on this register">·</span>;
+    return (
+      <span className="text-muted-foreground/50" title="Not on this register">
+        ·
+      </span>
+    );
   }
   return (
     <span
       className={cn(
         "inline-flex h-6 w-6 items-center justify-center rounded border text-xs font-medium",
-        STATE_BADGE[night.state],
+        STATE_BADGE[night.state]
       )}
       title={`${formatDate(night.date)} — ${night.status ?? STATE_LABEL[night.state]}`}
     >
@@ -100,7 +107,7 @@ function Turnout({ counts }: { counts: StateCounts }) {
     <span className="tabular-nums">
       <span className="font-medium">{counts.present}</span>
       <span className="text-muted-foreground">/{total}</span>
-      <span className="ml-1.5 text-xs text-muted-foreground">{rateOf(counts)}%</span>
+      <span className="text-muted-foreground ml-1.5 text-xs">{rateOf(counts)}%</span>
     </span>
   );
 }
@@ -121,30 +128,36 @@ export default function NcoAttendancePage() {
 
   const { data, isLoading, error } = useApiQuery<NcoAttendance>(
     ["attendance-ncos", from, to],
-    `/attendance/ncos${query ? `?${query}` : ""}`,
+    `/attendance/ncos${query ? `?${query}` : ""}`
   );
 
   const ncos = useMemo(() => data?.ncos ?? [], [data]);
 
-  const registerTypes = useMemo(() => [...new Set(
-    ncos.flatMap((nco) => nco.nights.map((n) => n.registerType)).filter(Boolean),
-  )].sort() as string[], [ncos]);
+  const registerTypes = useMemo(
+    () =>
+      [
+        ...new Set(ncos.flatMap((nco) => nco.nights.map((n) => n.registerType)).filter(Boolean)),
+      ].sort() as string[],
+    [ncos]
+  );
 
   // Register type is the one filter applied here rather than by the backend —
   // it only makes sense against the types actually in the range.
-  const rows = useMemo(() => ncos.map((nco) => {
-    const nights = type === ALL_TYPES
-      ? nco.nights
-      : nco.nights.filter((n) => n.registerType === type);
-    const counts = countStates(nights.map((n) => n.state));
-    return {
-      nco,
-      counts,
-      rateExclAuth: rateExcludingAuthorised(counts),
-      // Keyed by night so the grid can look each column up without scanning.
-      byNight: new Map(nights.map((n) => [`${n.date}|${n.registerType ?? ""}`, n])),
-    };
-  }), [ncos, type]);
+  const rows = useMemo(
+    () =>
+      ncos.map((nco) => {
+        const nights = type === ALL_TYPES ? nco.nights : nco.nights.filter((n) => n.registerType === type);
+        const counts = countStates(nights.map((n) => n.state));
+        return {
+          nco,
+          counts,
+          rateExclAuth: rateExcludingAuthorised(counts),
+          // Keyed by night so the grid can look each column up without scanning.
+          byNight: new Map(nights.map((n) => [`${n.date}|${n.registerType ?? ""}`, n])),
+        };
+      }),
+    [ncos, type]
+  );
 
   // Columns are every night any NCO was marked on, oldest first so the grid
   // reads left to right like a calendar.
@@ -165,16 +178,14 @@ export default function NcoAttendancePage() {
 
   const teamCounts = useMemo(
     () => rows.reduce((acc, row) => addCounts(acc, row.counts), EMPTY_COUNTS),
-    [rows],
+    [rows]
   );
   const teamRate = rateOf(teamCounts);
   const teamRateExclAuth = rateExcludingAuthorised(teamCounts);
 
   const selectedNights = useMemo(() => {
     if (!selected) return [];
-    return type === ALL_TYPES
-      ? selected.nights
-      : selected.nights.filter((n) => n.registerType === type);
+    return type === ALL_TYPES ? selected.nights : selected.nights.filter((n) => n.registerType === type);
   }, [selected, type]);
 
   if (error) return <ErrorAlert message={error.message} title="Could not load NCO attendance" />;
@@ -189,30 +200,44 @@ export default function NcoAttendancePage() {
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid gap-1.5">
-          <Label htmlFor="nco-att-from" className="text-xs text-muted-foreground">From</Label>
+          <Label htmlFor="nco-att-from" className="text-muted-foreground text-xs">
+            From
+          </Label>
           <Input
-            id="nco-att-from" type="date" value={from} max={to || undefined}
+            id="nco-att-from"
+            type="date"
+            value={from}
+            max={to || undefined}
             onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
             className="h-9 w-[9.5rem]"
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="nco-att-to" className="text-xs text-muted-foreground">To</Label>
+          <Label htmlFor="nco-att-to" className="text-muted-foreground text-xs">
+            To
+          </Label>
           <Input
-            id="nco-att-to" type="date" value={to} min={from || undefined}
+            id="nco-att-to"
+            type="date"
+            value={to}
+            min={from || undefined}
             onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
             className="h-9 w-[9.5rem]"
           />
         </div>
         {registerTypes.length > 1 && (
           <div className="grid gap-1.5">
-            <Label className="text-xs text-muted-foreground">Register type</Label>
+            <Label className="text-muted-foreground text-xs">Register type</Label>
             <Select value={type} onValueChange={setType}>
-              <SelectTrigger className="h-9 w-[12rem]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[12rem]">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL_TYPES}>All types</SelectItem>
                 {registerTypes.map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -237,9 +262,9 @@ export default function NcoAttendancePage() {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : ncos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nobody holds an NCO rank at the moment — the team comes from the rank on each
-          cadet&apos;s record, same as the appraisals page.
+        <p className="text-muted-foreground text-sm">
+          Nobody holds an NCO rank at the moment — the team comes from the rank on each cadet&apos;s record,
+          same as the appraisals page.
         </p>
       ) : (
         <>
@@ -265,15 +290,17 @@ export default function NcoAttendancePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldUser className="h-4 w-4 text-muted-foreground" />
+                <ShieldUser className="text-muted-foreground h-4 w-4" />
                 Per NCO
-                <span className="ml-auto flex items-center gap-3 text-xs font-normal text-muted-foreground">
+                <span className="text-muted-foreground ml-auto flex items-center gap-3 text-xs font-normal">
                   {(["present", "authorised", "absent"] as AttendanceState[]).map((state) => (
                     <span key={state} className="flex items-center gap-1.5">
-                      <span className={cn(
-                        "inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] font-medium",
-                        STATE_BADGE[state],
-                      )}>
+                      <span
+                        className={cn(
+                          "inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] font-medium",
+                          STATE_BADGE[state]
+                        )}
+                      >
                         {STATE_LETTER[state]}
                       </span>
                       {STATE_LABEL[state]}
@@ -284,7 +311,7 @@ export default function NcoAttendancePage() {
             </CardHeader>
             <CardContent className="p-0">
               {nights.length === 0 ? (
-                <p className="px-6 pb-6 text-sm text-muted-foreground">
+                <p className="text-muted-foreground px-6 pb-6 text-sm">
                   No nights on record for the NCO team in this range.
                 </p>
               ) : (
@@ -298,7 +325,7 @@ export default function NcoAttendancePage() {
                         {columns.map((night) => (
                           <TableHead
                             key={night.key}
-                            className="whitespace-nowrap text-center text-xs font-normal"
+                            className="text-center text-xs font-normal whitespace-nowrap"
                             title={night.registerType ?? "Register"}
                           >
                             {formatShortDate(night.date)}
@@ -316,14 +343,18 @@ export default function NcoAttendancePage() {
                           <TableCell className="pl-6 whitespace-nowrap">
                             <span className="font-medium">{row.nco.name}</span>
                             {row.nco.rank && (
-                              <span className="ml-2 text-xs text-muted-foreground">{row.nco.rank}</span>
+                              <span className="text-muted-foreground ml-2 text-xs">{row.nco.rank}</span>
                             )}
                           </TableCell>
-                          <TableCell><Turnout counts={row.counts} /></TableCell>
+                          <TableCell>
+                            <Turnout counts={row.counts} />
+                          </TableCell>
                           <TableCell className="tabular-nums">
-                            {row.rateExclAuth === null
-                              ? <span className="text-muted-foreground">—</span>
-                              : `${row.rateExclAuth}%`}
+                            {row.rateExclAuth === null ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : (
+                              `${row.rateExclAuth}%`
+                            )}
                           </TableCell>
                           {columns.map((night) => (
                             <TableCell key={night.key} className="text-center">
@@ -340,10 +371,10 @@ export default function NcoAttendancePage() {
           </Card>
 
           {nights.length > columns.length && (
-            <p className="text-xs text-muted-foreground">
-              Showing the {columns.length} most recent of {nights.length} nights as columns — narrow
-              the dates to see earlier ones, or select an NCO for their whole register. The figures
-              cover the whole range.
+            <p className="text-muted-foreground text-xs">
+              Showing the {columns.length} most recent of {nights.length} nights as columns — narrow the dates
+              to see earlier ones, or select an NCO for their whole register. The figures cover the whole
+              range.
             </p>
           )}
         </>
@@ -363,7 +394,7 @@ export default function NcoAttendancePage() {
             </DialogDescription>
           </DialogHeader>
           {selectedNights.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing on the register in this range.</p>
+            <p className="text-muted-foreground text-sm">Nothing on the register in this range.</p>
           ) : (
             <div className="divide-y rounded-md border">
               {selectedNights.map((night) => (
@@ -373,12 +404,9 @@ export default function NcoAttendancePage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{formatDate(night.date)}</p>
-                    <p className="text-xs text-muted-foreground">{night.registerType ?? "Register"}</p>
+                    <p className="text-muted-foreground text-xs">{night.registerType ?? "Register"}</p>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={cn("shrink-0 font-normal", STATE_BADGE[night.state])}
-                  >
+                  <Badge variant="outline" className={cn("shrink-0 font-normal", STATE_BADGE[night.state])}>
                     {night.status ?? STATE_LABEL[night.state]}
                   </Badge>
                 </div>

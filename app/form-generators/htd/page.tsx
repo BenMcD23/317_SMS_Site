@@ -34,7 +34,10 @@ type MonthRow = { key: string; label: string; journeys: string };
 // Best-effort split of "11, Victoria Street, Littleborough, Lancashire, OL15 9DB".
 const UK_POSTCODE = /[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}/i;
 function splitAddress(address: string | null) {
-  const parts = (address ?? "").split(",").map((p) => p.trim()).filter(Boolean);
+  const parts = (address ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
   let postcode = "";
   if (parts.length && UK_POSTCODE.test(parts[parts.length - 1])) {
     postcode = parts.pop()!;
@@ -109,7 +112,7 @@ export default function HTDPage() {
 
   const selected = useMemo(
     () => staff.find((s) => String(s.cin) === selectedCin) ?? null,
-    [staff, selectedCin],
+    [staff, selectedCin]
   );
   const halves = useMemo(() => availableHalves(selected?.attendance ?? null), [selected]);
 
@@ -187,7 +190,10 @@ export default function HTDPage() {
 
   const generateDoc = async () => {
     if (!session?.id_token) return;
-    if (!selectedCin) { toast.error("Select a staff member first."); return; }
+    if (!selectedCin) {
+      toast.error("Select a staff member first.");
+      return;
+    }
     setGenerating(true);
     try {
       const [y, m, d] = date.split("-");
@@ -195,9 +201,14 @@ export default function HTDPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${session.id_token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          rank, initials, surname,
+          rank,
+          initials,
+          surname,
           service_number: serviceNumber,
-          street_house_num: streetHouseNum, town, city, postcode,
+          street_house_num: streetHouseNum,
+          town,
+          city,
+          postcode,
           distance: Number(distance) || 0,
           bank_last3: bankLast3,
           date: y && m && d ? `${d}/${m}/${y}` : date,
@@ -242,7 +253,9 @@ export default function HTDPage() {
             <Skeleton className="h-9 w-full" />
           ) : (
             <Select value={selectedCin} onValueChange={onSelectStaff}>
-              <SelectTrigger><SelectValue placeholder="Select a staff member" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a staff member" />
+              </SelectTrigger>
               <SelectContent>
                 {[...staff]
                   .sort((a, b) => (a.lastName ?? "").localeCompare(b.lastName ?? ""))
@@ -260,7 +273,9 @@ export default function HTDPage() {
       {selected && (
         <>
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">Personal details</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Personal details</CardTitle>
+            </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <Field label="Rank" value={rank} onChange={setRank} />
               <Field label="Initials" value={initials} onChange={setInitials} />
@@ -275,7 +290,9 @@ export default function HTDPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">Home address & distance</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Home address & distance</CardTitle>
+            </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <Field label="House number & street" value={streetHouseNum} onChange={setStreetHouseNum} />
               <Field label="Town" value={town} onChange={setTown} />
@@ -283,10 +300,16 @@ export default function HTDPage() {
               <Field label="Postcode" value={postcode} onChange={setPostcode} />
               <div className="space-y-1.5">
                 <Label htmlFor="htd-distance">Return distance (miles)</Label>
-                <Input id="htd-distance" type="number" min="0" step="0.1" value={distance}
-                  onChange={(e) => setDistance(e.target.value)} />
+                <Input
+                  id="htd-distance"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={distance}
+                  onChange={(e) => setDistance(e.target.value)}
+                />
                 {calculating && (
-                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
                     <Loader2 className="h-3 w-3 animate-spin" /> Calculating distance…
                   </p>
                 )}
@@ -295,14 +318,22 @@ export default function HTDPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">Attendance / journeys</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Attendance / journeys</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="max-w-xs space-y-1.5">
                 <Label>Claim half</Label>
                 <Select value={halfId} onValueChange={onSelectHalf}>
-                  <SelectTrigger><SelectValue placeholder="Select half-year" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select half-year" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {halves.map((h) => <SelectItem key={h.id} value={h.id}>{h.label}</SelectItem>)}
+                    {halves.map((h) => (
+                      <SelectItem key={h.id} value={h.id}>
+                        {h.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -313,13 +344,18 @@ export default function HTDPage() {
                   return (
                     <div key={m.key} className="space-y-1.5">
                       <Label htmlFor={`j-${m.key}`}>{name} — return journeys</Label>
-                      <Input id={`j-${m.key}`} type="number" min="0" value={m.journeys}
-                        onChange={(e) => setJourneys(m.key, e.target.value)} />
+                      <Input
+                        id={`j-${m.key}`}
+                        type="number"
+                        min="0"
+                        value={m.journeys}
+                        onChange={(e) => setJourneys(m.key, e.target.value)}
+                      />
                     </div>
                   );
                 })}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Total A (per journey): £{totalA.toFixed(2)} · Total claimed: £{totalClaimed.toFixed(2)}
               </p>
             </CardContent>

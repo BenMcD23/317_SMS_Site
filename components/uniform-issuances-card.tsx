@@ -89,18 +89,16 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Shirt className="h-4 w-4 text-muted-foreground" />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Shirt className="text-muted-foreground h-4 w-4" />
           Uniform Issuances
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        {error && (
-          <p className="px-6 py-2 text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="text-destructive px-6 py-2 text-sm">{error}</p>}
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
           </div>
         ) : (
           <div className="divide-y">
@@ -118,28 +116,32 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
                           type="date"
                           value={editDate}
                           onChange={(e) => setEditDate(e.target.value)}
-                          className="h-8 text-sm w-full sm:w-40"
+                          className="h-8 w-full text-sm sm:w-40"
                         />
                         <Input
                           placeholder="Size (optional)"
                           value={editSize}
                           onChange={(e) => setEditSize(e.target.value)}
-                          className="h-8 text-sm w-full sm:w-32"
+                          className="h-8 w-full text-sm sm:w-32"
                         />
                         <div className="flex items-center gap-1">
                           <Button
-                            size="icon" variant="ghost"
-                            className="h-8 w-8 text-success hover:text-success"
+                            size="icon"
+                            variant="ghost"
+                            className="text-success hover:text-success h-8 w-8"
                             onClick={() => save(category)}
                             disabled={saving || !editDate}
                           >
-                            {saving
-                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                              : <Check className="h-4 w-4" />}
+                            {saving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4" />
+                            )}
                           </Button>
                           <Button
-                            size="icon" variant="ghost"
-                            className="h-8 w-8 text-muted-foreground"
+                            size="icon"
+                            variant="ghost"
+                            className="text-muted-foreground h-8 w-8"
                             onClick={() => setEditing(null)}
                             disabled={saving}
                           >
@@ -148,7 +150,7 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
                           {record && (
                             <Button
                               variant="ghost"
-                              className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                              className="text-muted-foreground hover:text-destructive h-8 px-2 text-xs"
                               onClick={() => remove(record.id)}
                               disabled={saving}
                             >
@@ -163,18 +165,19 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
                       <span className="text-sm font-medium">{category}</span>
                       <div className="flex items-center gap-1">
                         {record ? (
-                          <div className="text-right mr-1">
-                            <p className="text-sm text-muted-foreground">{formatDate(record.lastGiven)}</p>
+                          <div className="mr-1 text-right">
+                            <p className="text-muted-foreground text-sm">{formatDate(record.lastGiven)}</p>
                             {record.sizeGiven && (
-                              <p className="text-xs text-muted-foreground">Size: {record.sizeGiven}</p>
+                              <p className="text-muted-foreground text-xs">Size: {record.sizeGiven}</p>
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground italic mr-1">N/A</span>
+                          <span className="text-muted-foreground mr-1 text-xs italic">N/A</span>
                         )}
                         <Button
-                          size="icon" variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-foreground h-7 w-7"
                           onClick={() => startEdit(category)}
                         >
                           <Pencil className="h-3.5 w-3.5" />

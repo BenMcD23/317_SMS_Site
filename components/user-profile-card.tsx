@@ -38,25 +38,27 @@ const empty: UserProfile = {
 };
 
 const FIELD_LABELS: { key: keyof UserProfile; label: string }[] = [
-  { key: "rank",        label: "Rank" },
-  { key: "initials",    label: "Initials" },
-  { key: "surname",     label: "Surname" },
-  { key: "jpa_number",  label: "JPA Number" },
+  { key: "rank", label: "Rank" },
+  { key: "initials", label: "Initials" },
+  { key: "surname", label: "Surname" },
+  { key: "jpa_number", label: "JPA Number" },
   { key: "appointment", label: "Appointment" },
-  { key: "sqn_vgs_no",  label: "Sqn / VGS No" },
-  { key: "wing_ccf",    label: "Wing / CCF" },
+  { key: "sqn_vgs_no", label: "Sqn / VGS No" },
+  { key: "wing_ccf", label: "Wing / CCF" },
   { key: "home_address", label: "Home Address" },
-  { key: "car_reg",     label: "Car Registration" },
+  { key: "car_reg", label: "Car Registration" },
 ];
 
 function ReadOnlyField({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
       {value ? (
         <p className={`text-sm font-medium ${multiline ? "whitespace-pre-wrap" : "truncate"}`}>{value}</p>
       ) : (
-        <p className="text-sm font-medium"><span className="text-muted-foreground/50">—</span></p>
+        <p className="text-sm font-medium">
+          <span className="text-muted-foreground/50">—</span>
+        </p>
       )}
     </div>
   );
@@ -147,7 +149,7 @@ export function UserProfileCard({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
+            <User className="text-muted-foreground h-4 w-4" />
             <CardTitle className="text-base">Your Details</CardTitle>
           </div>
           {!editing && !loading && (
@@ -168,12 +170,7 @@ export function UserProfileCard({
                 <X className="h-3.5 w-3.5" />
                 Cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={saveEdit}
-                disabled={saving}
-                className="gap-1.5 text-xs"
-              >
+              <Button size="sm" onClick={saveEdit} disabled={saving} className="gap-1.5 text-xs">
                 {saving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -188,37 +185,60 @@ export function UserProfileCard({
 
       <CardContent className="space-y-4">
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading profile…
           </div>
         ) : editing ? (
           <>
             <div className="grid gap-4 sm:grid-cols-2">
-              {FIELD_LABELS.filter(({ key }) => key !== "home_address" && key !== "car_reg").map(({ key, label }) => (
-                <div key={key} className="space-y-1.5">
-                  <Label htmlFor={`profile-${key}`}>{label}</Label>
-                  {key === "rank" ? (
-                    <Select value={draft.rank} onValueChange={(v) => setDraft((d) => ({ ...d, rank: v }))}>
-                      <SelectTrigger id="profile-rank">
-                        <SelectValue placeholder="Select rank" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["Sgt","FS","WO","Plt Off","Fg Off","Flt Lt","Sqn Ldr","Wg Cdr","Gp Capt","Chaplain","CI","CGI","National Chair","Rgnl Chair","Wg Chair","Sqn Chair","Rgnl Treasurer","Wg Treasurer"].map((r) => (
-                          <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      id={`profile-${key}`}
-                      value={draft[key]}
-                      onChange={setField(key)}
-                      placeholder={label}
-                    />
-                  )}
-                </div>
-              ))}
+              {FIELD_LABELS.filter(({ key }) => key !== "home_address" && key !== "car_reg").map(
+                ({ key, label }) => (
+                  <div key={key} className="space-y-1.5">
+                    <Label htmlFor={`profile-${key}`}>{label}</Label>
+                    {key === "rank" ? (
+                      <Select value={draft.rank} onValueChange={(v) => setDraft((d) => ({ ...d, rank: v }))}>
+                        <SelectTrigger id="profile-rank">
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            "Sgt",
+                            "FS",
+                            "WO",
+                            "Plt Off",
+                            "Fg Off",
+                            "Flt Lt",
+                            "Sqn Ldr",
+                            "Wg Cdr",
+                            "Gp Capt",
+                            "Chaplain",
+                            "CI",
+                            "CGI",
+                            "National Chair",
+                            "Rgnl Chair",
+                            "Wg Chair",
+                            "Sqn Chair",
+                            "Rgnl Treasurer",
+                            "Wg Treasurer",
+                          ].map((r) => (
+                            <SelectItem key={r} value={r}>
+                              {r}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={`profile-${key}`}
+                        value={draft[key]}
+                        onChange={setField(key)}
+                        placeholder={label}
+                      />
+                    )}
+                  </div>
+                )
+              )}
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5 sm:col-span-2">
@@ -246,7 +266,7 @@ export function UserProfileCard({
         ) : (
           <>
             {missingFields.length > 0 && (
-              <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+              <div className="border-warning/30 bg-warning/10 text-warning flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   Complete all fields to generate the Word document.{" "}
@@ -262,7 +282,12 @@ export function UserProfileCard({
             )}
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
               {FIELD_LABELS.map(({ key, label }) => (
-                <ReadOnlyField key={key} label={label} value={profile[key]} multiline={key === "home_address"} />
+                <ReadOnlyField
+                  key={key}
+                  label={label}
+                  value={profile[key]}
+                  multiline={key === "home_address"}
+                />
               ))}
             </div>
           </>

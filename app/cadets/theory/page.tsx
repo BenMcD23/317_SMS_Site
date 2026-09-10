@@ -9,14 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
   AlertDialog,
@@ -127,7 +120,7 @@ function LessonSelector({
               <p className="text-sm font-semibold">{category}</p>
               <button
                 type="button"
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground text-xs"
                 onClick={() => toggleCategory(keys, allSelected)}
               >
                 {allSelected ? "Clear" : "Select all"}
@@ -147,7 +140,7 @@ function LessonSelector({
                     }
                   }}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted/50",
+                    "hover:bg-muted/50 flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors",
                     selected.has(l.key) && "border-primary/40 bg-primary/5"
                   )}
                 >
@@ -204,9 +197,7 @@ function CadetPicker({
       <CardHeader className="px-4 py-3">
         <CardTitle className="text-sm">
           Select cadets
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
-            {selected.size} selected
-          </span>
+          <span className="text-muted-foreground ml-2 text-xs font-normal">{selected.size} selected</span>
         </CardTitle>
       </CardHeader>
       <div className="border-t px-3 py-2">
@@ -243,7 +234,7 @@ function CadetPicker({
                   }
                 }}
                 className={cn(
-                  "flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50",
+                  "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
                   selected.has(c.cin) && "bg-muted/30"
                 )}
               >
@@ -255,7 +246,7 @@ function CadetPicker({
                 <span className="min-w-0 truncate font-medium">
                   {c.last_name}, {c.first_name}
                 </span>
-                <span className="ml-auto shrink-0 text-xs text-muted-foreground">{c.cin}</span>
+                <span className="text-muted-foreground ml-auto shrink-0 text-xs">{c.cin}</span>
               </div>
             ))}
           </div>
@@ -264,7 +255,7 @@ function CadetPicker({
       <div className="flex items-center gap-4 border-t px-4 py-2">
         <button
           type="button"
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground text-xs"
           onClick={() => onChange(new Set([...selected, ...filtered.map((c) => c.cin)]))}
         >
           Select all{search ? " (filtered)" : ""}
@@ -272,7 +263,7 @@ function CadetPicker({
         {selected.size > 0 && (
           <button
             type="button"
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-xs"
             onClick={() => onChange(new Set())}
           >
             Clear selection
@@ -287,10 +278,7 @@ function CadetPicker({
 
 function RecordTab({ lessons }: { lessons: Lesson[] }) {
   const { data: session } = useSession();
-  const { data: cadets = [], isLoading: loadingCadets } = useApiQuery<Cadet[]>(
-    ["cadets"],
-    "/cadets"
-  );
+  const { data: cadets = [], isLoading: loadingCadets } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
 
   const [selectedCins, setSelectedCins] = useState<Set<number>>(new Set());
   const [selectedLessons, setSelectedLessons] = useState<Set<string>>(new Set());
@@ -354,17 +342,13 @@ function RecordTab({ lessons }: { lessons: Lesson[] }) {
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm">
               Theory lessons
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              <span className="text-muted-foreground ml-2 text-xs font-normal">
                 {selectedLessons.size} selected
               </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="border-t px-4 py-3">
-            <LessonSelector
-              lessons={lessons}
-              selected={selectedLessons}
-              onChange={setSelectedLessons}
-            />
+            <LessonSelector lessons={lessons} selected={selectedLessons} onChange={setSelectedLessons} />
           </CardContent>
         </Card>
       </div>
@@ -372,11 +356,7 @@ function RecordTab({ lessons }: { lessons: Lesson[] }) {
       <ErrorAlert message={error} title="Could not save" />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          onClick={() => submit(true)}
-          disabled={!canSubmit || saving}
-          className="w-full sm:w-auto"
-        >
+        <Button onClick={() => submit(true)} disabled={!canSubmit || saving} className="w-full sm:w-auto">
           <Check className="size-4" />
           {saving ? "Saving…" : "Mark theory complete"}
         </Button>
@@ -389,10 +369,10 @@ function RecordTab({ lessons }: { lessons: Lesson[] }) {
           Clear selected
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Marks the selected lessons&apos; theory as complete for every selected cadet — use this
-        before the formal assessment is done so part-finished progress is visible. &ldquo;Clear
-        selected&rdquo; removes those theory marks again.
+      <p className="text-muted-foreground text-xs">
+        Marks the selected lessons&apos; theory as complete for every selected cadet — use this before the
+        formal assessment is done so part-finished progress is visible. &ldquo;Clear selected&rdquo; removes
+        those theory marks again.
       </p>
     </div>
   );
@@ -438,8 +418,7 @@ function ProgressTab({ lessons }: { lessons: Lesson[] }) {
     }
   }
 
-  const lessonName = (key: string) =>
-    lessons.find((l) => l.key === key)?.name ?? key;
+  const lessonName = (key: string) => lessons.find((l) => l.key === key)?.name ?? key;
 
   // Remove theory marks (cin, lesson) pairs — covers both fixing a mistaken mark
   // and pruning theory that's now superseded by the actual qualification. Reuses
@@ -476,9 +455,7 @@ function ProgressTab({ lessons }: { lessons: Lesson[] }) {
               .map((r) => ({
                 ...r,
                 lessons_check: r.lessons_check.map((l) =>
-                  removed.has(`${r.cin}:${l.lesson_key}`)
-                    ? { ...l, has: false, completed_at: null }
-                    : l
+                  removed.has(`${r.cin}:${l.lesson_key}`) ? { ...l, has: false, completed_at: null } : l
                 ),
               }))
               // drop rows that no longer have any theory recorded (matches the lookup)
@@ -503,17 +480,13 @@ function ProgressTab({ lessons }: { lessons: Lesson[] }) {
         <CardHeader className="px-4 py-3">
           <CardTitle className="text-sm">
             Lessons to find
-            <span className="ml-2 text-xs font-normal text-muted-foreground">
+            <span className="text-muted-foreground ml-2 text-xs font-normal">
               {selectedLessons.size} selected
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="border-t px-4 py-3">
-          <LessonSelector
-            lessons={lessons}
-            selected={selectedLessons}
-            onChange={setSelectedLessons}
-          />
+          <LessonSelector lessons={lessons} selected={selectedLessons} onChange={setSelectedLessons} />
         </CardContent>
       </Card>
 
@@ -527,10 +500,9 @@ function ProgressTab({ lessons }: { lessons: Lesson[] }) {
         <>
           {qualifiedPairs.length > 0 && (
             <div className="flex flex-col gap-1.5 rounded-md border border-blue-200 bg-blue-50/50 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-blue-900 dark:bg-blue-950/40">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {qualifiedPairs.length} theory mark
-                {qualifiedPairs.length !== 1 ? "s are" : " is"} now covered by the actual
-                qualification.
+                {qualifiedPairs.length !== 1 ? "s are" : " is"} now covered by the actual qualification.
               </p>
               <Button
                 variant="outline"
@@ -567,20 +539,14 @@ function ProgressTab({ lessons }: { lessons: Lesson[] }) {
 /** Theory badge that doubles as its own remove control (confirm dialog on click).
  *  Hover swaps the tick for an ✕ so the removable affordance reads without an
  *  extra button breaking the column's alignment. */
-function RemovableTheoryBadge({
-  description,
-  onConfirm,
-}: {
-  description: string;
-  onConfirm: () => void;
-}) {
+function RemovableTheoryBadge({ description, onConfirm }: { description: string; onConfirm: () => void }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <button
           type="button"
           title="Remove this theory mark"
-          className="group/rm inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive dark:border-green-900 dark:bg-green-950 dark:text-green-400"
+          className="group/rm hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 transition-colors dark:border-green-900 dark:bg-green-950 dark:text-green-400"
         >
           <Check className="size-3 group-hover/rm:hidden" />
           <X className="hidden size-3 group-hover/rm:block" />
@@ -596,7 +562,7 @@ function RemovableTheoryBadge({
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="bg-destructive text-white hover:bg-destructive/90"
+            className="bg-destructive hover:bg-destructive/90 text-white"
           >
             Remove
           </AlertDialogAction>
@@ -619,7 +585,7 @@ function TheoryResultsTable({
 }) {
   if (results.length === 0) {
     return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground py-6 text-center text-sm">
         No cadets have completed the theory for any of the selected lessons yet.
       </p>
     );
@@ -646,7 +612,7 @@ function TheoryResultsTable({
                 <p className="font-medium">
                   {r.last_name}, {r.first_name}
                 </p>
-                <p className="text-xs text-muted-foreground">CIN {r.cin}</p>
+                <p className="text-muted-foreground text-xs">CIN {r.cin}</p>
               </TableCell>
               <TableCell>
                 <span className="text-sm">{r.classification || "Junior Cadet"}</span>
@@ -663,13 +629,13 @@ function TheoryResultsTable({
                             onConfirm={() => onRemove(r.cin, k)}
                           />
                           {check.completed_at && (
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-muted-foreground text-[10px]">
                               {formatDate(check.completed_at, "")}
                             </span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-muted-foreground text-xs">—</span>
                       )}
                       {check?.has_qualification ? (
                         <Badge
@@ -680,7 +646,7 @@ function TheoryResultsTable({
                           Qualified
                         </Badge>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground">No qual</span>
+                        <span className="text-muted-foreground text-[10px]">No qual</span>
                       )}
                     </div>
                   </TableCell>
@@ -697,10 +663,7 @@ function TheoryResultsTable({
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TheoryProgressPage() {
-  const { data: lessons = [] } = useApiQuery<Lesson[]>(
-    ["theory-lessons"],
-    "/cadets/theory/lessons"
-  );
+  const { data: lessons = [] } = useApiQuery<Lesson[]>(["theory-lessons"], "/cadets/theory/lessons");
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">

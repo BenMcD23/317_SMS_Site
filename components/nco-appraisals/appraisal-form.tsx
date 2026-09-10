@@ -10,14 +10,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate } from "@/lib/format";
 import {
-  APPRAISAL_SECTIONS, REVIEW_INTERVALS, draftWithAi, nextReviewDate,
-  type AppraisalDraft, type NcoOption, type ReviewInterval,
+  APPRAISAL_SECTIONS,
+  REVIEW_INTERVALS,
+  draftWithAi,
+  nextReviewDate,
+  type AppraisalDraft,
+  type NcoOption,
+  type ReviewInterval,
 } from "@/lib/nco-appraisals";
 
 /**
@@ -76,14 +79,12 @@ export function AppraisalForm({
       });
       // Only fill sections the model actually returned, so a dropped section
       // never blanks out something already written by hand.
-      const filled = Object.fromEntries(
-        Object.entries(result.sections).filter(([, text]) => text.trim()),
-      );
+      const filled = Object.fromEntries(Object.entries(result.sections).filter(([, text]) => text.trim()));
       setDraft({ ...draft, ...filled, generated_by: result.model });
       toast.success(
         result.used_fallback
           ? `Draft written by ${result.model_label} (the preferred model was out of quota).`
-          : `Draft written by ${result.model_label}. Read it through before saving.`,
+          : `Draft written by ${result.model_label}. Read it through before saving.`
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't draft the appraisal.");
@@ -124,7 +125,7 @@ export function AppraisalForm({
               </Select>
             )}
             {selected && selected.last_appraisal_date && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Last appraised {formatDate(selected.last_appraisal_date)}
               </p>
             )}
@@ -170,9 +171,9 @@ export function AppraisalForm({
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground sm:col-span-2">
-            Age and attendance are filled in from the cadet&apos;s record. Edit them if
-            the record is wrong &mdash; what you see here is what the document prints.
+          <p className="text-muted-foreground text-xs sm:col-span-2">
+            Age and attendance are filled in from the cadet&apos;s record. Edit them if the record is wrong
+            &mdash; what you see here is what the document prints.
           </p>
         </CardContent>
       </Card>
@@ -180,13 +181,13 @@ export function AppraisalForm({
       <Card>
         <CardHeader className="gap-1">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="size-4 text-primary" />
+            <Sparkles className="text-primary size-4" />
             Draft it with AI
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Sum up the overall points you want to make and the AI writes the five
-            sections in the squadron&apos;s style. It only uses what you give it, and
-            everything comes back below for you to correct.
+          <p className="text-muted-foreground text-sm">
+            Sum up the overall points you want to make and the AI writes the five sections in the
+            squadron&apos;s style. It only uses what you give it, and everything comes back below for you to
+            correct.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -195,10 +196,10 @@ export function AppraisalForm({
             onChange={(e) => setPoints(e.target.value)}
             rows={5}
             placeholder={
-              "e.g. High attender, never misses a parade night.\n"
-              + "Excellent at drill, teaches it well.\n"
-              + "Won't tell cadets off — too worried about being liked.\n"
-              + "Needs to run a session on his own without a senior NCO there."
+              "e.g. High attender, never misses a parade night.\n" +
+              "Excellent at drill, teaches it well.\n" +
+              "Won't tell cadets off — too worried about being liked.\n" +
+              "Needs to run a session on his own without a senior NCO there."
             }
           />
           <div className="flex flex-wrap items-center gap-2">
@@ -210,9 +211,7 @@ export function AppraisalForm({
               {drafting ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
               {drafting ? "Writing…" : "Write the sections"}
             </Button>
-            {!draft.cadet_id && (
-              <span className="text-xs text-muted-foreground">Choose an NCO first.</span>
-            )}
+            {!draft.cadet_id && <span className="text-muted-foreground text-xs">Choose an NCO first.</span>}
             {draft.generated_by && (
               <Badge variant="outline" className="gap-1">
                 <Sparkles className="size-3" />
@@ -227,7 +226,7 @@ export function AppraisalForm({
         <Card key={section.key}>
           <CardHeader className="gap-1">
             <CardTitle className="text-base">{section.label}</CardTitle>
-            <p className="text-sm text-muted-foreground">{section.hint}</p>
+            <p className="text-muted-foreground text-sm">{section.hint}</p>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -248,9 +247,7 @@ export function AppraisalForm({
             <Label htmlFor="appraisal-interval">Next NCO review</Label>
             <Select
               value={String(draft.next_review_months)}
-              onValueChange={(value) =>
-                set("next_review_months", Number(value) as ReviewInterval)
-              }
+              onValueChange={(value) => set("next_review_months", Number(value) as ReviewInterval)}
             >
               <SelectTrigger id="appraisal-interval" className="w-full">
                 <SelectValue />
@@ -264,9 +261,7 @@ export function AppraisalForm({
               </SelectContent>
             </Select>
             {reviewDate && (
-              <p className="text-xs text-muted-foreground">
-                Due {formatDate(reviewDate.toISOString())}
-              </p>
+              <p className="text-muted-foreground text-xs">Due {formatDate(reviewDate.toISOString())}</p>
             )}
           </div>
 
@@ -291,7 +286,10 @@ export function AppraisalForm({
 /** A yes/no pair. A toggle group rather than a checkbox because the form asks
  *  the question both ways round, and "not ticked" shouldn't read as "not asked". */
 function YesNo({
-  id, label, value, onChange,
+  id,
+  label,
+  value,
+  onChange,
 }: {
   id: string;
   label: string;
@@ -311,8 +309,12 @@ function YesNo({
         onValueChange={(next) => next && onChange(next === "yes")}
         className="w-full"
       >
-        <ToggleGroupItem value="no" className="flex-1">No</ToggleGroupItem>
-        <ToggleGroupItem value="yes" className="flex-1">Yes</ToggleGroupItem>
+        <ToggleGroupItem value="no" className="flex-1">
+          No
+        </ToggleGroupItem>
+        <ToggleGroupItem value="yes" className="flex-1">
+          Yes
+        </ToggleGroupItem>
       </ToggleGroup>
     </div>
   );

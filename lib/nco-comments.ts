@@ -68,7 +68,10 @@ export function groupByCadet(comments: NcoComment[]): {
   flight: string | null;
   comments: NcoComment[];
 }[] {
-  const groups = new Map<string, { key: string; cin: number | null; name: string; flight: string | null; comments: NcoComment[] }>();
+  const groups = new Map<
+    string,
+    { key: string; cin: number | null; name: string; flight: string | null; comments: NcoComment[] }
+  >();
   for (const comment of comments) {
     if (!isAboutCadet(comment)) continue;
     // A cadet who has left has no CIN any more, so their name carries the group.
@@ -89,11 +92,7 @@ export function groupByCadet(comments: NcoComment[]): {
   return [...groups.values()];
 }
 
-async function request<T>(
-  token: string,
-  path: string,
-  init: { method: string; body?: unknown },
-): Promise<T> {
+async function request<T>(token: string, path: string, init: { method: string; body?: unknown }): Promise<T> {
   let res: Response;
   try {
     res = await apiFetch(`${API_BASE}/nco-comments${path}`, {

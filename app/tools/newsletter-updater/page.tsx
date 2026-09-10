@@ -135,7 +135,7 @@ export default function NewsletterManagementPage() {
                       <p className="truncate text-sm font-medium">{n.title}</p>
                       {i === 0 && <Badge className="text-xs">Current</Badge>}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       Issue #{n.issue} · {n.date}
                     </p>
                   </div>
@@ -186,7 +186,7 @@ export default function NewsletterManagementPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        className="text-destructive hover:text-destructive h-8 w-8"
                         onClick={() => setDeleteConfirm(n.issue)}
                         aria-label="Delete"
                       >
@@ -201,8 +201,9 @@ export default function NewsletterManagementPage() {
         </Card>
       )}
 
-      <p className="text-center text-xs text-muted-foreground">
-        Changes are committed to GitHub and the newsletter site redeploys automatically — allow a minute or two to go live.
+      <p className="text-muted-foreground text-center text-xs">
+        Changes are committed to GitHub and the newsletter site redeploys automatically — allow a minute or
+        two to go live.
       </p>
 
       {/* Add dialog */}
@@ -218,7 +219,9 @@ export default function NewsletterManagementPage() {
       {/* Edit dialog */}
       <NewsletterDialog
         open={editTarget !== null}
-        onOpenChange={(o) => { if (!o) setEditTarget(null); }}
+        onOpenChange={(o) => {
+          if (!o) setEditTarget(null);
+        }}
         mode="edit"
         newsletter={editTarget}
         idToken={idToken}

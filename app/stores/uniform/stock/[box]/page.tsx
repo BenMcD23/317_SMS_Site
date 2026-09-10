@@ -6,20 +6,8 @@ import { Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShelfStructure, ShelfBox, StockItem } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
@@ -77,7 +65,9 @@ export default function BoxPage() {
   }
 
   // Load once on mount.
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => {
+    loadAll();
+  }, []);
 
   const selectedBox: ShelfBox | null = useMemo(
     () => shelfStructure?.boxes.find((b) => b.label === boxLabel) ?? null,
@@ -88,16 +78,11 @@ export default function BoxPage() {
 
   const structureCompat = useMemo(
     () =>
-      Object.fromEntries(
-        shelfStructure?.boxes.map((b) => [b.label, b.sections.map((s) => s.label)]) ?? []
-      ),
+      Object.fromEntries(shelfStructure?.boxes.map((b) => [b.label, b.sections.map((s) => s.label)]) ?? []),
     [shelfStructure]
   );
 
-  const boxLabels = useMemo(
-    () => shelfStructure?.boxes.map((b) => b.label).sort() ?? [],
-    [shelfStructure]
-  );
+  const boxLabels = useMemo(() => shelfStructure?.boxes.map((b) => b.label).sort() ?? [], [shelfStructure]);
 
   // ── Item CRUD ──────────────────────────────────────────────────────────────
 
@@ -239,7 +224,7 @@ export default function BoxPage() {
 
   if (!selectedBox) {
     return (
-      <div className="py-12 text-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground py-12 text-center text-sm">
         Box {boxLabel} not found.{" "}
         <button className="cursor-pointer underline" onClick={() => router.push("/stores/uniform/stock")}>
           Go back
@@ -251,7 +236,7 @@ export default function BoxPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-4 pb-16">
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm">
           {error}
         </div>
       )}
@@ -298,11 +283,18 @@ export default function BoxPage() {
       {/* Add Item */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Add Stock Item</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add Stock Item</DialogTitle>
+          </DialogHeader>
           <ItemForm form={form} setForm={setForm} boxes={boxLabels} structure={structureCompat} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={submitting || !form.itemType || !form.size || !form.box || !form.section}>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAdd}
+              disabled={submitting || !form.itemType || !form.size || !form.box || !form.section}
+            >
               {submitting ? "Adding…" : "Add Item"}
             </Button>
           </DialogFooter>
@@ -345,7 +337,11 @@ function ItemForm({
   const noSize = noSizeItems.has(form.itemType);
 
   function handleItemTypeChange(v: string) {
-    setForm((f) => ({ ...f, itemType: v, size: noSizeItems.has(v) ? "N/A" : (noSizeItems.has(f.itemType) ? "" : f.size) }));
+    setForm((f) => ({
+      ...f,
+      itemType: v,
+      size: noSizeItems.has(v) ? "N/A" : noSizeItems.has(f.itemType) ? "" : f.size,
+    }));
   }
 
   return (
@@ -353,46 +349,65 @@ function ItemForm({
       <div className="space-y-1.5">
         <Label htmlFor="itemType">Item Type</Label>
         <Select value={form.itemType} onValueChange={handleItemTypeChange}>
-          <SelectTrigger id="itemType"><SelectValue placeholder="Select item type" /></SelectTrigger>
+          <SelectTrigger id="itemType">
+            <SelectValue placeholder="Select item type" />
+          </SelectTrigger>
           <SelectContent>
-            {itemTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            {itemTypes.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       {!noSize && (
-      <div className="space-y-1.5">
-        <Label htmlFor="size">Size</Label>
-        <SizeCombobox
-          id="size"
-          itemType={form.itemType}
-          value={form.size}
-          onChange={(v) => setForm((f) => ({ ...f, size: v }))}
-          placeholder="e.g. 95/36 or 74"
-        />
-      </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="size">Size</Label>
+          <SizeCombobox
+            id="size"
+            itemType={form.itemType}
+            value={form.size}
+            onChange={(v) => setForm((f) => ({ ...f, size: v }))}
+            placeholder="e.g. 95/36 or 74"
+          />
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="box">Box</Label>
           <Select value={form.box} onValueChange={(v) => setForm((f) => ({ ...f, box: v, section: "" }))}>
-            <SelectTrigger id="box"><SelectValue placeholder="Box" /></SelectTrigger>
+            <SelectTrigger id="box">
+              <SelectValue placeholder="Box" />
+            </SelectTrigger>
             <SelectContent>
-              {boxes.map((b) => <SelectItem key={b} value={b}>Box {b}</SelectItem>)}
+              {boxes.map((b) => (
+                <SelectItem key={b} value={b}>
+                  Box {b}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="section">Section</Label>
-          <Select value={form.section} onValueChange={(v) => setForm((f) => ({ ...f, section: v }))}
-            disabled={!form.box || sections.length === 0}>
+          <Select
+            value={form.section}
+            onValueChange={(v) => setForm((f) => ({ ...f, section: v }))}
+            disabled={!form.box || sections.length === 0}
+          >
             <SelectTrigger id="section">
               <SelectValue placeholder={sections.length === 0 ? "No sections" : "Section"} />
             </SelectTrigger>
             <SelectContent>
-              {sections.map((s) => <SelectItem key={s} value={s}>Section {s}</SelectItem>)}
+              {sections.map((s) => (
+                <SelectItem key={s} value={s}>
+                  Section {s}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -400,8 +415,13 @@ function ItemForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="quantity">Quantity</Label>
-        <Input id="quantity" type="number" min={0} value={form.quantity}
-          onChange={(e) => setForm((f) => ({ ...f, quantity: parseInt(e.target.value, 10) || 0 }))} />
+        <Input
+          id="quantity"
+          type="number"
+          min={0}
+          value={form.quantity}
+          onChange={(e) => setForm((f) => ({ ...f, quantity: parseInt(e.target.value, 10) || 0 }))}
+        />
       </div>
     </div>
   );

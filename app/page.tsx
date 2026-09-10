@@ -15,8 +15,15 @@ import { StatCard } from "@/components/stat-card";
 import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
 import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper, Printer } from "lucide-react";
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -65,7 +72,17 @@ const LEVEL_COLOURS: Record<string, string> = {
   Nijmegen: "#7c3aed",
 };
 
-const LEVEL_ORDER = ["None", "Blue", "Bronze", "Silver", "Gold", "Nijmegen", "Basic", "Intermediate", "Advanced"];
+const LEVEL_ORDER = [
+  "None",
+  "Blue",
+  "Bronze",
+  "Silver",
+  "Gold",
+  "Nijmegen",
+  "Basic",
+  "Intermediate",
+  "Advanced",
+];
 
 function levelColor(level: string): string {
   return LEVEL_COLOURS[level] ?? "#9ca3af";
@@ -103,7 +120,13 @@ function AgeChart({ byAge }: { byAge: Record<string, number> }) {
           <BarChart data={data} barSize={22}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
             <XAxis dataKey="age" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={24} tickLine={false} axisLine={false} />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              allowDecimals={false}
+              width={24}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip
               cursor={{ fill: "var(--muted)" }}
               contentStyle={{
@@ -154,7 +177,13 @@ function ClassificationChart({ byClassification }: { byClassification: Record<st
           <BarChart data={data} barSize={36}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
             <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={24} tickLine={false} axisLine={false} />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              allowDecimals={false}
+              width={24}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip
               cursor={{ fill: "var(--muted)" }}
               contentStyle={{
@@ -191,9 +220,10 @@ function BadgeStatCard({
   const completedCount = total - noneCount;
   const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
-  const sortedLevels = LEVEL_ORDER
-    .filter((l) => l !== "None" && (levels[l] ?? 0) > 0)
-    .map((l) => ({ level: l, count: levels[l] ?? 0 }));
+  const sortedLevels = LEVEL_ORDER.filter((l) => l !== "None" && (levels[l] ?? 0) > 0).map((l) => ({
+    level: l,
+    count: levels[l] ?? 0,
+  }));
 
   const allLevels = Array.from(
     new Set(history.flatMap((h) => Object.keys(h.data.badges[badgeKey] ?? {})))
@@ -222,14 +252,14 @@ function BadgeStatCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+          <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+            <div className="bg-primary h-full rounded-full" style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-xs tabular-nums text-muted-foreground">{pct}%</span>
+          <span className="text-muted-foreground text-xs tabular-nums">{pct}%</span>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {sortedLevels.length === 0 ? (
-            <span className="text-xs text-muted-foreground">Not yet held by any cadet</span>
+            <span className="text-muted-foreground text-xs">Not yet held by any cadet</span>
           ) : (
             sortedLevels.map(({ level, count }) => (
               <div key={level} className="flex items-center gap-1.5">
@@ -238,7 +268,7 @@ function BadgeStatCard({
                   style={{ background: levelColor(level) }}
                 />
                 <span className="text-xs font-medium">{level}</span>
-                <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
+                <span className="text-muted-foreground text-xs tabular-nums">{count}</span>
               </div>
             ))
           )}
@@ -248,8 +278,21 @@ function BadgeStatCard({
           <ResponsiveContainer width="100%" height={90}>
             <LineChart data={chartData} margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" tickMargin={6} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} width={20} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10 }}
+                interval="preserveStartEnd"
+                tickMargin={6}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                allowDecimals={false}
+                width={20}
+                tickLine={false}
+                axisLine={false}
+              />
               <Tooltip
                 cursor={{ stroke: "var(--border)" }}
                 contentStyle={{
@@ -283,29 +326,49 @@ function BadgeStatCard({
 // ─── Quick links (staff tools) ────────────────────────────────────────────────
 
 const QUICK_TOOLS = [
-  { title: "JI/AO Generator", desc: "Generate joining instructions and admin orders", href: "/tools/ji-ao-generator", icon: FileText },
-  { title: "Bader Scrapers", desc: "Sync cadet and event data from SMS", href: "/tools/scraper", icon: DatabaseZap },
-  { title: "Programme", desc: "Publish the monthly programme to the website", href: "/tools/programme-updater", icon: Calendar },
-  { title: "Newsletter", desc: "Manage published newsletters", href: "/tools/newsletter-updater", icon: Newspaper },
+  {
+    title: "JI/AO Generator",
+    desc: "Generate joining instructions and admin orders",
+    href: "/tools/ji-ao-generator",
+    icon: FileText,
+  },
+  {
+    title: "Bader Scrapers",
+    desc: "Sync cadet and event data from SMS",
+    href: "/tools/scraper",
+    icon: DatabaseZap,
+  },
+  {
+    title: "Programme",
+    desc: "Publish the monthly programme to the website",
+    href: "/tools/programme-updater",
+    icon: Calendar,
+  },
+  {
+    title: "Newsletter",
+    desc: "Manage published newsletters",
+    href: "/tools/newsletter-updater",
+    icon: Newspaper,
+  },
 ];
 
 function QuickTools() {
   return (
     <section className="no-print flex flex-col gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tools</h2>
+      <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">Tools</h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {QUICK_TOOLS.map((t) => (
           <Link key={t.href} href={t.href} className="group">
-            <Card className="h-full gap-2 py-5 transition-colors group-hover:border-primary/40">
+            <Card className="group-hover:border-primary/40 h-full gap-2 py-5 transition-colors">
               <CardHeader className="pb-0">
                 <div className="flex items-center justify-between">
-                  <t.icon className="size-4 text-muted-foreground" />
-                  <ArrowRight className="size-3.5 text-muted-foreground/0 transition-all group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                  <t.icon className="text-muted-foreground size-4" />
+                  <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground size-3.5 transition-all group-hover:translate-x-0.5" />
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-0.5">
                 <p className="text-sm font-medium">{t.title}</p>
-                <p className="text-xs text-muted-foreground">{t.desc}</p>
+                <p className="text-muted-foreground text-xs">{t.desc}</p>
               </CardContent>
             </Card>
           </Link>
@@ -344,10 +407,7 @@ export default function HomePage() {
     }
   }, [session?.error]);
 
-  const { data: stats = null } = useApiQuery<CurrentStats>(
-    ["stats", "current"],
-    "/stats/current"
-  );
+  const { data: stats = null } = useApiQuery<CurrentStats>(["stats", "current"], "/stats/current");
   const { data: history = [], isLoading: loading } = useApiQuery<HistoryPoint[]>(
     ["stats", "history"],
     "/stats/history"
@@ -381,7 +441,7 @@ export default function HomePage() {
       {/* Only rendered on paper: gives the printout a heading and date. */}
       <div className="print-only mb-2">
         <h1 className="text-xl font-semibold">317 Squadron — Badge Progression</h1>
-        <p className="text-sm text-muted-foreground">Printed {printedOn}</p>
+        <p className="text-muted-foreground text-sm">Printed {printedOn}</p>
       </div>
       {session?.role === "staff" && <QuickTools />}
       {loading ? (
@@ -400,8 +460,10 @@ export default function HomePage() {
                 label="NCOs"
                 value={ncoCount}
                 detail={breakdownLine(
-                  Object.fromEntries(Object.entries(stats.by_rank).filter(([r]) => r !== "Cadet" && r !== "Unknown")),
-                  RANK_ORDER,
+                  Object.fromEntries(
+                    Object.entries(stats.by_rank).filter(([r]) => r !== "Cadet" && r !== "Unknown")
+                  ),
+                  RANK_ORDER
                 )}
               />
             </section>
@@ -412,7 +474,7 @@ export default function HomePage() {
             </div>
 
             <section className="flex flex-col gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
                 Badge progression
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

@@ -17,19 +17,19 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
-} from "@/components/ui/empty";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
-  bookHoliday, cancelHoliday, editHoliday, holidayDays, needsSync, syncHoliday,
-  type NcoHoliday, type NcoHolidayList,
+  bookHoliday,
+  cancelHoliday,
+  editHoliday,
+  holidayDays,
+  needsSync,
+  syncHoliday,
+  type NcoHoliday,
+  type NcoHolidayList,
 } from "@/lib/nco-holidays";
 
 type Filter = "upcoming" | "all" | "mine";
@@ -53,13 +53,16 @@ export default function NcoHolidaysPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const openBook = () => { setEditing(null); setDialogOpen(true); };
-  const openEdit = (h: NcoHoliday) => { setEditing(h); setDialogOpen(true); };
+  const openBook = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const openEdit = (h: NcoHoliday) => {
+    setEditing(h);
+    setDialogOpen(true);
+  };
 
-  const { data, isLoading, error } = useApiQuery<NcoHolidayList>(
-    ["nco-holidays"],
-    "/nco-holidays",
-  );
+  const { data, isLoading, error } = useApiQuery<NcoHolidayList>(["nco-holidays"], "/nco-holidays");
 
   const token = session?.id_token;
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["nco-holidays"] });
@@ -93,7 +96,7 @@ export default function NcoHolidaysPage() {
       h.is_mine
         ? "This removes the entry from the NCO Holidays calendar. The booking stays on record here, showing you cancelled it."
         : `This removes ${h.booked_by_name}'s holiday from the calendar. The booking stays on record here, showing you cancelled it.`,
-      () => run(h.id, () => cancelHoliday(token!, h.id), "Holiday removed from the calendar"),
+      () => run(h.id, () => cancelHoliday(token!, h.id), "Holiday removed from the calendar")
     );
 
   return (
@@ -139,17 +142,19 @@ export default function NcoHolidaysPage() {
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
         </div>
       ) : error ? (
-        <p className="text-sm text-destructive">Failed to load holidays: {error.message}</p>
+        <p className="text-destructive text-sm">Failed to load holidays: {error.message}</p>
       ) : holidays.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon"><CalendarOff /></EmptyMedia>
-            <EmptyTitle>
-              {filter === "upcoming" ? "No holidays booked" : "Nothing here yet"}
-            </EmptyTitle>
+            <EmptyMedia variant="icon">
+              <CalendarOff />
+            </EmptyMedia>
+            <EmptyTitle>{filter === "upcoming" ? "No holidays booked" : "Nothing here yet"}</EmptyTitle>
             <EmptyDescription>
               {filter !== "upcoming"
                 ? "Bookings stay on this list once made, even after they're cancelled."
@@ -159,7 +164,9 @@ export default function NcoHolidaysPage() {
             </EmptyDescription>
           </EmptyHeader>
           {data?.can_book && (
-            <Button size="sm" onClick={openBook}><Plus /> Book Holiday</Button>
+            <Button size="sm" onClick={openBook}>
+              <Plus /> Book Holiday
+            </Button>
           )}
         </Empty>
       ) : (
@@ -181,30 +188,31 @@ export default function NcoHolidaysPage() {
                   <TableCell className="font-medium">
                     {h.booked_by_name}
                     {h.is_mine && (
-                      <Badge variant="outline" className="ml-2 font-normal">You</Badge>
+                      <Badge variant="outline" className="ml-2 font-normal">
+                        You
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {h.date_from === h.date_to
                       ? formatDate(h.date_from)
                       : `${formatDate(h.date_from)} – ${formatDate(h.date_to)}`}
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      {holidayDays(h)}d
-                    </span>
+                    <span className="text-muted-foreground ml-2 text-xs">{holidayDays(h)}d</span>
                   </TableCell>
                   <TableCell className="max-w-[16rem] truncate">{h.reason || "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                  <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                     {h.created_at ? formatTimestamp(h.created_at) : "—"}
                   </TableCell>
                   <TableCell>
                     {h.cancelled ? (
-                      <Badge variant="outline" title={
-                        `Cancelled by ${h.cancelled_by_name ?? "someone"}` +
-                        (h.cancelled_at ? ` on ${formatTimestamp(h.cancelled_at)}` : "")
-                      }>
-                        {h.cancelled_at
-                          ? `Cancelled ${formatDate(h.cancelled_at)}`
-                          : "Cancelled"}
+                      <Badge
+                        variant="outline"
+                        title={
+                          `Cancelled by ${h.cancelled_by_name ?? "someone"}` +
+                          (h.cancelled_at ? ` on ${formatTimestamp(h.cancelled_at)}` : "")
+                        }
+                      >
+                        {h.cancelled_at ? `Cancelled ${formatDate(h.cancelled_at)}` : "Cancelled"}
                       </Badge>
                     ) : h.on_calendar ? (
                       <Badge variant="secondary">On calendar</Badge>
@@ -229,11 +237,13 @@ export default function NcoHolidaysPage() {
                         variant="ghost"
                         size="sm"
                         disabled={busyId === h.id}
-                        onClick={() => run(
-                          h.id,
-                          () => syncHoliday(token!, h.id),
-                          h.cancelled ? "Removed from the calendar" : "Added to the calendar",
-                        )}
+                        onClick={() =>
+                          run(
+                            h.id,
+                            () => syncHoliday(token!, h.id),
+                            h.cancelled ? "Removed from the calendar" : "Added to the calendar"
+                          )
+                        }
                       >
                         <RefreshCw /> Retry
                       </Button>
@@ -268,9 +278,8 @@ export default function NcoHolidaysPage() {
 
       {/* Cancelled rows never leave the list, so say why once rather than per row. */}
       {filter === "all" && holidays.some((h) => h.cancelled) && (
-        <p className="text-xs text-muted-foreground">
-          Cancelled holidays stay listed for the record — hover the status badge to see
-          who removed one.
+        <p className="text-muted-foreground text-xs">
+          Cancelled holidays stay listed for the record — hover the status badge to see who removed one.
         </p>
       )}
 
@@ -284,7 +293,10 @@ export default function NcoHolidaysPage() {
         token={token}
         minNoticeDays={data?.min_notice_days ?? 0}
         earliestDate={data?.earliest_booking_date ?? null}
-        onSaved={() => { setFilter("upcoming"); refresh(); }}
+        onSaved={() => {
+          setFilter("upcoming");
+          refresh();
+        }}
       />
       {confirmDialog}
     </div>
@@ -337,12 +349,13 @@ function HolidayDialog({
   // input. Both are only a courtesy; the API is what actually enforces it.
   // Leaving an existing first day where it is never counts as too soon, so a
   // holiday that's nearly here can still have its reason fixed.
-  const tooSoon =
-    !!earliestDate && !!dateFrom && dateFrom < earliestDate && dateFrom !== originalFrom;
+  const tooSoon = !!earliestDate && !!dateFrom && dateFrom < earliestDate && dateFrom !== originalFrom;
   const invalid = !dateFrom || !dateTo || dateTo < dateFrom || tooSoon;
   // Same reason: the picker mustn't forbid the day the booking already starts on.
   const minFrom = earliestDate
-    ? (originalFrom && originalFrom < earliestDate ? originalFrom : earliestDate)
+    ? originalFrom && originalFrom < earliestDate
+      ? originalFrom
+      : earliestDate
     : undefined;
 
   const submit = async () => {
@@ -350,21 +363,15 @@ function HolidayDialog({
     setSubmitting(true);
     try {
       const body = { date_from: dateFrom, date_to: dateTo, reason: reason.trim() };
-      const saved = holiday
-        ? await editHoliday(token, holiday.id, body)
-        : await bookHoliday(token, body);
+      const saved = holiday ? await editHoliday(token, holiday.id, body) : await bookHoliday(token, body);
       // Booking over an existing holiday extends it rather than adding a row,
       // so say which happened instead of claiming a booking that isn't there.
       const extended = !holiday && saved.date_from.slice(0, 10) !== dateFrom;
-      const what = holiday
-        ? "Holiday updated"
-        : extended
-          ? "Holiday extended"
-          : "Holiday booked";
+      const what = holiday ? "Holiday updated" : extended ? "Holiday extended" : "Holiday booked";
       toast[saved.on_calendar ? "success" : "warning"](
         saved.on_calendar
           ? `${what} and the calendar entry moved`
-          : `${what}, but Google Calendar didn't respond — use Retry on the row`,
+          : `${what}, but Google Calendar didn't respond — use Retry on the row`
       );
       onOpenChange(false);
       onSaved();
@@ -372,7 +379,9 @@ function HolidayDialog({
       toast.error(
         e instanceof Error
           ? e.message
-          : holiday ? "Couldn't update that holiday." : "Couldn't book that holiday.",
+          : holiday
+            ? "Couldn't update that holiday."
+            : "Couldn't book that holiday."
       );
     } finally {
       setSubmitting(false);
@@ -380,21 +389,27 @@ function HolidayDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) reset();
+        onOpenChange(o);
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{holiday ? "Edit holiday" : "Book a holiday"}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {holiday
               ? "Changing these moves the entry on the squadron's NCO Holidays calendar."
               : "This books time off for you — it goes on the squadron's NCO Holidays calendar under your name."}
             {minNoticeDays > 0 && earliestDate && (
               <>
-                {" "}Holidays need at least {minNoticeDays} days&apos; notice, so the
-                earliest you can {holiday ? "move it to" : "book from"} is{" "}
-                {formatDate(earliestDate)}.
+                {" "}
+                Holidays need at least {minNoticeDays} days&apos; notice, so the earliest you can{" "}
+                {holiday ? "move it to" : "book from"} is {formatDate(earliestDate)}.
               </>
             )}
           </p>
@@ -432,26 +447,25 @@ function HolidayDialog({
             />
           </div>
           {tooSoon && earliestDate && (
-            <p className="text-sm text-destructive">
-              That&apos;s inside the {minNoticeDays}-day notice period — the earliest
-              you can book from is {formatDate(earliestDate)}. Speak to staff if you
-              need time off sooner.
+            <p className="text-destructive text-sm">
+              That&apos;s inside the {minNoticeDays}-day notice period — the earliest you can book from is{" "}
+              {formatDate(earliestDate)}. Speak to staff if you need time off sooner.
             </p>
           )}
           {dateFrom && dateTo && !invalid && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {holidayDays({ date_from: dateFrom, date_to: dateTo })} day
-              {holidayDays({ date_from: dateFrom, date_to: dateTo }) === 1 ? "" : "s"} off,
-              both days included.
+              {holidayDays({ date_from: dateFrom, date_to: dateTo }) === 1 ? "" : "s"} off, both days
+              included.
             </p>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={submit} disabled={invalid || submitting}>
-            {holiday
-              ? (submitting ? "Saving…" : "Save Changes")
-              : (submitting ? "Booking…" : "Book Holiday")}
+            {holiday ? (submitting ? "Saving…" : "Save Changes") : submitting ? "Booking…" : "Book Holiday"}
           </Button>
         </DialogFooter>
       </DialogContent>

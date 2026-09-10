@@ -87,7 +87,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
       { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap },
       { label: "Events", href: "/cadets/events", icon: Calendar },
-      { label: "Audit", href: "/cadets/audit", icon: ShieldCheck, keywords: ["qualifications", "medical", "dietary"] },
+      {
+        label: "Audit",
+        href: "/cadets/audit",
+        icon: ShieldCheck,
+        keywords: ["qualifications", "medical", "dietary"],
+      },
       { label: "Leaving Process", href: "/cadets/leaving", icon: UserMinus },
     ],
   },
@@ -119,8 +124,18 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Uniform",
         icon: Package,
         links: [
-          { label: "Stock", href: "/stores/uniform/stock", icon: Package, keywords: ["uniform stock", "shelves", "boxes"] },
-          { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart, keywords: ["uniform orders", "kitting"] },
+          {
+            label: "Stock",
+            href: "/stores/uniform/stock",
+            icon: Package,
+            keywords: ["uniform stock", "shelves", "boxes"],
+          },
+          {
+            label: "Orders",
+            href: "/stores/uniform/orders",
+            icon: ShoppingCart,
+            keywords: ["uniform orders", "kitting"],
+          },
         ],
       },
       {
@@ -128,7 +143,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Badges",
         icon: Award,
         links: [
-          { label: "Stock", href: "/stores/badges/stock", icon: Award, keywords: ["badge stock", "badge grid"] },
+          {
+            label: "Stock",
+            href: "/stores/badges/stock",
+            icon: Award,
+            keywords: ["badge stock", "badge grid"],
+          },
           { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart, keywords: ["badge orders"] },
         ],
       },
@@ -137,9 +157,19 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Comms",
     items: [
-      { label: "Parade Night Texts", href: "/texts/messages", icon: MessageSquareText, keywords: ["sms", "messages"] },
+      {
+        label: "Parade Night Texts",
+        href: "/texts/messages",
+        icon: MessageSquareText,
+        keywords: ["sms", "messages"],
+      },
       { label: "Text Recipients", href: "/texts/recipients", icon: Contact, keywords: ["phone numbers"] },
-      { label: "Programme", href: "/tools/programme-updater", icon: Calendar, keywords: ["website", "publish"] },
+      {
+        label: "Programme",
+        href: "/tools/programme-updater",
+        icon: Calendar,
+        keywords: ["website", "publish"],
+      },
       { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper, keywords: ["website"] },
     ],
   },
@@ -147,16 +177,41 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Squadron",
     items: [
       { label: "Staff", href: "/staff/overview", icon: UserCog },
-      { label: "Attendance", href: "/attendance", icon: CalendarCheck, keywords: ["parade nights", "turnout"] },
-      { label: "Committee Requests", href: "/committee/requests", icon: ReceiptText, keywords: ["purchase", "civcom"] },
-      { label: "JI / AO Generator", href: "/tools/ji-ao-generator", icon: FileText, keywords: ["joining instructions", "admin order"] },
+      {
+        label: "Attendance",
+        href: "/attendance",
+        icon: CalendarCheck,
+        keywords: ["parade nights", "turnout"],
+      },
+      {
+        label: "Committee Requests",
+        href: "/committee/requests",
+        icon: ReceiptText,
+        keywords: ["purchase", "civcom"],
+      },
+      {
+        label: "JI / AO Generator",
+        href: "/tools/ji-ao-generator",
+        icon: FileText,
+        keywords: ["joining instructions", "admin order"],
+      },
       {
         kind: "group",
         label: "Travel Claims",
         icon: ReceiptText,
         links: [
-          { label: "F1771e", href: "/form-generators/f1771e", icon: ReceiptText, keywords: ["travel claim", "expenses"] },
-          { label: "HTD", href: "/form-generators/htd", icon: ReceiptText, keywords: ["home to duty", "7101"] },
+          {
+            label: "F1771e",
+            href: "/form-generators/f1771e",
+            icon: ReceiptText,
+            keywords: ["travel claim", "expenses"],
+          },
+          {
+            label: "HTD",
+            href: "/form-generators/htd",
+            icon: ReceiptText,
+            keywords: ["home to duty", "7101"],
+          },
         ],
       },
     ],
@@ -228,7 +283,10 @@ export function breadcrumbsFor(pathname: string): Crumb[] {
   let best: { crumbs: Crumb[]; len: number } | null = null;
   for (const link of flattenLinks(NAV_SECTIONS)) {
     if (!isLinkActive(pathname, link.href) || link.href.length <= (best?.len ?? -1)) continue;
-    const crumbs: Crumb[] = [...link.path.map((label) => ({ label })), { label: link.label, href: link.href }];
+    const crumbs: Crumb[] = [
+      ...link.path.map((label) => ({ label })),
+      { label: link.label, href: link.href },
+    ];
     best = { crumbs, len: link.href.length };
   }
   if (!best) return [];

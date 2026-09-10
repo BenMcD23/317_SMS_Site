@@ -17,7 +17,7 @@ export function StatCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-1.5">
         <span className="text-2xl font-semibold tabular-nums">{value}</span>
-        {detail && <div className="text-xs text-muted-foreground">{detail}</div>}
+        {detail && <div className="text-muted-foreground text-xs">{detail}</div>}
       </CardContent>
     </Card>
   );

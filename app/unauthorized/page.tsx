@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { ShieldX } from "lucide-react";
 
 export default function UnauthorizedPage() {
@@ -13,8 +20,8 @@ export default function UnauthorizedPage() {
           </EmptyMedia>
           <EmptyTitle>Not authorised</EmptyTitle>
           <EmptyDescription>
-            Your account doesn&apos;t have permission to view this page. If you think it should,
-            speak to the squadron staff team.
+            Your account doesn&apos;t have permission to view this page. If you think it should, speak to the
+            squadron staff team.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>

@@ -8,21 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -151,9 +138,9 @@ function LevelChip({
         "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
         active
           ? level
-            ? LEVEL_STYLES[level] ?? "border-primary bg-primary/10 text-primary"
+            ? (LEVEL_STYLES[level] ?? "border-primary bg-primary/10 text-primary")
             : "border-primary bg-primary/10 text-primary"
-          : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted",
+          : "bg-muted/60 text-muted-foreground hover:bg-muted border-transparent"
       )}
     >
       {children}
@@ -205,7 +192,9 @@ function CriteriaSelector({
   }
   function selectEverything() {
     const next: LevelSelection = {};
-    badgeTypes.forEach((b) => { next[b.key] = [...b.levels]; });
+    badgeTypes.forEach((b) => {
+      next[b.key] = [...b.levels];
+    });
     onChange(next);
   }
 
@@ -216,7 +205,7 @@ function CriteriaSelector({
         {badgeTypes.length > 0 && (
           <button
             type="button"
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-xs"
             onClick={anySelected ? () => onChange({}) : selectEverything}
           >
             {anySelected ? "Clear all" : "Select all"}
@@ -363,9 +352,7 @@ function AuditResultsTable({
   // Sort by a qualification column's award date. Click cycles desc → asc → off.
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   function toggleSort(key: string) {
-    setSort((s) =>
-      s?.key !== key ? { key, dir: "desc" } : s.dir === "desc" ? { key, dir: "asc" } : null,
-    );
+    setSort((s) => (s?.key !== key ? { key, dir: "desc" } : s.dir === "desc" ? { key, dir: "asc" } : null));
   }
 
   const rows = results.filter((r) => {
@@ -379,7 +366,7 @@ function AuditResultsTable({
       return false;
     }
     // Missing-attachments filter: only cadets who actually have some — never "None" rows.
-    if (includeMissingAttachments && !(r.missing_attachments?.length)) return false;
+    if (includeMissingAttachments && !r.missing_attachments?.length) return false;
     return true;
   });
 
@@ -397,9 +384,7 @@ function AuditResultsTable({
     : rows;
 
   if (rows.length === 0) {
-    return (
-      <p className="py-6 text-center text-sm text-muted-foreground">No results.</p>
-    );
+    return <p className="text-muted-foreground py-6 text-center text-sm">No results.</p>;
   }
 
   return (
@@ -416,7 +401,7 @@ function AuditResultsTable({
                   <button
                     type="button"
                     onClick={() => toggleSort(b.key)}
-                    className="mx-auto inline-flex items-center gap-1 hover:text-foreground"
+                    className="hover:text-foreground mx-auto inline-flex items-center gap-1"
                     title={
                       !active
                         ? `Sort by ${b.name} date awarded (newest first)`
@@ -439,15 +424,9 @@ function AuditResultsTable({
                 </TableHead>
               );
             })}
-            {includeMedical && (
-              <TableHead className="min-w-40">Allergies</TableHead>
-            )}
-            {includeDietary && (
-              <TableHead className="min-w-40">Dietary</TableHead>
-            )}
-            {includeMissingAttachments && (
-              <TableHead className="min-w-40">Missing attachments</TableHead>
-            )}
+            {includeMedical && <TableHead className="min-w-40">Allergies</TableHead>}
+            {includeDietary && <TableHead className="min-w-40">Dietary</TableHead>}
+            {includeMissingAttachments && <TableHead className="min-w-40">Missing attachments</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -457,35 +436,31 @@ function AuditResultsTable({
                 <p className="font-medium">
                   {r.last_name}, {r.first_name}
                 </p>
-                <p className="text-xs text-muted-foreground">CIN {r.cin}</p>
+                <p className="text-muted-foreground text-xs">CIN {r.cin}</p>
               </TableCell>
               <TableCell>
-                <span className="text-sm">
-                  {r.classification || "Junior Cadet"}
-                </span>
+                <span className="text-sm">{r.classification || "Junior Cadet"}</span>
               </TableCell>
               {qualCols.map((b) => {
-                const check = r.qualifications_check?.find(
-                  (c) => c.qual_type === b.key
-                );
+                const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
                 const lvl = matchedLevel(check, selected[b.key] ?? []);
                 return (
                   <TableCell key={b.key} className="text-center">
                     {lvl === "none" ? (
-                      <span className="text-xs text-muted-foreground">None</span>
+                      <span className="text-muted-foreground text-xs">None</span>
                     ) : lvl ? (
                       <div className="flex flex-col items-center gap-0.5">
                         <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
                           {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
                         </Badge>
                         {check?.date_achieved && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-muted-foreground text-xs">
                             {fmtDate(check.date_achieved)}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-muted-foreground text-xs">—</span>
                     )}
                   </TableCell>
                 );
@@ -502,7 +477,7 @@ function AuditResultsTable({
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">None</span>
+                    <span className="text-muted-foreground text-xs">None</span>
                   )}
                 </TableCell>
               )}
@@ -517,7 +492,7 @@ function AuditResultsTable({
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">None</span>
+                    <span className="text-muted-foreground text-xs">None</span>
                   )}
                 </TableCell>
               )}
@@ -532,7 +507,7 @@ function AuditResultsTable({
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">None</span>
+                    <span className="text-muted-foreground text-xs">None</span>
                   )}
                 </TableCell>
               )}
@@ -548,10 +523,11 @@ function AuditResultsTable({
 
 function CadetCheckTab() {
   const { data: session } = useSession();
-  const { data: allCadets = [], isLoading: loadingCadets } =
-    useApiQuery<Cadet[]>(["cadets"], "/cadets");
-  const { data: badgeTypes = [] } =
-    useApiQuery<BadgeType[]>(["audit-badge-types"], "/cadets/audit/badge-types");
+  const { data: allCadets = [], isLoading: loadingCadets } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
+  const { data: badgeTypes = [] } = useApiQuery<BadgeType[]>(
+    ["audit-badge-types"],
+    "/cadets/audit/badge-types"
+  );
 
   const [search, setSearch] = useState("");
   const [selectedCins, setSelectedCins] = useState<Set<number>>(new Set());
@@ -592,7 +568,8 @@ function CadetCheckTab() {
 
   async function runCheck() {
     if (!session?.id_token) return;
-    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary && !includeMissingAttachments) return;
+    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary && !includeMissingAttachments)
+      return;
     setLoading(true);
     setError(null);
     try {
@@ -641,7 +618,7 @@ function CadetCheckTab() {
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm">
               Select cadets
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              <span className="text-muted-foreground ml-2 text-xs font-normal">
                 {selectedCins.size} selected
               </span>
             </CardTitle>
@@ -680,7 +657,7 @@ function CadetCheckTab() {
                       }
                     }}
                     className={cn(
-                      "flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/50",
+                      "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
                       selectedCins.has(c.cin) && "bg-muted/30"
                     )}
                   >
@@ -692,9 +669,7 @@ function CadetCheckTab() {
                     <span className="font-medium">
                       {c.last_name}, {c.first_name}
                     </span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {c.cin}
-                    </span>
+                    <span className="text-muted-foreground ml-auto text-xs">{c.cin}</span>
                   </div>
                 ))}
               </div>
@@ -703,7 +678,7 @@ function CadetCheckTab() {
           <div className="flex items-center gap-4 border-t px-4 py-2">
             <button
               type="button"
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground text-xs"
               onClick={selectAllFiltered}
             >
               Select all{search ? " (filtered)" : ""}
@@ -711,7 +686,7 @@ function CadetCheckTab() {
             {selectedCins.size > 0 && (
               <button
                 type="button"
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground text-xs"
                 onClick={() => setSelectedCins(new Set())}
               >
                 Clear selection
@@ -740,7 +715,7 @@ function CadetCheckTab() {
         </Card>
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground">Checking…</p>}
+      {loading && <p className="text-muted-foreground text-sm">Checking…</p>}
 
       <ErrorAlert message={error} title="Check failed" />
 
@@ -762,10 +737,14 @@ function CadetCheckTab() {
 
 function EventCheckTab() {
   const { data: session } = useSession();
-  const { data: events = [], isLoading: loadingEvents } =
-    useApiQuery<EventEntry[]>(["cadet-events"], "/cadet-events");
-  const { data: badgeTypes = [] } =
-    useApiQuery<BadgeType[]>(["audit-badge-types"], "/cadets/audit/badge-types");
+  const { data: events = [], isLoading: loadingEvents } = useApiQuery<EventEntry[]>(
+    ["cadet-events"],
+    "/cadet-events"
+  );
+  const { data: badgeTypes = [] } = useApiQuery<BadgeType[]>(
+    ["audit-badge-types"],
+    "/cadets/audit/badge-types"
+  );
 
   const [selectedEventId, setSelectedEventId] = useState("");
   const [selectedSubAppId, setSelectedSubAppId] = useState("all");
@@ -790,12 +769,13 @@ function EventCheckTab() {
     selectedSubAppId !== "all"
       ? parseInt(selectedSubAppId)
       : selectedEventId
-      ? parseInt(selectedEventId)
-      : null;
+        ? parseInt(selectedEventId)
+        : null;
 
   async function runCheck() {
     if (!session?.id_token || effectiveEventId === null) return;
-    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary && !includeMissingAttachments) return;
+    if (Object.keys(quals).length === 0 && !includeMedical && !includeDietary && !includeMissingAttachments)
+      return;
     setLoading(true);
     setError(null);
     try {
@@ -838,9 +818,7 @@ function EventCheckTab() {
 
   const selectedSubApp = subApps.find((s) => String(s.id) === selectedSubAppId);
   const shownCadets =
-    selectedSubAppId === "all"
-      ? selectedEvent?.cadets ?? []
-      : selectedSubApp?.cadets ?? [];
+    selectedSubAppId === "all" ? (selectedEvent?.cadets ?? []) : (selectedSubApp?.cadets ?? []);
 
   return (
     <div className="flex flex-col gap-4">
@@ -853,11 +831,7 @@ function EventCheckTab() {
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label className="text-sm">Event</Label>
-                <Select
-                  value={selectedEventId}
-                  onValueChange={handleEventChange}
-                  disabled={loadingEvents}
-                >
+                <Select value={selectedEventId} onValueChange={handleEventChange} disabled={loadingEvents}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select an event…" />
                   </SelectTrigger>
@@ -874,13 +848,9 @@ function EventCheckTab() {
               {subApps.length > 0 && (
                 <div className="flex flex-col gap-1.5">
                   <Label className="text-sm">
-                    Sub-application{" "}
-                    <span className="text-muted-foreground">(optional)</span>
+                    Sub-application <span className="text-muted-foreground">(optional)</span>
                   </Label>
-                  <Select
-                    value={selectedSubAppId}
-                    onValueChange={setSelectedSubAppId}
-                  >
+                  <Select value={selectedSubAppId} onValueChange={setSelectedSubAppId}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -897,7 +867,7 @@ function EventCheckTab() {
               )}
 
               {selectedEvent && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {selectedSubAppId === "all"
                     ? `${selectedEvent.cadet_count} cadet${
                         selectedEvent.cadet_count !== 1 ? "s" : ""
@@ -912,16 +882,11 @@ function EventCheckTab() {
                 <div className="max-h-56 overflow-y-auto rounded-md border">
                   <div className="divide-y">
                     {shownCadets.map((c) => (
-                      <div
-                        key={c.cin}
-                        className="flex items-center gap-3 px-3 py-2 text-sm"
-                      >
+                      <div key={c.cin} className="flex items-center gap-3 px-3 py-2 text-sm">
                         <span className="font-medium">
                           {c.last_name}, {c.first_name}
                         </span>
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {c.cin}
-                        </span>
+                        <span className="text-muted-foreground ml-auto text-xs">{c.cin}</span>
                       </div>
                     ))}
                   </div>
@@ -951,7 +916,7 @@ function EventCheckTab() {
         </Card>
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground">Checking…</p>}
+      {loading && <p className="text-muted-foreground text-sm">Checking…</p>}
 
       <ErrorAlert message={error} title="Event check failed" />
 
@@ -974,10 +939,7 @@ function EventCheckTab() {
 export default function AuditPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
-      <PageHeader
-        title="Audit"
-        description="Check cadet qualifications, medical, and dietary requirements"
-      />
+      <PageHeader title="Audit" description="Check cadet qualifications, medical, and dietary requirements" />
       <Tabs defaultValue="cadet-check">
         <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>

@@ -13,16 +13,10 @@ const TABS = [
   { label: "MOI", href: "/assessments/moi" },
 ];
 
-export default function AssessmentsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AssessmentsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const tabs = TABS.filter(
-    (tab) => !tab.sncoOnly || session?.role === "staff" || session?.role === "snco"
-  );
+  const tabs = TABS.filter((tab) => !tab.sncoOnly || session?.role === "staff" || session?.role === "snco");
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -39,10 +33,10 @@ export default function AssessmentsLayout({
               key={tab.href}
               href={tab.href}
               className={cn(
-                "-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                "-mb-px border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors",
                 pathname === tab.href
                   ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground border-transparent"
               )}
             >
               {tab.label}

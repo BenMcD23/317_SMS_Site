@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
@@ -52,13 +59,10 @@ export default function ProgrammeUpdaterPage() {
     setResult(null);
 
     try {
-      const resp = await apiFetch(
-        `${API_BASE}/update-programme?month=${month}&year=${year}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session.id_token}` },
-        }
-      );
+      const resp = await apiFetch(`${API_BASE}/update-programme?month=${month}&year=${year}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.id_token}` },
+      });
 
       const data = await resp.json();
 
@@ -96,7 +100,9 @@ export default function ProgrammeUpdaterPage() {
                   <SelectContent>
                     <SelectGroup>
                       {MONTHS.map((m) => (
-                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        <SelectItem key={m.value} value={m.value}>
+                          {m.label}
+                        </SelectItem>
                       ))}
                     </SelectGroup>
                   </SelectContent>
@@ -112,7 +118,9 @@ export default function ProgrammeUpdaterPage() {
                   <SelectContent>
                     <SelectGroup>
                       {YEARS.map((y) => (
-                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
                       ))}
                     </SelectGroup>
                   </SelectContent>

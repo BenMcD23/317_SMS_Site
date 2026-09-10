@@ -26,7 +26,11 @@ export default function StaffOverviewPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
-  const { data: users = [], isLoading: loading, error } = useQuery<StaffMember[], Error>({
+  const {
+    data: users = [],
+    isLoading: loading,
+    error,
+  } = useQuery<StaffMember[], Error>({
     queryKey: ["staff", "users"],
     queryFn: async () => {
       const res = await fetch("/api/staff/users");
@@ -87,7 +91,7 @@ export default function StaffOverviewPage() {
                 <button
                   key={u.cin}
                   onClick={() => router.push(`/staff/${u.cin}`)}
-                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+                  className="hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors"
                 >
                   <Avatar className="size-8">
                     <AvatarFallback className="text-xs">
@@ -96,9 +100,9 @@ export default function StaffOverviewPage() {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+                    <p className="text-muted-foreground truncate text-xs">{subtitle}</p>
                   </div>
-                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+                  <ChevronRight className="text-muted-foreground/50 size-4 shrink-0" />
                 </button>
               );
             })}

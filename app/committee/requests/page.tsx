@@ -6,13 +6,15 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Plus, ReceiptText } from "lucide-react";
 import {
-  type CommitteeRequestSummary, STATUS_LABELS, STATUS_STYLE, formatGBP, formatDate,
+  type CommitteeRequestSummary,
+  STATUS_LABELS,
+  STATUS_STYLE,
+  formatGBP,
+  formatDate,
 } from "@/lib/committee";
 
 interface ListResponse {
@@ -21,10 +23,7 @@ interface ListResponse {
 }
 
 export default function CommitteeRequestsPage() {
-  const { data, isLoading, error } = useApiQuery<ListResponse>(
-    ["committee-requests"],
-    "/committee-requests",
-  );
+  const { data, isLoading, error } = useApiQuery<ListResponse>(["committee-requests"], "/committee-requests");
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -42,21 +41,25 @@ export default function CommitteeRequestsPage() {
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
         </div>
       ) : error ? (
-        <p className="text-sm text-destructive">Failed to load requests: {error.message}</p>
+        <p className="text-destructive text-sm">Failed to load requests: {error.message}</p>
       ) : !data || data.requests.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon"><ReceiptText /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <ReceiptText />
+            </EmptyMedia>
             <EmptyTitle>No committee requests yet</EmptyTitle>
-            <EmptyDescription>
-              Create a request to get a purchase approved and reimbursed.
-            </EmptyDescription>
+            <EmptyDescription>Create a request to get a purchase approved and reimbursed.</EmptyDescription>
           </EmptyHeader>
           <Button asChild size="sm">
-            <Link href="/committee/requests/new"><Plus /> New Request</Link>
+            <Link href="/committee/requests/new">
+              <Plus /> New Request
+            </Link>
           </Button>
         </Empty>
       ) : (
@@ -79,7 +82,9 @@ export default function CommitteeRequestsPage() {
                   <TableRow
                     key={r.id}
                     className="cursor-pointer"
-                    onClick={() => { window.location.href = `/committee/requests/${r.id}`; }}
+                    onClick={() => {
+                      window.location.href = `/committee/requests/${r.id}`;
+                    }}
                   >
                     <TableCell className="font-medium">
                       <Link href={`/committee/requests/${r.id}`} className="hover:underline">

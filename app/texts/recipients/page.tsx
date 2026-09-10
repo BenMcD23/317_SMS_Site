@@ -10,20 +10,26 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { Plus, Pencil, Trash2, Download, Upload, MessageCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
@@ -235,11 +241,14 @@ export default function TextRecipientsPage() {
     }
   };
 
-  const counts = useMemo(() => ({
-    cadet: recipients.filter((r) => r.source === "cadet").length,
-    staff: recipients.filter((r) => r.source === "staff").length,
-    extra: recipients.filter((r) => r.source === "extra").length,
-  }), [recipients]);
+  const counts = useMemo(
+    () => ({
+      cadet: recipients.filter((r) => r.source === "cadet").length,
+      staff: recipients.filter((r) => r.source === "staff").length,
+      extra: recipients.filter((r) => r.source === "extra").length,
+    }),
+    [recipients]
+  );
 
   const resetPicker = () => {
     setAddMode("cadet");
@@ -269,9 +278,10 @@ export default function TextRecipientsPage() {
       // the same way it would if they'd saved it themselves.
       const addingToPerson = !editing && addMode !== "extra";
       const key = editing?.key ?? picked?.key ?? "";
-      const url = editing || addingToPerson
-        ? `${API_BASE}/texts/recipients/${encodeURIComponent(key)}`
-        : `${API_BASE}/texts/recipients`;
+      const url =
+        editing || addingToPerson
+          ? `${API_BASE}/texts/recipients/${encodeURIComponent(key)}`
+          : `${API_BASE}/texts/recipients`;
       // Only an extra's rank and surname are ours to change; for a cadet or
       // staff member the number is the whole of the edit.
       const body =
@@ -334,7 +344,9 @@ export default function TextRecipientsPage() {
       toast.success(
         `Imported ${data.imported} number${data.imported !== 1 ? "s" : ""} — ` +
           `${data.matched} onto a cadet or staff record, ${data.extras} kept without one` +
-          (data.skipped ? ` (${data.skipped} row${data.skipped !== 1 ? "s" : ""} without a phone number skipped)` : "") +
+          (data.skipped
+            ? ` (${data.skipped} row${data.skipped !== 1 ? "s" : ""} without a phone number skipped)`
+            : "") +
           `. ${data.total} on the list now.`
       );
       setImportOpen(false);
@@ -390,23 +402,24 @@ export default function TextRecipientsPage() {
         }
       />
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         Cadets set their own number on the cadet portal and staff set theirs in{" "}
-        <a href="/settings" className="underline underline-offset-4">Settings</a> — both
-        land here on their own. Add a number by hand only for someone with no account,
-        like a parent.
+        <a href="/settings" className="underline underline-offset-4">
+          Settings
+        </a>{" "}
+        — both land here on their own. Add a number by hand only for someone with no account, like a parent.
       </p>
 
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <MessageCircle className="size-4 text-muted-foreground" />
+            <MessageCircle className="text-muted-foreground size-4" />
             WhatsApp community
           </CardTitle>
           <CardDescription>
-            Cadets and staff are shown this link once they&apos;ve saved a number, so they
-            can join themselves — WhatsApp has no way for us to add anyone directly.
-            Paste the community&apos;s invite link here; leave it empty to hide the prompt.
+            Cadets and staff are shown this link once they&apos;ve saved a number, so they can join themselves
+            — WhatsApp has no way for us to add anyone directly. Paste the community&apos;s invite link here;
+            leave it empty to hide the prompt.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
@@ -417,10 +430,7 @@ export default function TextRecipientsPage() {
               placeholder="https://chat.whatsapp.com/…"
               className="flex-1 font-mono text-sm"
             />
-            <Button
-              onClick={handleInviteSave}
-              disabled={inviteSaving || inviteUrl.trim() === savedInviteUrl}
-            >
+            <Button onClick={handleInviteSave} disabled={inviteSaving || inviteUrl.trim() === savedInviteUrl}>
               {inviteSaving && <Spinner />}
               Save
             </Button>
@@ -430,7 +440,7 @@ export default function TextRecipientsPage() {
               href={savedInviteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-fit items-center gap-1.5 text-xs text-muted-foreground underline underline-offset-4"
+              className="text-muted-foreground flex w-fit items-center gap-1.5 text-xs underline underline-offset-4"
             >
               Check the link works <ExternalLink className="size-3" />
             </a>
@@ -449,17 +459,16 @@ export default function TextRecipientsPage() {
           <EmptyHeader>
             <EmptyTitle>No recipients yet</EmptyTitle>
             <EmptyDescription>
-              Nobody has saved a mobile number yet, and no numbers have been added by
-              hand — so there is nowhere for a text to go.
+              Nobody has saved a mobile number yet, and no numbers have been added by hand — so there is
+              nowhere for a text to go.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">
-            {recipients.length} recipient{recipients.length !== 1 ? "s" : ""} —{" "}
-            {counts.cadet} cadet{counts.cadet !== 1 ? "s" : ""}, {counts.staff} staff,{" "}
-            {counts.extra} without an account.
+          <p className="text-muted-foreground text-sm">
+            {recipients.length} recipient{recipients.length !== 1 ? "s" : ""} — {counts.cadet} cadet
+            {counts.cadet !== 1 ? "s" : ""}, {counts.staff} staff, {counts.extra} without an account.
           </p>
           <Table>
             <TableHeader>
@@ -511,15 +520,13 @@ export default function TextRecipientsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>
-              {editing ? `Edit ${editing.name || "recipient"}` : "Add a number"}
-            </DialogTitle>
+            <DialogTitle>{editing ? `Edit ${editing.name || "recipient"}` : "Add a number"}</DialogTitle>
             <DialogDescription>
               {!editing && addMode !== "extra"
                 ? "The number goes onto their own record, so the greeting comes from the roster and stays right as they’re promoted."
                 : editingExtra
-                ? "Rank and surname are used in the text greeting, e.g. “Sgt Smith”."
-                : "The greeting comes from their record on the squadron roster, so only the number is editable here."}
+                  ? "Rank and surname are used in the text greeting, e.g. “Sgt Smith”."
+                  : "The greeting comes from their record on the squadron roster, so only the number is editable here."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
@@ -539,7 +546,9 @@ export default function TextRecipientsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(ADD_MODE_LABEL).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -572,21 +581,22 @@ export default function TextRecipientsPage() {
                           <button
                             key={h.key}
                             type="button"
-                            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
-                            onClick={() => { setPicked(h); setQuery(""); }}
+                            className="hover:bg-accent flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm"
+                            onClick={() => {
+                              setPicked(h);
+                              setQuery("");
+                            }}
                           >
                             <span>{h.label}</span>
-                            {h.hint && (
-                              <span className="text-xs text-muted-foreground">{h.hint}</span>
-                            )}
+                            {h.hint && <span className="text-muted-foreground text-xs">{h.hint}</span>}
                           </button>
                         ))}
                       </div>
                     )}
                     {query.trim().length >= 2 && hits.length === 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Nobody by that name on the {addMode} roster. If they
-                        aren’t on it, add them as someone with no account instead.
+                      <p className="text-muted-foreground text-xs">
+                        Nobody by that name on the {addMode} roster. If they aren’t on it, add them as someone
+                        with no account instead.
                       </p>
                     )}
                   </>
@@ -628,14 +638,12 @@ export default function TextRecipientsPage() {
             </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button
               onClick={handleSave}
-              disabled={
-                saving ||
-                !form.phone_number.trim() ||
-                (!editing && addMode !== "extra" && !picked)
-              }
+              disabled={saving || !form.phone_number.trim() || (!editing && addMode !== "extra" && !picked)}
             >
               {saving && <Spinner />}
               {editing ? "Save changes" : "Add number"}
@@ -644,14 +652,19 @@ export default function TextRecipientsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={importOpen} onOpenChange={(open) => { setImportOpen(open); if (!open) setImportFile(null); }}>
+      <Dialog
+        open={importOpen}
+        onOpenChange={(open) => {
+          setImportOpen(open);
+          if (!open) setImportFile(null);
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Import numbers</DialogTitle>
             <DialogDescription>
-              Upload a .csv or .xlsx with columns: phone number, rank, surname (same layout as the
-              old Numbers sheet). Each number goes onto the cadet or staff member it names, where
-              the name can be matched.
+              Upload a .csv or .xlsx with columns: phone number, rank, surname (same layout as the old Numbers
+              sheet). Each number goes onto the cadet or staff member it names, where the name can be matched.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
@@ -667,7 +680,9 @@ export default function TextRecipientsPage() {
             <Field>
               <FieldLabel htmlFor="import-mode">Mode</FieldLabel>
               <Select value={importMode} onValueChange={(v) => setImportMode(v as "merge" | "replace")}>
-                <SelectTrigger id="import-mode"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="import-mode">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="merge">Merge — add new numbers, update existing</SelectItem>
                   <SelectItem value="replace">Replace — wipe the added-by-hand numbers first</SelectItem>
@@ -675,14 +690,16 @@ export default function TextRecipientsPage() {
               </Select>
             </Field>
             {importMode === "replace" && (
-              <p className="text-xs text-destructive">
-                Replace deletes every number added by hand before importing. Numbers cadets
-                and staff saved on their own records are left alone.
+              <p className="text-destructive text-xs">
+                Replace deletes every number added by hand before importing. Numbers cadets and staff saved on
+                their own records are left alone.
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setImportOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleImport} disabled={!importFile || importing}>
               {importing && <Spinner />}
               Import
@@ -696,8 +713,8 @@ export default function TextRecipientsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Take this number off the list?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting && `${deleting.name || deleting.surname} (${deleting.phone_number})`} will no
-              longer receive parade night texts.
+              {deleting && `${deleting.name || deleting.surname} (${deleting.phone_number})`} will no longer
+              receive parade night texts.
               {deleting && deleting.source !== "extra"
                 ? " Their record stays — only the number is cleared, and they can save a new one themselves."
                 : ""}

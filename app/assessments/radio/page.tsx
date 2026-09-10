@@ -20,17 +20,28 @@ import { AssessorCard } from "@/components/assessments/assessor-card";
 
 // ─── Criteria ─────────────────────────────────────────────────────────────────
 const CRITERIA = [
-  { id: "callsigns",           label: "Correct Use of Both Full Callsigns" },
-  { id: "auth_1a",             label: "1a) Authenticate Requested" },
-  { id: "auth_1b",             label: "1b) Authenticate Answered Correctly" },
-  { id: "radio_2a",            label: "2a) Radio Check Requested" },
-  { id: "radio_2b",            label: "2b) Radio Check Answered Correctly" },
-  { id: "tactical_3",          label: "3) Tactical Message Fully Answered" },
-  { id: "say_again_4",         label: "4) I Say Again used" },
-  { id: "say_again_5",         label: "5) Say Again used" },
-  { id: "prowords",            label: "Prowords OVER, OUT etc. used correctly. General quick responses, RSVP and confidence." },
-  { id: "verbal_understanding", label: "Verbally check understanding of CORRECT, CORRECTION, I SPELL, NOTHING HEARD, FIGURES, ROGER, WAIT OUT, SPEAK SLOWER." },
-  { id: "verbal_security",     label: "Verbally check understanding of security – must not transmit names, ranks, locations, movement of arms and ammunition, personal or Sqn details, movements, current aircraft etc." },
+  { id: "callsigns", label: "Correct Use of Both Full Callsigns" },
+  { id: "auth_1a", label: "1a) Authenticate Requested" },
+  { id: "auth_1b", label: "1b) Authenticate Answered Correctly" },
+  { id: "radio_2a", label: "2a) Radio Check Requested" },
+  { id: "radio_2b", label: "2b) Radio Check Answered Correctly" },
+  { id: "tactical_3", label: "3) Tactical Message Fully Answered" },
+  { id: "say_again_4", label: "4) I Say Again used" },
+  { id: "say_again_5", label: "5) Say Again used" },
+  {
+    id: "prowords",
+    label: "Prowords OVER, OUT etc. used correctly. General quick responses, RSVP and confidence.",
+  },
+  {
+    id: "verbal_understanding",
+    label:
+      "Verbally check understanding of CORRECT, CORRECTION, I SPELL, NOTHING HEARD, FIGURES, ROGER, WAIT OUT, SPEAK SLOWER.",
+  },
+  {
+    id: "verbal_security",
+    label:
+      "Verbally check understanding of security – must not transmit names, ranks, locations, movement of arms and ammunition, personal or Sqn details, movements, current aircraft etc.",
+  },
 ];
 
 // ─── Criterion toggle ──────────────────────────────────────────────────────────
@@ -92,7 +103,12 @@ const initialState = (): FormState => ({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function RadioAssessmentPage() {
   const { data: session } = useSession();
-  const { state: form, setState: setForm, clearDraft, draftRestored } = useAssessmentDraft("radio", initialState(), session?.user?.email, (s) => s.cadetCin !== null);
+  const {
+    state: form,
+    setState: setForm,
+    clearDraft,
+    draftRestored,
+  } = useAssessmentDraft("radio", initialState(), session?.user?.email, (s) => s.cadetCin !== null);
   const [draftBannerDismissed, setDraftBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,10 +140,11 @@ export default function RadioAssessmentPage() {
     apiFetch(`${API_BASE}/settings/assessor-name`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
-      if (res.ok) res.json().then((d) => {
-        const name = d.assessor_name || session.user?.name || "";
-        setForm((f) => ({ ...f, assessorName: name }));
-      });
+      if (res.ok)
+        res.json().then((d) => {
+          const name = d.assessor_name || session.user?.name || "";
+          setForm((f) => ({ ...f, assessorName: name }));
+        });
     });
 
     setSigLoading(true);
@@ -229,33 +246,35 @@ export default function RadioAssessmentPage() {
           <p className="text-muted-foreground">Blue Badge — Basic Radio Operator Award</p>
         </div>
 
-        <div className="flex flex-col items-center gap-6 rounded-xl border border-success/30 bg-success/10 px-8 py-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/20">
-            <CheckCircle2 className="h-8 w-8 text-success" />
+        <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
+          <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
+            <CheckCircle2 className="text-success h-8 w-8" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-foreground">Assessment Saved</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-foreground text-xl font-semibold">Assessment Saved</h2>
+            <p className="text-muted-foreground text-sm">
               {form.cadetName}&apos;s radio assessment has been recorded successfully.
             </p>
             {assessmentId && (
-              <p className="text-xs text-muted-foreground mt-1">Assessment ID: #{assessmentId}</p>
+              <p className="text-muted-foreground mt-1 text-xs">Assessment ID: #{assessmentId}</p>
             )}
           </div>
 
-          <div className="w-full max-w-xs rounded-lg border bg-card px-4 py-3 text-left text-sm space-y-1.5">
+          <div className="bg-card w-full max-w-xs space-y-1.5 rounded-lg border px-4 py-3 text-left text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Cadet</span>
               <span className="font-medium">{form.cadetName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Criteria passed</span>
-              <span className="font-medium">{checkedCount} / {CRITERIA.length}</span>
+              <span className="font-medium">
+                {checkedCount} / {CRITERIA.length}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Result</span>
               {allChecked ? (
-                <Badge className="bg-success text-white hover:bg-success gap-1 text-xs">
+                <Badge className="bg-success hover:bg-success gap-1 text-xs text-white">
                   <CheckCircle2 className="h-3 w-3" /> PASS
                 </Badge>
               ) : (
@@ -292,9 +311,16 @@ export default function RadioAssessmentPage() {
       </div>
 
       {draftRestored && !draftBannerDismissed && (
-        <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+        <div className="border-warning/30 bg-warning/10 flex items-center justify-between rounded-lg border px-4 py-3 text-sm">
           <span className="text-warning">Draft restored from your last session.</span>
-          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-warning/40 text-warning hover:bg-warning/10 hover:text-warning">Reset Form</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="border-warning/40 text-warning hover:bg-warning/10 hover:text-warning ml-4"
+          >
+            Reset Form
+          </Button>
         </div>
       )}
 
@@ -356,156 +382,169 @@ export default function RadioAssessmentPage() {
         </div>
       ) : (
         <>
-      {/* Cadet */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Cadet</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            <Label>Cadet Being Assessed</Label>
-            <CadetSearchInput
-              token={session?.id_token ?? null}
-              selectedCin={form.cadetCin}
-              selectedName={form.cadetName}
-              onSelect={(cin, name) =>
-                setForm((f) => ({ ...f, cadetCin: cin || null, cadetName: name }))
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
+          {/* Cadet */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Cadet</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1.5">
+                <Label>Cadet Being Assessed</Label>
+                <CadetSearchInput
+                  token={session?.id_token ?? null}
+                  selectedCin={form.cadetCin}
+                  selectedName={form.cadetName}
+                  onSelect={(cin, name) => setForm((f) => ({ ...f, cadetCin: cin || null, cadetName: name }))}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Progress */}
-      <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
-        <div className="flex-1">
-          <div className="mb-1.5 flex items-center justify-between text-sm">
-            <span className="font-medium text-muted-foreground">
-              {checkedCount} / {CRITERIA.length} criteria initialled
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-300"
-              style={{ width: `${Math.round((checkedCount / CRITERIA.length) * 100)}%` }}
-            />
-          </div>
-        </div>
-        {allChecked && (
-          <Badge className="gap-1.5 bg-success text-white hover:bg-success shrink-0">
-            <CheckCircle2 className="h-3.5 w-3.5" /> All initialled
-          </Badge>
-        )}
-      </div>
-
-      {/* Assessment criteria */}
-      <div className="space-y-2">
-        {CRITERIA.map((c) => (
-          <CriterionRow
-            key={c.id}
-            criterion={c}
-            checked={form.criteria[c.id]}
-            onChange={(v) =>
-              setForm((f) => ({ ...f, criteria: { ...f.criteria, [c.id]: v } }))
-            }
-          />
-        ))}
-      </div>
-
-      {/* Cyber security video */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Cyber Security</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            <Label htmlFor="cyberSecDate">Date cadet watched Basic Cyber Security video</Label>
-            <Input
-              id="cyberSecDate"
-              type="date"
-              value={form.cyberSecDate}
-              onChange={(e) => setForm((f) => ({ ...f, cyberSecDate: e.target.value }))}
-              className="max-w-xs"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Result */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Result</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-lg border-2 py-3 font-semibold",
-              allChecked
-                ? "border-success bg-success/10 text-success"
-                : "border-destructive bg-destructive/10 text-destructive"
-            )}
-          >
-            {allChecked ? (
-              <><CheckCircle2 className="h-4 w-4" /> PASS — All {CRITERIA.length} criteria initialled</>
-            ) : (
-              <><XCircle className="h-4 w-4" /> FAIL — {CRITERIA.length - checkedCount} criteria remaining</>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="comments">Comments</Label>
-              <span className={cn("text-xs", form.comments.length > COMMENTS_MAX ? "text-destructive" : "text-muted-foreground")}>
-                {form.comments.length} / {COMMENTS_MAX}
-              </span>
+          {/* Progress */}
+          <div className="bg-card flex items-center gap-4 rounded-lg border p-4">
+            <div className="flex-1">
+              <div className="mb-1.5 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground font-medium">
+                  {checkedCount} / {CRITERIA.length} criteria initialled
+                </span>
+              </div>
+              <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+                <div
+                  className="bg-primary h-full rounded-full transition-all duration-300"
+                  style={{ width: `${Math.round((checkedCount / CRITERIA.length) * 100)}%` }}
+                />
+              </div>
             </div>
-            <Textarea
-              id="comments"
-              placeholder="Enter any comments..."
-              rows={3}
-              maxLength={COMMENTS_MAX}
-              value={form.comments}
-              onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value.slice(0, COMMENTS_MAX) }))}
-            />
+            {allChecked && (
+              <Badge className="bg-success hover:bg-success shrink-0 gap-1.5 text-white">
+                <CheckCircle2 className="h-3.5 w-3.5" /> All initialled
+              </Badge>
+            )}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Assessor */}
-      <AssessorCard
-        assessorName={form.assessorName}
-        onAssessorNameChange={(v) => setForm((f) => ({ ...f, assessorName: v }))}
-        assessorRole={form.assessorRole}
-        onAssessorRoleChange={(v) => setForm((f) => ({ ...f, assessorRole: v }))}
-        date={form.date}
-        onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
-        showNameFromAccount={!!session?.user?.name}
-        sigLoading={sigLoading}
-        savedSignatureUrl={savedSignatureUrl}
-        overrideSignature={overrideSignature}
-        onOverrideSignature={setOverrideSignature}
-        showDraw={showDrawOverride}
-        onSetShowDraw={setShowDrawOverride}
-      />
+          {/* Assessment criteria */}
+          <div className="space-y-2">
+            {CRITERIA.map((c) => (
+              <CriterionRow
+                key={c.id}
+                criterion={c}
+                checked={form.criteria[c.id]}
+                onChange={(v) => setForm((f) => ({ ...f, criteria: { ...f.criteria, [c.id]: v } }))}
+              />
+            ))}
+          </div>
 
-      {error && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      )}
+          {/* Cyber security video */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Cyber Security</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1.5">
+                <Label htmlFor="cyberSecDate">Date cadet watched Basic Cyber Security video</Label>
+                <Input
+                  id="cyberSecDate"
+                  type="date"
+                  value={form.cyberSecDate}
+                  onChange={(e) => setForm((f) => ({ ...f, cyberSecDate: e.target.value }))}
+                  className="max-w-xs"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      <div className="flex gap-3">
-        <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
-          {loading ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
-          ) : (
-            <><CheckCircle2 className="mr-2 h-4 w-4" />Submit Assessment</>
+          {/* Result */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Result</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-lg border-2 py-3 font-semibold",
+                  allChecked
+                    ? "border-success bg-success/10 text-success"
+                    : "border-destructive bg-destructive/10 text-destructive"
+                )}
+              >
+                {allChecked ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" /> PASS — All {CRITERIA.length} criteria initialled
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4" /> FAIL — {CRITERIA.length - checkedCount} criteria remaining
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="comments">Comments</Label>
+                  <span
+                    className={cn(
+                      "text-xs",
+                      form.comments.length > COMMENTS_MAX ? "text-destructive" : "text-muted-foreground"
+                    )}
+                  >
+                    {form.comments.length} / {COMMENTS_MAX}
+                  </span>
+                </div>
+                <Textarea
+                  id="comments"
+                  placeholder="Enter any comments..."
+                  rows={3}
+                  maxLength={COMMENTS_MAX}
+                  value={form.comments}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, comments: e.target.value.slice(0, COMMENTS_MAX) }))
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assessor */}
+          <AssessorCard
+            assessorName={form.assessorName}
+            onAssessorNameChange={(v) => setForm((f) => ({ ...f, assessorName: v }))}
+            assessorRole={form.assessorRole}
+            onAssessorRoleChange={(v) => setForm((f) => ({ ...f, assessorRole: v }))}
+            date={form.date}
+            onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
+            showNameFromAccount={!!session?.user?.name}
+            sigLoading={sigLoading}
+            savedSignatureUrl={savedSignatureUrl}
+            overrideSignature={overrideSignature}
+            onOverrideSignature={setOverrideSignature}
+            showDraw={showDrawOverride}
+            onSetShowDraw={setShowDrawOverride}
+          />
+
+          {error && (
+            <p className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm">
+              {error}
+            </p>
           )}
-        </Button>
-        <Button variant="outline" onClick={handleReset}>
-          Reset Form
-        </Button>
-      </div>
+
+          <div className="flex gap-3">
+            <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Submit Assessment
+                </>
+              )}
+            </Button>
+            <Button variant="outline" onClick={handleReset}>
+              Reset Form
+            </Button>
+          </div>
         </>
       )}
     </div>

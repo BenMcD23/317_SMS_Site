@@ -43,7 +43,7 @@ function ScoreRow({
   return (
     <div className="flex flex-col gap-1.5 py-2 sm:flex-row sm:items-center sm:gap-3">
       <div className="flex flex-1 items-start gap-2">
-        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+        <span className="bg-primary/10 text-primary mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
           {id}
         </span>
         <p className="text-sm leading-snug">{text}</p>
@@ -60,8 +60,8 @@ function ScoreRow({
                 ? s === 1
                   ? "border-destructive bg-destructive text-white"
                   : s === 5
-                  ? "border-success bg-success text-white"
-                  : "border-primary bg-primary text-primary-foreground"
+                    ? "border-success bg-success text-white"
+                    : "border-primary bg-primary text-primary-foreground"
                 : "border-muted text-muted-foreground hover:border-primary/40 hover:bg-muted"
             )}
           >
@@ -75,7 +75,7 @@ function ScoreRow({
 
 function ResultBadge({ passed }: { passed: boolean }) {
   return passed ? (
-    <Badge className="gap-1.5 bg-success text-white hover:bg-success">
+    <Badge className="bg-success hover:bg-success gap-1.5 text-white">
       <CheckCircle2 className="h-3.5 w-3.5" /> PASS
     </Badge>
   ) : (
@@ -178,16 +178,20 @@ export function AssessmentEditor({
         setForm({
           date: isoDateForInput(f.date_iso, f.date),
           scores: isLeadership
-            ? normaliseScores(f.scores, LEADERSHIP_QUESTIONS.map((q) => q.id))
+            ? normaliseScores(
+                f.scores,
+                LEADERSHIP_QUESTIONS.map((q) => q.id)
+              )
             : isMoi
-            ? normaliseScores(f.scores, MOI_ALL_QUESTIONS.map((q) => q.id))
-            : {},
+              ? normaliseScores(
+                  f.scores,
+                  MOI_ALL_QUESTIONS.map((q) => q.id)
+                )
+              : {},
           exerciseNo: f.exercise_no ?? "",
           exerciseName: f.exercise_name ?? "",
           debriefingNotes: f.debriefing_notes ?? "",
-          criteria: Object.fromEntries(
-            RADIO_CRITERIA.map((c) => [c.id, Boolean(f.criteria?.[c.id])])
-          ),
+          criteria: Object.fromEntries(RADIO_CRITERIA.map((c) => [c.id, Boolean(f.criteria?.[c.id])])),
           cyberSecDate: isoDateForInput(f.cyber_sec_date_iso, f.cyber_sec_date),
           comments: f.comments ?? "",
           cadetSurname: f.cadet_surname ?? "",
@@ -204,7 +208,7 @@ export function AssessmentEditor({
           generalComments: f.general_comments ?? "",
           assessorRole: f.assessor_role ?? "",
         });
-        setExistingLessonPlan(d.has_lesson_plan ? d.lesson_plan_filename ?? "Lesson plan.pdf" : null);
+        setExistingLessonPlan(d.has_lesson_plan ? (d.lesson_plan_filename ?? "Lesson plan.pdf") : null);
       } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
@@ -260,8 +264,8 @@ export function AssessmentEditor({
         ...(newLessonPlanBase64
           ? { lesson_plan_pdf: newLessonPlanBase64, lesson_plan_filename: newLessonPlanFile?.name }
           : removeLessonPlan
-          ? { remove_lesson_plan: true }
-          : {}),
+            ? { remove_lesson_plan: true }
+            : {}),
       };
     }
 
@@ -288,24 +292,24 @@ export function AssessmentEditor({
   // ── Render ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-6 text-xs text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-2 py-6 text-xs">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading assessment…
       </div>
     );
   }
   if (error && !form) {
-    return <p className="py-4 text-xs text-destructive">{error}</p>;
+    return <p className="text-destructive py-4 text-xs">{error}</p>;
   }
   if (!form) return null;
 
   const passed = isLeadership
     ? leadershipPassed(form.scores)
     : isRadio
-    ? radioPassed(form.criteria)
-    : moiPassed(form.scores);
+      ? radioPassed(form.criteria)
+      : moiPassed(form.scores);
 
   return (
-    <div className="space-y-4 rounded-lg border bg-card p-4">
+    <div className="bg-card space-y-4 rounded-lg border p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Edit assessment</p>
         <ResultBadge passed={passed} />
@@ -459,11 +463,19 @@ export function AssessmentEditor({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`sqn-${assessmentId}`}>Sqn/DF</Label>
-              <Input id={`sqn-${assessmentId}`} value={form.sqnDf} onChange={(e) => update("sqnDf", e.target.value)} />
+              <Input
+                id={`sqn-${assessmentId}`}
+                value={form.sqnDf}
+                onChange={(e) => update("sqnDf", e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`wing-${assessmentId}`}>Wing/CCF</Label>
-              <Input id={`wing-${assessmentId}`} value={form.wingCcf} onChange={(e) => update("wingCcf", e.target.value)} />
+              <Input
+                id={`wing-${assessmentId}`}
+                value={form.wingCcf}
+                onChange={(e) => update("wingCcf", e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor={`bader-${assessmentId}`}>Bader Reference</Label>
@@ -501,30 +513,30 @@ export function AssessmentEditor({
           </div>
 
           <div className="space-y-1.5 rounded-lg border p-3">
-            <Label className="text-xs text-muted-foreground">Lesson Plan</Label>
+            <Label className="text-muted-foreground text-xs">Lesson Plan</Label>
             {newLessonPlanFile ? (
-              <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <div className="bg-muted/40 flex items-center justify-between rounded-md border px-3 py-2 text-sm">
                 <span className="flex items-center gap-2 truncate">
-                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <Paperclip className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{newLessonPlanFile.name}</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => handleLessonPlanChange(null)}
-                  className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                  className="text-muted-foreground hover:bg-muted hover:text-destructive shrink-0 cursor-pointer rounded p-1"
                   title="Cancel replacement"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             ) : existingLessonPlan && !removeLessonPlan ? (
-              <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <div className="bg-muted/40 flex items-center justify-between rounded-md border px-3 py-2 text-sm">
                 <span className="flex items-center gap-2 truncate">
-                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <Paperclip className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{existingLessonPlan}</span>
                 </span>
                 <div className="flex shrink-0 items-center gap-2">
-                  <label className="cursor-pointer text-xs text-primary hover:underline">
+                  <label className="text-primary cursor-pointer text-xs hover:underline">
                     Replace
                     <input
                       type="file"
@@ -536,7 +548,7 @@ export function AssessmentEditor({
                   <button
                     type="button"
                     onClick={() => setRemoveLessonPlan(true)}
-                    className="cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                    className="text-muted-foreground hover:bg-muted hover:text-destructive cursor-pointer rounded p-1"
                     title="Remove lesson plan"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -551,12 +563,12 @@ export function AssessmentEditor({
                   onChange={(e) => handleLessonPlanChange(e.target.files?.[0] ?? null)}
                 />
                 {removeLessonPlan && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Lesson plan will be removed when saved.{" "}
                     <button
                       type="button"
                       onClick={() => setRemoveLessonPlan(false)}
-                      className="cursor-pointer text-primary hover:underline"
+                      className="text-primary cursor-pointer hover:underline"
                     >
                       Undo
                     </button>
@@ -564,7 +576,7 @@ export function AssessmentEditor({
                 )}
               </div>
             )}
-            {lessonPlanError && <p className="text-xs text-destructive">{lessonPlanError}</p>}
+            {lessonPlanError && <p className="text-destructive text-xs">{lessonPlanError}</p>}
           </div>
 
           {MOI_SECTIONS.map((section) => (
@@ -583,7 +595,7 @@ export function AssessmentEditor({
               </div>
               <div className="pt-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">Comments</Label>
+                  <Label className="text-muted-foreground text-xs">Comments</Label>
                   <span
                     className={cn(
                       "text-xs",
@@ -637,14 +649,14 @@ export function AssessmentEditor({
             </div>
           ))}
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Total possible score: {MOI_MAX_SCORE}. The assessor name and signatures from the original
             assessment are kept.
           </p>
         </div>
       )}
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-xs">{error}</p>}
 
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={handleSave} disabled={saving}>

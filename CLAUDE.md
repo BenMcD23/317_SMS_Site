@@ -34,7 +34,7 @@ block, stop and extract it instead.
 - **Client fetches** to internal API routes go through `apiFetch` (`lib/api-fetch.ts`)
   so 401s trigger re-auth and outages notify the status overlay.
 
-## Comments explain *why*, not *what*
+## Comments explain _why_, not _what_
 
 Every shared helper opens with a short doc comment saying what it is and why it
 exists ("Shared by every route so the token lookup lives in one place"). Inline

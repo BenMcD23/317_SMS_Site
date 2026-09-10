@@ -23,10 +23,7 @@ type StaffMember = {
   userId: number | null;
 };
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function formatMonth(key: string): string {
   const [year, month] = key.split("-");
@@ -61,7 +58,7 @@ export default function StaffDetailPage() {
   }
 
   if (error) return <ErrorAlert message={error} title="Could not load staff member" />;
-  if (!user) return <p className="text-sm text-muted-foreground">Staff member not found.</p>;
+  if (!user) return <p className="text-muted-foreground text-sm">Staff member not found.</p>;
 
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || `CIN ${user.cin}`;
   const description = [user.rank, user.email, user.phoneNumber, `CIN ${user.cin}`]
@@ -84,12 +81,12 @@ export default function StaffDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Home className="h-4 w-4 text-muted-foreground" />
+                <Home className="text-muted-foreground h-4 w-4" />
                 Address
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className={user.address ? "text-sm" : "text-sm italic text-muted-foreground"}>
+              <p className={user.address ? "text-sm" : "text-muted-foreground text-sm italic"}>
                 {user.address ?? "No address recorded."}
               </p>
             </CardContent>
@@ -100,18 +97,18 @@ export default function StaffDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                <CalendarRange className="text-muted-foreground h-4 w-4" />
                 Parade nights per month
               </CardTitle>
             </CardHeader>
             <CardContent>
               {htdMonths.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No attendance recorded.</p>
+                <p className="text-muted-foreground text-sm">No attendance recorded.</p>
               ) : (
                 <>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    Nights attended in the current HTD claim window — these are the figures
-                    the HTD form prefills.
+                  <p className="text-muted-foreground mb-3 text-xs">
+                    Nights attended in the current HTD claim window — these are the figures the HTD form
+                    prefills.
                   </p>
                   <div className="divide-y">
                     {htdMonths.map(([month, count]) => (
@@ -135,7 +132,7 @@ export default function StaffDetailPage() {
           {user.userId ? (
             <UniformIssuancesCard baseUrl={`/api/stores/issuances/user/${user.userId}`} />
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               No linked portal account, so no uniform issuances to show.
             </p>
           )}

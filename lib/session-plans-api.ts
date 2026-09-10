@@ -13,7 +13,7 @@ import type { SessionPlanContent, SessionPlanDetail } from "@/lib/session-plans"
 async function request<T>(
   token: string,
   path: string,
-  init: { method: string; body?: unknown } = { method: "POST" },
+  init: { method: string; body?: unknown } = { method: "POST" }
 ): Promise<T> {
   let res: Response;
   try {
@@ -37,13 +37,12 @@ async function request<T>(
 export function savePlan(
   token: string,
   content: SessionPlanContent,
-  id?: number,
+  id?: number
 ): Promise<SessionPlanDetail> {
-  return request<SessionPlanDetail>(
-    token,
-    id ? `/${id}` : "",
-    { method: id ? "PUT" : "POST", body: content },
-  );
+  return request<SessionPlanDetail>(token, id ? `/${id}` : "", {
+    method: id ? "PUT" : "POST",
+    body: content,
+  });
 }
 
 /** Send a plan to staff for approval — emails them. */
@@ -56,28 +55,20 @@ export function reviewPlan(
   token: string,
   id: number,
   decision: "approve" | "request-amendments",
-  body: { note: string; feedback: Record<string, string> },
+  body: { note: string; feedback: Record<string, string> }
 ): Promise<SessionPlanDetail> {
   return request<SessionPlanDetail>(token, `/${id}/${decision}`, { method: "POST", body });
 }
 
 /** Leave a note on a plan — anyone who can see it, staff or NCO. */
-export function addComment(
-  token: string,
-  id: number,
-  body: string,
-): Promise<SessionPlanDetail> {
+export function addComment(token: string, id: number, body: string): Promise<SessionPlanDetail> {
   return request<SessionPlanDetail>(token, `/${id}/comments`, {
     method: "POST",
     body: { body },
   });
 }
 
-export function deleteComment(
-  token: string,
-  id: number,
-  commentId: number,
-): Promise<SessionPlanDetail> {
+export function deleteComment(token: string, id: number, commentId: number): Promise<SessionPlanDetail> {
   return request<SessionPlanDetail>(token, `/${id}/comments/${commentId}`, {
     method: "DELETE",
   });
@@ -94,7 +85,7 @@ export function deletePlan(token: string, id: number): Promise<{ ok: boolean }> 
 export async function uploadAttachments(
   token: string,
   id: number,
-  files: File[],
+  files: File[]
 ): Promise<SessionPlanDetail> {
   const form = new FormData();
   files.forEach((f) => form.append("files", f));
@@ -116,7 +107,7 @@ export async function uploadAttachments(
 export function deleteAttachment(
   token: string,
   id: number,
-  attachmentId: number,
+  attachmentId: number
 ): Promise<SessionPlanDetail> {
   return request<SessionPlanDetail>(token, `/${id}/attachments/${attachmentId}`, {
     method: "DELETE",

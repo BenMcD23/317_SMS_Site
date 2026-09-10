@@ -65,9 +65,7 @@ If you need a success/positive color that doesn't exist as a semantic token, use
 **Incorrect:**
 
 ```tsx
-<Button className="border border-input bg-transparent hover:bg-accent">
-  Click me
-</Button>
+<Button className="border-input hover:bg-accent border bg-transparent">Click me</Button>
 ```
 
 **Correct:**
@@ -85,7 +83,7 @@ Use `className` for layout (e.g. `max-w-md`, `mx-auto`, `mt-4`), **not** for ove
 **Incorrect:**
 
 ```tsx
-<Card className="bg-blue-100 text-blue-900 font-bold">
+<Card className="bg-blue-100 font-bold text-blue-900">
   <CardContent>Dashboard</CardContent>
 </Card>
 ```
@@ -93,12 +91,13 @@ Use `className` for layout (e.g. `max-w-md`, `mx-auto`, `mt-4`), **not** for ove
 **Correct:**
 
 ```tsx
-<Card className="max-w-md mx-auto">
+<Card className="mx-auto max-w-md">
   <CardContent>Dashboard</CardContent>
 </Card>
 ```
 
 To customize a component's appearance, prefer these approaches in order:
+
 1. **Built-in variants** — `variant="outline"`, `variant="destructive"`, etc.
 2. **Semantic color tokens** — `bg-primary`, `text-muted-foreground`.
 3. **CSS variables** — define custom colors in the global CSS file (see [customization.md](../customization.md)).

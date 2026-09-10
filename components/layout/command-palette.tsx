@@ -20,7 +20,13 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 
-type CadetHit = { cin: number; first_name: string; last_name: string; rank: string | null; flight: string | null };
+type CadetHit = {
+  cin: number;
+  first_name: string;
+  last_name: string;
+  rank: string | null;
+  flight: string | null;
+};
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -36,7 +42,13 @@ function useDebounced<T>(value: T, ms: number): T {
  * that goes straight to the record. Pages are filtered client-side by cmdk;
  * cadets come from the API once the query is two characters long.
  */
-export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CommandPalette({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const router = useRouter();
   const { data: session } = useSession();
   const [query, setQuery] = useState("");
@@ -64,7 +76,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title="Jump to" description="Search pages and cadets">
+    <CommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Jump to"
+      description="Search pages and cadets"
+    >
       <CommandInput placeholder="Search pages or cadets…" value={query} onValueChange={setQuery} />
       <CommandList>
         <CommandEmpty>{isFetching ? "Searching…" : "Nothing found."}</CommandEmpty>
@@ -72,10 +89,18 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           <>
             <CommandGroup heading="Cadets">
               {cadets.map((c) => (
-                <CommandItem key={c.cin} value={`cadet ${c.first_name} ${c.last_name} ${c.cin}`} onSelect={() => go(`/cadets/${c.cin}`)}>
+                <CommandItem
+                  key={c.cin}
+                  value={`cadet ${c.first_name} ${c.last_name} ${c.cin}`}
+                  onSelect={() => go(`/cadets/${c.cin}`)}
+                >
                   <User />
-                  <span>{c.first_name} {c.last_name}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{[c.rank, c.flight && `${c.flight} Flt`].filter(Boolean).join(" · ")}</span>
+                  <span>
+                    {c.first_name} {c.last_name}
+                  </span>
+                  <span className="text-muted-foreground ml-auto text-xs">
+                    {[c.rank, c.flight && `${c.flight} Flt`].filter(Boolean).join(" · ")}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -91,7 +116,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             >
               <p.icon />
               <span>{p.label}</span>
-              {p.path.length > 0 && <span className="ml-auto text-xs text-muted-foreground">{p.path.join(" › ")}</span>}
+              {p.path.length > 0 && (
+                <span className="text-muted-foreground ml-auto text-xs">{p.path.join(" › ")}</span>
+              )}
             </CommandItem>
           ))}
         </CommandGroup>
@@ -120,13 +147,13 @@ export function CommandPaletteTrigger() {
       <Button
         variant="outline"
         size="sm"
-        className="h-8 gap-2 text-muted-foreground sm:w-56 sm:justify-start"
+        className="text-muted-foreground h-8 gap-2 sm:w-56 sm:justify-start"
         onClick={() => setOpen(true)}
         aria-label="Search pages and cadets"
       >
         <Search className="size-3.5" />
         <span className="hidden sm:inline">Search…</span>
-        <kbd className="pointer-events-none ml-auto hidden rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:inline-block">
+        <kbd className="bg-muted pointer-events-none ml-auto hidden rounded border px-1.5 font-mono text-[10px] font-medium sm:inline-block">
           ⌘K
         </kbd>
       </Button>

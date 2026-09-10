@@ -34,11 +34,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // through Google, which reads to the user as "logged out again".
     <SessionProvider refetchInterval={5 * 60}>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          disableTransitionOnChange
-        >
+        <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
           <ReferenceProvider>{children}</ReferenceProvider>
           <Toaster position="top-right" richColors />
           <ApiStatusOverlay />

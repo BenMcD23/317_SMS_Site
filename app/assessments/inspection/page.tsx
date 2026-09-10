@@ -12,15 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Command,
@@ -156,19 +149,17 @@ function RegionButton({
           disabled={disabled}
           className={cn(
             "group absolute left-0 w-full border border-transparent transition-colors",
-            disabled
-              ? "cursor-not-allowed"
-              : "cursor-pointer hover:border-primary/40 hover:bg-primary/5",
+            disabled ? "cursor-not-allowed" : "hover:border-primary/40 hover:bg-primary/5 cursor-pointer",
             open && "border-primary/60 bg-primary/10"
           )}
           style={{ top: `${region.top}%`, height: `${region.height}%` }}
         >
-          <span className="pointer-events-none absolute left-1 top-1 rounded bg-background/80 px-1 text-[10px] font-medium text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="bg-background/80 text-muted-foreground pointer-events-none absolute top-1 left-1 rounded px-1 text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100">
             {region.id}
           </span>
-          <span className="pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 gap-1">
+          <span className="pointer-events-none absolute top-1/2 right-1 flex -translate-y-1/2 gap-1">
             {faults > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold text-white">
+              <span className="bg-destructive flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold text-white">
                 {faults}
               </span>
             )}
@@ -193,10 +184,10 @@ function RegionButton({
             {regionComments.map((c) => (
               <li
                 key={c.id}
-                className="flex items-start gap-1.5 rounded border bg-muted/40 px-2 py-1 text-xs"
+                className="bg-muted/40 flex items-start gap-1.5 rounded border px-2 py-1 text-xs"
               >
                 {c.type === "fault" ? (
-                  <ThumbsDown className="mt-0.5 h-3 w-3 shrink-0 text-destructive" />
+                  <ThumbsDown className="text-destructive mt-0.5 h-3 w-3 shrink-0" />
                 ) : (
                   <ThumbsUp className="mt-0.5 h-3 w-3 shrink-0 text-green-600" />
                 )}
@@ -283,13 +274,10 @@ function CadetCard({
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-3">
         <label className="flex items-center gap-2 self-start text-sm">
-          <Checkbox
-            checked={absent}
-            onCheckedChange={(v) => update((m) => ({ ...m, absent: v === true }))}
-          />
+          <Checkbox checked={absent} onCheckedChange={(v) => update((m) => ({ ...m, absent: v === true }))} />
           Absent
           {hasAbsenceLog && (
-            <span className="text-xs text-muted-foreground" title={absenceReason ?? ""}>
+            <span className="text-muted-foreground text-xs" title={absenceReason ?? ""}>
               (logged)
             </span>
           )}
@@ -299,15 +287,10 @@ function CadetCard({
           onAdd={(region, type, text) =>
             update((m) => ({
               ...m,
-              comments: [
-                ...m.comments,
-                { id: crypto.randomUUID(), region, type, text },
-              ],
+              comments: [...m.comments, { id: crypto.randomUUID(), region, type, text }],
             }))
           }
-          onRemove={(id) =>
-            update((m) => ({ ...m, comments: m.comments.filter((c) => c.id !== id) }))
-          }
+          onRemove={(id) => update((m) => ({ ...m, comments: m.comments.filter((c) => c.id !== id) }))}
           disabled={absent}
         />
         <div className="flex w-full items-center justify-center gap-2">
@@ -324,7 +307,7 @@ function CadetCard({
             disabled={absent}
             className="w-16 text-center"
           />
-          <span className="text-sm text-muted-foreground">/ 10</span>
+          <span className="text-muted-foreground text-sm">/ 10</span>
         </div>
       </CardContent>
     </Card>
@@ -334,11 +317,7 @@ function CadetCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function InspectionPage() {
   const { data: session } = useSession();
-  const {
-    data: cadets = [],
-    isLoading,
-    error: cadetsError,
-  } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
+  const { data: cadets = [], isLoading, error: cadetsError } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
 
   const {
     state: sheet,
@@ -356,10 +335,7 @@ export default function InspectionPage() {
     ["absences", sheet.date],
     `/absences?date=${sheet.date}`
   );
-  const absenceByCin = useMemo(
-    () => new Map(absences.map((a) => [a.cin, a])),
-    [absences]
-  );
+  const absenceByCin = useMemo(() => new Map(absences.map((a) => [a.cin, a])), [absences]);
 
   const [submitting, setSubmitting] = useState(false);
   const [flightScores, setFlightScores] = useState<Record<string, FlightScore> | null>(null);
@@ -419,9 +395,7 @@ export default function InspectionPage() {
 
   const flightCadets = useMemo(
     () =>
-      cadets
-        .filter((c) => c.flight === activeFlight)
-        .sort((a, b) => a.last_name.localeCompare(b.last_name)),
+      cadets.filter((c) => c.flight === activeFlight).sort((a, b) => a.last_name.localeCompare(b.last_name)),
     [cadets, activeFlight]
   );
 
@@ -505,10 +479,7 @@ export default function InspectionPage() {
             />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  disabled={Object.keys(sheet.marks).length === 0}
-                >
+                <Button variant="outline" disabled={Object.keys(sheet.marks).length === 0}>
                   <Trash2 className="h-4 w-4" />
                   Clear draft
                 </Button>
@@ -517,16 +488,13 @@ export default function InspectionPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Clear this draft?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This removes every recorded cadet from the current, unsaved
-                    marking session. Inspections already completed are not
-                    affected. This cannot be undone.
+                    This removes every recorded cadet from the current, unsaved marking session. Inspections
+                    already completed are not affected. This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={clearAll}>
-                    Clear draft
-                  </AlertDialogAction>
+                  <AlertDialogAction onClick={clearAll}>Clear draft</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -538,9 +506,7 @@ export default function InspectionPage() {
         }
       />
 
-      {restored && (
-        <p className="text-xs text-muted-foreground">Restored your unsaved marking session.</p>
-      )}
+      {restored && <p className="text-muted-foreground text-xs">Restored your unsaved marking session.</p>}
 
       {flightScores && (
         <Card>
@@ -554,7 +520,7 @@ export default function InspectionPage() {
                 <div key={f} className="rounded-lg border p-3">
                   <div className="text-sm font-medium">{f} Flight</div>
                   <div className="text-2xl font-bold tabular-nums">{s.total}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-muted-foreground text-xs">
                     {s.present_count} marked
                     {s.awol_count > 0 && (
                       <span className="text-destructive">
@@ -589,11 +555,9 @@ export default function InspectionPage() {
         // Say why the roster is empty. A 403 here used to read as "no cadets in
         // this flight", which sent us looking at the flight data instead of the
         // permission that was actually blocking it.
-        <p className="text-sm text-destructive">
-          Couldn&apos;t load the cadet roster: {cadetsError.message}
-        </p>
+        <p className="text-destructive text-sm">Couldn&apos;t load the cadet roster: {cadetsError.message}</p>
       ) : flightCadets.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No cadets found for this flight.</p>
+        <p className="text-muted-foreground text-sm">No cadets found for this flight.</p>
       ) : (
         <div className="flex flex-col gap-4">
           {/* Cadet search */}
@@ -603,7 +567,7 @@ export default function InspectionPage() {
                 variant="outline"
                 role="combobox"
                 aria-expanded={searchOpen}
-                className="w-full justify-between text-muted-foreground sm:w-96"
+                className="text-muted-foreground w-full justify-between sm:w-96"
               >
                 <span className="flex items-center gap-2">
                   <Search className="h-4 w-4" />
@@ -629,12 +593,7 @@ export default function InspectionPage() {
                             setSearchOpen(false);
                           }}
                         >
-                          <Check
-                            className={cn(
-                              "h-4 w-4",
-                              marked ? "opacity-100" : "opacity-0"
-                            )}
-                          />
+                          <Check className={cn("h-4 w-4", marked ? "opacity-100" : "opacity-0")} />
                           <span className="flex-1">
                             {c.rank ? `${c.rank} ` : ""}
                             {c.first_name} {c.last_name}
@@ -656,7 +615,7 @@ export default function InspectionPage() {
           {/* Recorded cadets in this flight — most recent first */}
           {recordedCadets.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-muted-foreground text-xs font-medium">
                 Recorded ({recordedCadets.length})
               </span>
               <ul className="divide-y rounded-md border">
@@ -685,19 +644,23 @@ export default function InspectionPage() {
                         </span>
                         <span className="flex items-center gap-1.5">
                           {absent ? (
-                            <Badge variant="secondary" className="text-[10px]">Absent</Badge>
+                            <Badge variant="secondary" className="text-[10px]">
+                              Absent
+                            </Badge>
                           ) : (
                             <>
                               {faults > 0 && (
-                                <Badge variant="destructive" className="text-[10px]">{faults}</Badge>
+                                <Badge variant="destructive" className="text-[10px]">
+                                  {faults}
+                                </Badge>
                               )}
                               {positives > 0 && (
-                                <Badge className="bg-green-600 text-white hover:bg-green-600 text-[10px]">
+                                <Badge className="bg-green-600 text-[10px] text-white hover:bg-green-600">
                                   {positives}
                                 </Badge>
                               )}
                               {m.score !== "" && (
-                                <span className="tabular-nums text-xs text-muted-foreground">
+                                <span className="text-muted-foreground text-xs tabular-nums">
                                   {m.score}/10
                                 </span>
                               )}
@@ -740,9 +703,7 @@ export default function InspectionPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Search for a cadet above to start marking.
-            </p>
+            <p className="text-muted-foreground text-sm">Search for a cadet above to start marking.</p>
           )}
         </div>
       )}

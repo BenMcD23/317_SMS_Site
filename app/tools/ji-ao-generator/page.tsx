@@ -3,7 +3,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -192,9 +199,9 @@ export default function JiGenerator() {
             </Button>
           </div>
 
-          <p className="mt-3 text-sm text-muted-foreground">
-            The highlighted boxes are editable and appear exactly where they will in the document. Edits apply to this
-            download only — they are not saved back to the event.
+          <p className="text-muted-foreground mt-3 text-sm">
+            The highlighted boxes are editable and appear exactly where they will in the document. Edits apply
+            to this download only — they are not saved back to the event.
           </p>
 
           <TabsContent value="ji" className="mt-4">
@@ -206,7 +213,11 @@ export default function JiGenerator() {
 
           <div className="mt-6 flex justify-end">
             <Button size="lg" disabled={generating !== null} onClick={() => handleGenerate(tab)}>
-              {generating === tab ? <Spinner data-icon="inline-start" /> : <Download data-icon="inline-start" />}
+              {generating === tab ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <Download data-icon="inline-start" />
+              )}
               Generate {DOC_LABEL[tab]}
             </Button>
           </div>

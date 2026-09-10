@@ -5,19 +5,11 @@
 // and the staff review panel hangs a feedback box off each section. Adding a
 // field means touching this file, not three pages.
 
-export type SessionPlanStatus =
-  | "draft"
-  | "submitted"
-  | "amendments_requested"
-  | "approved";
+export type SessionPlanStatus = "draft" | "submitted" | "amendments_requested" | "approved";
 
 /** Keys of the five-part section plan — must match SESSION_PLAN_SECTIONS in the API. */
 export type SessionPlanSectionKey =
-  | "situation"
-  | "mission"
-  | "execution"
-  | "any_questions"
-  | "check_understanding";
+  "situation" | "mission" | "execution" | "any_questions" | "check_understanding";
 
 export interface TimetableRow {
   timing: string;
@@ -196,10 +188,7 @@ export const STATUS_LABELS: Record<SessionPlanStatus, string> = {
   approved: "Approved",
 };
 
-export const STATUS_STYLE: Record<
-  SessionPlanStatus,
-  { variant: BadgeVariant; className?: string }
-> = {
+export const STATUS_STYLE: Record<SessionPlanStatus, { variant: BadgeVariant; className?: string }> = {
   draft: { variant: "outline", className: "text-muted-foreground" },
   submitted: {
     variant: "outline",

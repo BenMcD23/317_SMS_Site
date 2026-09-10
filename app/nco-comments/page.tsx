@@ -4,9 +4,7 @@ import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  ArrowLeft, ChevronRight, MessageSquare, MessageSquarePlus, Plus, Trash2, User,
-} from "lucide-react";
+import { ArrowLeft, ChevronRight, MessageSquare, MessageSquarePlus, Plus, Trash2, User } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
@@ -20,16 +18,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
-} from "@/components/ui/empty";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
-  addReply, createComment, deleteComment, deleteReply, groupByCadet, isAboutCadet,
-  todayISO, type NcoComment, type NcoCommentList,
+  addReply,
+  createComment,
+  deleteComment,
+  deleteReply,
+  groupByCadet,
+  isAboutCadet,
+  todayISO,
+  type NcoComment,
+  type NcoCommentList,
 } from "@/lib/nco-comments";
 
 type Tab = "cadets" | "by-cadet" | "general";
@@ -45,10 +46,7 @@ export default function NcoCommentsPage() {
   const [openCadet, setOpenCadet] = useState<string | null>(null);
   const [cadetFilter, setCadetFilter] = useState("");
 
-  const { data, isLoading, error } = useApiQuery<NcoCommentList>(
-    ["nco-comments"],
-    "/nco-comments",
-  );
+  const { data, isLoading, error } = useApiQuery<NcoCommentList>(["nco-comments"], "/nco-comments");
 
   const token = session?.id_token;
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["nco-comments"] });
@@ -66,19 +64,16 @@ export default function NcoCommentsPage() {
   const selectedGroup = cadetGroups.find((g) => g.key === openCadet) ?? null;
 
   const onDelete = (comment: NcoComment) =>
-    confirm(
-      `Delete "${comment.subject}"? Its replies go with it.`,
-      async () => {
-        if (!token) return;
-        try {
-          await deleteComment(token, comment.id);
-          toast.success("Comment deleted");
-          refresh();
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Couldn't delete that comment.");
-        }
-      },
-    );
+    confirm(`Delete "${comment.subject}"? Its replies go with it.`, async () => {
+      if (!token) return;
+      try {
+        await deleteComment(token, comment.id);
+        toast.success("Comment deleted");
+        refresh();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't delete that comment.");
+      }
+    });
 
   const newCommentButton = (
     <Button size="sm" onClick={() => setDialogOpen(true)}>
@@ -96,7 +91,10 @@ export default function NcoCommentsPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(v) => { setTab(v as Tab); setOpenCadet(null); }}
+        onValueChange={(v) => {
+          setTab(v as Tab);
+          setOpenCadet(null);
+        }}
       >
         <TabsList>
           <TabsTrigger value="cadets">Cadet Comments</TabsTrigger>
@@ -107,10 +105,12 @@ export default function NcoCommentsPage() {
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
         </div>
       ) : error ? (
-        <p className="text-sm text-destructive">Failed to load comments: {error.message}</p>
+        <p className="text-destructive text-sm">Failed to load comments: {error.message}</p>
       ) : tab === "by-cadet" ? (
         selectedGroup ? (
           <div className="flex flex-col gap-4">
@@ -120,7 +120,9 @@ export default function NcoCommentsPage() {
               </Button>
               <h2 className="text-base font-medium">{selectedGroup.name}</h2>
               {selectedGroup.flight && (
-                <Badge variant="outline" className="font-normal">{selectedGroup.flight} Flight</Badge>
+                <Badge variant="outline" className="font-normal">
+                  {selectedGroup.flight} Flight
+                </Badge>
               )}
             </div>
             <CommentList
@@ -142,7 +144,9 @@ export default function NcoCommentsPage() {
             {filteredGroups.length === 0 ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyMedia variant="icon"><User /></EmptyMedia>
+                  <EmptyMedia variant="icon">
+                    <User />
+                  </EmptyMedia>
                   <EmptyTitle>No cadets yet</EmptyTitle>
                   <EmptyDescription>
                     {cadetFilter
@@ -158,11 +162,11 @@ export default function NcoCommentsPage() {
                     key={group.key}
                     type="button"
                     onClick={() => setOpenCadet(group.key)}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/50"
+                    className="hover:bg-muted/50 flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{group.name}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-muted-foreground text-xs">
                         {group.comments.length} comment{group.comments.length === 1 ? "" : "s"}
                         {group.comments[0].comment_date && (
                           <> · latest {formatDate(group.comments[0].comment_date)}</>
@@ -171,9 +175,11 @@ export default function NcoCommentsPage() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {group.flight && (
-                        <Badge variant="outline" className="font-normal">{group.flight}</Badge>
+                        <Badge variant="outline" className="font-normal">
+                          {group.flight}
+                        </Badge>
                       )}
-                      <ChevronRight className="size-4 text-muted-foreground" />
+                      <ChevronRight className="text-muted-foreground size-4" />
                     </div>
                   </button>
                 ))}
@@ -228,7 +234,9 @@ function CommentList({
     return (
       <Empty>
         <EmptyHeader>
-          <EmptyMedia variant="icon"><MessageSquare /></EmptyMedia>
+          <EmptyMedia variant="icon">
+            <MessageSquare />
+          </EmptyMedia>
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>
             Drop a quick note here and any NCO or staff member can pick it up and reply.
@@ -309,10 +317,12 @@ function CommentCard({
                 {comment.cadet_cin === null && " (left)"}
               </Badge>
             ) : (
-              <Badge variant="outline" className="font-normal">General</Badge>
+              <Badge variant="outline" className="font-normal">
+                General
+              </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             {comment.comment_date ? formatDate(comment.comment_date) : "—"} · {comment.author_name}
             {comment.is_mine && " (you)"}
           </p>
@@ -321,7 +331,7 @@ function CommentCard({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+            className="text-muted-foreground hover:text-destructive size-7 shrink-0"
             disabled={busy}
             onClick={() => onDelete(comment)}
           >
@@ -338,7 +348,7 @@ function CommentCard({
             <div key={reply.id} className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm whitespace-pre-wrap">{reply.body}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-muted-foreground text-[11px]">
                   {reply.author_name}
                   {reply.created_at && <> · {formatTimestamp(reply.created_at)}</>}
                 </p>
@@ -347,7 +357,7 @@ function CommentCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-6 shrink-0 text-muted-foreground hover:text-destructive"
+                  className="text-muted-foreground hover:text-destructive size-6 shrink-0"
                   disabled={busy}
                   onClick={() => removeReply(reply.id)}
                 >
@@ -373,7 +383,10 @@ function CommentCard({
               variant="ghost"
               size="sm"
               disabled={busy}
-              onClick={() => { setReplying(false); setReplyText(""); }}
+              onClick={() => {
+                setReplying(false);
+                setReplyText("");
+              }}
             >
               Cancel
             </Button>
@@ -386,7 +399,7 @@ function CommentCard({
         <Button
           variant="ghost"
           size="sm"
-          className="mt-2 h-7 px-2 text-xs text-muted-foreground"
+          className="text-muted-foreground mt-2 h-7 px-2 text-xs"
           onClick={() => setReplying(true)}
         >
           <MessageSquarePlus className="size-3" /> Reply
@@ -417,8 +430,7 @@ function NewCommentDialog({
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const invalid =
-    !date || !subject.trim() || !body.trim() || (about === "cadet" && cadetCin === null);
+  const invalid = !date || !subject.trim() || !body.trim() || (about === "cadet" && cadetCin === null);
 
   const submit = async () => {
     if (!token || invalid) return;
@@ -450,12 +462,7 @@ function NewCommentDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="comment-date">Date</Label>
-            <Input
-              id="comment-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+            <Input id="comment-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
 
           <div className="space-y-2">
@@ -479,7 +486,10 @@ function NewCommentDialog({
                 if (!v) return;
                 setAbout(v as "general" | "cadet");
                 // Dropping back to general shouldn't quietly keep a cadet attached.
-                if (v === "general") { setCadetCin(null); setCadetName(""); }
+                if (v === "general") {
+                  setCadetCin(null);
+                  setCadetName("");
+                }
               }}
             >
               <ToggleGroupItem value="general">General</ToggleGroupItem>
@@ -494,7 +504,10 @@ function NewCommentDialog({
                 token={token ?? null}
                 selectedCin={cadetCin}
                 selectedName={cadetName}
-                onSelect={(cin, name) => { setCadetCin(cin); setCadetName(name); }}
+                onSelect={(cin, name) => {
+                  setCadetCin(cin);
+                  setCadetName(name);
+                }}
               />
             </div>
           )}
@@ -512,8 +525,12 @@ function NewCommentDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={submitting || invalid} onClick={submit}>Post Comment</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={submitting || invalid} onClick={submit}>
+            Post Comment
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

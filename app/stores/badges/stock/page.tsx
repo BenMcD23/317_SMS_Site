@@ -10,20 +10,8 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BadgeGrid, BadgeItem } from "@/lib/stores-types";
 import { BadgeGridView } from "../components/BadgeGridView";
 import { type BadgeCategory, buildBadgeName, parseBadgeName, useReference } from "@/lib/reference";
@@ -33,7 +21,6 @@ export default function BadgeStockPage() {
   const [grid, setGrid] = useState<BadgeGrid | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
 
   // Add badge dialog
   const [addBadgeOpen, setAddBadgeOpen] = useState(false);
@@ -78,7 +65,9 @@ export default function BadgeStockPage() {
   }
 
   // Load once on mount.
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function handleAddRow() {
     if (!grid) return;
@@ -148,7 +137,7 @@ export default function BadgeStockPage() {
   }
 
   function openAddBadge(cellId?: number) {
-    setAddItemCellId(cellId ?? (grid?.cells[0]?.id ?? null));
+    setAddItemCellId(cellId ?? grid?.cells[0]?.id ?? null);
     setSelectedCategory(null);
     setSelectedSubType(null);
     setSelectedLevel(null);
@@ -195,9 +184,7 @@ export default function BadgeStockPage() {
     }
   }
 
-  const editBadgeName = editCategory
-    ? buildBadgeName(editCategory, editSubType, editLevel)
-    : null;
+  const editBadgeName = editCategory ? buildBadgeName(editCategory, editSubType, editLevel) : null;
 
   function openEditBadge(item: BadgeItem, cellId: number) {
     const parsed = parseBadgeName(badgeCategories, item.name);
@@ -241,7 +228,10 @@ export default function BadgeStockPage() {
           ...prev,
           cells: newCells.map((c) =>
             c.id === updated.cellId
-              ? { ...c, items: [...c.items, { id: updated.id, name: updated.name, quantity: updated.quantity }] }
+              ? {
+                  ...c,
+                  items: [...c.items, { id: updated.id, name: updated.name, quantity: updated.quantity }],
+                }
               : c
           ),
         };
@@ -323,7 +313,7 @@ export default function BadgeStockPage() {
       {/* Search */}
       {!loading && (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Search badges…"
             className="pl-9"
@@ -347,11 +337,12 @@ export default function BadgeStockPage() {
       {/* Search results */}
       {!loading && isSearching && (
         <div>
-          <p className="mb-3 text-sm text-muted-foreground">
-            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{searchQuery.trim()}&rdquo;
+          <p className="text-muted-foreground mb-3 text-sm">
+            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;
+            {searchQuery.trim()}&rdquo;
           </p>
           {searchResults.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No badges match your search.</p>
+            <p className="text-muted-foreground py-6 text-center text-sm">No badges match your search.</p>
           ) : (
             <Card>
               <CardContent className="p-0">
@@ -360,9 +351,11 @@ export default function BadgeStockPage() {
                     <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">{cellLabel}</p>
+                        <p className="text-muted-foreground text-xs">{cellLabel}</p>
                       </div>
-                      <Badge variant="secondary" className="shrink-0 text-xs px-1.5">×{item.quantity}</Badge>
+                      <Badge variant="secondary" className="shrink-0 px-1.5 text-xs">
+                        ×{item.quantity}
+                      </Badge>
                     </li>
                   ))}
                 </ul>
@@ -408,11 +401,17 @@ export default function BadgeStockPage() {
       )}
 
       {/* Add Badge dialog */}
-      <Dialog open={addBadgeOpen} onOpenChange={(o) => { if (!o) closeAddBadge(); }}>
+      <Dialog
+        open={addBadgeOpen}
+        onOpenChange={(o) => {
+          if (!o) closeAddBadge();
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Add Badge</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add Badge</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
-
             {/* Section picker — only shown when >1 section exists */}
             {grid && grid.cells.length > 1 && (
               <div className="space-y-1.5">
@@ -452,7 +451,9 @@ export default function BadgeStockPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {badgeCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -461,19 +462,22 @@ export default function BadgeStockPage() {
             {/* Sub-type */}
             {selectedCategory && (selectedCategory.subTypes || selectedCategory.items) && (
               <div className="space-y-1.5">
-                <Label>
-                  {selectedCategory.subTypes ? "Sub-type" : "Badge"}
-                </Label>
+                <Label>{selectedCategory.subTypes ? "Sub-type" : "Badge"}</Label>
                 <Select
                   value={selectedSubType ?? ""}
-                  onValueChange={(v) => { setSelectedSubType(v); setSelectedLevel(null); }}
+                  onValueChange={(v) => {
+                    setSelectedSubType(v);
+                    setSelectedLevel(null);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select…" />
                   </SelectTrigger>
                   <SelectContent>
                     {(selectedCategory.subTypes ?? selectedCategory.items ?? []).map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -481,21 +485,18 @@ export default function BadgeStockPage() {
             )}
 
             {/* Level */}
-            {selectedCategory?.levels && (
-              !selectedCategory.subTypes || selectedSubType
-            ) && (
+            {selectedCategory?.levels && (!selectedCategory.subTypes || selectedSubType) && (
               <div className="space-y-1.5">
                 <Label>Level</Label>
-                <Select
-                  value={selectedLevel ?? ""}
-                  onValueChange={setSelectedLevel}
-                >
+                <Select value={selectedLevel ?? ""} onValueChange={setSelectedLevel}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select level…" />
                   </SelectTrigger>
                   <SelectContent>
                     {selectedCategory.levels.map((l) => (
-                      <SelectItem key={l} value={l}>{l}</SelectItem>
+                      <SelectItem key={l} value={l}>
+                        {l}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -516,19 +517,14 @@ export default function BadgeStockPage() {
             </div>
 
             {/* Preview */}
-            {badgeName && (
-              <p className="rounded-md bg-muted px-3 py-2 text-sm font-medium">
-                {badgeName}
-              </p>
-            )}
+            {badgeName && <p className="bg-muted rounded-md px-3 py-2 text-sm font-medium">{badgeName}</p>}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeAddBadge}>Cancel</Button>
-            <Button
-              onClick={handleAddItem}
-              disabled={!badgeName || addItemCellId === null}
-            >
+            <Button variant="outline" onClick={closeAddBadge}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddItem} disabled={!badgeName || addItemCellId === null}>
               Add Badge
             </Button>
           </DialogFooter>
@@ -536,11 +532,17 @@ export default function BadgeStockPage() {
       </Dialog>
 
       {/* Edit Badge dialog */}
-      <Dialog open={editBadgeOpen} onOpenChange={(o) => { if (!o) closeEditBadge(); }}>
+      <Dialog
+        open={editBadgeOpen}
+        onOpenChange={(o) => {
+          if (!o) closeEditBadge();
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Edit Badge</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit Badge</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
-
             {/* Section picker */}
             {grid && grid.cells.length > 1 && (
               <div className="space-y-1.5">
@@ -549,7 +551,9 @@ export default function BadgeStockPage() {
                   value={editCellId !== null ? String(editCellId) : ""}
                   onValueChange={(v) => setEditCellId(Number(v))}
                 >
-                  <SelectTrigger><SelectValue placeholder="Choose section…" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose section…" />
+                  </SelectTrigger>
                   <SelectContent>
                     {grid.cells.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
@@ -573,10 +577,14 @@ export default function BadgeStockPage() {
                   setEditLevel(null);
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="Select type…" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type…" />
+                </SelectTrigger>
                 <SelectContent>
                   {badgeCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -588,12 +596,19 @@ export default function BadgeStockPage() {
                 <Label>{editCategory.subTypes ? "Sub-type" : "Badge"}</Label>
                 <Select
                   value={editSubType ?? ""}
-                  onValueChange={(v) => { setEditSubType(v); setEditLevel(null); }}
+                  onValueChange={(v) => {
+                    setEditSubType(v);
+                    setEditLevel(null);
+                  }}
                 >
-                  <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(editCategory.subTypes ?? editCategory.items ?? []).map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -605,10 +620,14 @@ export default function BadgeStockPage() {
               <div className="space-y-1.5">
                 <Label>Level</Label>
                 <Select value={editLevel ?? ""} onValueChange={setEditLevel}>
-                  <SelectTrigger><SelectValue placeholder="Select level…" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select level…" />
+                  </SelectTrigger>
                   <SelectContent>
                     {editCategory.levels.map((l) => (
-                      <SelectItem key={l} value={l}>{l}</SelectItem>
+                      <SelectItem key={l} value={l}>
+                        {l}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -630,12 +649,14 @@ export default function BadgeStockPage() {
 
             {/* Preview */}
             {editBadgeName && (
-              <p className="rounded-md bg-muted px-3 py-2 text-sm font-medium">{editBadgeName}</p>
+              <p className="bg-muted rounded-md px-3 py-2 text-sm font-medium">{editBadgeName}</p>
             )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeEditBadge}>Cancel</Button>
+            <Button variant="outline" onClick={closeEditBadge}>
+              Cancel
+            </Button>
             <Button onClick={handleEditItem} disabled={!editBadgeName || editCellId === null}>
               Save
             </Button>
@@ -646,12 +667,18 @@ export default function BadgeStockPage() {
       {/* Add Row confirm */}
       <Dialog open={addRowOpen} onOpenChange={setAddRowOpen}>
         <DialogContent className="sm:max-w-xs">
-          <DialogHeader><DialogTitle>Add Row</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Add a new row to the grid? Current size: {grid?.config.numRows} row{(grid?.config.numRows ?? 1) !== 1 ? "s" : ""} × {grid?.config.numCols} col{(grid?.config.numCols ?? 1) !== 1 ? "s" : ""}.
+          <DialogHeader>
+            <DialogTitle>Add Row</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            Add a new row to the grid? Current size: {grid?.config.numRows} row
+            {(grid?.config.numRows ?? 1) !== 1 ? "s" : ""} × {grid?.config.numCols} col
+            {(grid?.config.numCols ?? 1) !== 1 ? "s" : ""}.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddRowOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAddRowOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleAddRow}>Add Row</Button>
           </DialogFooter>
         </DialogContent>
@@ -660,27 +687,51 @@ export default function BadgeStockPage() {
       {/* Add Col confirm */}
       <Dialog open={addColOpen} onOpenChange={setAddColOpen}>
         <DialogContent className="sm:max-w-xs">
-          <DialogHeader><DialogTitle>Add Column</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Add a new column to the grid? Current size: {grid?.config.numRows} row{(grid?.config.numRows ?? 1) !== 1 ? "s" : ""} × {grid?.config.numCols} col{(grid?.config.numCols ?? 1) !== 1 ? "s" : ""}.
+          <DialogHeader>
+            <DialogTitle>Add Column</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            Add a new column to the grid? Current size: {grid?.config.numRows} row
+            {(grid?.config.numRows ?? 1) !== 1 ? "s" : ""} × {grid?.config.numCols} col
+            {(grid?.config.numCols ?? 1) !== 1 ? "s" : ""}.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddColOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAddColOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleAddCol}>Add Column</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Row confirm */}
-      <Dialog open={deleteRowConfirm !== null} onOpenChange={(o) => { if (!o) setDeleteRowConfirm(null); }}>
+      <Dialog
+        open={deleteRowConfirm !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteRowConfirm(null);
+        }}
+      >
         <DialogContent className="sm:max-w-xs">
-          <DialogHeader><DialogTitle>Delete Row {(deleteRowConfirm ?? 0) + 1}?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            All badges in row {(deleteRowConfirm ?? 0) + 1} will be permanently removed. This cannot be undone.
+          <DialogHeader>
+            <DialogTitle>Delete Row {(deleteRowConfirm ?? 0) + 1}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            All badges in row {(deleteRowConfirm ?? 0) + 1} will be permanently removed. This cannot be
+            undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteRowConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { if (deleteRowConfirm !== null) { handleDeleteRow(deleteRowConfirm); setDeleteRowConfirm(null); } }}>
+            <Button variant="outline" onClick={() => setDeleteRowConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteRowConfirm !== null) {
+                  handleDeleteRow(deleteRowConfirm);
+                  setDeleteRowConfirm(null);
+                }
+              }}
+            >
               Delete Row
             </Button>
           </DialogFooter>
@@ -688,21 +739,38 @@ export default function BadgeStockPage() {
       </Dialog>
 
       {/* Delete Col confirm */}
-      <Dialog open={deleteColConfirm !== null} onOpenChange={(o) => { if (!o) setDeleteColConfirm(null); }}>
+      <Dialog
+        open={deleteColConfirm !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeleteColConfirm(null);
+        }}
+      >
         <DialogContent className="sm:max-w-xs">
-          <DialogHeader><DialogTitle>Delete Column {(deleteColConfirm ?? 0) + 1}?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            All badges in column {(deleteColConfirm ?? 0) + 1} will be permanently removed. This cannot be undone.
+          <DialogHeader>
+            <DialogTitle>Delete Column {(deleteColConfirm ?? 0) + 1}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            All badges in column {(deleteColConfirm ?? 0) + 1} will be permanently removed. This cannot be
+            undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteColConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { if (deleteColConfirm !== null) { handleDeleteCol(deleteColConfirm); setDeleteColConfirm(null); } }}>
+            <Button variant="outline" onClick={() => setDeleteColConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteColConfirm !== null) {
+                  handleDeleteCol(deleteColConfirm);
+                  setDeleteColConfirm(null);
+                }
+              }}
+            >
               Delete Column
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

@@ -10,16 +10,40 @@ export type ScoreMap = Record<number, number | null>;
 export const DEBRIEF_MAX = 540;
 
 export const LEADERSHIP_QUESTIONS = [
-  { id: 1, text: 'Did the team leader follow "SMEAC" as a briefing tool?', labels: { 1: "No", 3: "Almost", 5: "Yes" } },
+  {
+    id: 1,
+    text: 'Did the team leader follow "SMEAC" as a briefing tool?',
+    labels: { 1: "No", 3: "Almost", 5: "Yes" },
+  },
   { id: 2, text: "Were ALL the limitations mentioned?", labels: { 1: "No", 3: "Some", 5: "All" } },
-  { id: 3, text: "Was the time limitation mentioned then monitored?", labels: { 1: "No", 3: "Sometimes", 5: "Yes" } },
+  {
+    id: 3,
+    text: "Was the time limitation mentioned then monitored?",
+    labels: { 1: "No", 3: "Sometimes", 5: "Yes" },
+  },
   { id: 4, text: "Was there an initial plan?", labels: { 1: "No", 3: "Almost", 5: "Yes" } },
-  { id: 5, text: "Did the team leader re-evaluate when things went wrong?", labels: { 1: "No", 3: "Indecisive", 5: "Yes" } },
-  { id: 6, text: "Did the rest of the team know what was meant to be happening?", labels: { 1: "Never", 3: "Sometimes", 5: "Always" } },
+  {
+    id: 5,
+    text: "Did the team leader re-evaluate when things went wrong?",
+    labels: { 1: "No", 3: "Indecisive", 5: "Yes" },
+  },
+  {
+    id: 6,
+    text: "Did the rest of the team know what was meant to be happening?",
+    labels: { 1: "Never", 3: "Sometimes", 5: "Always" },
+  },
   { id: 7, text: "Were limitations monitored?", labels: { 1: "Never", 3: "Sometimes", 5: "Always" } },
   { id: 8, text: "Was the leader confident?", labels: { 1: "Never", 3: "Sometimes", 5: "Always" } },
-  { id: 9, text: "If you had just entered the room, would you be able to tell who was in charge?", labels: { 1: "Unlikely", 3: "Maybe", 5: "Always" } },
-  { id: 10, text: "Was praise/encouragement given when necessary?", labels: { 1: "No", 3: "Sometimes", 5: "Yes" } },
+  {
+    id: 9,
+    text: "If you had just entered the room, would you be able to tell who was in charge?",
+    labels: { 1: "Unlikely", 3: "Maybe", 5: "Always" },
+  },
+  {
+    id: 10,
+    text: "Was praise/encouragement given when necessary?",
+    labels: { 1: "No", 3: "Sometimes", 5: "Yes" },
+  },
 ] as const;
 
 export function leadershipPassed(scores: ScoreMap): boolean {
@@ -41,9 +65,20 @@ export const RADIO_CRITERIA = [
   { id: "tactical_3", label: "3) Tactical Message Fully Answered" },
   { id: "say_again_4", label: "4) I Say Again used" },
   { id: "say_again_5", label: "5) Say Again used" },
-  { id: "prowords", label: "Prowords OVER, OUT etc. used correctly. General quick responses, RSVP and confidence." },
-  { id: "verbal_understanding", label: "Verbally check understanding of CORRECT, CORRECTION, I SPELL, NOTHING HEARD, FIGURES, ROGER, WAIT OUT, SPEAK SLOWER." },
-  { id: "verbal_security", label: "Verbally check understanding of security – must not transmit names, ranks, locations, movement of arms and ammunition, personal or Sqn details, movements, current aircraft etc." },
+  {
+    id: "prowords",
+    label: "Prowords OVER, OUT etc. used correctly. General quick responses, RSVP and confidence.",
+  },
+  {
+    id: "verbal_understanding",
+    label:
+      "Verbally check understanding of CORRECT, CORRECTION, I SPELL, NOTHING HEARD, FIGURES, ROGER, WAIT OUT, SPEAK SLOWER.",
+  },
+  {
+    id: "verbal_security",
+    label:
+      "Verbally check understanding of security – must not transmit names, ranks, locations, movement of arms and ammunition, personal or Sqn details, movements, current aircraft etc.",
+  },
 ] as const;
 
 export function radioPassed(criteria: Record<string, boolean>): boolean {
@@ -104,7 +139,10 @@ export const MOI_SECTIONS = [
     title: "Evaluation of Lesson",
     commentLimit: 900,
     questions: [
-      { id: 12, text: "During the session, did the instructor actively adapt to any changes in the lesson plan?" },
+      {
+        id: 12,
+        text: "During the session, did the instructor actively adapt to any changes in the lesson plan?",
+      },
       { id: 13, text: "During debrief, was the instructor able to evaluate their lesson?" },
     ],
   },

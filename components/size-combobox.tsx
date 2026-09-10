@@ -56,7 +56,10 @@ export function SizeCombobox({
       <Input
         id={id}
         value={value}
-        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
         disabled={disabled}
@@ -67,12 +70,12 @@ export function SizeCombobox({
         }}
       />
       {open && filtered.length > 0 && !disabled && (
-        <div className="absolute z-50 mt-1 max-h-52 w-full min-w-[120px] overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+        <div className="bg-popover text-popover-foreground absolute z-50 mt-1 max-h-52 w-full min-w-[120px] overflow-auto rounded-md border shadow-md">
           {filtered.map((size) => (
             <button
               key={size}
               type="button"
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+              className="hover:bg-accent hover:text-accent-foreground w-full px-3 py-1.5 text-left text-sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleSelect(size)}
             >

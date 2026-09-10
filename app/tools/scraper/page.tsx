@@ -16,14 +16,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Loader2, Clock, CheckSquare, Square, X, CalendarClock, FileText, Paperclip, Plus } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  Loader2,
+  Clock,
+  CheckSquare,
+  Square,
+  X,
+  CalendarClock,
+  FileText,
+  Paperclip,
+  Plus,
+} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -68,10 +72,10 @@ const SCRAPER_TOOLS = [
 // [] — add their keys here if/when those pages move to useApiQuery.
 const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
   "cadet-quali": [["cadets"], ["stats"]], // cadet info + qualifications → list & dashboard
-  "cadet-event": [],                      // attendance + 317 event metadata (uncached)
-  "medical": [],                          // allergies/dietary on cadet detail (uncached)
-  "staff": [["staff", "users"]],          // staff roster → staff overview/detail
-  "absences": [["absences"]],             // booked absences → inspection sheet cross-outs
+  "cadet-event": [], // attendance + 317 event metadata (uncached)
+  medical: [], // allergies/dietary on cadet detail (uncached)
+  staff: [["staff", "users"]], // staff roster → staff overview/detail
+  absences: [["absences"]], // booked absences → inspection sheet cross-outs
 };
 
 type LogEntry = { text: string; time: string };
@@ -201,29 +205,29 @@ function ConsolePanel({
     status === "done"
       ? "border-success/40"
       : status === "error"
-      ? "border-destructive/40"
-      : status === "stopped"
-      ? "border-warning/40"
-      : "border-primary/30";
+        ? "border-destructive/40"
+        : status === "stopped"
+          ? "border-warning/40"
+          : "border-primary/30";
 
   const headerBg =
     status === "done"
       ? "bg-success/10"
       : status === "error"
-      ? "bg-destructive/10"
-      : status === "stopped"
-      ? "bg-warning/10"
-      : "bg-primary/10";
+        ? "bg-destructive/10"
+        : status === "stopped"
+          ? "bg-warning/10"
+          : "bg-primary/10";
 
   return (
     <div className={cn("flex flex-col overflow-hidden rounded-lg border", borderColor)}>
       <div className={cn("flex items-center gap-2 px-3 py-2 text-sm font-medium", headerBg)}>
         {(status === "running" || status === "stopping") && (
-          <Loader2 size={13} className="shrink-0 animate-spin text-primary" />
+          <Loader2 size={13} className="text-primary shrink-0 animate-spin" />
         )}
-        {status === "done" && <span className="shrink-0 text-success">✓</span>}
-        {status === "error" && <span className="shrink-0 text-destructive">✗</span>}
-        {status === "stopped" && <span className="shrink-0 text-warning">■</span>}
+        {status === "done" && <span className="text-success shrink-0">✓</span>}
+        {status === "error" && <span className="text-destructive shrink-0">✗</span>}
+        {status === "stopped" && <span className="text-warning shrink-0">■</span>}
         <span className="truncate">{label}</span>
         <Badge
           variant="outline"
@@ -232,27 +236,27 @@ function ConsolePanel({
             status === "done"
               ? "border-success/40 bg-success/10 text-success"
               : status === "error"
-              ? "border-destructive/40 bg-destructive/10 text-destructive"
-              : status === "stopped"
-              ? "border-warning/40 bg-warning/10 text-warning"
-              : "border-primary/40 bg-primary/10 text-primary"
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : status === "stopped"
+                  ? "border-warning/40 bg-warning/10 text-warning"
+                  : "border-primary/40 bg-primary/10 text-primary"
           )}
         >
           {status === "running"
             ? "Running"
             : status === "stopping"
-            ? "Stopping…"
-            : status === "done"
-            ? "Done"
-            : status === "stopped"
-            ? "Stopped"
-            : "Error"}
+              ? "Stopping…"
+              : status === "done"
+                ? "Done"
+                : status === "stopped"
+                  ? "Stopped"
+                  : "Error"}
         </Badge>
-        {(status === "running") && (
+        {status === "running" && (
           <button
             onClick={handleStop}
             title="Stop scraper"
-            className="ml-1 cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
+            className="text-muted-foreground hover:bg-destructive/20 hover:text-destructive ml-1 cursor-pointer rounded p-0.5 transition-colors"
           >
             <X size={13} />
           </button>
@@ -261,27 +265,25 @@ function ConsolePanel({
       <ScrollArea className="h-56 bg-black p-3 font-mono text-xs text-green-400">
         {logs.map((log, i) => (
           <div key={i} className="mb-1 leading-relaxed">
-            <span className="opacity-30 select-none mr-2">[{log.time}]</span>
+            <span className="mr-2 opacity-30 select-none">[{log.time}]</span>
             <span
               className={
                 log.text.startsWith("[ERROR]")
                   ? "text-red-400"
                   : log.text.startsWith("[SUCCESS]")
-                  ? "text-emerald-400"
-                  : log.text.startsWith("[WARN]") || log.text.startsWith("[STOPPED]")
-                  ? "text-yellow-400"
-                  : log.text.startsWith(">")
-                  ? "text-yellow-400"
-                  : ""
+                    ? "text-emerald-400"
+                    : log.text.startsWith("[WARN]") || log.text.startsWith("[STOPPED]")
+                      ? "text-yellow-400"
+                      : log.text.startsWith(">")
+                        ? "text-yellow-400"
+                        : ""
               }
             >
               {log.text}
             </span>
           </div>
         ))}
-        {logs.length === 0 && (
-          <span className="text-gray-600 animate-pulse">_ Connecting...</span>
-        )}
+        {logs.length === 0 && <span className="animate-pulse text-gray-600">_ Connecting...</span>}
         <div ref={logsEndRef} />
       </ScrollArea>
     </div>
@@ -382,7 +384,7 @@ function ScheduleCard({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs text-muted-foreground">Days</Label>
+            <Label className="text-muted-foreground text-xs">Days</Label>
             <ToggleGroup
               type="multiple"
               variant="outline"
@@ -401,7 +403,7 @@ function ScheduleCard({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`time-${tool.id}`} className="text-xs text-muted-foreground">
+            <Label htmlFor={`time-${tool.id}`} className="text-muted-foreground text-xs">
               Time
             </Label>
             <Input
@@ -420,7 +422,7 @@ function ScheduleCard({
         </div>
 
         {schedule.runs_as && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Runs with {schedule.runs_as}&apos;s Bader credentials
             {schedule.updated_by && ` · last saved by ${schedule.updated_by}`}
           </p>
@@ -465,10 +467,10 @@ function ScheduleTab({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+      <p className="text-muted-foreground flex items-start gap-2 text-sm">
         <CalendarClock className="mt-0.5 size-4 shrink-0" />
-        Schedules are squadron-wide — they run automatically whether or not anyone is logged in,
-        using the saved Bader credentials of whoever last saved each schedule.
+        Schedules are squadron-wide — they run automatically whether or not anyone is logged in, using the
+        saved Bader credentials of whoever last saved each schedule.
       </p>
       {SCRAPER_TOOLS.map((tool) => (
         <ScheduleCard
@@ -535,12 +537,18 @@ function AttachmentChecksTab({ token }: { token: string }) {
       return;
     }
     setDraft("");
-    persist([...quals, name].sort((a, b) => a.localeCompare(b)), quals);
+    persist(
+      [...quals, name].sort((a, b) => a.localeCompare(b)),
+      quals
+    );
   };
 
   const removeOne = (name: string) => {
     if (quals === null || saving) return;
-    persist(quals.filter((q) => q !== name), quals);
+    persist(
+      quals.filter((q) => q !== name),
+      quals
+    );
   };
 
   if (quals === null) {
@@ -563,17 +571,17 @@ function AttachmentChecksTab({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="flex items-start gap-2 text-sm text-muted-foreground">
+      <p className="text-muted-foreground flex items-start gap-2 text-sm">
         <Paperclip className="mt-0.5 size-4 shrink-0" />
-        When the Cadet Qualification Scraper runs, each qualification listed here is checked for a
-        proof attachment. Cadets missing one are flagged in the run log and on their qualification.
+        When the Cadet Qualification Scraper runs, each qualification listed here is checked for a proof
+        attachment. Cadets missing one are flagged in the run log and on their qualification.
       </p>
 
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6">
           <div className="flex items-end gap-2">
             <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="quali-name" className="text-xs text-muted-foreground">
+              <Label htmlFor="quali-name" className="text-muted-foreground text-xs">
                 Exact qualification name as it appears on Bader, e.g. Blue Leadership
               </Label>
               <Input
@@ -595,18 +603,18 @@ function AttachmentChecksTab({ token }: { token: string }) {
           </div>
 
           {quals.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
+            <p className="text-muted-foreground py-4 text-center text-sm">
               No qualifications are being checked for attachments yet.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {quals.map((q) => (
-                <Badge key={q} variant="secondary" className="gap-1.5 py-1 pl-3 pr-1.5 text-sm font-normal">
+                <Badge key={q} variant="secondary" className="gap-1.5 py-1 pr-1.5 pl-3 text-sm font-normal">
                   {q}
                   <button
                     onClick={() => removeOne(q)}
                     title={`Remove ${q}`}
-                    className="cursor-pointer rounded p-0.5 text-muted-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
+                    className="text-muted-foreground hover:bg-destructive/20 hover:text-destructive cursor-pointer rounded p-0.5 transition-colors"
                   >
                     <X size={13} />
                   </button>
@@ -667,16 +675,16 @@ function RunLogsDialog({
           </DialogDescription>
         </DialogHeader>
         {loading && (
-          <div className="space-y-2 rounded-md border bg-muted/30 p-4">
+          <div className="bg-muted/30 space-y-2 rounded-md border p-4">
             {[...Array(10)].map((_, i) => (
               <Skeleton key={i} className="h-3.5 w-full" style={{ width: `${65 + ((i * 13) % 30)}%` }} />
             ))}
           </div>
         )}
-        {error && <p className="py-4 text-sm text-destructive">{error}</p>}
+        {error && <p className="text-destructive py-4 text-sm">{error}</p>}
         {detail && (
-          <ScrollArea className="h-[60vh] rounded-md border bg-muted/30">
-            <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs leading-relaxed">
+          <ScrollArea className="bg-muted/30 h-[60vh] rounded-md border">
+            <pre className="p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap">
               {detail.logs?.trim() ? detail.logs : "No logs were captured for this run."}
             </pre>
           </ScrollArea>
@@ -736,9 +744,7 @@ export default function ScraperPage() {
     return () => clearInterval(interval);
   }, [phase, fetchRunningState]);
 
-  const externallyRunning = SCRAPER_TOOLS.filter(
-    (t) => runningState[t.id]?.running
-  );
+  const externallyRunning = SCRAPER_TOOLS.filter((t) => runningState[t.id]?.running);
 
   const allSelected = selected.size === SCRAPER_TOOLS.length;
 
@@ -811,18 +817,21 @@ export default function ScraperPage() {
     setPhase("running");
   };
 
-  const handleScraperDone = useCallback((id: string) => {
-    setDoneScrapers((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    // Drop client-side caches the scraper just refreshed so pages refetch the
-    // new data (the backend already invalidated its own cache on completion).
-    for (const queryKey of SCRAPER_CACHE_KEYS[id] ?? []) {
-      queryClient.invalidateQueries({ queryKey });
-    }
-  }, [queryClient]);
+  const handleScraperDone = useCallback(
+    (id: string) => {
+      setDoneScrapers((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      // Drop client-side caches the scraper just refreshed so pages refetch the
+      // new data (the backend already invalidated its own cache on completion).
+      for (const queryKey of SCRAPER_CACHE_KEYS[id] ?? []) {
+        queryClient.invalidateQueries({ queryKey });
+      }
+    },
+    [queryClient]
+  );
 
   const allDone = activeScrapers.length > 0 && doneScrapers.size === activeScrapers.length;
 
@@ -845,7 +854,10 @@ export default function ScraperPage() {
         }
         actions={
           phase === "running" ? (
-            <Badge variant={allDone ? "secondary" : "outline"} className={cn(!allDone && "border-primary/40 bg-primary/10 text-primary")}>
+            <Badge
+              variant={allDone ? "secondary" : "outline"}
+              className={cn(!allDone && "border-primary/40 bg-primary/10 text-primary")}
+            >
               {allDone ? "All done" : "Running"}
             </Badge>
           ) : undefined
@@ -860,176 +872,171 @@ export default function ScraperPage() {
         </TabsList>
 
         <TabsContent value="run" className="flex flex-col gap-6">
-
-      {/* Running scrapers banner (visible on select phase) */}
-      {phase === "select" && externallyRunning.length > 0 && (
-        <button
-          onClick={handleViewRunning}
-          className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-left text-sm transition-colors hover:bg-primary/15"
-        >
-          <Loader2 size={15} className="shrink-0 animate-spin text-primary" />
-          <div className="min-w-0 flex-1">
-            <span className="font-medium text-primary">
-              {externallyRunning.length === 1
-                ? externallyRunning[0].label
-                : `${externallyRunning.length} scrapers`}{" "}
-              running
-            </span>
-            {externallyRunning[0].id && runningState[externallyRunning[0].id]?.started_by && (
-              <span className="ml-2 text-muted-foreground">
-                — started by {runningState[externallyRunning[0].id].started_by}
-              </span>
-            )}
-          </div>
-          <span className="shrink-0 text-xs font-medium text-primary">View output →</span>
-        </button>
-      )}
-
-      {phase === "select" && (
-        <>
-          {/* Select all + Run button */}
-          <div className="flex items-center justify-between">
+          {/* Running scrapers banner (visible on select phase) */}
+          {phase === "select" && externallyRunning.length > 0 && (
             <button
-              onClick={toggleAll}
-              className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+              onClick={handleViewRunning}
+              className="border-primary/30 bg-primary/10 hover:bg-primary/15 flex w-full cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-colors"
             >
-              {allSelected ? (
-                <CheckSquare size={16} className="text-primary" />
-              ) : (
-                <Square size={16} />
-              )}
-              {allSelected ? "Deselect All" : "Select All"}
-            </button>
-            <Button
-              onClick={handleRunSelected}
-              disabled={selected.size === 0 || isStarting}
-              className="min-w-[140px]"
-            >
-              {isStarting ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 size={14} className="animate-spin" /> Starting...
+              <Loader2 size={15} className="text-primary shrink-0 animate-spin" />
+              <div className="min-w-0 flex-1">
+                <span className="text-primary font-medium">
+                  {externallyRunning.length === 1
+                    ? externallyRunning[0].label
+                    : `${externallyRunning.length} scrapers`}{" "}
+                  running
                 </span>
-              ) : (
-                `Run Selected${selected.size > 0 ? ` (${selected.size})` : ""}`
-              )}
-            </Button>
-          </div>
-
-          {/* Scraper selection grid */}
-          <div className="grid gap-3">
-            {SCRAPER_TOOLS.map((tool) => {
-              const isChecked = selected.has(tool.id);
-              const lastRun = lastRuns[tool.id];
-              const isRunning = runningState[tool.id]?.running;
-
-              return (
-                <div
-                  key={tool.id}
-                  onClick={() => !isRunning && toggleOne(tool.id)}
-                  className={cn(
-                    "flex flex-col gap-2 rounded-lg border p-4 transition-colors",
-                    isRunning
-                      ? "cursor-default border-primary/30 bg-primary/5"
-                      : isChecked
-                      ? "cursor-pointer border-primary/50 bg-primary/5"
-                      : "cursor-pointer bg-card hover:bg-muted/40"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {isRunning ? (
-                        <Loader2 size={16} className="shrink-0 animate-spin text-primary" />
-                      ) : (
-                        <Checkbox
-                          checked={isChecked}
-                          onCheckedChange={() => toggleOne(tool.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="shrink-0"
-                        />
-                      )}
-                      <h3 className="text-sm font-semibold">{tool.label}</h3>
-                      {isRunning && (
-                        <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
-                          Running
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Clock size={12} />
-                      <span>{lastRun ? formatLastRan(lastRun.ran_at) : "Never"}</span>
-                      {lastRun?.success === false && (
-                        <Badge variant="destructive" className="px-1.5 py-0">
-                          Failed
-                        </Badge>
-                      )}
-                      {lastRun?.id != null && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLogsFor({ id: lastRun.id!, label: tool.label });
-                          }}
-                          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
-                          title="View logs from the last run"
-                        >
-                          <FileText size={12} /> Logs
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <p className="pl-7 text-sm text-muted-foreground">{tool.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {phase === "running" && session?.id_token && (
-        <>
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handleBackToSelect}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              ← Back to selection
+                {externallyRunning[0].id && runningState[externallyRunning[0].id]?.started_by && (
+                  <span className="text-muted-foreground ml-2">
+                    — started by {runningState[externallyRunning[0].id].started_by}
+                  </span>
+                )}
+              </div>
+              <span className="text-primary shrink-0 text-xs font-medium">View output →</span>
             </button>
-          </div>
-
-          {/* Console panels grid */}
-          <div
-            className={`grid gap-4 ${
-              activeScrapers.length === 1
-                ? "grid-cols-1"
-                : activeScrapers.length === 2
-                ? "grid-cols-1 md:grid-cols-2"
-                : activeScrapers.length === 3
-                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-1 md:grid-cols-2"
-            }`}
-          >
-            {activeScrapers.map((id) => {
-              const tool = SCRAPER_TOOLS.find((t) => t.id === id)!;
-              return (
-                <ConsolePanel
-                  key={id}
-                  scraperId={id}
-                  label={tool.label}
-                  token={session.id_token!}
-                  onDone={handleScraperDone}
-                />
-              );
-            })}
-          </div>
-
-          {allDone && (
-            <div className="flex justify-center">
-              <Button onClick={handleBackToSelect} variant="outline">
-                Back to scraper selection
-              </Button>
-            </div>
           )}
-        </>
-      )}
+
+          {phase === "select" && (
+            <>
+              {/* Select all + Run button */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={toggleAll}
+                  className="text-muted-foreground hover:text-primary flex cursor-pointer items-center gap-2 text-sm transition-colors"
+                >
+                  {allSelected ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} />}
+                  {allSelected ? "Deselect All" : "Select All"}
+                </button>
+                <Button
+                  onClick={handleRunSelected}
+                  disabled={selected.size === 0 || isStarting}
+                  className="min-w-[140px]"
+                >
+                  {isStarting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 size={14} className="animate-spin" /> Starting...
+                    </span>
+                  ) : (
+                    `Run Selected${selected.size > 0 ? ` (${selected.size})` : ""}`
+                  )}
+                </Button>
+              </div>
+
+              {/* Scraper selection grid */}
+              <div className="grid gap-3">
+                {SCRAPER_TOOLS.map((tool) => {
+                  const isChecked = selected.has(tool.id);
+                  const lastRun = lastRuns[tool.id];
+                  const isRunning = runningState[tool.id]?.running;
+
+                  return (
+                    <div
+                      key={tool.id}
+                      onClick={() => !isRunning && toggleOne(tool.id)}
+                      className={cn(
+                        "flex flex-col gap-2 rounded-lg border p-4 transition-colors",
+                        isRunning
+                          ? "border-primary/30 bg-primary/5 cursor-default"
+                          : isChecked
+                            ? "border-primary/50 bg-primary/5 cursor-pointer"
+                            : "bg-card hover:bg-muted/40 cursor-pointer"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {isRunning ? (
+                            <Loader2 size={16} className="text-primary shrink-0 animate-spin" />
+                          ) : (
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => toggleOne(tool.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="shrink-0"
+                            />
+                          )}
+                          <h3 className="text-sm font-semibold">{tool.label}</h3>
+                          {isRunning && (
+                            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+                              Running
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                          <Clock size={12} />
+                          <span>{lastRun ? formatLastRan(lastRun.ran_at) : "Never"}</span>
+                          {lastRun?.success === false && (
+                            <Badge variant="destructive" className="px-1.5 py-0">
+                              Failed
+                            </Badge>
+                          )}
+                          {lastRun?.id != null && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLogsFor({ id: lastRun.id!, label: tool.label });
+                              }}
+                              className="text-muted-foreground hover:bg-muted hover:text-primary flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors"
+                              title="View logs from the last run"
+                            >
+                              <FileText size={12} /> Logs
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground pl-7 text-sm">{tool.description}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {phase === "running" && session?.id_token && (
+            <>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={handleBackToSelect}
+                  className="text-muted-foreground hover:text-primary text-sm transition-colors"
+                >
+                  ← Back to selection
+                </button>
+              </div>
+
+              {/* Console panels grid */}
+              <div
+                className={`grid gap-4 ${
+                  activeScrapers.length === 1
+                    ? "grid-cols-1"
+                    : activeScrapers.length === 2
+                      ? "grid-cols-1 md:grid-cols-2"
+                      : activeScrapers.length === 3
+                        ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                        : "grid-cols-1 md:grid-cols-2"
+                }`}
+              >
+                {activeScrapers.map((id) => {
+                  const tool = SCRAPER_TOOLS.find((t) => t.id === id)!;
+                  return (
+                    <ConsolePanel
+                      key={id}
+                      scraperId={id}
+                      label={tool.label}
+                      token={session.id_token!}
+                      onDone={handleScraperDone}
+                    />
+                  );
+                })}
+              </div>
+
+              {allDone && (
+                <div className="flex justify-center">
+                  <Button onClick={handleBackToSelect} variant="outline">
+                    Back to scraper selection
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="schedule">

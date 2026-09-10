@@ -42,12 +42,14 @@ export function SessionPlanForm({
   const setRow = (index: number, field: keyof TimetableRow, v: string) =>
     set(
       "timetable",
-      value.timetable.map((r, i) => (i === index ? { ...r, [field]: v } : r)),
+      value.timetable.map((r, i) => (i === index ? { ...r, [field]: v } : r))
     );
-  const addRow = () =>
-    set("timetable", [...value.timetable, { timing: "", event: "", location: "" }]);
+  const addRow = () => set("timetable", [...value.timetable, { timing: "", event: "", location: "" }]);
   const removeRow = (index: number) =>
-    set("timetable", value.timetable.filter((_, i) => i !== index));
+    set(
+      "timetable",
+      value.timetable.filter((_, i) => i !== index)
+    );
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,12 +60,9 @@ export function SessionPlanForm({
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2">
           {HEADER_FIELDS.map((field) => (
-            <div
-              key={field.key}
-              className={field.multiline ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}
-            >
+            <div key={field.key} className={field.multiline ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
               <Label htmlFor={field.key}>{field.label}</Label>
-              <p className="text-xs text-muted-foreground">{field.hint}</p>
+              <p className="text-muted-foreground text-xs">{field.hint}</p>
               {field.multiline ? (
                 <Textarea
                   id={field.key}
@@ -90,7 +89,7 @@ export function SessionPlanForm({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Section Plan</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Include timings where they help. Staff comment against each part when they review it.
           </p>
         </CardHeader>
@@ -100,7 +99,7 @@ export function SessionPlanForm({
             return (
               <div key={section.key} className="space-y-1.5">
                 <Label htmlFor={section.key}>{section.label}</Label>
-                <p className="text-xs text-muted-foreground">{section.hint}</p>
+                <p className="text-muted-foreground text-xs">{section.hint}</p>
                 {comment && (
                   <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
                     <MessageSquareWarning className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-500" />
@@ -124,18 +123,16 @@ export function SessionPlanForm({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Extras</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            A timetable and any other notes — both optional.
-          </p>
+          <p className="text-muted-foreground text-sm">A timetable and any other notes — both optional.</p>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
             <Label>Timetable</Label>
             {value.timetable.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No timings added.</p>
+              <p className="text-muted-foreground text-xs">No timings added.</p>
             ) : (
               <div className="flex flex-col gap-2">
-                <div className="hidden gap-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[7rem_1fr_10rem_2.25rem]">
+                <div className="text-muted-foreground hidden gap-2 text-xs sm:grid sm:grid-cols-[7rem_1fr_10rem_2.25rem]">
                   <span>Timing</span>
                   <span>Event</span>
                   <span>Location</span>
@@ -181,7 +178,7 @@ export function SessionPlanForm({
 
           <div className="space-y-1.5">
             <Label htmlFor="notes">Notes</Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Anything else staff should know — wet weather plan, safety points, what a map shows.
             </p>
             <Textarea

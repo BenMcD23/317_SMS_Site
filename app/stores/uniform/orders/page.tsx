@@ -2,7 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ChevronDown, ChevronUp, Plus, Trash2, X, StickyNote, ArrowUpDown, PackageCheck, PackageMinus, PackagePlus, CheckCircle2, RotateCcw, Bell, FileSpreadsheet, Download, Lock } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  X,
+  StickyNote,
+  ArrowUpDown,
+  PackageCheck,
+  PackageMinus,
+  PackagePlus,
+  CheckCircle2,
+  RotateCcw,
+  Bell,
+  FileSpreadsheet,
+  Download,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
@@ -12,21 +29,17 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON, LogsForm, isRemovedFromStock } from "@/lib/stores-types";
+  Order,
+  OrderItem,
+  QmNote,
+  StockItem,
+  SizingDetailsJSON,
+  LogsForm,
+  isRemovedFromStock,
+} from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
@@ -48,34 +61,49 @@ function emptyDraftItem(): DraftItem {
 
 // C Flight initial kitting: 1 of each standard item, gendered variants chosen on add.
 const KIT_ITEMS: Record<"male" | "female", string[]> = {
-  male:   ["Beret", "Brassard", "Jumper", "Wedgewood Male", "Working Blue Male", "Tie", "Belt", "Trousers"],
-  female: ["Beret", "Brassard", "Jumper", "Wedgewood Female", "Working Blue Female", "Tie", "Belt", "Slacks", "Skirts"],
+  male: ["Beret", "Brassard", "Jumper", "Wedgewood Male", "Working Blue Male", "Tie", "Belt", "Trousers"],
+  female: [
+    "Beret",
+    "Brassard",
+    "Jumper",
+    "Wedgewood Female",
+    "Working Blue Female",
+    "Tie",
+    "Belt",
+    "Slacks",
+    "Skirts",
+  ],
 };
 
 const FIT_LABELS: Record<string, string> = { bigger: "Bigger", smaller: "Smaller", same: "Same size" };
 
 function parseSizingDetails(str: string): SizingDetailsJSON | null {
   if (!str) return null;
-  try { return JSON.parse(str) as SizingDetailsJSON; } catch { return null; }
+  try {
+    return JSON.parse(str) as SizingDetailsJSON;
+  } catch {
+    return null;
+  }
 }
 
 function SizingDetailsDisplay({ raw }: { raw: string }) {
   const parsed = parseSizingDetails(raw);
-  if (!parsed) return <p className="text-xs text-foreground">{raw}</p>;
+  if (!parsed) return <p className="text-foreground text-xs">{raw}</p>;
 
   const rows: { label: string; value: string }[] = [];
   if (parsed.currentSizeUnknown) rows.push({ label: "Current size", value: "Unknown" });
-  else if (parsed.currentSize)   rows.push({ label: "Current size", value: parsed.currentSize });
-  if (parsed.biggerSmaller)      rows.push({ label: "Overall fit",  value: FIT_LABELS[parsed.biggerSmaller] ?? parsed.biggerSmaller });
-  if (parsed.chest)  rows.push({ label: "Chest",  value: parsed.chest });
+  else if (parsed.currentSize) rows.push({ label: "Current size", value: parsed.currentSize });
+  if (parsed.biggerSmaller)
+    rows.push({ label: "Overall fit", value: FIT_LABELS[parsed.biggerSmaller] ?? parsed.biggerSmaller });
+  if (parsed.chest) rows.push({ label: "Chest", value: parsed.chest });
   if (parsed.collar) rows.push({ label: "Collar", value: parsed.collar });
-  if (parsed.waist)  rows.push({ label: "Waist",  value: parsed.waist });
-  if (parsed.leg)    rows.push({ label: "Leg",    value: parsed.leg });
-  if (parsed.seat)   rows.push({ label: "Seat",   value: parsed.seat });
-  if (parsed.hips)   rows.push({ label: "Hips",   value: parsed.hips });
-  if (parsed.notes)  rows.push({ label: "Notes",  value: parsed.notes });
+  if (parsed.waist) rows.push({ label: "Waist", value: parsed.waist });
+  if (parsed.leg) rows.push({ label: "Leg", value: parsed.leg });
+  if (parsed.seat) rows.push({ label: "Seat", value: parsed.seat });
+  if (parsed.hips) rows.push({ label: "Hips", value: parsed.hips });
+  if (parsed.notes) rows.push({ label: "Notes", value: parsed.notes });
 
-  if (rows.length === 0) return <p className="text-xs text-muted-foreground italic">No sizing details</p>;
+  if (rows.length === 0) return <p className="text-muted-foreground text-xs italic">No sizing details</p>;
 
   return (
     <div className="space-y-0.5">
@@ -164,7 +192,9 @@ export default function OrdersPage() {
   // Confirm dialog
   const { confirm: openConfirm, confirmDialog } = useConfirm();
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    fetchAll();
+  }, []);
 
   async function fetchAll() {
     setLoading(true);
@@ -204,7 +234,12 @@ export default function OrdersPage() {
 
   // The backend adjusts the stock count and appends to the item's stock history
   // together, so the count and the history can't disagree.
-  async function doStockAction(order: Order, item: OrderItem, action: "remove" | "return", stockItem?: StockItem) {
+  async function doStockAction(
+    order: Order,
+    item: OrderItem,
+    action: "remove" | "return",
+    stockItem?: StockItem
+  ) {
     setRemovingStock(item.id);
     try {
       const res = await fetch(`/api/stores/orders/${order.id}/items/${item.id}/stock`, {
@@ -230,16 +265,14 @@ export default function OrdersPage() {
   }
 
   function handleRemoveFromStock(order: Order, item: OrderItem, stockItem: StockItem) {
-    openConfirm(
-      `Remove one ${stockItem.itemType} (${stockItem.size}) from stock?`,
-      () => doStockAction(order, item, "remove", stockItem)
+    openConfirm(`Remove one ${stockItem.itemType} (${stockItem.size}) from stock?`, () =>
+      doStockAction(order, item, "remove", stockItem)
     );
   }
 
   function handleReturnToStock(order: Order, item: OrderItem) {
-    openConfirm(
-      `Put one ${item.itemType}${item.size ? ` (${item.size})` : ""} back into stock?`,
-      () => doStockAction(order, item, "return")
+    openConfirm(`Put one ${item.itemType}${item.size ? ` (${item.size})` : ""} back into stock?`, () =>
+      doStockAction(order, item, "return")
     );
   }
 
@@ -248,43 +281,40 @@ export default function OrdersPage() {
       const res = await fetch(`/api/stores/orders/${orderId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete order");
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
-      setExpandedIds((prev) => { const n = new Set(prev); n.delete(orderId); return n; });
+      setExpandedIds((prev) => {
+        const n = new Set(prev);
+        n.delete(orderId);
+        return n;
+      });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
   }
 
   function handleDeleteOrder(orderId: string, cadetName: string) {
-    openConfirm(
-      `Delete the entire order for ${cadetName}? This cannot be undone.`,
-      () => doDeleteOrder(orderId)
+    openConfirm(`Delete the entire order for ${cadetName}? This cannot be undone.`, () =>
+      doDeleteOrder(orderId)
     );
   }
 
   function handleDeleteOrderItem(orderId: string, itemId: string, itemType: string) {
-    openConfirm(
-      `Remove ${itemType} from this order?`,
-      () => {
-        const order = orders.find((o) => o.id === orderId);
-        if (!order) return;
-        patchOrder(orderId, { items: order.items.filter((i) => i.id !== itemId) });
-      }
-    );
+    openConfirm(`Remove ${itemType} from this order?`, () => {
+      const order = orders.find((o) => o.id === orderId);
+      if (!order) return;
+      patchOrder(orderId, { items: order.items.filter((i) => i.id !== itemId) });
+    });
   }
 
   function handleDeleteQmNote(orderId: string, item: OrderItem, noteId: string) {
-    openConfirm(
-      "Delete this QM note? This cannot be undone.",
-      () => {
-        const order = orders.find((o) => o.id === orderId);
-        if (!order) return;
-        patchOrder(orderId, {
-          items: order.items.map((i) =>
-            i.id === item.id ? { ...i, qmNotes: (i.qmNotes ?? []).filter((n) => n.id !== noteId) } : i
-          ),
-        });
-      }
-    );
+    openConfirm("Delete this QM note? This cannot be undone.", () => {
+      const order = orders.find((o) => o.id === orderId);
+      if (!order) return;
+      patchOrder(orderId, {
+        items: order.items.map((i) =>
+          i.id === item.id ? { ...i, qmNotes: (i.qmNotes ?? []).filter((n) => n.id !== noteId) } : i
+        ),
+      });
+    });
   }
 
   function openEditSize(orderId: string, item: OrderItem) {
@@ -304,7 +334,12 @@ export default function OrdersPage() {
     await patchOrder(editSizeOrderId, {
       items: order.items.map((i) =>
         i.id === editSizeItemId
-          ? { ...i, size: editNeedSizing ? "" : editSizeValue, needSizing: editNeedSizing, sizingDetails: editSizingDetails }
+          ? {
+              ...i,
+              size: editNeedSizing ? "" : editSizeValue,
+              needSizing: editNeedSizing,
+              sizingDetails: editSizingDetails,
+            }
           : i
       ),
     });
@@ -327,16 +362,14 @@ export default function OrdersPage() {
   }
 
   function handleCompleteOrder(orderId: string, cadetName: string) {
-    openConfirm(
-      `Mark the order for ${cadetName} as complete? It will move to Completed Orders.`,
-      () => patchOrder(orderId, { completed: true })
+    openConfirm(`Mark the order for ${cadetName} as complete? It will move to Completed Orders.`, () =>
+      patchOrder(orderId, { completed: true })
     );
   }
 
   function handleReopenOrder(orderId: string, cadetName: string) {
-    openConfirm(
-      `Reopen the order for ${cadetName}? It will return to Active Orders.`,
-      () => patchOrder(orderId, { completed: false })
+    openConfirm(`Reopen the order for ${cadetName}? It will return to Active Orders.`, () =>
+      patchOrder(orderId, { completed: false })
     );
   }
 
@@ -380,7 +413,10 @@ export default function OrdersPage() {
     setKitSubmitting(true);
     try {
       const items = KIT_ITEMS[kitGender].map((itemType) => ({
-        itemType, size: "", needSizing: false, sizingDetails: "",
+        itemType,
+        size: "",
+        needSizing: false,
+        sizingDetails: "",
       }));
       const res = await fetch("/api/stores/orders", {
         method: "POST",
@@ -429,7 +465,10 @@ export default function OrdersPage() {
       addedBy: currentUser,
     };
     const order = orders.find((o) => o.id === orderId);
-    if (!order) { setSavingNote(false); return; }
+    if (!order) {
+      setSavingNote(false);
+      return;
+    }
     await patchOrder(orderId, {
       items: order.items.map((i) =>
         i.id === item.id ? { ...i, qmNotes: [...(i.qmNotes ?? []), newNote] } : i
@@ -448,8 +487,14 @@ export default function OrdersPage() {
         ? `/api/stores/issuances/user/${(order as { userId?: number }).userId}`
         : `/api/stores/issuances/${order.cadetCin}`;
       const issuanceBody = isUserOrder
-        ? { givenBy: currentUser, items: [{ itemCategory: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }] }
-        : { givenBy: currentUser, items: [{ itemType: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }] };
+        ? {
+            givenBy: currentUser,
+            items: [{ itemCategory: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }],
+          }
+        : {
+            givenBy: currentUser,
+            items: [{ itemType: item.itemType, sizeGiven: item.size || null, orderItemId: item.id }],
+          };
       const res = await fetch(issuanceUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -572,7 +617,14 @@ export default function OrdersPage() {
     if (!addItemDraft.itemType) return;
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
-    const newItem: OrderItem = { id: "", qmNotes: [], givenAt: null, givenBy: null, readyToCollect: null, ...addItemDraft };
+    const newItem: OrderItem = {
+      id: "",
+      qmNotes: [],
+      givenAt: null,
+      givenBy: null,
+      readyToCollect: null,
+      ...addItemDraft,
+    };
     await patchOrder(orderId, { items: [...order.items, newItem] });
     setAddingToOrderId(null);
   }
@@ -582,13 +634,11 @@ export default function OrdersPage() {
   const kittingOrders = orders.filter((o) => !!o.kitting);
 
   const tabOrders =
-    activeTab === "active" ? activeOrders :
-    activeTab === "kitting" ? kittingOrders : completedOrders;
+    activeTab === "active" ? activeOrders : activeTab === "kitting" ? kittingOrders : completedOrders;
 
   const filteredOrders = tabOrders
-    .filter((o) =>
-      searchQuery.trim() === "" ||
-      o.cadetName.toLowerCase().includes(searchQuery.trim().toLowerCase())
+    .filter(
+      (o) => searchQuery.trim() === "" || o.cadetName.toLowerCase().includes(searchQuery.trim().toLowerCase())
     )
     .sort((a, b) => {
       const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
@@ -599,7 +649,9 @@ export default function OrdersPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <PageHeader
         title="Uniform Orders"
-        description={loading ? "Loading…" : `${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`}
+        description={
+          loading ? "Loading…" : `${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`
+        }
         actions={
           <Button onClick={openNewOrder} size="sm">
             <Plus data-icon="inline-start" />
@@ -610,36 +662,43 @@ export default function OrdersPage() {
 
       {/* Tab nav */}
       <div className="overflow-x-auto">
-        <div className="flex gap-1 border-b min-w-max">
+        <div className="flex min-w-max gap-1 border-b">
           {(["active", "completed", "kitting", "logsform"] as const).map((tab) => {
             const count =
-              tab === "active" ? activeOrders.length :
-              tab === "completed" ? completedOrders.length :
-              tab === "kitting" ? kittingOrders.length :
-              openLogsForm?.entries.length ?? 0;
+              tab === "active"
+                ? activeOrders.length
+                : tab === "completed"
+                  ? completedOrders.length
+                  : tab === "kitting"
+                    ? kittingOrders.length
+                    : (openLogsForm?.entries.length ?? 0);
             const label =
-              tab === "active" ? "Active" :
-              tab === "completed" ? "Completed" :
-              tab === "kitting" ? "C Flight Kitting" : "Logs Form";
+              tab === "active"
+                ? "Active"
+                : tab === "completed"
+                  ? "Completed"
+                  : tab === "kitting"
+                    ? "C Flight Kitting"
+                    : "Logs Form";
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap flex items-center gap-1.5 sm:px-4",
+                  "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors sm:px-4",
                   activeTab === tab
                     ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
                 )}
               >
                 {label}
                 {!loading && (
-                  <span className={cn(
-                    "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold min-w-[18px]",
-                    activeTab === tab
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}>
+                  <span
+                    className={cn(
+                      "inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                      activeTab === tab ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    )}
+                  >
                     {count}
                   </span>
                 )}
@@ -708,13 +767,13 @@ export default function OrdersPage() {
       )}
 
       {!loading && activeTab !== "logsform" && orders.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">
+        <p className="text-muted-foreground py-12 text-center text-sm">
           No orders yet. Create one with the button above.
         </p>
       )}
 
       {!loading && activeTab !== "logsform" && orders.length > 0 && filteredOrders.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">
+        <p className="text-muted-foreground py-12 text-center text-sm">
           {searchQuery.trim()
             ? "No orders match your search."
             : activeTab === "active"
@@ -727,7 +786,7 @@ export default function OrdersPage() {
 
       {/* Completed tab info */}
       {!loading && activeTab === "completed" && (
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-muted-foreground text-center text-xs">
           Completed orders are automatically removed after 6 months.
         </p>
       )}
@@ -754,7 +813,7 @@ export default function OrdersPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">{formatTimestamp(order.timestamp)}</p>
+                      <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {!isCompleted && needSizingCount > 0 && (
@@ -765,9 +824,13 @@ export default function OrdersPage() {
                       <Badge variant="secondary" className="text-xs">
                         {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                       </Badge>
-                      <Button size="icon" variant="ghost" className="h-8 w-8"
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
                         onClick={() => toggleExpand(order.id)}
-                        aria-label={expanded ? "Collapse" : "Expand"}>
+                        aria-label={expanded ? "Collapse" : "Expand"}
+                      >
                         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </Button>
                     </div>
@@ -775,7 +838,7 @@ export default function OrdersPage() {
                 </CardHeader>
 
                 {expanded && (
-                  <CardContent className="pt-4 space-y-3">
+                  <CardContent className="space-y-3 pt-4">
                     <ul className="space-y-2">
                       {order.items.map((orderItem) => {
                         const stockMatch = findStockMatch(orderItem.itemType, orderItem.size);
@@ -784,7 +847,7 @@ export default function OrdersPage() {
                         const isAddingNoteHere = addingNoteItemId === orderItem.id;
 
                         return (
-                          <li key={orderItem.id} className="rounded-md border bg-muted/30 p-3 space-y-2">
+                          <li key={orderItem.id} className="bg-muted/30 space-y-2 rounded-md border p-3">
                             {/* Item header row */}
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1 space-y-1.5">
@@ -796,14 +859,16 @@ export default function OrdersPage() {
                                       Needs Sizing
                                     </p>
                                     {orderItem.sizingDetails && (
-                                      <div className="rounded-md border bg-muted/40 px-2.5 py-1.5">
-                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Sizing Details</p>
+                                      <div className="bg-muted/40 rounded-md border px-2.5 py-1.5">
+                                        <p className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
+                                          Sizing Details
+                                        </p>
                                         <SizingDetailsDisplay raw={orderItem.sizingDetails} />
                                       </div>
                                     )}
                                   </div>
                                 ) : (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-muted-foreground text-xs">
                                     Size: {orderItem.size || "—"}
                                   </p>
                                 )}
@@ -812,46 +877,61 @@ export default function OrdersPage() {
                                   <div>
                                     {stockMatch ? (
                                       inStock ? (
-                                        <p className="text-xs font-medium text-success">
-                                          Box {stockMatch.box} Section {stockMatch.section} (qty: {stockMatch.quantity})
+                                        <p className="text-success text-xs font-medium">
+                                          Box {stockMatch.box} Section {stockMatch.section} (qty:{" "}
+                                          {stockMatch.quantity})
                                         </p>
                                       ) : (
-                                        <p className="text-xs font-medium text-destructive">Out of Stock</p>
+                                        <p className="text-destructive text-xs font-medium">Out of Stock</p>
                                       )
                                     ) : !orderItem.needSizing ? (
-                                      <p className="text-xs text-muted-foreground">Not in stock</p>
+                                      <p className="text-muted-foreground text-xs">Not in stock</p>
                                     ) : null}
                                   </div>
                                 )}
                               </div>
 
                               {!isCompleted && (
-                                <div className="flex shrink-0 flex-col gap-1.5 items-end w-36">
+                                <div className="flex w-36 shrink-0 flex-col items-end gap-1.5">
                                   {!noSizeItems.has(orderItem.itemType) && (
-                                    <Button size="sm" variant="outline" className="h-7 w-full text-xs"
-                                      onClick={() => openEditSize(order.id, orderItem)}>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 w-full text-xs"
+                                      onClick={() => openEditSize(order.id, orderItem)}
+                                    >
                                       {orderItem.needSizing ? "Enter Size" : "Edit Size"}
                                     </Button>
                                   )}
                                   {removedFromStock ? (
-                                    <Button size="sm" variant="outline"
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
                                       className="h-7 w-full text-xs disabled:opacity-40"
                                       disabled={removingStock === orderItem.id}
-                                      onClick={() => handleReturnToStock(order, orderItem)}>
-                                      <PackagePlus className="h-3 w-3 mr-1" />
+                                      onClick={() => handleReturnToStock(order, orderItem)}
+                                    >
+                                      <PackagePlus className="mr-1 h-3 w-3" />
                                       Add Back to Stock
                                     </Button>
                                   ) : (
-                                    <Button size="sm" variant="outline"
-                                      className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-7 w-full text-xs disabled:opacity-40"
                                       disabled={removingStock === orderItem.id || !stockMatch || !inStock}
-                                      onClick={() => stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)}>
-                                      <PackageMinus className="h-3 w-3 mr-1" />
+                                      onClick={() =>
+                                        stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
+                                      }
+                                    >
+                                      <PackageMinus className="mr-1 h-3 w-3" />
                                       Remove from Stock
                                     </Button>
                                   )}
                                   {orderItem.itemType !== "Brassard" && (
-                                    <Button size="sm" variant="outline"
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
                                       className="h-7 w-full text-xs disabled:opacity-40"
                                       disabled={
                                         addingToLogsFormId === orderItem.id ||
@@ -859,29 +939,52 @@ export default function OrdersPage() {
                                         orderItem.needSizing ||
                                         (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
                                       }
-                                      onClick={() => handleAddToLogsForm(orderItem)}>
-                                      <FileSpreadsheet className="h-3 w-3 mr-1" />
-                                      {onLogsFormItemIds.has(orderItem.id) ? "On Logs Form" : "Add to Logs Form"}
+                                      onClick={() => handleAddToLogsForm(orderItem)}
+                                    >
+                                      <FileSpreadsheet className="mr-1 h-3 w-3" />
+                                      {onLogsFormItemIds.has(orderItem.id)
+                                        ? "On Logs Form"
+                                        : "Add to Logs Form"}
                                     </Button>
                                   )}
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 w-full text-xs border-primary/40 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
-                                    disabled={markingAsReady === orderItem.id || !!orderItem.readyToCollect || !!orderItem.givenAt}
-                                    onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}>
-                                    <Bell className="h-3 w-3 mr-1" />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary h-7 w-full text-xs disabled:opacity-40"
+                                    disabled={
+                                      markingAsReady === orderItem.id ||
+                                      !!orderItem.readyToCollect ||
+                                      !!orderItem.givenAt
+                                    }
+                                    onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}
+                                  >
+                                    <Bell className="mr-1 h-3 w-3" />
                                     {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
                                   </Button>
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 w-full text-xs border-success/40 text-success hover:bg-success/10 hover:text-success disabled:opacity-40"
-                                    disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt || orderItem.needSizing || (!noSizeItems.has(orderItem.itemType) && !orderItem.size)}
-                                    onClick={() => handleMarkItemAsGiven(order, orderItem)}>
-                                    <PackageCheck className="h-3 w-3 mr-1" />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-success/40 text-success hover:bg-success/10 hover:text-success h-7 w-full text-xs disabled:opacity-40"
+                                    disabled={
+                                      markingAsGiven === orderItem.id ||
+                                      !!orderItem.givenAt ||
+                                      orderItem.needSizing ||
+                                      (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
+                                    }
+                                    onClick={() => handleMarkItemAsGiven(order, orderItem)}
+                                  >
+                                    <PackageCheck className="mr-1 h-3 w-3" />
                                     Mark as Given
                                   </Button>
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 w-full text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                                    onClick={() => handleDeleteOrderItem(order.id, orderItem.id, orderItem.itemType)}>
-                                    <Trash2 className="h-3 w-3 mr-1" />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-7 w-full text-xs"
+                                    onClick={() =>
+                                      handleDeleteOrderItem(order.id, orderItem.id, orderItem.itemType)
+                                    }
+                                  >
+                                    <Trash2 className="mr-1 h-3 w-3" />
                                     Delete
                                   </Button>
                                 </div>
@@ -890,9 +993,9 @@ export default function OrdersPage() {
 
                             {/* Ready to collect stamp */}
                             {orderItem.readyToCollect && !orderItem.givenAt && (
-                              <div className="flex items-center gap-1.5 rounded-md bg-primary/10 border border-primary/30 px-2.5 py-1.5">
-                                <Bell className="h-3 w-3 shrink-0 text-primary" />
-                                <p className="text-xs text-primary">
+                              <div className="bg-primary/10 border-primary/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                                <Bell className="text-primary h-3 w-3 shrink-0" />
+                                <p className="text-primary text-xs">
                                   Cadet notified {formatTimestamp(orderItem.readyToCollect)}
                                 </p>
                               </div>
@@ -900,9 +1003,9 @@ export default function OrdersPage() {
 
                             {/* Given stamp */}
                             {orderItem.givenAt && (
-                              <div className="flex items-center gap-1.5 rounded-md bg-success/10 border border-success/30 px-2.5 py-1.5">
-                                <PackageCheck className="h-3 w-3 shrink-0 text-success" />
-                                <p className="text-xs text-success">
+                              <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                                <PackageCheck className="text-success h-3 w-3 shrink-0" />
+                                <p className="text-success text-xs">
                                   Given {formatTimestamp(orderItem.givenAt)}
                                   {orderItem.givenBy && <> · {orderItem.givenBy}</>}
                                 </p>
@@ -917,17 +1020,23 @@ export default function OrdersPage() {
                               {(orderItem.qmNotes ?? []).length > 0 && (
                                 <div className="space-y-1">
                                   {(orderItem.qmNotes ?? []).map((note) => (
-                                    <div key={note.id} className="rounded bg-background border px-2.5 py-1.5 space-y-0.5">
+                                    <div
+                                      key={note.id}
+                                      className="bg-background space-y-0.5 rounded border px-2.5 py-1.5"
+                                    >
                                       <p className="text-xs whitespace-pre-wrap">{note.content}</p>
                                       <div className="flex items-center justify-between gap-2">
-                                        <p className="text-[10px] text-muted-foreground">
+                                        <p className="text-muted-foreground text-[10px]">
                                           {note.addedBy} · {formatTimestamp(note.timestamp)}
                                         </p>
                                         {!isCompleted && (
-                                          <Button size="icon" variant="ghost"
-                                            className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="text-muted-foreground hover:text-destructive h-5 w-5"
                                             onClick={() => handleDeleteQmNote(order.id, orderItem, note.id)}
-                                            aria-label="Delete note">
+                                            aria-label="Delete note"
+                                          >
                                             <Trash2 className="h-3 w-3" />
                                           </Button>
                                         )}
@@ -937,11 +1046,11 @@ export default function OrdersPage() {
                                 </div>
                               )}
 
-                              {!isCompleted && (
-                                isAddingNoteHere ? (
+                              {!isCompleted &&
+                                (isAddingNoteHere ? (
                                   <div className="space-y-1.5">
                                     <textarea
-                                      className="w-full rounded-md border bg-background px-3 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                                      className="bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-1.5 text-xs focus:ring-1 focus:outline-none"
                                       rows={3}
                                       placeholder="Type your note..."
                                       value={noteText}
@@ -949,25 +1058,41 @@ export default function OrdersPage() {
                                       autoFocus
                                     />
                                     <div className="flex gap-2">
-                                      <Button size="sm" className="h-7 px-3 text-xs"
+                                      <Button
+                                        size="sm"
+                                        className="h-7 px-3 text-xs"
                                         disabled={!noteText.trim() || savingNote}
-                                        onClick={() => handleAddQmNote(order.id, orderItem)}>
+                                        onClick={() => handleAddQmNote(order.id, orderItem)}
+                                      >
                                         {savingNote ? "Saving..." : "Save Note"}
                                       </Button>
-                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                                        onClick={() => { setAddingNoteItemId(null); setNoteText(""); }}>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 px-2 text-xs"
+                                        onClick={() => {
+                                          setAddingNoteItemId(null);
+                                          setNoteText("");
+                                        }}
+                                      >
                                         Cancel
                                       </Button>
                                     </div>
                                   </div>
                                 ) : (
-                                  <Button size="sm" variant="outline" className="h-7 px-2 text-xs w-full"
-                                    onClick={() => { setAddingNoteItemId(orderItem.id); setNoteText(""); }}>
-                                    <StickyNote className="h-3 w-3 mr-1.5" />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 w-full px-2 text-xs"
+                                    onClick={() => {
+                                      setAddingNoteItemId(orderItem.id);
+                                      setNoteText("");
+                                    }}
+                                  >
+                                    <StickyNote className="mr-1.5 h-3 w-3" />
                                     Add QM Note
                                   </Button>
-                                )
-                              )}
+                                ))}
                             </div>
                           </li>
                         );
@@ -975,17 +1100,25 @@ export default function OrdersPage() {
                     </ul>
 
                     {/* Add item to existing order (active only) */}
-                    {!isCompleted && (
-                      isAddingHere ? (
-                        <div className="rounded-md border border-dashed p-3 space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">Add item to order</p>
-                          <div className="flex gap-2 items-end flex-wrap">
-                            <div className="flex-1 min-w-36">
-                              <Select value={addItemDraft.itemType}
-                                onValueChange={(v) => setAddItemDraft((d) => ({ ...d, itemType: v }))}>
-                                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Item type" /></SelectTrigger>
+                    {!isCompleted &&
+                      (isAddingHere ? (
+                        <div className="space-y-2 rounded-md border border-dashed p-3">
+                          <p className="text-muted-foreground text-xs font-medium">Add item to order</p>
+                          <div className="flex flex-wrap items-end gap-2">
+                            <div className="min-w-36 flex-1">
+                              <Select
+                                value={addItemDraft.itemType}
+                                onValueChange={(v) => setAddItemDraft((d) => ({ ...d, itemType: v }))}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="Item type" />
+                                </SelectTrigger>
                                 <SelectContent>
-                                  {itemTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                  {itemTypes.map((t) => (
+                                    <SelectItem key={t} value={t}>
+                                      {t}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1002,59 +1135,94 @@ export default function OrdersPage() {
                             )}
                             {!noSizeItems.has(addItemDraft.itemType) && (
                               <div className="flex items-center gap-1.5">
-                                <Checkbox id={`ns-add-${order.id}`} checked={addItemDraft.needSizing}
-                                  onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c, size: !!c ? "" : d.size }))} />
-                                <Label htmlFor={`ns-add-${order.id}`} className="text-xs cursor-pointer whitespace-nowrap">
+                                <Checkbox
+                                  id={`ns-add-${order.id}`}
+                                  checked={addItemDraft.needSizing}
+                                  onCheckedChange={(c) =>
+                                    setAddItemDraft((d) => ({
+                                      ...d,
+                                      needSizing: !!c,
+                                      size: !!c ? "" : d.size,
+                                    }))
+                                  }
+                                />
+                                <Label
+                                  htmlFor={`ns-add-${order.id}`}
+                                  className="cursor-pointer text-xs whitespace-nowrap"
+                                >
                                   Need Sizing
                                 </Label>
                               </div>
                             )}
                           </div>
                           {!noSizeItems.has(addItemDraft.itemType) && addItemDraft.needSizing && (
-                            <Input className="h-8 text-sm" placeholder="Sizing details (optional)"
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="Sizing details (optional)"
                               value={addItemDraft.sizingDetails}
-                              onChange={(e) => setAddItemDraft((d) => ({ ...d, sizingDetails: e.target.value }))} />
+                              onChange={(e) =>
+                                setAddItemDraft((d) => ({ ...d, sizingDetails: e.target.value }))
+                              }
+                            />
                           )}
                           <div className="flex gap-2">
-                            <Button size="sm" className="h-7 px-3 text-xs"
+                            <Button
+                              size="sm"
+                              className="h-7 px-3 text-xs"
                               disabled={!addItemDraft.itemType}
-                              onClick={() => handleAddToOrder(order.id)}>
+                              onClick={() => handleAddToOrder(order.id)}
+                            >
                               Add
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                              onClick={() => setAddingToOrderId(null)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setAddingToOrderId(null)}
+                            >
                               Cancel
                             </Button>
                           </div>
                         </div>
                       ) : (
-                        <Button size="sm" variant="outline" className="w-full h-8 text-xs"
-                          onClick={() => startAddToOrder(order.id)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-full text-xs"
+                          onClick={() => startAddToOrder(order.id)}
+                        >
                           <Plus className="mr-1.5 h-3.5 w-3.5" />
                           Add Item to Order
                         </Button>
-                      )
-                    )}
+                      ))}
 
                     {/* Footer actions */}
                     <div className="flex justify-end gap-2 pt-1">
                       {isCompleted ? (
-                        <Button size="sm" variant="outline"
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
-                          onClick={() => handleReopenOrder(order.id, order.cadetName)}>
+                          onClick={() => handleReopenOrder(order.id, order.cadetName)}
+                        >
                           <RotateCcw className="mr-2 h-4 w-4" />
                           Reopen Order
                         </Button>
                       ) : (
                         <>
-                          <Button size="sm" variant="destructive"
-                            onClick={() => handleDeleteOrder(order.id, order.cadetName)}>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteOrder(order.id, order.cadetName)}
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Order
                           </Button>
-                          <Button size="sm"
+                          <Button
+                            size="sm"
                             className="bg-success hover:bg-success/90 text-white"
-                            onClick={() => handleCompleteOrder(order.id, order.cadetName)}>
+                            onClick={() => handleCompleteOrder(order.id, order.cadetName)}
+                          >
                             <CheckCircle2 className="mr-2 h-4 w-4" />
                             Complete Order
                           </Button>
@@ -1077,39 +1245,47 @@ export default function OrdersPage() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <p className="font-semibold">Current Logs Form</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     {openLogsForm
                       ? `Started ${formatTimestamp(openLogsForm.createdAt)}`
                       : "Nothing added yet"}
                   </p>
                 </div>
                 <Badge variant="secondary" className="text-xs">
-                  {openLogsForm?.entries.length ?? 0} item{(openLogsForm?.entries.length ?? 0) !== 1 ? "s" : ""}
+                  {openLogsForm?.entries.length ?? 0} item
+                  {(openLogsForm?.entries.length ?? 0) !== 1 ? "s" : ""}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3">
+            <CardContent className="space-y-3 pt-4">
               {!openLogsForm || openLogsForm.entries.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
+                <p className="text-muted-foreground py-4 text-center text-sm">
                   No items on the current logs form. Use &quot;Add to Logs Form&quot; on an order item.
                 </p>
               ) : (
                 <>
                   <ul className="space-y-1.5">
                     {openLogsForm.entries.map((entry) => (
-                      <li key={entry.id}
-                        className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+                      <li
+                        key={entry.id}
+                        className="bg-muted/30 flex items-center justify-between gap-2 rounded-md border px-3 py-2"
+                      >
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium">
                             {entry.itemType}
-                            {entry.size && <span className="text-muted-foreground font-normal"> · {entry.size}</span>}
+                            {entry.size && (
+                              <span className="text-muted-foreground font-normal"> · {entry.size}</span>
+                            )}
                           </p>
-                          <p className="text-xs text-muted-foreground">{entry.cadetName}</p>
+                          <p className="text-muted-foreground text-xs">{entry.cadetName}</p>
                         </div>
-                        <Button size="icon" variant="ghost"
-                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive h-6 w-6 shrink-0"
                           onClick={() => handleRemoveLogsFormEntry(entry.id)}
-                          aria-label="Remove from logs form">
+                          aria-label="Remove from logs form"
+                        >
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       </li>
@@ -1122,9 +1298,11 @@ export default function OrdersPage() {
                         Download Logs Form
                       </a>
                     </Button>
-                    <Button size="sm"
+                    <Button
+                      size="sm"
                       className="bg-success hover:bg-success/90 text-white"
-                      onClick={() => handleMarkLogsFormOrdered(openLogsForm.id)}>
+                      onClick={() => handleMarkLogsFormOrdered(openLogsForm.id)}
+                    >
                       <CheckCircle2 className="mr-2 h-4 w-4" />
                       Mark as Ordered
                     </Button>
@@ -1136,7 +1314,7 @@ export default function OrdersPage() {
 
           {pastLogsForms.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
                 Previous Orders
               </p>
               {pastLogsForms.map((form) => {
@@ -1149,11 +1327,11 @@ export default function OrdersPage() {
                           <div className="flex items-center gap-2">
                             <p className="font-semibold">Logs Form</p>
                             <Badge className="border-success/40 bg-success/15 text-success text-xs">
-                              <Lock className="h-3 w-3 mr-1" />
+                              <Lock className="mr-1 h-3 w-3" />
                               Ordered
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground text-xs">
                             Ordered {form.orderedAt ? formatTimestamp(form.orderedAt) : "—"}
                           </p>
                         </div>
@@ -1161,24 +1339,34 @@ export default function OrdersPage() {
                           <Badge variant="secondary" className="text-xs">
                             {form.entries.length} item{form.entries.length !== 1 ? "s" : ""}
                           </Badge>
-                          <Button size="icon" variant="ghost" className="h-8 w-8"
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
                             onClick={() => toggleFormExpand(form.id)}
-                            aria-label={expanded ? "Collapse" : "Expand"}>
-                            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            aria-label={expanded ? "Collapse" : "Expand"}
+                          >
+                            {expanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                       </div>
                     </CardHeader>
                     {expanded && (
-                      <CardContent className="pt-4 space-y-3">
+                      <CardContent className="space-y-3 pt-4">
                         <ul className="space-y-1.5">
                           {form.entries.map((entry) => (
-                            <li key={entry.id} className="rounded-md border bg-muted/30 px-3 py-2">
+                            <li key={entry.id} className="bg-muted/30 rounded-md border px-3 py-2">
                               <p className="text-sm font-medium">
                                 {entry.itemType}
-                                {entry.size && <span className="text-muted-foreground font-normal"> · {entry.size}</span>}
+                                {entry.size && (
+                                  <span className="text-muted-foreground font-normal"> · {entry.size}</span>
+                                )}
                               </p>
-                              <p className="text-xs text-muted-foreground">{entry.cadetName}</p>
+                              <p className="text-muted-foreground text-xs">{entry.cadetName}</p>
                             </li>
                           ))}
                         </ul>
@@ -1206,16 +1394,23 @@ export default function OrdersPage() {
           <DialogHeader>
             <DialogTitle>Necktie Length</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Which necktie should be demanded on the logs form?
-          </p>
+          <p className="text-muted-foreground text-sm">Which necktie should be demanded on the logs form?</p>
           <DialogFooter>
-            <Button variant="outline"
-              onClick={() => { if (tieItemId) doAddToLogsForm(tieItemId, "Short"); setTieItemId(null); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (tieItemId) doAddToLogsForm(tieItemId, "Short");
+                setTieItemId(null);
+              }}
+            >
               Short
             </Button>
             <Button
-              onClick={() => { if (tieItemId) doAddToLogsForm(tieItemId, "Standard"); setTieItemId(null); }}>
+              onClick={() => {
+                if (tieItemId) doAddToLogsForm(tieItemId, "Standard");
+                setTieItemId(null);
+              }}
+            >
               Standard
             </Button>
           </DialogFooter>
@@ -1225,7 +1420,9 @@ export default function OrdersPage() {
       {/* New Order Dialog */}
       <Dialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>New Order</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>New Order</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Cadet</Label>
@@ -1233,33 +1430,50 @@ export default function OrdersPage() {
                 token={token}
                 selectedCin={newCadetCin}
                 selectedName={newCadetName}
-                onSelect={(cin, name) => { setNewCadetCin(cin || null); setNewCadetName(name); }}
+                onSelect={(cin, name) => {
+                  setNewCadetCin(cin || null);
+                  setNewCadetName(name);
+                }}
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Items</Label>
-                <Button type="button" size="sm" variant="outline"
-                  onClick={() => setNewItems((prev) => [...prev, emptyDraftItem()])}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setNewItems((prev) => [...prev, emptyDraftItem()])}
+                >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Add Item
                 </Button>
               </div>
 
-              {newItems.length === 0 && (
-                <p className="text-sm text-muted-foreground">No items added yet.</p>
-              )}
+              {newItems.length === 0 && <p className="text-muted-foreground text-sm">No items added yet.</p>}
 
               {newItems.map((item, idx) => (
                 <div key={idx} className="space-y-1.5 rounded-md border p-2">
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
-                      <Select value={item.itemType}
-                        onValueChange={(v) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, itemType: v } : it))}>
-                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Item type" /></SelectTrigger>
+                      <Select
+                        value={item.itemType}
+                        onValueChange={(v) =>
+                          setNewItems((prev) =>
+                            prev.map((it, i) => (i === idx ? { ...it, itemType: v } : it))
+                          )
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Item type" />
+                        </SelectTrigger>
                         <SelectContent>
-                          {itemTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                          {itemTypes.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1270,26 +1484,52 @@ export default function OrdersPage() {
                           itemType={item.itemType}
                           value={item.size}
                           disabled={item.needSizing}
-                          onChange={(v) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, size: v } : it))}
+                          onChange={(v) =>
+                            setNewItems((prev) => prev.map((it, i) => (i === idx ? { ...it, size: v } : it)))
+                          }
                         />
                       </div>
                     )}
-                    <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-muted-foreground"
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-muted-foreground h-8 w-8 shrink-0"
                       onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
-                      aria-label="Remove item">
+                      aria-label="Remove item"
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                   {!noSizeItems.has(item.itemType) && (
                     <>
                       <div className="flex items-center gap-1.5 px-0.5">
-                        <Checkbox id={`ns-new-${idx}`} checked={item.needSizing}
-                          onCheckedChange={(c) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, needSizing: !!c, size: !!c ? "" : it.size } : it))} />
-                        <Label htmlFor={`ns-new-${idx}`} className="text-xs cursor-pointer">Need Sizing</Label>
+                        <Checkbox
+                          id={`ns-new-${idx}`}
+                          checked={item.needSizing}
+                          onCheckedChange={(c) =>
+                            setNewItems((prev) =>
+                              prev.map((it, i) =>
+                                i === idx ? { ...it, needSizing: !!c, size: !!c ? "" : it.size } : it
+                              )
+                            )
+                          }
+                        />
+                        <Label htmlFor={`ns-new-${idx}`} className="cursor-pointer text-xs">
+                          Need Sizing
+                        </Label>
                       </div>
                       {item.needSizing && (
-                        <Input className="h-8 text-sm" placeholder="Sizing details (optional)" value={item.sizingDetails}
-                          onChange={(e) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, sizingDetails: e.target.value } : it))} />
+                        <Input
+                          className="h-8 text-sm"
+                          placeholder="Sizing details (optional)"
+                          value={item.sizingDetails}
+                          onChange={(e) =>
+                            setNewItems((prev) =>
+                              prev.map((it, i) => (i === idx ? { ...it, sizingDetails: e.target.value } : it))
+                            )
+                          }
+                        />
                       )}
                     </>
                   )}
@@ -1299,9 +1539,13 @@ export default function OrdersPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setNewOrderOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateOrder}
-              disabled={submitting || !newCadetCin || newItems.filter((i) => i.itemType).length === 0}>
+            <Button variant="outline" onClick={() => setNewOrderOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateOrder}
+              disabled={submitting || !newCadetCin || newItems.filter((i) => i.itemType).length === 0}
+            >
               {submitting ? "Creating..." : "Create Order"}
             </Button>
           </DialogFooter>
@@ -1311,7 +1555,9 @@ export default function OrdersPage() {
       {/* C Flight Kitting — Add Cadet Dialog */}
       <Dialog open={kittingOpen} onOpenChange={setKittingOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>Add cadet to C Flight kitting</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Add cadet to C Flight kitting</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Cadet</Label>
@@ -1319,7 +1565,10 @@ export default function OrdersPage() {
                 token={token}
                 selectedCin={kitCadetCin}
                 selectedName={kitCadetName}
-                onSelect={(cin, name) => { setKitCadetCin(cin || null); setKitCadetName(name); }}
+                onSelect={(cin, name) => {
+                  setKitCadetCin(cin || null);
+                  setKitCadetName(name);
+                }}
               />
             </div>
 
@@ -1327,20 +1576,28 @@ export default function OrdersPage() {
               <Label>Kit</Label>
               <div className="flex gap-2">
                 {(["male", "female"] as const).map((g) => (
-                  <Button key={g} type="button" variant={kitGender === g ? "default" : "outline"}
-                    size="sm" className="flex-1 capitalize" onClick={() => setKitGender(g)}>
+                  <Button
+                    key={g}
+                    type="button"
+                    variant={kitGender === g ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1 capitalize"
+                    onClick={() => setKitGender(g)}
+                  >
                     {g}
                   </Button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Pre-fills 1 of each: {KIT_ITEMS[kitGender].join(", ")}. Sizes are set later via Edit Size.
               </p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setKittingOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setKittingOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleCreateKitting} disabled={kitSubmitting || !kitCadetCin}>
               {kitSubmitting ? "Adding..." : "Add cadet"}
             </Button>
@@ -1361,11 +1618,14 @@ export default function OrdersPage() {
               <span className="font-medium">{markGivenOrder?.cadetName}</span>.
             </p>
             <p className="text-muted-foreground">
-              This will update their uniform issuance record on their cadet profile. If an issuance record already exists for this item it will be overwritten. This cannot be undone.
+              This will update their uniform issuance record on their cadet profile. If an issuance record
+              already exists for this item it will be overwritten. This cannot be undone.
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMarkGivenOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setMarkGivenOpen(false)}>
+              Cancel
+            </Button>
             <Button
               className="bg-success hover:bg-success/90 text-white"
               onClick={confirmMarkAsGiven}
@@ -1397,7 +1657,9 @@ export default function OrdersPage() {
                   if (!c) setEditSizingDetails("");
                 }}
               />
-              <Label htmlFor="edit-needs-sizing" className="cursor-pointer">Needs Sizing</Label>
+              <Label htmlFor="edit-needs-sizing" className="cursor-pointer">
+                Needs Sizing
+              </Label>
             </div>
 
             {editNeedSizing ? (
@@ -1405,7 +1667,7 @@ export default function OrdersPage() {
                 <Label htmlFor="editSizingDetails">Sizing Details</Label>
                 <textarea
                   id="editSizingDetails"
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
                   rows={3}
                   placeholder="e.g. chest 96cm, height 175cm"
                   value={editSizingDetails}
@@ -1427,10 +1689,10 @@ export default function OrdersPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditSizeOpen(false)}>Cancel</Button>
-            <Button
-              onClick={handleSaveEditSize}
-              disabled={editNeedSizing ? false : !editSizeValue.trim()}>
+            <Button variant="outline" onClick={() => setEditSizeOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditSize} disabled={editNeedSizing ? false : !editSizeValue.trim()}>
               Save
             </Button>
           </DialogFooter>

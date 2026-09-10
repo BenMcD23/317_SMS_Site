@@ -22,10 +22,10 @@ export interface StockItem {
   id: string;
   itemType: string;
   size: string;
-  box: string;      // "A", "B", "C", etc.
-  section: string;  // "1", "2", "3", etc.
+  box: string; // "A", "B", "C", etc.
+  section: string; // "1", "2", "3", etc.
   quantity: number;
-  gender: string;   // "male" | "female" | "unisex"
+  gender: string; // "male" | "female" | "unisex"
 }
 
 export interface QmNote {

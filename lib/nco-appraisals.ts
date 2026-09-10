@@ -215,7 +215,7 @@ export function nextReviewDate(appraisalDate: string, months: number): Date | nu
 async function request<T>(
   token: string,
   path: string,
-  init: { method: string; body?: unknown } = { method: "POST" },
+  init: { method: string; body?: unknown } = { method: "POST" }
 ): Promise<T> {
   let res: Response;
   try {
@@ -241,9 +241,7 @@ function errorMessage(data: unknown): string | null {
   const detail = (data as { detail?: unknown } | null)?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
-    const messages = detail
-      .map((d) => (d as { msg?: string })?.msg)
-      .filter((m): m is string => !!m);
+    const messages = detail.map((d) => (d as { msg?: string })?.msg).filter((m): m is string => !!m);
     if (messages.length) return messages.join(", ");
   }
   return null;
@@ -253,9 +251,7 @@ export function createAppraisal(token: string, draft: AppraisalDraft): Promise<A
   return request<Appraisal>(token, "", { method: "POST", body: draft });
 }
 
-export function updateAppraisal(
-  token: string, id: number, draft: AppraisalDraft,
-): Promise<Appraisal> {
+export function updateAppraisal(token: string, id: number, draft: AppraisalDraft): Promise<Appraisal> {
   return request<Appraisal>(token, `/${id}`, { method: "PUT", body: draft });
 }
 
@@ -267,13 +263,14 @@ export function deleteAppraisal(token: string, id: number): Promise<{ ok: boolea
  *  back into the form for staff to correct before it reaches anyone. */
 export function draftWithAi(
   token: string,
-  body: { cadet_id: number; points: string; nco_name?: string; age?: string; attendance?: string },
+  body: { cadet_id: number; points: string; nco_name?: string; age?: string; attendance?: string }
 ): Promise<AiDraftResult> {
   return request<AiDraftResult>(token, "/ai", { method: "POST", body });
 }
 
 export function saveReminder(
-  token: string, body: { cadet_id: number; due_date: string; note: string },
+  token: string,
+  body: { cadet_id: number; due_date: string; note: string }
 ): Promise<Reminder> {
   return request<Reminder>(token, "/reminders", { method: "POST", body });
 }
@@ -283,7 +280,9 @@ export function deleteReminder(token: string, id: number): Promise<{ ok: boolean
 }
 
 export function emailAppraisal(
-  token: string, id: number, body: { to?: string; reply_to?: string },
+  token: string,
+  id: number,
+  body: { to?: string; reply_to?: string }
 ): Promise<Appraisal> {
   return request<Appraisal>(token, `/${id}/email`, { method: "POST", body });
 }
@@ -295,9 +294,7 @@ export function emailAppraisal(
  * with a plain link — the API needs the bearer token, which a navigation can't
  * carry.
  */
-export async function downloadAppraisal(
-  token: string, id: number, format: "docx" | "pdf",
-): Promise<void> {
+export async function downloadAppraisal(token: string, id: number, format: "docx" | "pdf"): Promise<void> {
   const res = await apiFetch(`${API_BASE}/nco-appraisals/${id}/document?fmt=${format}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -310,8 +307,8 @@ export async function downloadAppraisal(
   const link = document.createElement("a");
   link.href = url;
   link.download =
-    res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1]
-    ?? `NCO_Appraisal_${id}.${format}`;
+    res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] ??
+    `NCO_Appraisal_${id}.${format}`;
   link.click();
   URL.revokeObjectURL(url);
 }

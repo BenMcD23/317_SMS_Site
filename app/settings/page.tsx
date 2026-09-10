@@ -29,7 +29,10 @@ export default function SettingsPage() {
   const [showRolePass, setShowRolePass] = useState(false);
   const [showPersPass, setShowPersPass] = useState(false);
   const [creds, setCreds] = useState({
-    role_user: "", role_pass: "", pers_user: "", pers_pass: "",
+    role_user: "",
+    role_pass: "",
+    pers_user: "",
+    pers_pass: "",
   });
 
   // ── Signature ────────────────────────────────────────────────────────────────
@@ -63,7 +66,9 @@ export default function SettingsPage() {
 
   // ── Bank details (committee reimbursements) ────────────────────────────────────
   const [bank, setBank] = useState({
-    bank_account_name: "", bank_sort_code: "", bank_account_number: "",
+    bank_account_name: "",
+    bank_sort_code: "",
+    bank_account_number: "",
   });
   const [bankLoading, setBankLoading] = useState(false);
   const [bankDirty, setBankDirty] = useState(false);
@@ -75,10 +80,11 @@ export default function SettingsPage() {
     const signatureFetch = apiFetch(`${API_BASE}/get-signature`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
-      if (res.ok) res.blob().then((blob) => {
-        setSignaturePreview(URL.createObjectURL(blob));
-        setHasSavedSignature(true);
-      });
+      if (res.ok)
+        res.blob().then((blob) => {
+          setSignaturePreview(URL.createObjectURL(blob));
+          setHasSavedSignature(true);
+        });
     });
 
     const assessorNameFetch = apiFetch(`${API_BASE}/settings/assessor-name`, {
@@ -103,11 +109,14 @@ export default function SettingsPage() {
     const bankFetch = apiFetch(`${API_BASE}/settings/user-profile`, {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
-      if (res.ok) res.json().then((d) => setBank({
-        bank_account_name: d.bank_account_name ?? "",
-        bank_sort_code: d.bank_sort_code ?? "",
-        bank_account_number: d.bank_account_number ?? "",
-      }));
+      if (res.ok)
+        res.json().then((d) =>
+          setBank({
+            bank_account_name: d.bank_account_name ?? "",
+            bank_sort_code: d.bank_sort_code ?? "",
+            bank_account_number: d.bank_account_number ?? "",
+          })
+        );
     });
 
     Promise.allSettled([signatureFetch, assessorNameFetch, phoneFetch, bankFetch]).then(() => {
@@ -129,12 +138,33 @@ export default function SettingsPage() {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
-      if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+      if ("touches" in e)
+        return {
+          x: (e.touches[0].clientX - rect.left) * scaleX,
+          y: (e.touches[0].clientY - rect.top) * scaleY,
+        };
       return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
     };
-    const start = (e: MouseEvent | TouchEvent) => { drawingRef.current = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-    const move = (e: MouseEvent | TouchEvent) => { if (!drawingRef.current) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
-    const stop = () => { if (!drawingRef.current) return; drawingRef.current = false; setHasDrawn(true); setDrawnDataUrl(canvas.toDataURL()); };
+    const start = (e: MouseEvent | TouchEvent) => {
+      drawingRef.current = true;
+      const p = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      e.preventDefault();
+    };
+    const move = (e: MouseEvent | TouchEvent) => {
+      if (!drawingRef.current) return;
+      const p = getPos(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      e.preventDefault();
+    };
+    const stop = () => {
+      if (!drawingRef.current) return;
+      drawingRef.current = false;
+      setHasDrawn(true);
+      setDrawnDataUrl(canvas.toDataURL());
+    };
 
     canvas.addEventListener("mousedown", start);
     canvas.addEventListener("mousemove", move);
@@ -211,8 +241,11 @@ export default function SettingsPage() {
         const err = await res.json();
         toast.error(err.detail ?? "Failed to save signature.");
       }
-    } catch { toast.error("Server unreachable."); }
-    finally { setSigLoading(false); }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setSigLoading(false);
+    }
   };
 
   const handleSignatureDelete = async () => {
@@ -230,8 +263,11 @@ export default function SettingsPage() {
         if (fileInputRef.current) fileInputRef.current.value = "";
         toast.success("Signature removed.");
       }
-    } catch { toast.error("Server unreachable."); }
-    finally { setSigLoading(false); }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setSigLoading(false);
+    }
   };
 
   const handleAssessorNameSave = async () => {
@@ -252,8 +288,11 @@ export default function SettingsPage() {
       } else {
         toast.error("Failed to save assessor name.");
       }
-    } catch { toast.error("Server unreachable."); }
-    finally { setAssessorNameLoading(false); }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setAssessorNameLoading(false);
+    }
   };
 
   const handlePhoneSave = async () => {
@@ -278,8 +317,11 @@ export default function SettingsPage() {
       } else {
         toast.error(data.detail ?? "Failed to save phone number.");
       }
-    } catch { toast.error("Server unreachable."); }
-    finally { setPhoneLoading(false); }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setPhoneLoading(false);
+    }
   };
 
   const handleBankSave = async () => {
@@ -300,8 +342,11 @@ export default function SettingsPage() {
       } else {
         toast.error("Failed to save bank details.");
       }
-    } catch { toast.error("Server unreachable."); }
-    finally { setBankLoading(false); }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setBankLoading(false);
+    }
   };
 
   const handleCredsSave = async () => {
@@ -321,8 +366,11 @@ export default function SettingsPage() {
       });
       if (res.ok) toast.success("Credentials saved!");
       else toast.error("Failed to save credentials.");
-    } catch { toast.error("Server unreachable."); }
-    finally { setCredsLoading(false); }
+    } catch {
+      toast.error("Server unreachable.");
+    } finally {
+      setCredsLoading(false);
+    }
   };
 
   return (
@@ -343,7 +391,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  <Skeleton className="h-9 flex-1 max-w-sm" />
+                  <Skeleton className="h-9 max-w-sm flex-1" />
                   <Skeleton className="h-9 w-16" />
                 </div>
               </CardContent>
@@ -369,7 +417,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  <Skeleton className="h-9 flex-1 max-w-sm" />
+                  <Skeleton className="h-9 max-w-sm flex-1" />
                   <Skeleton className="h-9 w-16" />
                 </div>
               </CardContent>
@@ -415,370 +463,416 @@ export default function SettingsPage() {
         </>
       ) : (
         <>
-      {/* ── Assessor identity ─────────────────────────────────────────────────── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Assessor identity
-        </h2>
+          {/* ── Assessor identity ─────────────────────────────────────────────────── */}
+          <section className="flex flex-col gap-3">
+            <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              Assessor identity
+            </h2>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Display Name</CardTitle>
-            <CardDescription>
-              Appears as the assessor name on all generated assessment sheets.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Input
-                value={assessorName}
-                onChange={(e) => {
-                  setAssessorName(e.target.value);
-                  setAssessorNameDirty(true);
-                }}
-                placeholder="e.g. Sgt J. Bloggs"
-                className="flex-1 max-w-sm"
-              />
-              <Button
-                size="sm"
-                onClick={handleAssessorNameSave}
-                disabled={assessorNameLoading || !assessorName.trim() || !assessorNameDirty}
-              >
-                {assessorNameLoading ? "Saving…" : "Save"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Signature</CardTitle>
-            <CardDescription>
-              Embedded in assessment PDFs. Draw one below or upload an image.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Saved preview */}
-            {hasSavedSignature && signaturePreview && !hasDrawn && !signatureFile && (
-              <div className="relative w-fit overflow-hidden rounded-lg border bg-white p-4">
-                <Badge
-                  variant="outline"
-                  className="absolute right-2 top-2 gap-1 border-success/40 bg-success/10 text-success"
-                >
-                  <CheckCircle2 className="size-3" /> Saved
-                </Badge>
-                {/* eslint-disable-next-line @next/next/no-img-element -- data: URL preview, not an optimisable asset */}
-                <img src={signaturePreview} alt="Signature preview" className="max-h-20 object-contain" />
-              </div>
-            )}
-
-            {/* Mode toggle */}
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              size="sm"
-              value={signatureMode}
-              onValueChange={(v) => {
-                if (!v) return;
-                if (v === "draw") { setSignatureMode("draw"); setSignatureFile(null); }
-                else { setSignatureMode("upload"); clearDraw(); }
-              }}
-            >
-              <ToggleGroupItem value="draw">
-                <PenLine /> Draw
-              </ToggleGroupItem>
-              <ToggleGroupItem value="upload">
-                <Upload /> Upload
-              </ToggleGroupItem>
-            </ToggleGroup>
-
-            {/* Draw mode */}
-            {signatureMode === "draw" && (
-              <div className="space-y-1.5">
-                <div className="relative overflow-hidden rounded-md border bg-white">
-                  <canvas
-                    ref={canvasRef}
-                    width={560}
-                    height={120}
-                    className="w-full cursor-crosshair touch-none"
-                    style={{ height: "80px" }}
-                  />
-                  {!hasDrawn && (
-                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-                      Sign here
-                    </span>
-                  )}
-                </div>
-                {hasDrawn && (
-                  <button type="button" onClick={clearDraw} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
-                    <RotateCcw className="h-3 w-3" /> Clear
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Upload mode */}
-            {signatureMode === "upload" && (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-8 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted/30 hover:text-foreground"
-              >
-                <Upload className="h-6 w-6" />
-                <span className="font-medium">{signatureFile ? signatureFile.name : "Click to upload signature"}</span>
-                <span className="text-xs">PNG or JPEG · max 2 MB</span>
-              </div>
-            )}
-
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
-
-            {/* Actions */}
-            <div className="flex gap-2">
-              {(hasDrawn || signatureFile) && (
-                <Button size="sm" onClick={handleSignatureSave} disabled={sigLoading}>
-                  {sigLoading ? "Saving…" : "Save signature"}
-                </Button>
-              )}
-              {hasSavedSignature && (
-                <Button
-                  variant="ghost" size="sm"
-                  onClick={handleSignatureDelete} disabled={sigLoading}
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
-                >
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* ── Parade night texts ───────────────────────────────────────────────── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Parade night texts
-        </h2>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Your Mobile Number</CardTitle>
-            <CardDescription>
-              The number the parade night texts go to. Saving one puts you on the
-              recipients list; clearing it takes you off again.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {phoneLinked === false ? (
-              <p className="text-sm text-muted-foreground">
-                Your account isn&apos;t linked to a squadron record yet, so there&apos;s
-                nowhere to save a number. It links itself once your email shows up on
-                the next roster scrape.
-              </p>
-            ) : (
-              <>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Display Name</CardTitle>
+                <CardDescription>
+                  Appears as the assessor name on all generated assessment sheets.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="flex gap-2">
                   <Input
-                    id="phone_number"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={phone}
-                    onChange={(e) => { setPhone(e.target.value); setPhoneDirty(true); }}
-                    placeholder="07700 900000"
-                    className="flex-1 max-w-sm"
+                    value={assessorName}
+                    onChange={(e) => {
+                      setAssessorName(e.target.value);
+                      setAssessorNameDirty(true);
+                    }}
+                    placeholder="e.g. Sgt J. Bloggs"
+                    className="max-w-sm flex-1"
                   />
                   <Button
                     size="sm"
-                    onClick={handlePhoneSave}
-                    disabled={phoneLoading || !phoneDirty || !session}
+                    onClick={handleAssessorNameSave}
+                    disabled={assessorNameLoading || !assessorName.trim() || !assessorNameDirty}
                   >
-                    {phoneLoading ? "Saving…" : "Save"}
+                    {assessorNameLoading ? "Saving…" : "Save"}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {phoneKind === "cadet"
-                    ? "Saved against your cadet record — the same number the portal shows you."
-                    : "Saved against your staff record on the squadron roster."}
-                </p>
+              </CardContent>
+            </Card>
 
-                {savedPhone && inviteUrl && (
-                  <div className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-4">
-                    <p className="text-sm font-semibold">Join the WhatsApp community</p>
-                    <p className="text-xs text-muted-foreground">
-                      Open it on the phone your WhatsApp is on.
-                    </p>
-                    <Button asChild size="sm" variant="outline" className="w-fit">
-                      <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
-                        Open invite <ExternalLink className="size-3.5" />
-                      </a>
-                    </Button>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Signature</CardTitle>
+                <CardDescription>
+                  Embedded in assessment PDFs. Draw one below or upload an image.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Saved preview */}
+                {hasSavedSignature && signaturePreview && !hasDrawn && !signatureFile && (
+                  <div className="relative w-fit overflow-hidden rounded-lg border bg-white p-4">
+                    <Badge
+                      variant="outline"
+                      className="border-success/40 bg-success/10 text-success absolute top-2 right-2 gap-1"
+                    >
+                      <CheckCircle2 className="size-3" /> Saved
+                    </Badge>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- data: URL preview, not an optimisable asset */}
+                    <img src={signaturePreview} alt="Signature preview" className="max-h-20 object-contain" />
                   </div>
                 )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </section>
 
-      {/* ── Bader credentials — staff only ────────────────────────────────────── */}
-      {session?.role === "staff" && <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Bader credentials
-        </h2>
+                {/* Mode toggle */}
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  size="sm"
+                  value={signatureMode}
+                  onValueChange={(v) => {
+                    if (!v) return;
+                    if (v === "draw") {
+                      setSignatureMode("draw");
+                      setSignatureFile(null);
+                    } else {
+                      setSignatureMode("upload");
+                      clearDraw();
+                    }
+                  }}
+                >
+                  <ToggleGroupItem value="draw">
+                    <PenLine /> Draw
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="upload">
+                    <Upload /> Upload
+                  </ToggleGroupItem>
+                </ToggleGroup>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Login Settings</CardTitle>
-            <CardDescription>
-              Used by the SMS scraper to log in to Bader on your behalf.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Role account */}
-            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-              <p className="text-sm font-semibold">Role Account</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="role_user" className="text-xs">Username</Label>
-                  <Input
-                    id="role_user"
-                    value={creds.role_user}
-                    onChange={(e) => setCreds({ ...creds, role_user: e.target.value })}
-                    placeholder="e.g. 317_adj"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="role_pass" className="text-xs">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="role_pass"
-                      type={showRolePass ? "text" : "password"}
-                      value={creds.role_pass}
-                      onChange={(e) => setCreds({ ...creds, role_pass: e.target.value })}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRolePass((v) => !v)}
-                      className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showRolePass ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
+                {/* Draw mode */}
+                {signatureMode === "draw" && (
+                  <div className="space-y-1.5">
+                    <div className="relative overflow-hidden rounded-md border bg-white">
+                      <canvas
+                        ref={canvasRef}
+                        width={560}
+                        height={120}
+                        className="w-full cursor-crosshair touch-none"
+                        style={{ height: "80px" }}
+                      />
+                      {!hasDrawn && (
+                        <span className="text-muted-foreground pointer-events-none absolute inset-0 flex items-center justify-center text-xs">
+                          Sign here
+                        </span>
+                      )}
+                    </div>
+                    {hasDrawn && (
+                      <button
+                        type="button"
+                        onClick={clearDraw}
+                        className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-xs"
+                      >
+                        <RotateCcw className="h-3 w-3" /> Clear
+                      </button>
+                    )}
                   </div>
-                </div>
-              </div>
-            </div>
+                )}
 
-            {/* Personal account */}
-            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-              <p className="text-sm font-semibold">Personal Account</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="pers_user" className="text-xs">Username</Label>
-                  <Input
-                    id="pers_user"
-                    value={creds.pers_user}
-                    onChange={(e) => setCreds({ ...creds, pers_user: e.target.value })}
-                    placeholder="e.g. j.bloggs100"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="pers_pass" className="text-xs">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="pers_pass"
-                      type={showPersPass ? "text" : "password"}
-                      value={creds.pers_pass}
-                      onChange={(e) => setCreds({ ...creds, pers_pass: e.target.value })}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPersPass((v) => !v)}
-                      className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPersPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Button className="w-full" onClick={handleCredsSave} disabled={credsLoading || !session}>
-              {credsLoading ? "Saving…" : "Save Credentials"}
-            </Button>
-          </CardContent>
-        </Card>
-      </section>}
-
-      {/* ── Bank details — staff only ─────────────────────────────────────────── */}
-      {session?.role === "staff" && <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Bank details
-        </h2>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Reimbursement Account</CardTitle>
-            <CardDescription>
-              Auto-filled into the committee payment email when you send receipts
-              off for reimbursement. Stored encrypted and only ever shared with the
-              committee for a payment request.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="bank_account_name" className="text-xs">Account Name</Label>
-              <Input
-                id="bank_account_name"
-                value={bank.bank_account_name}
-                onChange={(e) => { setBank({ ...bank, bank_account_name: e.target.value }); setBankDirty(true); }}
-                placeholder="e.g. J Bloggs"
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="bank_sort_code" className="text-xs">Sort Code</Label>
-                <Input
-                  id="bank_sort_code"
-                  value={bank.bank_sort_code}
-                  onChange={(e) => { setBank({ ...bank, bank_sort_code: e.target.value }); setBankDirty(true); }}
-                  placeholder="12-34-56"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="bank_account_number" className="text-xs">Account Number</Label>
-                <div className="relative">
-                  <Input
-                    id="bank_account_number"
-                    type={showBankNumber ? "text" : "password"}
-                    value={bank.bank_account_number}
-                    onChange={(e) => { setBank({ ...bank, bank_account_number: e.target.value }); setBankDirty(true); }}
-                    placeholder="12345678"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowBankNumber((v) => !v)}
-                    className="absolute cursor-pointer right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                {/* Upload mode */}
+                {signatureMode === "upload" && (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-muted-foreground hover:border-primary/50 hover:bg-muted/30 hover:text-foreground flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-8 text-sm transition-colors"
                   >
-                    {showBankNumber ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+                    <Upload className="h-6 w-6" />
+                    <span className="font-medium">
+                      {signatureFile ? signatureFile.name : "Click to upload signature"}
+                    </span>
+                    <span className="text-xs">PNG or JPEG · max 2 MB</span>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  {(hasDrawn || signatureFile) && (
+                    <Button size="sm" onClick={handleSignatureSave} disabled={sigLoading}>
+                      {sigLoading ? "Saving…" : "Save signature"}
+                    </Button>
+                  )}
+                  {hasSavedSignature && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSignatureDelete}
+                      disabled={sigLoading}
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remove
+                    </Button>
+                  )}
                 </div>
-              </div>
-            </div>
-            <Button
-              className="w-full"
-              onClick={handleBankSave}
-              disabled={bankLoading || !bankDirty || !session}
-            >
-              {bankLoading ? "Saving…" : "Save Bank Details"}
-            </Button>
-          </CardContent>
-        </Card>
-      </section>}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ── Parade night texts ───────────────────────────────────────────────── */}
+          <section className="flex flex-col gap-3">
+            <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              Parade night texts
+            </h2>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Your Mobile Number</CardTitle>
+                <CardDescription>
+                  The number the parade night texts go to. Saving one puts you on the recipients list;
+                  clearing it takes you off again.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {phoneLinked === false ? (
+                  <p className="text-muted-foreground text-sm">
+                    Your account isn&apos;t linked to a squadron record yet, so there&apos;s nowhere to save a
+                    number. It links itself once your email shows up on the next roster scrape.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Input
+                        id="phone_number"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={phone}
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          setPhoneDirty(true);
+                        }}
+                        placeholder="07700 900000"
+                        className="max-w-sm flex-1"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handlePhoneSave}
+                        disabled={phoneLoading || !phoneDirty || !session}
+                      >
+                        {phoneLoading ? "Saving…" : "Save"}
+                      </Button>
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      {phoneKind === "cadet"
+                        ? "Saved against your cadet record — the same number the portal shows you."
+                        : "Saved against your staff record on the squadron roster."}
+                    </p>
+
+                    {savedPhone && inviteUrl && (
+                      <div className="bg-muted/20 flex flex-col gap-2 rounded-lg border p-4">
+                        <p className="text-sm font-semibold">Join the WhatsApp community</p>
+                        <p className="text-muted-foreground text-xs">
+                          Open it on the phone your WhatsApp is on.
+                        </p>
+                        <Button asChild size="sm" variant="outline" className="w-fit">
+                          <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+                            Open invite <ExternalLink className="size-3.5" />
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ── Bader credentials — staff only ────────────────────────────────────── */}
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+                Bader credentials
+              </h2>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Login Settings</CardTitle>
+                  <CardDescription>
+                    Used by the SMS scraper to log in to Bader on your behalf.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {/* Role account */}
+                  <div className="bg-muted/20 space-y-3 rounded-lg border p-4">
+                    <p className="text-sm font-semibold">Role Account</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="role_user" className="text-xs">
+                          Username
+                        </Label>
+                        <Input
+                          id="role_user"
+                          value={creds.role_user}
+                          onChange={(e) => setCreds({ ...creds, role_user: e.target.value })}
+                          placeholder="e.g. 317_adj"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="role_pass" className="text-xs">
+                          Password
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="role_pass"
+                            type={showRolePass ? "text" : "password"}
+                            value={creds.role_pass}
+                            onChange={(e) => setCreds({ ...creds, role_pass: e.target.value })}
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowRolePass((v) => !v)}
+                            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer"
+                          >
+                            {showRolePass ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Personal account */}
+                  <div className="bg-muted/20 space-y-3 rounded-lg border p-4">
+                    <p className="text-sm font-semibold">Personal Account</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="pers_user" className="text-xs">
+                          Username
+                        </Label>
+                        <Input
+                          id="pers_user"
+                          value={creds.pers_user}
+                          onChange={(e) => setCreds({ ...creds, pers_user: e.target.value })}
+                          placeholder="e.g. j.bloggs100"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="pers_pass" className="text-xs">
+                          Password
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="pers_pass"
+                            type={showPersPass ? "text" : "password"}
+                            value={creds.pers_pass}
+                            onChange={(e) => setCreds({ ...creds, pers_pass: e.target.value })}
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPersPass((v) => !v)}
+                            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer"
+                          >
+                            {showPersPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button className="w-full" onClick={handleCredsSave} disabled={credsLoading || !session}>
+                    {credsLoading ? "Saving…" : "Save Credentials"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {/* ── Bank details — staff only ─────────────────────────────────────────── */}
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+                Bank details
+              </h2>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Reimbursement Account</CardTitle>
+                  <CardDescription>
+                    Auto-filled into the committee payment email when you send receipts off for reimbursement.
+                    Stored encrypted and only ever shared with the committee for a payment request.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bank_account_name" className="text-xs">
+                      Account Name
+                    </Label>
+                    <Input
+                      id="bank_account_name"
+                      value={bank.bank_account_name}
+                      onChange={(e) => {
+                        setBank({ ...bank, bank_account_name: e.target.value });
+                        setBankDirty(true);
+                      }}
+                      placeholder="e.g. J Bloggs"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bank_sort_code" className="text-xs">
+                        Sort Code
+                      </Label>
+                      <Input
+                        id="bank_sort_code"
+                        value={bank.bank_sort_code}
+                        onChange={(e) => {
+                          setBank({ ...bank, bank_sort_code: e.target.value });
+                          setBankDirty(true);
+                        }}
+                        placeholder="12-34-56"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bank_account_number" className="text-xs">
+                        Account Number
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="bank_account_number"
+                          type={showBankNumber ? "text" : "password"}
+                          value={bank.bank_account_number}
+                          onChange={(e) => {
+                            setBank({ ...bank, bank_account_number: e.target.value });
+                            setBankDirty(true);
+                          }}
+                          placeholder="12345678"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowBankNumber((v) => !v)}
+                          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer"
+                        >
+                          {showBankNumber ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full"
+                    onClick={handleBankSave}
+                    disabled={bankLoading || !bankDirty || !session}
+                  >
+                    {bankLoading ? "Saving…" : "Save Bank Details"}
+                  </Button>
+                </CardContent>
+              </Card>
+            </section>
+          )}
         </>
       )}
-
     </div>
   );
 }

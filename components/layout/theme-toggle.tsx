@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/button";
 // The resolved theme is only known on the client, so render a placeholder of
 // the same size until hydration to avoid a mismatch.
 const subscribe = () => () => {};
-const useMounted = () => useSyncExternalStore(subscribe, () => true, () => false);
+const useMounted = () =>
+  useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false
+  );
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();

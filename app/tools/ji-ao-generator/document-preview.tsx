@@ -25,7 +25,7 @@ function Sheet({ size, children }: { size: string; children: React.ReactNode }) 
   return (
     // The sheet is a fixed 794px so it keeps document proportions — it scrolls
     // inside this wrapper rather than making the whole page scroll sideways.
-    <div className="overflow-x-auto rounded-lg border bg-muted/40 p-3 sm:p-6">
+    <div className="bg-muted/40 overflow-x-auto rounded-lg border p-3 sm:p-6">
       <div
         className="mx-auto w-[794px] bg-white px-[72px] py-[64px] text-black shadow-lg ring-1 ring-black/10"
         style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: size, lineHeight: 1.4 }}
@@ -64,7 +64,7 @@ function Inline({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       style={{ width: `${Math.max(value.length, min) + 1}ch` }}
-      className={cn(editableBase, "px-1 font-[inherit] text-[inherit] leading-[inherit]")}
+      className={cn(editableBase, "px-1 font-[inherit] leading-[inherit] text-[inherit]")}
     />
   );
 }
@@ -92,7 +92,7 @@ function Block({
       onChange={(e) => onChange(e.target.value)}
       className={cn(
         editableBase,
-        "field-sizing-content block w-full resize-none px-1 py-px font-[inherit] text-[inherit] leading-[inherit]",
+        "block field-sizing-content w-full resize-none px-1 py-px font-[inherit] leading-[inherit] text-[inherit]",
         className
       )}
     />
@@ -151,7 +151,12 @@ export function JiPreview({
       <Gap n={2} />
 
       <div className="text-center font-bold">
-        <Block label="Title" className="text-center font-bold" value={f.title} onChange={(v) => set("title", v)} />
+        <Block
+          label="Title"
+          className="text-center font-bold"
+          value={f.title}
+          onChange={(v) => set("title", v)}
+        />
       </div>
       <div className="text-center font-bold">
         <Block
@@ -182,16 +187,38 @@ export function JiPreview({
       <div className="font-bold">Timings:</div>
       <div className="flex flex-wrap items-center gap-1">
         Cadets are required to arrive at
-        <Inline label="Arrival time" value={f.arrival_time} onChange={(v) => set("arrival_time", v)} min={5} />
+        <Inline
+          label="Arrival time"
+          value={f.arrival_time}
+          onChange={(v) => set("arrival_time", v)}
+          min={5}
+        />
         on the
-        <Inline label="Arrival date" value={f.arrival_date} onChange={(v) => set("arrival_date", v)} min={10} />.
+        <Inline
+          label="Arrival date"
+          value={f.arrival_date}
+          onChange={(v) => set("arrival_date", v)}
+          min={10}
+        />
+        .
       </div>
       <Gap />
       <div className="flex flex-wrap items-center gap-1">
         Departure time will be at
-        <Inline label="Departure time" value={f.departure_time} onChange={(v) => set("departure_time", v)} min={5} />
+        <Inline
+          label="Departure time"
+          value={f.departure_time}
+          onChange={(v) => set("departure_time", v)}
+          min={5}
+        />
         on the
-        <Inline label="Departure date" value={f.departure_date} onChange={(v) => set("departure_date", v)} min={10} />.
+        <Inline
+          label="Departure date"
+          value={f.departure_date}
+          onChange={(v) => set("departure_date", v)}
+          min={10}
+        />
+        .
       </div>
       <Gap />
 
@@ -281,7 +308,8 @@ export function AoPreview({
       <Gap />
 
       <div className="flex flex-wrap items-center gap-1">
-        Ref: <Inline label="Event reference" value={f.event_ref} onChange={(v) => set("event_ref", v)} min={22} />
+        Ref:{" "}
+        <Inline label="Event reference" value={f.event_ref} onChange={(v) => set("event_ref", v)} min={22} />
       </div>
       <div>See Distribution</div>
       <Gap />
@@ -322,11 +350,7 @@ export function AoPreview({
       </Section>
 
       <Section n={2} title="Location">
-        <Block
-          label="Location"
-          value={f.event_location}
-          onChange={(v) => set("event_location", v)}
-        />
+        <Block label="Location" value={f.event_location} onChange={(v) => set("event_location", v)} />
       </Section>
 
       <Section n={3} title="Arrival">
@@ -368,19 +392,20 @@ export function AoPreview({
 
       <Section n={6} title="Security">
         <Sub letter="a">
-          All cadets and staff are to be in possession of identification. Cadets will be required to have their RAF
-          Form 3822 / MyRAFAC App and uniformed staff a MOD F90. Civilian Instructors are to have suitable
-          photographic ID such as driving licence.
+          All cadets and staff are to be in possession of identification. Cadets will be required to have
+          their RAF Form 3822 / MyRAFAC App and uniformed staff a MOD F90. Civilian Instructors are to have
+          suitable photographic ID such as driving licence.
         </Sub>
         <Sub letter="b">
-          Nominal roll is to be finalised and confirmed on SMS prior to event and updated if any changes occur.
+          Nominal roll is to be finalised and confirmed on SMS prior to event and updated if any changes
+          occur.
         </Sub>
       </Section>
 
       <Section n={7} title="Messing">
         <div>
-          With no exception meals will not be provided for / by staff &amp; cadets. Attendees are advised to bring
-          lunch.
+          With no exception meals will not be provided for / by staff &amp; cadets. Attendees are advised to
+          bring lunch.
         </div>
       </Section>
 
@@ -389,19 +414,19 @@ export function AoPreview({
           Course has adequate adult staff provision, including female staff.
         </Sub>
         <Sub letter="b" title="Course Location">
-          Squadron building used for training is within a compound which will be secure during course duration. All
-          attendees will be given HSE brief on arrival.
+          Squadron building used for training is within a compound which will be secure during course
+          duration. All attendees will be given HSE brief on arrival.
         </Sub>
         <Sub letter="c" title="Leaving training location before end of course">
-          Full course will be conducted within the squadron grounds, attendees wishing to go off-site during lunch may
-          do so but must notify the directing staff.
+          Full course will be conducted within the squadron grounds, attendees wishing to go off-site during
+          lunch may do so but must notify the directing staff.
         </Sub>
       </Section>
 
       <Section n={9} title="Discipline">
         <div>
-          All Cadets and staff are expected to always maintain the highest standards of discipline; any poor behaviour
-          or breaches of discipline will result in the training being cancelled immediately.
+          All Cadets and staff are expected to always maintain the highest standards of discipline; any poor
+          behaviour or breaches of discipline will result in the training being cancelled immediately.
         </div>
       </Section>
 
@@ -435,9 +460,10 @@ export function AoPreview({
 
       <Section n={15} title="Transport">
         <div>
-          Private staff vehicles are to be used to and from venue. Parking is available within the squadron compound
-          for all attendees. Cadets are to be taken to venue by parents and collected at agreed recovery time. For
-          public transport, main bus and tram routes run within a 5-minute walk of the squadron.
+          Private staff vehicles are to be used to and from venue. Parking is available within the squadron
+          compound for all attendees. Cadets are to be taken to venue by parents and collected at agreed
+          recovery time. For public transport, main bus and tram routes run within a 5-minute walk of the
+          squadron.
         </div>
       </Section>
 

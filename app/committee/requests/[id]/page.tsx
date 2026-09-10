@@ -14,20 +14,36 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import {
-  Table, TableBody, TableCell, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader,
-  DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, Download, Send, Check, X, Loader2, Upload, Trash2,
-  FileText, CircleDollarSign, BadgePoundSterling, Undo2,
+  ArrowLeft,
+  Download,
+  Send,
+  Check,
+  X,
+  Loader2,
+  Upload,
+  Trash2,
+  FileText,
+  CircleDollarSign,
+  BadgePoundSterling,
+  Undo2,
 } from "lucide-react";
 import {
-  type CommitteeRequestDetail, STATUS_LABELS, STATUS_STYLE,
-  formatGBP, formatDateTime,
+  type CommitteeRequestDetail,
+  STATUS_LABELS,
+  STATUS_STYLE,
+  formatGBP,
+  formatDateTime,
 } from "@/lib/committee";
 
 const RECEIPT_ACCEPT = "image/png,image/jpeg,application/pdf";
@@ -39,11 +55,7 @@ interface BankProfile {
   bank_account_number: string;
 }
 
-export default function CommitteeRequestDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function CommitteeRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -54,10 +66,11 @@ export default function CommitteeRequestDetailPage({
   const [rejectReason, setRejectReason] = useState("");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
 
-  const { data: req, isLoading, error } = useApiQuery<CommitteeRequestDetail>(
-    ["committee-request", id],
-    `/committee-requests/${id}`,
-  );
+  const {
+    data: req,
+    isLoading,
+    error,
+  } = useApiQuery<CommitteeRequestDetail>(["committee-request", id], `/committee-requests/${id}`);
 
   // Requester's own bank details — gates the "Send for payment" button.
   const { data: bank } = useApiQuery<BankProfile>(["user-profile"], "/settings/user-profile");
@@ -71,9 +84,7 @@ export default function CommitteeRequestDetailPage({
     queryClient.invalidateQueries({ queryKey: ["oc-dashboard"] });
   };
 
-  const action = async (
-    label: string, path: string, body?: unknown, success?: string,
-  ) => {
+  const action = async (label: string, path: string, body?: unknown, success?: string) => {
     if (!token) return;
     setBusy(label);
     try {
@@ -108,7 +119,10 @@ export default function CommitteeRequestDetailPage({
       const res = await apiFetch(`${API_BASE}/committee-requests/${id}/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) { toast.error("Failed to download PDF."); return; }
+      if (!res.ok) {
+        toast.error("Failed to download PDF.");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -129,7 +143,10 @@ export default function CommitteeRequestDetailPage({
       const res = await apiFetch(`${API_BASE}/committee-requests/${id}/receipts/${receiptId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) { toast.error("Failed to open receipt."); return; }
+      if (!res.ok) {
+        toast.error("Failed to open receipt.");
+        return;
+      }
       const blob = await res.blob();
       window.open(URL.createObjectURL(blob), "_blank");
     } catch {
@@ -204,11 +221,11 @@ export default function CommitteeRequestDetailPage({
   if (error || !req) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-sm text-destructive">
-          {error?.message ?? "Request not found."}
-        </p>
+        <p className="text-destructive text-sm">{error?.message ?? "Request not found."}</p>
         <Button asChild variant="ghost" size="sm" className="mt-2">
-          <Link href="/committee/requests"><ArrowLeft /> Back to requests</Link>
+          <Link href="/committee/requests">
+            <ArrowLeft /> Back to requests
+          </Link>
         </Button>
       </div>
     );
@@ -240,7 +257,9 @@ export default function CommitteeRequestDetailPage({
               {busy === "pdf" ? <Loader2 className="animate-spin" /> : <Download />} PDF
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/committee/requests"><ArrowLeft /> Back</Link>
+              <Link href="/committee/requests">
+                <ArrowLeft /> Back
+              </Link>
             </Button>
           </div>
         }
@@ -254,14 +273,25 @@ export default function CommitteeRequestDetailPage({
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {isOc && req.status === "submitted" && (
-              <Button size="sm" disabled={busy !== null}
-                onClick={() => action("send", "send-to-committee", undefined, "Approved — sent to the committee.")}>
-                {busy === "send" ? <Loader2 className="animate-spin" /> : <Send />} Approve / Send to Committee
+              <Button
+                size="sm"
+                disabled={busy !== null}
+                onClick={() =>
+                  action("send", "send-to-committee", undefined, "Approved — sent to the committee.")
+                }
+              >
+                {busy === "send" ? <Loader2 className="animate-spin" /> : <Send />} Approve / Send to
+                Committee
               </Button>
             )}
             {isOc && req.status === "sent_to_committee" && (
-              <Button size="sm" disabled={busy !== null}
-                onClick={() => action("approve", "approve", undefined, "Committee approval recorded — requester notified.")}>
+              <Button
+                size="sm"
+                disabled={busy !== null}
+                onClick={() =>
+                  action("approve", "approve", undefined, "Committee approval recorded — requester notified.")
+                }
+              >
                 {busy === "approve" ? <Loader2 className="animate-spin" /> : <Check />} Committee Approved
               </Button>
             )}
@@ -275,7 +305,8 @@ export default function CommitteeRequestDetailPage({
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>
-                      {req.status === "submitted" ? "Reject" : "Record committee rejection for"} {req.reference}
+                      {req.status === "submitted" ? "Reject" : "Record committee rejection for"}{" "}
+                      {req.reference}
                     </DialogTitle>
                     <DialogDescription>
                       The requester will be emailed. Add an optional reason.
@@ -288,13 +319,23 @@ export default function CommitteeRequestDetailPage({
                     rows={3}
                   />
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setRejectOpen(false)}>Cancel</Button>
+                    <Button variant="ghost" onClick={() => setRejectOpen(false)}>
+                      Cancel
+                    </Button>
                     <Button
                       variant="destructive"
                       disabled={busy !== null}
                       onClick={async () => {
-                        const ok = await action("reject", "reject", { reason: rejectReason }, "Request rejected.");
-                        if (ok) { setRejectOpen(false); setRejectReason(""); }
+                        const ok = await action(
+                          "reject",
+                          "reject",
+                          { reason: rejectReason },
+                          "Request rejected."
+                        );
+                        if (ok) {
+                          setRejectOpen(false);
+                          setRejectReason("");
+                        }
                       }}
                     >
                       {busy === "reject" ? <Loader2 className="animate-spin" /> : null} Reject
@@ -304,8 +345,11 @@ export default function CommitteeRequestDetailPage({
               </Dialog>
             )}
             {isOc && req.status === "sent_for_payment" && (
-              <Button size="sm" disabled={busy !== null}
-                onClick={() => action("paid", "mark-paid", undefined, "Marked as paid.")}>
+              <Button
+                size="sm"
+                disabled={busy !== null}
+                onClick={() => action("paid", "mark-paid", undefined, "Marked as paid.")}
+              >
                 {busy === "paid" ? <Loader2 className="animate-spin" /> : <BadgePoundSterling />} Mark paid
               </Button>
             )}
@@ -317,18 +361,27 @@ export default function CommitteeRequestDetailPage({
                   accept={RECEIPT_ACCEPT}
                   multiple
                   className="hidden"
-                  onChange={(e) => { if (e.target.files?.length) uploadReceipts(e.target.files); }}
+                  onChange={(e) => {
+                    if (e.target.files?.length) uploadReceipts(e.target.files);
+                  }}
                 />
-                <Button size="sm" variant="outline" disabled={busy !== null}
-                  onClick={() => fileInputRef.current?.click()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy !== null}
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   {busy === "upload" ? <Loader2 className="animate-spin" /> : <Upload />} Upload receipts
                 </Button>
                 <Button
                   size="sm"
                   disabled={busy !== null || req.receipts.length === 0 || !hasBankDetails}
-                  onClick={() => action("pay", "send-for-payment", undefined, "Sent to committee for payment.")}
+                  onClick={() =>
+                    action("pay", "send-for-payment", undefined, "Sent to committee for payment.")
+                  }
                 >
-                  {busy === "pay" ? <Loader2 className="animate-spin" /> : <CircleDollarSign />} Send for payment
+                  {busy === "pay" ? <Loader2 className="animate-spin" /> : <CircleDollarSign />} Send for
+                  payment
                 </Button>
               </>
             )}
@@ -337,8 +390,12 @@ export default function CommitteeRequestDetailPage({
             {isRequester && req.status !== "paid" && req.status !== "withdrawn" && (
               <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="ghost" disabled={busy !== null}
-                    className="text-muted-foreground">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy !== null}
+                    className="text-muted-foreground"
+                  >
                     <Undo2 /> Withdraw
                   </Button>
                 </DialogTrigger>
@@ -350,7 +407,9 @@ export default function CommitteeRequestDetailPage({
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setWithdrawOpen(false)}>Keep it</Button>
+                    <Button variant="ghost" onClick={() => setWithdrawOpen(false)}>
+                      Keep it
+                    </Button>
                     <Button
                       variant="destructive"
                       disabled={busy !== null}
@@ -367,9 +426,11 @@ export default function CommitteeRequestDetailPage({
             )}
 
             {isRequester && req.status === "approved" && !hasBankDetails && (
-              <p className="w-full text-xs text-warning">
+              <p className="text-warning w-full text-xs">
                 Add your bank details in{" "}
-                <Link href="/settings" className="underline underline-offset-2">Settings</Link>{" "}
+                <Link href="/settings" className="underline underline-offset-2">
+                  Settings
+                </Link>{" "}
                 before sending for payment.
               </p>
             )}
@@ -399,13 +460,14 @@ export default function CommitteeRequestDetailPage({
           </Table>
           {req.justification && (
             <div className="mt-4">
-              <p className="text-xs text-muted-foreground">Justification</p>
-              <p className="whitespace-pre-wrap text-sm">{req.justification}</p>
+              <p className="text-muted-foreground text-xs">Justification</p>
+              <p className="text-sm whitespace-pre-wrap">{req.justification}</p>
             </div>
           )}
           {req.status === "rejected" && req.rejection_reason && (
-            <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <span className="font-medium">Rejected: </span>{req.rejection_reason}
+            <div className="border-destructive/30 bg-destructive/10 text-destructive mt-4 rounded-md border px-3 py-2 text-sm">
+              <span className="font-medium">Rejected: </span>
+              {req.rejection_reason}
             </div>
           )}
         </CardContent>
@@ -419,12 +481,12 @@ export default function CommitteeRequestDetailPage({
           </CardHeader>
           <CardContent>
             {req.receipts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No receipts uploaded yet.</p>
+              <p className="text-muted-foreground text-sm">No receipts uploaded yet.</p>
             ) : (
               <ul className="flex flex-col divide-y">
                 {req.receipts.map((rec) => (
                   <li key={rec.id} className="flex items-center gap-2 py-2">
-                    <FileText className="size-4 shrink-0 text-muted-foreground" />
+                    <FileText className="text-muted-foreground size-4 shrink-0" />
                     <button
                       onClick={() => viewReceipt(rec.id)}
                       className="flex-1 truncate text-left text-sm hover:underline"
@@ -439,9 +501,11 @@ export default function CommitteeRequestDetailPage({
                         disabled={busy === `del-${rec.id}`}
                         aria-label="Delete receipt"
                       >
-                        {busy === `del-${rec.id}`
-                          ? <Loader2 className="animate-spin" />
-                          : <Trash2 className="text-muted-foreground" />}
+                        {busy === `del-${rec.id}` ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <Trash2 className="text-muted-foreground" />
+                        )}
                       </Button>
                     )}
                   </li>
@@ -459,10 +523,16 @@ export default function CommitteeRequestDetailPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-2 text-sm">
           <TimelineRow label="Submitted" who={req.requester_email} when={req.created_at} />
-          <TimelineRow label="Sent to committee" who={req.sent_to_committee_by} when={req.sent_to_committee_at} />
-          {req.status === "rejected"
-            ? <TimelineRow label="Rejected" who={req.decided_by} when={req.decided_at} />
-            : <TimelineRow label="Committee approved" who={req.decided_by} when={req.decided_at} />}
+          <TimelineRow
+            label="Sent to committee"
+            who={req.sent_to_committee_by}
+            when={req.sent_to_committee_at}
+          />
+          {req.status === "rejected" ? (
+            <TimelineRow label="Rejected" who={req.decided_by} when={req.decided_at} />
+          ) : (
+            <TimelineRow label="Committee approved" who={req.decided_by} when={req.decided_at} />
+          )}
           <TimelineRow label="Sent for payment" who={req.requester_email} when={req.sent_for_payment_at} />
           <TimelineRow label="Paid" who={req.paid_marked_by} when={req.paid_at} />
           {req.withdrawn_at && (
@@ -479,8 +549,15 @@ function TimelineRow({ label, who, when }: { label: string; who: string | null; 
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className={done ? "font-medium" : "text-muted-foreground"}>{label}</span>
-      <span className="text-right text-xs text-muted-foreground">
-        {done ? <>{formatDateTime(when)}{who ? ` · ${who}` : ""}</> : "—"}
+      <span className="text-muted-foreground text-right text-xs">
+        {done ? (
+          <>
+            {formatDateTime(when)}
+            {who ? ` · ${who}` : ""}
+          </>
+        ) : (
+          "—"
+        )}
       </span>
     </div>
   );

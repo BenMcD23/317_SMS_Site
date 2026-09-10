@@ -10,22 +10,13 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  horizontalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "./SectionCard";
-import {
-  BoxSection,
-  ShelfBox,
-  ShelfStructure,
-  StockItem,
-} from "@/lib/stores-types";
+import { BoxSection, ShelfBox, ShelfStructure, StockItem } from "@/lib/stores-types";
 import { useState, useMemo } from "react";
 
 interface BoxDetailViewProps {
@@ -67,16 +58,12 @@ function RowSeparator({
   return (
     <div
       ref={setNodeRef}
-      className={`my-1 transition-all rounded-md border-2 border-dashed flex items-center justify-center ${
-        isOver
-          ? "h-10 border-primary bg-primary/10"
-          : "h-6 border-primary/25 bg-primary/5"
+      className={`my-1 flex items-center justify-center rounded-md border-2 border-dashed transition-all ${
+        isOver ? "border-primary bg-primary/10 h-10" : "border-primary/25 bg-primary/5 h-6"
       }`}
     >
       {isOver && (
-        <span className="text-xs font-medium text-primary">
-          {isNew ? "+ New row" : "Move here"}
-        </span>
+        <span className="text-primary text-xs font-medium">{isNew ? "+ New row" : "Move here"}</span>
       )}
     </div>
   );
@@ -101,22 +88,15 @@ export function BoxDetailView({
 }: BoxDetailViewProps) {
   const [addSectionValue, setAddSectionValue] = useState<string | null>(null);
   const [deleteBoxConfirm, setDeleteBoxConfirm] = useState(false);
-  const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>(
-    {}
-  );
+  const [widthOverrides, setWidthOverrides] = useState<Record<string, number>>({});
   const [draggingSection, setDraggingSection] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   // Sort sections by row then position
   const allSections = useMemo(
-    () =>
-      [...box.sections].sort(
-        (a, b) => a.row - b.row || a.position - b.position
-      ),
+    () => [...box.sections].sort((a, b) => a.row - b.row || a.position - b.position),
     [box.sections]
   );
 
@@ -125,30 +105,25 @@ export function BoxDetailView({
     return [...rows].sort((a, b) => a - b);
   }, [allSections]);
 
-  const sectionsByRow = (rowIdx: number) =>
-    allSections.filter((s) => s.row === rowIdx);
+  const sectionsByRow = (rowIdx: number) => allSections.filter((s) => s.row === rowIdx);
 
-  const getSectionWidth = (s: BoxSection) =>
-    widthOverrides[s.label] ?? s.sectionWidth;
+  const getSectionWidth = (s: BoxSection) => widthOverrides[s.label] ?? s.sectionWidth;
 
   // Send full section arrangement to API
   async function commitSections(updatedSections: BoxSection[]) {
     try {
-      const res = await fetch(
-        `/api/stores/boxes/${box.label}/sections/reorder`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sections: updatedSections.map((s) => ({
-              label: s.label,
-              row: s.row,
-              position: s.position,
-              sectionWidth: widthOverrides[s.label] ?? s.sectionWidth,
-            })),
-          }),
-        }
-      );
+      const res = await fetch(`/api/stores/boxes/${box.label}/sections/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sections: updatedSections.map((s) => ({
+            label: s.label,
+            row: s.row,
+            position: s.position,
+            sectionWidth: widthOverrides[s.label] ?? s.sectionWidth,
+          })),
+        }),
+      });
       if (res.ok) onStructureChange(await res.json());
     } catch {}
   }
@@ -166,8 +141,7 @@ export function BoxDetailView({
     const tgtSiblings = box.sections.filter((s) => s.row === targetRow);
 
     const updated = box.sections.map((s) => {
-      if (s.label === label)
-        return { ...s, row: targetRow, position: tgtSiblings.length };
+      if (s.label === label) return { ...s, row: targetRow, position: tgtSiblings.length };
       if (s.row === srcRow) {
         const newPos = srcSiblings.findIndex((x) => x.label === s.label);
         return { ...s, position: newPos };
@@ -230,11 +204,7 @@ export function BoxDetailView({
   }
 
   // Section resize via pointer capture
-  function startSectionResize(
-    e: React.PointerEvent<HTMLDivElement>,
-    secA: BoxSection,
-    secB: BoxSection
-  ) {
+  function startSectionResize(e: React.PointerEvent<HTMLDivElement>, secA: BoxSection, secB: BoxSection) {
     e.preventDefault();
     const el = e.currentTarget as HTMLDivElement;
     el.setPointerCapture(e.pointerId);
@@ -245,10 +215,7 @@ export function BoxDetailView({
     const rowEl = el.closest("[data-section-row]");
     const rowWidth = rowEl?.getBoundingClientRect().width ?? 800;
     const rowSections = sectionsByRow(secA.row);
-    const totalFlex = rowSections.reduce(
-      (s, sec) => s + getSectionWidth(sec),
-      0
-    );
+    const totalFlex = rowSections.reduce((s, sec) => s + getSectionWidth(sec), 0);
     const flexPerPx = totalFlex / rowWidth;
 
     function onMove(ev: PointerEvent) {
@@ -276,12 +243,7 @@ export function BoxDetailView({
         label: s.label,
         row: s.row,
         position: s.position,
-        sectionWidth:
-          s.label === secA.label
-            ? newA
-            : s.label === secB.label
-            ? newB
-            : s.sectionWidth,
+        sectionWidth: s.label === secA.label ? newA : s.label === secB.label ? newB : s.sectionWidth,
       }));
 
       fetch(`/api/stores/boxes/${box.label}/sections/reorder`, {
@@ -317,11 +279,7 @@ export function BoxDetailView({
         <div className="ml-auto flex items-center gap-2">
           {/* Add section */}
           {addSectionValue === null ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAddSectionValue("")}
-            >
+            <Button variant="outline" size="sm" onClick={() => setAddSectionValue("")}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Add Section
             </Button>
@@ -354,12 +312,7 @@ export function BoxDetailView({
               >
                 Add
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8"
-                onClick={() => setAddSectionValue(null)}
-              >
+              <Button size="sm" variant="ghost" className="h-8" onClick={() => setAddSectionValue(null)}>
                 Cancel
               </Button>
             </div>
@@ -380,14 +333,14 @@ export function BoxDetailView({
 
       {/* Sections area */}
       {allSections.length === 0 ? (
-        <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+        <div className="text-muted-foreground rounded-lg border border-dashed py-12 text-center text-sm">
           No sections yet. Click &ldquo;Add Section&rdquo; above.
         </div>
       ) : (
         <div className="space-y-3">
           {/* TOP label */}
           <div className="px-1">
-            <span className="text-xs font-semibold text-primary">▲ TOP</span>
+            <span className="text-primary text-xs font-semibold">▲ TOP</span>
           </div>
 
           {/* Rows */}
@@ -404,85 +357,61 @@ export function BoxDetailView({
                 const isLastRow = rIdx === rowIndexes.length - 1;
 
                 return [
-                  <div
-                    key={`row-${rowIdx}`}
-                    data-section-row={rowIdx}
-                    className="overflow-x-auto"
-                  >
+                  <div key={`row-${rowIdx}`} data-section-row={rowIdx} className="overflow-x-auto">
                     {/* w-max min-w-full: row is as wide as its sections but never narrower than the viewport */}
-                    <div className="w-max min-w-full pb-1 border-b">
-                    <SortableContext
-                      items={sectionIds}
-                      strategy={horizontalListSortingStrategy}
-                    >
-                      <div className="flex gap-0">
-                        {rowSections.map((section, idx) => (
-                          <div
-                            key={section.label}
-                            className="relative flex items-stretch"
-                            style={{
-                              flex: `${getSectionWidth(section)} 1 200px`,
-                              minWidth: "160px",
-                            }}
-                          >
-                            <div className="w-full">
-                              <SectionCard
-                                boxLabel={box.label}
-                                section={section}
-                                items={stock.filter(
-                                  (i) =>
-                                    i.box === box.label &&
-                                    i.section === section.label
-                                )}
-                                onAddItem={onAddItem}
-                                onEditItem={onEditItem}
-                                onDeleteItem={onDeleteItem}
-                                onDeleteSection={onDeleteSection}
-                                onRenameSection={onRenameSection}
-                                deleteItemConfirm={deleteItemConfirm}
-                                onDeleteItemConfirm={onDeleteItemConfirm}
-                                editMode={editMode}
-                                onMoveUp={
-                                  section.row > 0
-                                    ? () =>
-                                        moveSectionToRow(
-                                          section.label,
-                                          section.row - 1
-                                        )
-                                    : undefined
-                                }
-                                onMoveDown={() =>
-                                  moveSectionToRow(
-                                    section.label,
-                                    section.row + 1
-                                  )
-                                }
-                              />
-                            </div>
-
-                            {/* Resize handle between adjacent sections (editMode only) */}
-                            {editMode && idx < rowSections.length - 1 && (
-                              <div
-                                className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize z-10 flex items-center justify-center hover:bg-primary/10 group"
-                                style={{
-                                  touchAction: "none",
-                                  transform: "translateX(50%)",
-                                }}
-                                onPointerDown={(e) =>
-                                  startSectionResize(
-                                    e,
-                                    section,
-                                    rowSections[idx + 1]
-                                  )
-                                }
-                              >
-                                <div className="h-6 w-0.5 rounded-full bg-border group-hover:bg-primary/60" />
+                    <div className="w-max min-w-full border-b pb-1">
+                      <SortableContext items={sectionIds} strategy={horizontalListSortingStrategy}>
+                        <div className="flex gap-0">
+                          {rowSections.map((section, idx) => (
+                            <div
+                              key={section.label}
+                              className="relative flex items-stretch"
+                              style={{
+                                flex: `${getSectionWidth(section)} 1 200px`,
+                                minWidth: "160px",
+                              }}
+                            >
+                              <div className="w-full">
+                                <SectionCard
+                                  boxLabel={box.label}
+                                  section={section}
+                                  items={stock.filter(
+                                    (i) => i.box === box.label && i.section === section.label
+                                  )}
+                                  onAddItem={onAddItem}
+                                  onEditItem={onEditItem}
+                                  onDeleteItem={onDeleteItem}
+                                  onDeleteSection={onDeleteSection}
+                                  onRenameSection={onRenameSection}
+                                  deleteItemConfirm={deleteItemConfirm}
+                                  onDeleteItemConfirm={onDeleteItemConfirm}
+                                  editMode={editMode}
+                                  onMoveUp={
+                                    section.row > 0
+                                      ? () => moveSectionToRow(section.label, section.row - 1)
+                                      : undefined
+                                  }
+                                  onMoveDown={() => moveSectionToRow(section.label, section.row + 1)}
+                                />
                               </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </SortableContext>
+
+                              {/* Resize handle between adjacent sections (editMode only) */}
+                              {editMode && idx < rowSections.length - 1 && (
+                                <div
+                                  className="hover:bg-primary/10 group absolute top-0 right-0 bottom-0 z-10 flex w-3 cursor-col-resize items-center justify-center"
+                                  style={{
+                                    touchAction: "none",
+                                    transform: "translateX(50%)",
+                                  }}
+                                  onPointerDown={(e) => startSectionResize(e, section, rowSections[idx + 1])}
+                                >
+                                  <div className="bg-border group-hover:bg-primary/60 h-6 w-0.5 rounded-full" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </SortableContext>
                     </div>
                   </div>,
                   <RowSeparator
@@ -498,7 +427,7 @@ export function BoxDetailView({
 
             <DragOverlay>
               {draggingSection && (
-                <div className="rounded-lg border bg-card shadow-lg px-3 py-2 text-sm font-semibold opacity-90 ring-2 ring-primary">
+                <div className="bg-card ring-primary rounded-lg border px-3 py-2 text-sm font-semibold opacity-90 shadow-lg ring-2">
                   §{draggingSection}
                 </div>
               )}
@@ -507,24 +436,37 @@ export function BoxDetailView({
 
           {/* BOTTOM label */}
           <div className="px-1">
-            <span className="text-xs font-semibold text-muted-foreground/40">▼ BOTTOM</span>
+            <span className="text-muted-foreground/40 text-xs font-semibold">▼ BOTTOM</span>
           </div>
         </div>
       )}
 
       {/* Delete box confirm dialog */}
-      <Dialog open={deleteBoxConfirm} onOpenChange={(o) => { if (!o) setDeleteBoxConfirm(false); }}>
+      <Dialog
+        open={deleteBoxConfirm}
+        onOpenChange={(o) => {
+          if (!o) setDeleteBoxConfirm(false);
+        }}
+      >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
             <DialogTitle>Delete {isMisc ? "Area" : `Box ${box.label}`}?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete {isMisc ? "this area" : `box ${box.label}`}?
-            All sections and their stock will be permanently removed. This cannot be undone.
+          <p className="text-muted-foreground text-sm">
+            Are you sure you want to delete {isMisc ? "this area" : `box ${box.label}`}? All sections and
+            their stock will be permanently removed. This cannot be undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteBoxConfirm(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { setDeleteBoxConfirm(false); onDeleteBox(box.label); }}>
+            <Button variant="outline" onClick={() => setDeleteBoxConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setDeleteBoxConfirm(false);
+                onDeleteBox(box.label);
+              }}
+            >
               Delete {isMisc ? "Area" : "Box"}
             </Button>
           </DialogFooter>

@@ -6,8 +6,8 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { API_BASE } from "@/lib/config";
 
-const UP_INTERVAL = 30_000;   // normal polling cadence
-const DOWN_INTERVAL = 5_000;  // poll faster while down so recovery shows quickly
+const UP_INTERVAL = 30_000; // normal polling cadence
+const DOWN_INTERVAL = 5_000; // poll faster while down so recovery shows quickly
 const PING_TIMEOUT = 5_000;
 
 /** Fired by apiFetch when a request fails in a way that suggests an outage,
@@ -78,7 +78,7 @@ export function ApiStatusOverlay() {
 
   if (dismissed) {
     return (
-      <div className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-3 bg-destructive px-4 py-2 text-sm font-medium text-white">
+      <div className="bg-destructive fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-3 px-4 py-2 text-sm font-medium text-white">
         <AlertTriangle className="size-4 shrink-0" />
         <span>The API is down — data can&apos;t be loaded or saved right now.</span>
         <Button
@@ -101,18 +101,17 @@ export function ApiStatusOverlay() {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="api-down-title"
-        className="w-full max-w-md rounded-xl border-2 border-destructive bg-background p-8 text-center shadow-2xl"
+        className="border-destructive bg-background w-full max-w-md rounded-xl border-2 p-8 text-center shadow-2xl"
       >
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-destructive/15">
-          <AlertTriangle className="size-9 text-destructive" />
+        <div className="bg-destructive/15 mx-auto mb-4 flex size-16 items-center justify-center rounded-full">
+          <AlertTriangle className="text-destructive size-9" />
         </div>
-        <h2 id="api-down-title" className="text-2xl font-bold text-destructive">
+        <h2 id="api-down-title" className="text-destructive text-2xl font-bold">
           API is down
         </h2>
-        <p className="mt-3 text-sm text-muted-foreground">
-          The backend can&apos;t be reached, so nothing can be loaded or saved.
-          This page will keep checking and the warning will clear automatically
-          once it&apos;s back.
+        <p className="text-muted-foreground mt-3 text-sm">
+          The backend can&apos;t be reached, so nothing can be loaded or saved. This page will keep checking
+          and the warning will clear automatically once it&apos;s back.
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Button variant="outline" onClick={() => setDismissed(true)}>

@@ -15,30 +15,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader,
-  DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  ArrowLeft, Check, FileDown, Loader2, MessageSquare, Pencil, Send, Trash2, Undo2,
+  ArrowLeft,
+  Check,
+  FileDown,
+  Loader2,
+  MessageSquare,
+  Pencil,
+  Send,
+  Trash2,
+  Undo2,
 } from "lucide-react";
 import { formatDate, formatTimestamp } from "@/lib/format";
+import { submitPlan, reviewPlan, deletePlan, addComment, deleteComment } from "@/lib/session-plans-api";
 import {
-  submitPlan, reviewPlan, deletePlan, addComment, deleteComment,
-} from "@/lib/session-plans-api";
-import {
-  HEADER_FIELDS, PLAN_SECTIONS, STATUS_LABELS, STATUS_STYLE, contentOf,
-  missingForSubmit, type SessionPlanDetail, type SessionPlanSectionKey,
+  HEADER_FIELDS,
+  PLAN_SECTIONS,
+  STATUS_LABELS,
+  STATUS_STYLE,
+  contentOf,
+  missingForSubmit,
+  type SessionPlanDetail,
+  type SessionPlanSectionKey,
 } from "@/lib/session-plans";
 
-export default function SessionPlanDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function SessionPlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const planId = Number(id);
   const router = useRouter();
@@ -52,10 +63,11 @@ export default function SessionPlanDetailPage({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [comment, setComment] = useState("");
 
-  const { data: plan, isLoading, error } = useApiQuery<SessionPlanDetail>(
-    ["session-plan", id],
-    `/session-plans/${id}`,
-  );
+  const {
+    data: plan,
+    isLoading,
+    error,
+  } = useApiQuery<SessionPlanDetail>(["session-plan", id], `/session-plans/${id}`);
 
   const token = session?.id_token;
 
@@ -92,9 +104,11 @@ export default function SessionPlanDetailPage({
   if (error || !plan) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-sm text-destructive">{error?.message ?? "Session plan not found."}</p>
+        <p className="text-destructive text-sm">{error?.message ?? "Session plan not found."}</p>
         <Button asChild variant="ghost" size="sm" className="mt-2">
-          <Link href="/session-plans"><ArrowLeft /> Back to session plans</Link>
+          <Link href="/session-plans">
+            <ArrowLeft /> Back to session plans
+          </Link>
         </Button>
       </div>
     );
@@ -128,7 +142,9 @@ export default function SessionPlanDetailPage({
               </a>
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/session-plans"><ArrowLeft /> Back</Link>
+              <Link href="/session-plans">
+                <ArrowLeft /> Back
+              </Link>
             </Button>
           </div>
         }
@@ -137,10 +153,12 @@ export default function SessionPlanDetailPage({
       {/* ── What staff said ─────────────────────────────────────────────────── */}
       {plan.status === "amendments_requested" && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
-          <p className="font-medium">Amendments requested{plan.reviewed_by ? ` by ${plan.reviewed_by}` : ""}</p>
+          <p className="font-medium">
+            Amendments requested{plan.reviewed_by ? ` by ${plan.reviewed_by}` : ""}
+          </p>
           {plan.amendment_note && <p className="whitespace-pre-wrap">{plan.amendment_note}</p>}
           {plan.is_author && (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               Comments on individual sections are shown against each one below.
             </p>
           )}
@@ -166,14 +184,15 @@ export default function SessionPlanDetailPage({
             {plan.can_edit && (
               <>
                 <Button asChild variant="outline" size="sm">
-                  <Link href={`/session-plans/${id}/edit`}><Pencil /> Edit</Link>
+                  <Link href={`/session-plans/${id}/edit`}>
+                    <Pencil /> Edit
+                  </Link>
                 </Button>
                 <Button
                   size="sm"
                   disabled={busy !== null || missing.length > 0}
                   onClick={() =>
-                    run("submit", () => submitPlan(token!, planId),
-                        "Submitted — staff have been emailed.")
+                    run("submit", () => submitPlan(token!, planId), "Submitted — staff have been emailed.")
                   }
                 >
                   {busy === "submit" ? <Loader2 className="animate-spin" /> : <Send />}
@@ -182,7 +201,7 @@ export default function SessionPlanDetailPage({
               </>
             )}
             {plan.status === "submitted" && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 With staff for review — you&apos;ll be emailed when they approve it or ask for changes.
               </p>
             )}
@@ -199,13 +218,18 @@ export default function SessionPlanDetailPage({
                   <DialogDescription>This can&apos;t be undone.</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="ghost" onClick={() => setDeleteOpen(false)}>Keep it</Button>
+                  <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
+                    Keep it
+                  </Button>
                   <Button
                     variant="destructive"
                     disabled={busy !== null}
                     onClick={async () => {
                       const ok = await run("delete", () => deletePlan(token!, planId), "Plan deleted.");
-                      if (ok) { setDeleteOpen(false); router.push("/session-plans"); }
+                      if (ok) {
+                        setDeleteOpen(false);
+                        router.push("/session-plans");
+                      }
                     }}
                   >
                     {busy === "delete" ? <Loader2 className="animate-spin" /> : null} Delete
@@ -215,7 +239,7 @@ export default function SessionPlanDetailPage({
             </Dialog>
 
             {plan.can_edit && missing.length > 0 && (
-              <p className="w-full text-xs text-muted-foreground">
+              <p className="text-muted-foreground w-full text-xs">
                 Still needed before submitting: {missing.join(", ")}.
               </p>
             )}
@@ -228,9 +252,9 @@ export default function SessionPlanDetailPage({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Staff Review</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Comment on any section below, then approve the plan or send it back. Either way
-              {" "}{plan.author_name} gets an email with what you wrote.
+            <p className="text-muted-foreground text-sm">
+              Comment on any section below, then approve the plan or send it back. Either way{" "}
+              {plan.author_name} gets an email with what you wrote.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -249,8 +273,11 @@ export default function SessionPlanDetailPage({
                 size="sm"
                 disabled={busy !== null}
                 onClick={() =>
-                  run("approve", () => reviewPlan(token!, planId, "approve", reviewBody),
-                      `Approved — ${plan.author_name} has been emailed.`)
+                  run(
+                    "approve",
+                    () => reviewPlan(token!, planId, "approve", reviewBody),
+                    `Approved — ${plan.author_name} has been emailed.`
+                  )
                 }
               >
                 {busy === "approve" ? <Loader2 className="animate-spin" /> : <Check />} Approve
@@ -265,19 +292,21 @@ export default function SessionPlanDetailPage({
                   <DialogHeader>
                     <DialogTitle>Send this plan back?</DialogTitle>
                     <DialogDescription>
-                      {plan.author_name} will be emailed your note and any section comments, and can
-                      edit the plan and resubmit it.
+                      {plan.author_name} will be emailed your note and any section comments, and can edit the
+                      plan and resubmit it.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setAmendOpen(false)}>Cancel</Button>
+                    <Button variant="ghost" onClick={() => setAmendOpen(false)}>
+                      Cancel
+                    </Button>
                     <Button
                       disabled={busy !== null}
                       onClick={async () => {
                         const ok = await run(
                           "amend",
                           () => reviewPlan(token!, planId, "request-amendments", reviewBody),
-                          `Sent back — ${plan.author_name} has been emailed.`,
+                          `Sent back — ${plan.author_name} has been emailed.`
                         );
                         if (ok) setAmendOpen(false);
                       }}
@@ -288,7 +317,7 @@ export default function SessionPlanDetailPage({
                 </DialogContent>
               </Dialog>
               {!hasAmendmentDetail && (
-                <p className="w-full text-xs text-muted-foreground">
+                <p className="text-muted-foreground w-full text-xs">
                   Add a note or a section comment before sending it back, so the NCO knows what to change.
                 </p>
               )}
@@ -305,11 +334,9 @@ export default function SessionPlanDetailPage({
         <CardContent className="grid gap-4 sm:grid-cols-2">
           {HEADER_FIELDS.map((field) => (
             <div key={field.key} className={field.multiline ? "sm:col-span-2" : undefined}>
-              <p className="text-xs text-muted-foreground">{field.label}</p>
-              <p className="whitespace-pre-wrap text-sm">
-                {field.type === "date"
-                  ? formatDate(plan.session_date)
-                  : content[field.key] || "—"}
+              <p className="text-muted-foreground text-xs">{field.label}</p>
+              <p className="text-sm whitespace-pre-wrap">
+                {field.type === "date" ? formatDate(plan.session_date) : content[field.key] || "—"}
               </p>
             </div>
           ))}
@@ -324,17 +351,13 @@ export default function SessionPlanDetailPage({
           {PLAN_SECTIONS.map((section) => (
             <div key={section.key} className="space-y-1.5">
               <p className="text-sm font-medium">{section.label}</p>
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                {plan[section.key] || "—"}
-              </p>
+              <p className="text-muted-foreground text-sm whitespace-pre-wrap">{plan[section.key] || "—"}</p>
               {/* Staff write feedback here while reviewing; everyone else sees
                   whatever the last review left behind. */}
               {plan.can_review ? (
                 <Textarea
                   value={feedback[section.key] ?? ""}
-                  onChange={(e) =>
-                    setFeedback((f) => ({ ...f, [section.key]: e.target.value }))
-                  }
+                  onChange={(e) => setFeedback((f) => ({ ...f, [section.key]: e.target.value }))}
                   placeholder={`Feedback on ${section.label.toLowerCase()} (optional)`}
                   rows={2}
                 />
@@ -381,15 +404,13 @@ export default function SessionPlanDetailPage({
             )}
             {plan.notes && (
               <div>
-                <p className="text-xs text-muted-foreground">Notes</p>
-                <p className="whitespace-pre-wrap text-sm">{plan.notes}</p>
+                <p className="text-muted-foreground text-xs">Notes</p>
+                <p className="text-sm whitespace-pre-wrap">{plan.notes}</p>
               </div>
             )}
             {plan.attachments.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Attachments — click one to preview it here
-                </p>
+                <p className="text-muted-foreground text-xs">Attachments — click one to preview it here</p>
                 <AttachmentList planId={planId} token={token} attachments={plan.attachments} />
               </div>
             )}
@@ -401,9 +422,9 @@ export default function SessionPlanDetailPage({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Comments</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Notes from anyone who can see this plan. They don&apos;t change its status or
-            email {plan.author_name} — staff use the review box above for that.
+          <p className="text-muted-foreground text-sm">
+            Notes from anyone who can see this plan. They don&apos;t change its status or email{" "}
+            {plan.author_name} — staff use the review box above for that.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -412,11 +433,11 @@ export default function SessionPlanDetailPage({
               {plan.comments.map((c) => (
                 <li key={c.id} className="flex gap-2 py-3 first:pt-0">
                   <div className="flex-1 space-y-1">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {c.author_name}
                       {c.created_at ? ` · ${formatTimestamp(c.created_at)}` : ""}
                     </p>
-                    <p className="whitespace-pre-wrap text-sm">{c.body}</p>
+                    <p className="text-sm whitespace-pre-wrap">{c.body}</p>
                   </div>
                   {c.can_delete && (
                     <Button
@@ -426,13 +447,14 @@ export default function SessionPlanDetailPage({
                       disabled={busy !== null}
                       aria-label="Delete comment"
                       onClick={() =>
-                        run(`comment-${c.id}`,
-                            () => deleteComment(token!, planId, c.id), "Comment deleted.")
+                        run(`comment-${c.id}`, () => deleteComment(token!, planId, c.id), "Comment deleted.")
                       }
                     >
-                      {busy === `comment-${c.id}`
-                        ? <Loader2 className="animate-spin" />
-                        : <Trash2 className="text-muted-foreground" />}
+                      {busy === `comment-${c.id}` ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Trash2 className="text-muted-foreground" />
+                      )}
                     </Button>
                   )}
                 </li>
@@ -451,8 +473,7 @@ export default function SessionPlanDetailPage({
               size="sm"
               disabled={busy !== null || !comment.trim()}
               onClick={async () => {
-                const ok = await run("comment", () => addComment(token!, planId, comment),
-                                     "Comment added.");
+                const ok = await run("comment", () => addComment(token!, planId, comment), "Comment added.");
                 if (ok) setComment("");
               }}
             >
@@ -488,8 +509,15 @@ function TimelineRow({ label, who, when }: { label: string; who: string | null; 
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className={done ? "font-medium" : "text-muted-foreground"}>{label}</span>
-      <span className="text-right text-xs text-muted-foreground">
-        {done ? <>{formatTimestamp(when!)}{who ? ` · ${who}` : ""}</> : "—"}
+      <span className="text-muted-foreground text-right text-xs">
+        {done ? (
+          <>
+            {formatTimestamp(when!)}
+            {who ? ` · ${who}` : ""}
+          </>
+        ) : (
+          "—"
+        )}
       </span>
     </div>
   );

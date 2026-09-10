@@ -11,14 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,13 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { API_BASE, OWNER_EMAIL } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
-import {
-  RefreshCw,
-  ShieldX,
-  DatabaseBackup,
-  Eye,
-  RotateCcw,
-} from "lucide-react";
+import { RefreshCw, ShieldX, DatabaseBackup, Eye, RotateCcw } from "lucide-react";
 
 type Backup = {
   id: string;
@@ -111,10 +98,7 @@ export default function BackupsPage() {
   const [restoreFor, setRestoreFor] = useState<Backup | null>(null);
   const [restoring, setRestoring] = useState(false);
 
-  const authHeaders = useCallback(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token]
-  );
+  const authHeaders = useCallback(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
   const load = useCallback(() => {
     if (!token || !isOwner) return;
@@ -257,7 +241,7 @@ export default function BackupsPage() {
         }
       />
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-sm">{error}</p>}
 
       {backups === null && loading && (
         <div className="flex flex-col gap-2">
@@ -268,7 +252,7 @@ export default function BackupsPage() {
       )}
 
       {backups !== null && backups.length === 0 && !loading && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           No backups found in the Drive folder yet. Use “Back up now” to create one.
         </p>
       )}
@@ -304,11 +288,7 @@ export default function BackupsPage() {
                       <Button variant="outline" size="sm" onClick={() => openPreview(b)}>
                         <Eye size={14} /> Preview
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setRestoreFor(b)}
-                      >
+                      <Button variant="destructive" size="sm" onClick={() => setRestoreFor(b)}>
                         <RotateCcw size={14} /> Restore
                       </Button>
                     </div>
@@ -326,13 +306,13 @@ export default function BackupsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Preview: {previewFor?.name}</AlertDialogTitle>
             <AlertDialogDescription>
-              Row counts in this backup compared to the current database. The backup is
-              restored into a throwaway database to compute this — your live data is untouched.
+              Row counts in this backup compared to the current database. The backup is restored into a
+              throwaway database to compute this — your live data is untouched.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           {previewLoading && (
-            <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+            <div className="text-muted-foreground flex items-center gap-2 py-6 text-sm">
               <Spinner /> Restoring into a scratch database to compare…
             </div>
           )}
@@ -352,12 +332,8 @@ export default function BackupsPage() {
                   {preview.tables.map((r) => (
                     <TableRow key={r.table}>
                       <TableCell className="font-mono text-xs">{r.table}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.current_rows ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {r.backup_rows ?? "—"}
-                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{r.current_rows ?? "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.backup_rows ?? "—"}</TableCell>
                       <TableCell
                         className={cn(
                           "text-right tabular-nums",
@@ -387,8 +363,8 @@ export default function BackupsPage() {
             <AlertDialogTitle>Restore this backup?</AlertDialogTitle>
             <AlertDialogDescription>
               This will overwrite the <strong>current live database</strong> with the contents of{" "}
-              <span className="font-mono">{restoreFor?.name}</span>. This cannot be undone. Any
-              data created since this backup will be lost.
+              <span className="font-mono">{restoreFor?.name}</span>. This cannot be undone. Any data created
+              since this backup will be lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -399,7 +375,7 @@ export default function BackupsPage() {
                 runRestore();
               }}
               disabled={restoring}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90 text-white"
             >
               {restoring ? "Restoring…" : "Restore now"}
             </AlertDialogAction>

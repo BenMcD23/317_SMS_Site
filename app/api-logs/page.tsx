@@ -148,7 +148,7 @@ export default function ApiLogsPage() {
         }
       />
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-sm">{error}</p>}
 
       {runs === null && loading && (
         <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
@@ -168,7 +168,7 @@ export default function ApiLogsPage() {
       )}
 
       {runs !== null && runs.length === 0 && !loading && (
-        <p className="text-sm text-muted-foreground">No runs recorded in the last {retentionDays} days.</p>
+        <p className="text-muted-foreground text-sm">No runs recorded in the last {retentionDays} days.</p>
       )}
 
       {runs !== null && runs.length > 0 && (
@@ -188,7 +188,7 @@ export default function ApiLogsPage() {
                     key={r.id}
                     onClick={() => setSelectedId(r.id)}
                     className={cn(
-                      "flex flex-col gap-1 border-b px-3 py-2.5 text-left transition-colors hover:bg-muted/50",
+                      "hover:bg-muted/50 flex flex-col gap-1 border-b px-3 py-2.5 text-left transition-colors",
                       r.id === selectedId && "bg-muted"
                     )}
                   >
@@ -201,14 +201,14 @@ export default function ApiLogsPage() {
                         {r.success ? "ok" : "failed"}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <div className="text-muted-foreground flex items-center justify-between gap-2 text-xs">
                       <span>{formatWhen(r.ran_at)}</span>
                       {r.ran_by && <span className="truncate">{r.ran_by}</span>}
                     </div>
                   </button>
                 ))}
                 {filteredRuns.length === 0 && (
-                  <p className="px-3 py-4 text-sm text-muted-foreground">No matching runs.</p>
+                  <p className="text-muted-foreground px-3 py-4 text-sm">No matching runs.</p>
                 )}
               </div>
             </ScrollArea>
@@ -218,8 +218,8 @@ export default function ApiLogsPage() {
           <div className="flex flex-col gap-2">
             {selected ? (
               <>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{selected.scraper_id}</span>
+                <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-foreground font-medium">{selected.scraper_id}</span>
                   <span>·</span>
                   <span>{formatWhen(selected.ran_at)}</span>
                   {selected.ran_by && (
@@ -228,21 +228,18 @@ export default function ApiLogsPage() {
                       <span>{selected.ran_by}</span>
                     </>
                   )}
-                  <Badge
-                    variant={selected.success ? "outline" : "destructive"}
-                    className="px-1.5 py-0"
-                  >
+                  <Badge variant={selected.success ? "outline" : "destructive"} className="px-1.5 py-0">
                     {selected.success ? "Success" : "Failed"}
                   </Badge>
                 </div>
-                <ScrollArea className="h-[64vh] rounded-md border bg-muted/30">
-                  <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs leading-relaxed">
+                <ScrollArea className="bg-muted/30 h-[64vh] rounded-md border">
+                  <pre className="p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap">
                     {selected.logs?.trim() ? selected.logs : "No logs were captured for this run."}
                   </pre>
                 </ScrollArea>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">Select a run to view its logs.</p>
+              <p className="text-muted-foreground text-sm">Select a run to view its logs.</p>
             )}
           </div>
         </div>

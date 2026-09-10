@@ -40,9 +40,12 @@ export function AttachmentList({
   }, [urls]);
 
   // Object URLs leak until revoked, and the page can be left at any time.
-  useEffect(() => () => {
-    Object.values(urlsRef.current).forEach(URL.revokeObjectURL);
-  }, []);
+  useEffect(
+    () => () => {
+      Object.values(urlsRef.current).forEach(URL.revokeObjectURL);
+    },
+    []
+  );
 
   const load = async (id: number) => {
     if (!token || urls[id] || loading === id) return;
@@ -72,15 +75,19 @@ export function AttachmentList({
           <li key={a.id} className="rounded-lg border">
             <details
               className="group"
-              onToggle={(e) => { if (e.currentTarget.open) load(a.id); }}
+              onToggle={(e) => {
+                if (e.currentTarget.open) load(a.id);
+              }}
             >
               <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-sm [&::-webkit-details-marker]:hidden">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
-                {isPdf
-                  ? <FileText className="size-4 shrink-0 text-muted-foreground" />
-                  : <ImageIcon className="size-4 shrink-0 text-muted-foreground" />}
+                <ChevronRight className="text-muted-foreground size-4 shrink-0 transition-transform group-open:rotate-90" />
+                {isPdf ? (
+                  <FileText className="text-muted-foreground size-4 shrink-0" />
+                ) : (
+                  <ImageIcon className="text-muted-foreground size-4 shrink-0" />
+                )}
                 <span className="flex-1 truncate">{a.filename}</span>
-                {loading === a.id && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+                {loading === a.id && <Loader2 className="text-muted-foreground size-4 animate-spin" />}
                 {onRemove && (
                   <Button
                     variant="ghost"
@@ -89,19 +96,25 @@ export function AttachmentList({
                     disabled={busy != null}
                     aria-label={`Remove ${a.filename}`}
                     // Inside a <summary>, so stop the click toggling the box open.
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(a.id); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onRemove(a.id);
+                    }}
                   >
-                    {busy === `del-${a.id}`
-                      ? <Loader2 className="animate-spin" />
-                      : <Trash2 className="text-muted-foreground" />}
+                    {busy === `del-${a.id}` ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Trash2 className="text-muted-foreground" />
+                    )}
                   </Button>
                 )}
               </summary>
               <div className="border-t p-3">
                 {failed[a.id] ? (
-                  <p className="text-sm text-destructive">Couldn&apos;t load this file.</p>
+                  <p className="text-destructive text-sm">Couldn&apos;t load this file.</p>
                 ) : !url ? (
-                  <p className="text-sm text-muted-foreground">Loading…</p>
+                  <p className="text-muted-foreground text-sm">Loading…</p>
                 ) : isPdf ? (
                   <iframe src={url} title={a.filename} className="h-[70vh] w-full rounded border" />
                 ) : (
@@ -113,7 +126,7 @@ export function AttachmentList({
                     href={url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-block text-xs text-muted-foreground hover:underline"
+                    className="text-muted-foreground mt-2 inline-block text-xs hover:underline"
                   >
                     Open in a new tab
                   </a>

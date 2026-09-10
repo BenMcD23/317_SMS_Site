@@ -45,8 +45,7 @@ export default function NewCommitteeRequestPage() {
     setItems((list) => (list.length > 1 ? list.filter((i) => i.id !== id) : list));
 
   const canSubmit =
-    title.trim().length > 0 &&
-    items.some((i) => i.description.trim() && parseFloat(i.cost) > 0);
+    title.trim().length > 0 && items.some((i) => i.description.trim() && parseFloat(i.cost) > 0);
 
   const submit = async () => {
     if (!session?.id_token) {
@@ -93,7 +92,9 @@ export default function NewCommitteeRequestPage() {
         description="Submit a purchase request — the OC is emailed a PDF for approval"
         actions={
           <Button asChild variant="ghost" size="sm">
-            <Link href="/committee/requests"><ArrowLeft /> Back</Link>
+            <Link href="/committee/requests">
+              <ArrowLeft /> Back
+            </Link>
           </Button>
         }
       />
@@ -136,7 +137,9 @@ export default function NewCommitteeRequestPage() {
                     className="flex-1"
                   />
                   <div className="relative w-32 shrink-0">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">£</span>
+                    <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
+                      £
+                    </span>
                     <Input
                       type="number"
                       min="0"

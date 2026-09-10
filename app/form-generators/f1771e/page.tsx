@@ -102,12 +102,10 @@ function EntryCard({
     }
   };
 
-  const set = (field: keyof JourneyEntry) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => onUpdate(entry.id, field, e.target.value);
+  const set = (field: keyof JourneyEntry) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    onUpdate(entry.id, field, e.target.value);
 
-  const hasContent =
-    entry.dateOfJourney || entry.from || entry.to || entry.nameRankNo;
+  const hasContent = entry.dateOfJourney || entry.from || entry.to || entry.nameRankNo;
 
   return (
     <Card className="border-border">
@@ -116,30 +114,23 @@ function EntryCard({
           <CardTitle className="text-base font-semibold">
             Entry {index + 1}
             {hasContent && !collapsed && (
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                {[entry.dateOfJourney, entry.from && entry.to ? `${entry.from} → ${entry.to}` : ""].filter(Boolean).join(" · ")}
+              <span className="text-muted-foreground ml-2 text-sm font-normal">
+                {[entry.dateOfJourney, entry.from && entry.to ? `${entry.from} → ${entry.to}` : ""]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
             )}
           </CardTitle>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCollapsed((v) => !v)}
-              className="h-8 w-8 p-0"
-            >
-              {collapsed ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronUp className="h-4 w-4" />
-              )}
+            <Button variant="ghost" size="sm" onClick={() => setCollapsed((v) => !v)} className="h-8 w-8 p-0">
+              {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             </Button>
             {canRemove && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onRemove(entry.id)}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                className="text-destructive hover:text-destructive h-8 w-8 p-0"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -152,7 +143,7 @@ function EntryCard({
         <CardContent className="space-y-6">
           {/* Journey Details */}
           <div>
-            <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-muted-foreground mb-3 text-sm font-medium tracking-wide uppercase">
               Journey Details
             </h3>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -164,7 +155,7 @@ function EntryCard({
                   value={entry.dateOfJourney}
                   onChange={set("dateOfJourney")}
                 />
-                <p className="text-xs text-muted-foreground">DD/MM/YY</p>
+                <p className="text-muted-foreground text-xs">DD/MM/YY</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor={`dep-${uid}`}>Time of Departure</Label>
@@ -235,14 +226,12 @@ function EntryCard({
 
           {/* Trip Information */}
           <div>
-            <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-muted-foreground mb-3 text-sm font-medium tracking-wide uppercase">
               Trip Information
             </h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor={`nature-${uid}`}>
-                  Nature of Activity and SMS Ref
-                </Label>
+                <Label htmlFor={`nature-${uid}`}>Nature of Activity and SMS Ref</Label>
                 <Textarea
                   id={`nature-${uid}`}
                   placeholder="e.g. Training camp, SMS-1234"
@@ -252,9 +241,7 @@ function EntryCard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`nrn-${uid}`}>
-                  Name / Rank / No of Passenger(s)
-                </Label>
+                <Label htmlFor={`nrn-${uid}`}>Name / Rank / No of Passenger(s)</Label>
                 <Textarea
                   id={`nrn-${uid}`}
                   placeholder="e.g. Cdt Smith J, 1234567"
@@ -274,9 +261,7 @@ function EntryCard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor={`misc-${uid}`}>
-                  Details of any Miscellaneous Expenses
-                </Label>
+                <Label htmlFor={`misc-${uid}`}>Details of any Miscellaneous Expenses</Label>
                 <Textarea
                   id={`misc-${uid}`}
                   placeholder="Any additional expenses..."
@@ -292,7 +277,7 @@ function EntryCard({
 
           {/* Travel Details */}
           <div>
-            <h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-muted-foreground mb-3 text-sm font-medium tracking-wide uppercase">
               Travel Details
             </h3>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -314,8 +299,18 @@ function EntryCard({
                     <SelectValue placeholder="Select method" />
                   </SelectTrigger>
                   <SelectContent>
-                    {["Electric Car","Motor Car","Motorcycle","Public Transport","Taxi","Aircraft","Bicycle"].map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    {[
+                      "Electric Car",
+                      "Motor Car",
+                      "Motorcycle",
+                      "Public Transport",
+                      "Taxi",
+                      "Aircraft",
+                      "Bicycle",
+                    ].map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -356,14 +351,34 @@ function EntryCard({
 }
 
 const REQUIRED_PROFILE_FIELDS: (keyof UserProfile)[] = [
-  "rank", "initials", "surname", "jpa_number", "appointment", "sqn_vgs_no", "wing_ccf", "home_address",
+  "rank",
+  "initials",
+  "surname",
+  "jpa_number",
+  "appointment",
+  "sqn_vgs_no",
+  "wing_ccf",
+  "home_address",
 ];
 const REQUIRED_JOURNEY_FIELDS: (keyof JourneyEntry)[] = [
-  "dateOfJourney", "timeOfDeparture", "timeOfArrival", "from", "to", "natureOfActivity", "method", "mileageClaimed",
+  "dateOfJourney",
+  "timeOfDeparture",
+  "timeOfArrival",
+  "from",
+  "to",
+  "natureOfActivity",
+  "method",
+  "mileageClaimed",
 ];
 const JOURNEY_FIELD_LABELS: Partial<Record<keyof JourneyEntry, string>> = {
-  dateOfJourney: "Date of Journey", timeOfDeparture: "Time of Departure", timeOfArrival: "Time of Arrival",
-  from: "From", to: "To", natureOfActivity: "Nature of Activity", method: "Method", mileageClaimed: "Mileage Claimed",
+  dateOfJourney: "Date of Journey",
+  timeOfDeparture: "Time of Departure",
+  timeOfArrival: "Time of Arrival",
+  from: "From",
+  to: "To",
+  natureOfActivity: "Nature of Activity",
+  method: "Method",
+  mileageClaimed: "Mileage Claimed",
 };
 
 export default function F1771ePage() {
@@ -375,24 +390,20 @@ export default function F1771ePage() {
 
   const addEntry = () => setEntries((prev) => [...prev, defaultEntry()]);
 
-  const removeEntry = (id: number) =>
-    setEntries((prev) => prev.filter((e) => e.id !== id));
+  const removeEntry = (id: number) => setEntries((prev) => prev.filter((e) => e.id !== id));
 
-  const updateEntry = (
-    id: number,
-    field: keyof JourneyEntry,
-    value: string
-  ) => {
-    setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e))
-    );
+  const updateEntry = (id: number, field: keyof JourneyEntry, value: string) => {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
   };
 
   const generateDoc = async () => {
     if (!session?.id_token) return;
 
     // Profile validation
-    if (!profile) { toast.error("Profile not loaded yet."); return; }
+    if (!profile) {
+      toast.error("Profile not loaded yet.");
+      return;
+    }
     const missingProfile = REQUIRED_PROFILE_FIELDS.filter((k) => !profile[k]);
     if (missingProfile.length > 0) {
       toast.error("Complete your profile details before generating.");
@@ -478,9 +489,7 @@ export default function F1771ePage() {
         </Button>
 
         <Button onClick={generateDoc} disabled={generating} className="gap-2">
-          {generating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : null}
+          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Generate Word Document
         </Button>
       </div>

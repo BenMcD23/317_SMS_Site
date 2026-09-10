@@ -10,14 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -94,12 +97,14 @@ export default function LeavingProcessPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const cadets = useMemo(() => {
     const rows = [...(data?.cadets ?? [])];
     rows.sort((a, b) => {
-      if (a.returned !== b.returned) return a.returned ? -1 : 1;   // returns first, they need clearing
+      if (a.returned !== b.returned) return a.returned ? -1 : 1; // returns first, they need clearing
       const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       return byStatus !== 0 ? byStatus : (b.gapDays ?? 0) - (a.gapDays ?? 0);
     });
@@ -146,7 +151,7 @@ export default function LeavingProcessPage() {
         }
         toast.success(`Leaving process cancelled for ${cadet.name}`);
         await load();
-      },
+      }
     );
   }
 
@@ -169,9 +174,9 @@ export default function LeavingProcessPage() {
         <Skeleton className="h-64 w-full" />
       ) : cadets.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Nobody is currently lapsed. Cadets appear here once their last parade is four
-            weeks behind the current parade night.
+          <CardContent className="text-muted-foreground py-10 text-center text-sm">
+            Nobody is currently lapsed. Cadets appear here once their last parade is four weeks behind the
+            current parade night.
           </CardContent>
         </Card>
       ) : (
@@ -180,8 +185,8 @@ export default function LeavingProcessPage() {
             <Alert>
               <AlertTriangle className="text-destructive" />
               <AlertTitle>
-                {needsAction} cadet{needsAction !== 1 ? "s have" : " has"} passed the two-week
-                reply window — ready to start the leaving process.
+                {needsAction} cadet{needsAction !== 1 ? "s have" : " has"} passed the two-week reply window —
+                ready to start the leaving process.
               </AlertTitle>
             </Alert>
           )}
@@ -189,7 +194,7 @@ export default function LeavingProcessPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Mail className="h-4 w-4 text-muted-foreground" />
+                <Mail className="text-muted-foreground h-4 w-4" />
                 Lapsed cadets
                 <Badge variant="secondary" className="ml-auto text-xs font-normal">
                   {cadets.length}
@@ -205,26 +210,23 @@ export default function LeavingProcessPage() {
                       <TableHead>Last parade</TableHead>
                       <TableHead>Absent</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right pr-6">Action</TableHead>
+                      <TableHead className="pr-6 text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {cadets.map((cadet) => (
                       <TableRow key={cadet.cin}>
                         <TableCell className="pl-6">
-                          <Link
-                            href={`/cadets/${cadet.cin}`}
-                            className="font-medium hover:underline"
-                          >
+                          <Link href={`/cadets/${cadet.cin}`} className="font-medium hover:underline">
                             {cadet.name}
                           </Link>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground text-xs">
                             {[cadet.rank, cadet.flight && `${cadet.flight} Flight`]
                               .filter(Boolean)
                               .join(" · ") || `CIN ${cadet.cin}`}
                           </p>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap text-muted-foreground">
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
                           {formatDate(cadet.lastAttended)}
                         </TableCell>
                         <TableCell className="whitespace-nowrap tabular-nums">
@@ -234,7 +236,7 @@ export default function LeavingProcessPage() {
                           {cadet.returned ? (
                             <Badge
                               variant="outline"
-                              className="border-success/40 bg-success/10 font-normal text-success"
+                              className="border-success/40 bg-success/10 text-success font-normal"
                             >
                               Back on parade
                             </Badge>
@@ -247,12 +249,12 @@ export default function LeavingProcessPage() {
                                 {STATUS_LABEL[cadet.status]}
                               </Badge>
                               {cadet.status === "waiting" && cadet.daysLeft !== null && (
-                                <p className="mt-1 text-xs text-muted-foreground">
+                                <p className="text-muted-foreground mt-1 text-xs">
                                   {cadet.daysLeft} day{cadet.daysLeft !== 1 ? "s" : ""} left
                                 </p>
                               )}
                               {cadet.sentAt && cadet.status !== "waiting" && (
-                                <p className="mt-1 text-xs text-muted-foreground">
+                                <p className="text-muted-foreground mt-1 text-xs">
                                   Emailed {formatDate(cadet.sentAt)}
                                 </p>
                               )}
@@ -261,11 +263,7 @@ export default function LeavingProcessPage() {
                         </TableCell>
                         <TableCell className="pr-6 text-right">
                           {cadet.sentAt ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => cancelProcess(cadet)}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => cancelProcess(cadet)}>
                               <RotateCcw data-icon="inline-start" />
                               Cancel
                             </Button>
@@ -293,8 +291,8 @@ export default function LeavingProcessPage() {
           <DialogHeader>
             <DialogTitle>Send leaving-process email</DialogTitle>
             <DialogDescription>
-              {target?.name} — last on parade {formatDate(target?.lastAttended)}.
-              This starts a two-week countdown.
+              {target?.name} — last on parade {formatDate(target?.lastAttended)}. This starts a two-week
+              countdown.
             </DialogDescription>
           </DialogHeader>
 
@@ -302,11 +300,14 @@ export default function LeavingProcessPage() {
             <div className="grid gap-1.5">
               <Label htmlFor="leaving-to">Send to</Label>
               <Input
-                id="leaving-to" type="email" value={to} placeholder="cadet@example.com"
+                id="leaving-to"
+                type="email"
+                value={to}
+                placeholder="cadet@example.com"
                 onChange={(e) => setTo(e.target.value)}
               />
               {!target?.email && (
-                <p className="text-xs text-warning">
+                <p className="text-warning text-xs">
                   No email on this cadet&apos;s record — enter one to send.
                 </p>
               )}
@@ -314,10 +315,13 @@ export default function LeavingProcessPage() {
             <div className="grid gap-1.5">
               <Label htmlFor="leaving-reply">Replies go to</Label>
               <Input
-                id="leaving-reply" type="email" value={replyTo} placeholder="staff@317atc.co.uk"
+                id="leaving-reply"
+                type="email"
+                value={replyTo}
+                placeholder="staff@317atc.co.uk"
                 onChange={(e) => setReplyTo(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 The email sends from the noreply account, so replies land here instead.
               </p>
             </div>
@@ -328,8 +332,11 @@ export default function LeavingProcessPage() {
               Cancel
             </Button>
             <Button onClick={send} disabled={sending || !to.trim() || !replyTo.trim()}>
-              {sending ? <Loader2 className="animate-spin" data-icon="inline-start" />
-                       : <Send data-icon="inline-start" />}
+              {sending ? (
+                <Loader2 className="animate-spin" data-icon="inline-start" />
+              ) : (
+                <Send data-icon="inline-start" />
+              )}
               Send email
             </Button>
           </DialogFooter>

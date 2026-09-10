@@ -1,13 +1,7 @@
 // Shared types + display helpers for the committee request tracker.
 
 export type CommitteeRequestStatus =
-  | "submitted"
-  | "sent_to_committee"
-  | "approved"
-  | "rejected"
-  | "sent_for_payment"
-  | "paid"
-  | "withdrawn";
+  "submitted" | "sent_to_committee" | "approved" | "rejected" | "sent_for_payment" | "paid" | "withdrawn";
 
 export interface CommitteeRequestItem {
   description: string;
@@ -64,15 +58,21 @@ export const STATUS_LABELS: Record<CommitteeRequestStatus, string> = {
 };
 
 // Badge variant + a colour class for statuses the default variants don't cover.
-export const STATUS_STYLE: Record<
-  CommitteeRequestStatus,
-  { variant: BadgeVariant; className?: string }
-> = {
+export const STATUS_STYLE: Record<CommitteeRequestStatus, { variant: BadgeVariant; className?: string }> = {
   submitted: { variant: "secondary" },
-  sent_to_committee: { variant: "outline", className: "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  approved: { variant: "outline", className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  sent_to_committee: {
+    variant: "outline",
+    className: "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  approved: {
+    variant: "outline",
+    className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
   rejected: { variant: "destructive" },
-  sent_for_payment: { variant: "outline", className: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-500" },
+  sent_for_payment: {
+    variant: "outline",
+    className: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-500",
+  },
   paid: { variant: "outline", className: "text-muted-foreground" },
   withdrawn: { variant: "outline", className: "text-muted-foreground line-through" },
 };
@@ -84,13 +84,19 @@ export function formatGBP(amount: number): string {
 export function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
 }
 
 export function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }

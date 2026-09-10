@@ -32,10 +32,11 @@ function SignatureSection({
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    if ("touches" in e) return {
-      x: (e.touches[0].clientX - rect.left) * scaleX,
-      y: (e.touches[0].clientY - rect.top) * scaleY,
-    };
+    if ("touches" in e)
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      };
     return {
       x: (e.clientX - rect.left) * scaleX,
       y: (e.clientY - rect.top) * scaleY,
@@ -52,9 +53,26 @@ function SignatureSection({
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    const start = (e: MouseEvent | TouchEvent) => { drawing.current = true; const p = getPos(e, canvas); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-    const move = (e: MouseEvent | TouchEvent) => { if (!drawing.current) return; const p = getPos(e, canvas); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
-    const stop = () => { if (!drawing.current) return; drawing.current = false; setHasDrawn(true); onOverride(canvas.toDataURL()); };
+    const start = (e: MouseEvent | TouchEvent) => {
+      drawing.current = true;
+      const p = getPos(e, canvas);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      e.preventDefault();
+    };
+    const move = (e: MouseEvent | TouchEvent) => {
+      if (!drawing.current) return;
+      const p = getPos(e, canvas);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      e.preventDefault();
+    };
+    const stop = () => {
+      if (!drawing.current) return;
+      drawing.current = false;
+      setHasDrawn(true);
+      onOverride(canvas.toDataURL());
+    };
 
     canvas.addEventListener("mousedown", start);
     canvas.addEventListener("mousemove", move);
@@ -90,14 +108,14 @@ function SignatureSection({
             <img src={savedSignatureUrl} alt="Saved signature" className="max-h-16 object-contain" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Badge variant="secondary" className="gap-1 whitespace-nowrap text-[11px]">
-              <CheckCircle2 className="h-3 w-3 text-success" />
+            <Badge variant="secondary" className="gap-1 text-[11px] whitespace-nowrap">
+              <CheckCircle2 className="text-success h-3 w-3" />
               From account
             </Badge>
             <button
               type="button"
               onClick={() => onSetShowDraw(true)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
             >
               <Pencil className="h-3 w-3" />
               Draw instead
@@ -113,8 +131,12 @@ function SignatureSection({
       {savedSignatureUrl && showDraw && (
         <button
           type="button"
-          onClick={() => { onSetShowDraw(false); setHasDrawn(false); onClearOverride(); }}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            onSetShowDraw(false);
+            setHasDrawn(false);
+            onClearOverride();
+          }}
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
         >
           ← Use saved signature
         </button>
@@ -124,10 +146,10 @@ function SignatureSection({
           ref={canvasRef}
           width={560}
           height={120}
-          className="w-full cursor-crosshair touch-none sm:h-20 h-28"
+          className="h-28 w-full cursor-crosshair touch-none sm:h-20"
         />
         {!hasDrawn && !overrideSignature && (
-          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+          <span className="text-muted-foreground pointer-events-none absolute inset-0 flex items-center justify-center text-xs">
             Sign here
           </span>
         )}
@@ -136,15 +158,17 @@ function SignatureSection({
         <button
           type="button"
           onClick={clearDraw}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+          className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-xs"
         >
           <RotateCcw className="h-3 w-3" /> Clear
         </button>
       )}
       {!savedSignatureUrl && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Save a signature in{" "}
-          <Link href="/settings" className="underline hover:text-foreground">Settings</Link>{" "}
+          <Link href="/settings" className="hover:text-foreground underline">
+            Settings
+          </Link>{" "}
           to auto-fill this next time.
         </p>
       )}
@@ -244,10 +268,10 @@ function DrawPad({
           ref={canvasRef}
           width={560}
           height={120}
-          className="w-full cursor-crosshair touch-none sm:h-20 h-28"
+          className="h-28 w-full cursor-crosshair touch-none sm:h-20"
         />
         {!hasDrawn && !value && (
-          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+          <span className="text-muted-foreground pointer-events-none absolute inset-0 flex items-center justify-center text-xs">
             Sign here
           </span>
         )}
@@ -256,7 +280,7 @@ function DrawPad({
         <button
           type="button"
           onClick={clear}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+          className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-xs"
         >
           <RotateCcw className="h-3 w-3" /> Clear
         </button>
@@ -316,7 +340,7 @@ export function AssessorCard({
             <Label htmlFor="assessorName">
               Name
               {showNameFromAccount && (
-                <span className="ml-2 text-[11px] font-normal text-muted-foreground">(from account)</span>
+                <span className="text-muted-foreground ml-2 text-[11px] font-normal">(from account)</span>
               )}
             </Label>
             <Input
@@ -336,35 +360,32 @@ export function AssessorCard({
                 onChange={(e) => onAssessorRoleChange(e.target.value)}
               />
             </div>
-          ) : onDateChange !== undefined && (
-            <div className="space-y-1.5">
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date ?? ""}
-                onChange={(e) => onDateChange(e.target.value)}
-              />
-            </div>
+          ) : (
+            onDateChange !== undefined && (
+              <div className="space-y-1.5">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={date ?? ""}
+                  onChange={(e) => onDateChange(e.target.value)}
+                />
+              </div>
+            )
           )}
         </div>
 
         {showRole && onDateChange !== undefined && (
           <div className="space-y-1.5">
             <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date ?? ""}
-              onChange={(e) => onDateChange(e.target.value)}
-            />
+            <Input id="date" type="date" value={date ?? ""} onChange={(e) => onDateChange(e.target.value)} />
           </div>
         )}
 
         <div className="space-y-1.5">
           <Label>Assessor&apos;s Signature</Label>
           {sigLoading ? (
-            <div className="flex h-14 items-center gap-2 text-sm text-muted-foreground">
+            <div className="text-muted-foreground flex h-14 items-center gap-2 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading signature…
             </div>
@@ -381,19 +402,18 @@ export function AssessorCard({
         </div>
 
         {!sigLoading && !savedSignatureUrl && !overrideSignature && (
-          <div className="flex items-start gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+          <div className="border-warning/30 bg-warning/10 text-warning flex items-start gap-2 rounded-md border px-3 py-2 text-xs">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             No signature - You can draw above or save one in{" "}
-            <Link href="/settings" className="underline">Settings</Link>.
+            <Link href="/settings" className="underline">
+              Settings
+            </Link>
+            .
           </div>
         )}
 
         {onCadetSignature !== undefined && (
-          <DrawPad
-            label="Candidate's Signature"
-            value={cadetSignature ?? null}
-            onChange={onCadetSignature}
-          />
+          <DrawPad label="Candidate's Signature" value={cadetSignature ?? null} onChange={onCadetSignature} />
         )}
       </CardContent>
     </Card>

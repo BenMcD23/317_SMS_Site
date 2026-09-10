@@ -14,19 +14,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Loader2, Save, Send, Upload } from "lucide-react";
+import { savePlan, submitPlan, deleteAttachment, uploadAttachments } from "@/lib/session-plans-api";
 import {
-  savePlan, submitPlan, deleteAttachment, uploadAttachments,
-} from "@/lib/session-plans-api";
-import {
-  ATTACHMENT_ACCEPT, MAX_ATTACHMENT_BYTES, contentOf, missingForSubmit,
-  type SessionPlanContent, type SessionPlanDetail,
+  ATTACHMENT_ACCEPT,
+  MAX_ATTACHMENT_BYTES,
+  contentOf,
+  missingForSubmit,
+  type SessionPlanContent,
+  type SessionPlanDetail,
 } from "@/lib/session-plans";
 
-export default function EditSessionPlanPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function EditSessionPlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const planId = Number(id);
   const router = useRouter();
@@ -37,10 +35,11 @@ export default function EditSessionPlanPage({
   const [plan, setPlan] = useState<SessionPlanContent | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const { data: saved, isLoading, error } = useApiQuery<SessionPlanDetail>(
-    ["session-plan", id],
-    `/session-plans/${id}`,
-  );
+  const {
+    data: saved,
+    isLoading,
+    error,
+  } = useApiQuery<SessionPlanDetail>(["session-plan", id], `/session-plans/${id}`);
 
   // Seed the form once, then leave it alone — refetches must not stomp on
   // edits in progress. Done during render (React's "adjust state" pattern)
@@ -123,9 +122,11 @@ export default function EditSessionPlanPage({
   if (error || !saved || !plan) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-sm text-destructive">{error?.message ?? "Session plan not found."}</p>
+        <p className="text-destructive text-sm">{error?.message ?? "Session plan not found."}</p>
         <Button asChild variant="ghost" size="sm" className="mt-2">
-          <Link href="/session-plans"><ArrowLeft /> Back to session plans</Link>
+          <Link href="/session-plans">
+            <ArrowLeft /> Back to session plans
+          </Link>
         </Button>
       </div>
     );
@@ -133,7 +134,7 @@ export default function EditSessionPlanPage({
   if (!saved.can_edit) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {saved.status === "submitted"
             ? "This plan is with staff for review, so it can't be edited right now."
             : saved.status === "approved"
@@ -141,7 +142,9 @@ export default function EditSessionPlanPage({
               : "You can't edit this plan."}
         </p>
         <Button asChild variant="ghost" size="sm" className="mt-2">
-          <Link href={`/session-plans/${id}`}><ArrowLeft /> Back to the plan</Link>
+          <Link href={`/session-plans/${id}`}>
+            <ArrowLeft /> Back to the plan
+          </Link>
         </Button>
       </div>
     );
@@ -158,7 +161,9 @@ export default function EditSessionPlanPage({
         }
         actions={
           <Button asChild variant="ghost" size="sm">
-            <Link href={`/session-plans/${id}`}><ArrowLeft /> Back</Link>
+            <Link href={`/session-plans/${id}`}>
+              <ArrowLeft /> Back
+            </Link>
           </Button>
         }
       />
@@ -170,18 +175,13 @@ export default function EditSessionPlanPage({
         </div>
       )}
 
-      <SessionPlanForm
-        value={plan}
-        onChange={setPlan}
-        feedback={saved.feedback}
-        disabled={busy !== null}
-      />
+      <SessionPlanForm value={plan} onChange={setPlan} feedback={saved.feedback} disabled={busy !== null} />
 
       {/* ── Attachments (the sheet's map box) ───────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Attachments</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             A map, a diagram, anything else staff should see. PNG, JPEG, WebP or PDF, up to 5 MB each.
           </p>
         </CardHeader>
@@ -199,7 +199,9 @@ export default function EditSessionPlanPage({
             accept={ATTACHMENT_ACCEPT}
             multiple
             className="hidden"
-            onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files); }}
+            onChange={(e) => {
+              if (e.target.files?.length) uploadFiles(e.target.files);
+            }}
           />
           <Button
             variant="outline"
@@ -209,7 +211,7 @@ export default function EditSessionPlanPage({
           >
             {busy === "upload" ? <Loader2 className="animate-spin" /> : <Upload />} Attach a file
           </Button>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Attachments save as soon as you pick them, separately from the rest of the plan.
           </p>
         </CardContent>
@@ -224,7 +226,7 @@ export default function EditSessionPlanPage({
           {saved.status === "amendments_requested" ? "Save & resubmit" : "Save & submit for approval"}
         </Button>
         {missing.length > 0 && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Still needed before submitting: {missing.join(", ")}.
           </p>
         )}

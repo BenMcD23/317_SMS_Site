@@ -7,14 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -35,10 +28,7 @@ type Cadet = {
 export default function CadetsPage() {
   const router = useRouter();
 
-  const { data: cadets = [], isLoading: loading, error } = useApiQuery<Cadet[]>(
-    ["cadets"],
-    "/cadets"
-  );
+  const { data: cadets = [], isLoading: loading, error } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
   const [search, setSearch] = useState("");
 
   const filtered = cadets.filter((c) => {
@@ -55,10 +45,7 @@ export default function CadetsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-16">
-      <PageHeader
-        title="Cadets"
-        description={loading ? "Loading…" : `${cadets.length} cadets on strength`}
-      />
+      <PageHeader title="Cadets" description={loading ? "Loading…" : `${cadets.length} cadets on strength`} />
 
       <InputGroup>
         <InputGroupAddon>
@@ -126,7 +113,7 @@ export default function CadetsPage() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="tabular-nums text-muted-foreground">{c.cin}</TableCell>
+                  <TableCell className="text-muted-foreground tabular-nums">{c.cin}</TableCell>
                   <TableCell className="text-muted-foreground">{c.rank ?? "—"}</TableCell>
                   <TableCell>
                     {c.flight ? (
@@ -138,7 +125,7 @@ export default function CadetsPage() {
                     )}
                   </TableCell>
                   <TableCell className="w-8 pr-4">
-                    <ChevronRight className="size-4 text-muted-foreground/50" />
+                    <ChevronRight className="text-muted-foreground/50 size-4" />
                   </TableCell>
                 </TableRow>
               ))}

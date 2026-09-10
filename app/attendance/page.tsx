@@ -2,40 +2,38 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarCheck, ShieldUser, Users, UserCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { Stat } from "@/components/stat";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
-  addCounts, EMPTY_COUNTS, rateExcludingAuthorised, rateOf, STATE_BADGE, totalOf,
-  type AttendanceState, type StateCounts,
+  addCounts,
+  EMPTY_COUNTS,
+  rateExcludingAuthorised,
+  rateOf,
+  STATE_BADGE,
+  totalOf,
+  type AttendanceState,
+  type StateCounts,
 } from "@/lib/attendance";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Night = {
-  date: string;                 // "YYYY-MM-DD"
+  date: string; // "YYYY-MM-DD"
   registerType: string | null;
   cadets: StateCounts;
   // The NCO team, a subset of `cadets`. Optional so a backend that predates it
@@ -48,7 +46,7 @@ type Person = {
   cin: number;
   name: string;
   rank: string | null;
-  isNco: boolean;               // set by the backend, which owns the rank rule
+  isNco: boolean; // set by the backend, which owns the rank rule
   status: string | null;
   state: AttendanceState;
   registerType: string | null;
@@ -116,12 +114,16 @@ function HeadCount({ counts }: { counts: StateCounts }) {
     <span className="tabular-nums">
       <span className="font-medium">{counts.present}</span>
       <span className="text-muted-foreground">/{total}</span>
-      <span className="ml-1.5 text-xs text-muted-foreground">{rate}%</span>
+      <span className="text-muted-foreground ml-1.5 text-xs">{rate}%</span>
     </span>
   );
 }
 
-function RosterList({ people, icon: Icon, title }: {
+function RosterList({
+  people,
+  icon: Icon,
+  title,
+}: {
   people: Person[];
   icon: React.ElementType;
   title: string;
@@ -130,23 +132,21 @@ function RosterList({ people, icon: Icon, title }: {
   return (
     <div>
       <p className="mb-2 flex items-center gap-2 text-sm font-medium">
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <Icon className="text-muted-foreground h-4 w-4" />
         {title}
-        <span className="ml-auto text-xs font-normal text-muted-foreground tabular-nums">
+        <span className="text-muted-foreground ml-auto text-xs font-normal tabular-nums">
           {present} of {people.length}
         </span>
       </p>
       {people.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nobody on this register.</p>
+        <p className="text-muted-foreground text-sm">Nobody on this register.</p>
       ) : (
         <div className="divide-y rounded-md border">
           {people.map((person) => (
             <div key={person.cin} className="flex items-center gap-3 px-3 py-2">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{person.name}</p>
-                {person.rank && (
-                  <p className="text-xs text-muted-foreground">{person.rank}</p>
-                )}
+                {person.rank && <p className="text-muted-foreground text-xs">{person.rank}</p>}
               </div>
               <Badge variant="outline" className={cn("shrink-0 font-normal", STATE_BADGE[person.state])}>
                 {person.status ?? "Unknown"}
@@ -190,9 +190,7 @@ export default function AttendancePage() {
   // Each night is (date, register type), so the drill-in needs both.
   useEffect(() => {
     if (!selected) return;
-    const query = selected.registerType
-      ? `?registerType=${encodeURIComponent(selected.registerType)}`
-      : "";
+    const query = selected.registerType ? `?registerType=${encodeURIComponent(selected.registerType)}` : "";
     fetch(`/api/attendance/nights/${selected.date}${query}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setDetail)
@@ -201,19 +199,23 @@ export default function AttendancePage() {
 
   const registerTypes = useMemo(
     () => [...new Set(nights.map((n) => n.registerType).filter(Boolean))].sort() as string[],
-    [nights],
+    [nights]
   );
 
-  const filtered = useMemo(() => nights.filter((night) => {
-    if (from && night.date < from) return false;      // ISO, so string compare is date compare
-    if (to && night.date > to) return false;
-    if (type !== ALL_TYPES && night.registerType !== type) return false;
-    return totalOf(countsFor(night, group)) > 0;      // hide nights the group wasn't on
-  }), [nights, from, to, type, group]);
+  const filtered = useMemo(
+    () =>
+      nights.filter((night) => {
+        if (from && night.date < from) return false; // ISO, so string compare is date compare
+        if (to && night.date > to) return false;
+        if (type !== ALL_TYPES && night.registerType !== type) return false;
+        return totalOf(countsFor(night, group)) > 0; // hide nights the group wasn't on
+      }),
+    [nights, from, to, type, group]
+  );
 
   const totals = useMemo(
     () => filtered.reduce((acc, night) => addCounts(acc, countsFor(night, group)), EMPTY_COUNTS),
-    [filtered, group],
+    [filtered, group]
   );
   const { data: monthly, byYear } = useMemo(() => monthlyStats(filtered, group), [filtered, group]);
 
@@ -244,7 +246,7 @@ export default function AttendancePage() {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : nights.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           No attendance recorded yet. It is pulled in by the cadet and staff scrapers.
         </p>
       ) : (
@@ -252,23 +254,37 @@ export default function AttendancePage() {
           {/* Filters */}
           <div className="flex flex-wrap items-end gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="att-from" className="text-xs text-muted-foreground">From</Label>
+              <Label htmlFor="att-from" className="text-muted-foreground text-xs">
+                From
+              </Label>
               <Input
-                id="att-from" type="date" value={from} max={to || undefined}
-                onChange={(e) => setFrom(e.target.value)} className="h-9 w-[9.5rem]"
+                id="att-from"
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(e) => setFrom(e.target.value)}
+                className="h-9 w-[9.5rem]"
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="att-to" className="text-xs text-muted-foreground">To</Label>
+              <Label htmlFor="att-to" className="text-muted-foreground text-xs">
+                To
+              </Label>
               <Input
-                id="att-to" type="date" value={to} min={from || undefined}
-                onChange={(e) => setTo(e.target.value)} className="h-9 w-[9.5rem]"
+                id="att-to"
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(e) => setTo(e.target.value)}
+                className="h-9 w-[9.5rem]"
               />
             </div>
             <div className="grid gap-1.5">
-              <Label className="text-xs text-muted-foreground">Who</Label>
+              <Label className="text-muted-foreground text-xs">Who</Label>
               <Select value={group} onValueChange={(v) => setGroup(v as Group)}>
-                <SelectTrigger className="h-9 w-[10rem]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[10rem]">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Cadets &amp; staff</SelectItem>
                   <SelectItem value="cadets">Cadets only</SelectItem>
@@ -279,13 +295,17 @@ export default function AttendancePage() {
             </div>
             {registerTypes.length > 1 && (
               <div className="grid gap-1.5">
-                <Label className="text-xs text-muted-foreground">Register type</Label>
+                <Label className="text-muted-foreground text-xs">Register type</Label>
                 <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="h-9 w-[12rem]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 w-[12rem]">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_TYPES}>All types</SelectItem>
                     {registerTypes.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -313,33 +333,38 @@ export default function AttendancePage() {
           </div>
 
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No nights match these filters.</p>
+            <p className="text-muted-foreground text-sm">No nights match these filters.</p>
           ) : (
             <>
               {/* Monthly trend — one series, so no legend; the title names it */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">
-                    Turnout per {byYear ? "year" : "month"}
-                  </CardTitle>
+                  <CardTitle className="text-base">Turnout per {byYear ? "year" : "month"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                       <XAxis
-                        dataKey="label" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)"
-                        interval="preserveStartEnd" minTickGap={16}
+                        dataKey="label"
+                        tick={{ fontSize: 11 }}
+                        stroke="var(--muted-foreground)"
+                        interval="preserveStartEnd"
+                        minTickGap={16}
                       />
                       <YAxis
-                        domain={[0, 100]} unit="%" tick={{ fontSize: 11 }}
+                        domain={[0, 100]}
+                        unit="%"
+                        tick={{ fontSize: 11 }}
                         stroke="var(--muted-foreground)"
                       />
                       <Tooltip
                         cursor={{ fill: "var(--muted)", opacity: 0.4 }}
                         contentStyle={{
-                          background: "var(--popover)", border: "1px solid var(--border)",
-                          borderRadius: "8px", fontSize: "13px",
+                          background: "var(--popover)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "8px",
+                          fontSize: "13px",
                         }}
                         formatter={(value, _name, item) => [
                           `${value}% — ${item?.payload?.present} of ${item?.payload?.total} across ${item?.payload?.nights} night(s)`,
@@ -356,7 +381,7 @@ export default function AttendancePage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <CalendarCheck className="h-4 w-4 text-muted-foreground" />
+                    <CalendarCheck className="text-muted-foreground h-4 w-4" />
                     Nights
                     <Badge variant="secondary" className="ml-auto text-xs font-normal">
                       {filtered.length}
@@ -383,10 +408,13 @@ export default function AttendancePage() {
                           return (
                             <TableRow
                               key={`${night.date}-${night.registerType}`}
-                              onClick={() => { setDetail(null); setSelected(night); }}
+                              onClick={() => {
+                                setDetail(null);
+                                setSelected(night);
+                              }}
                               className="cursor-pointer"
                             >
-                              <TableCell className="pl-6 whitespace-nowrap font-medium">
+                              <TableCell className="pl-6 font-medium whitespace-nowrap">
                                 {formatDate(night.date)}
                               </TableCell>
                               <TableCell className="text-muted-foreground">
@@ -395,8 +423,10 @@ export default function AttendancePage() {
                               <TableCell>
                                 <HeadCount counts={countsFor(night, group === "ncos" ? "ncos" : "cadets")} />
                               </TableCell>
-                              <TableCell><HeadCount counts={night.staff} /></TableCell>
-                              <TableCell className="text-right tabular-nums font-medium">
+                              <TableCell>
+                                <HeadCount counts={night.staff} />
+                              </TableCell>
+                              <TableCell className="text-right font-medium tabular-nums">
                                 {nightRate === null ? "—" : `${nightRate}%`}
                               </TableCell>
                             </TableRow>
@@ -408,9 +438,9 @@ export default function AttendancePage() {
                 </CardContent>
               </Card>
               {filtered.length > ROW_LIMIT && (
-                <p className="text-xs text-muted-foreground">
-                  Showing the {ROW_LIMIT} most recent of {filtered.length} nights — narrow the dates
-                  to see older ones. The stats and chart above cover the whole range.
+                <p className="text-muted-foreground text-xs">
+                  Showing the {ROW_LIMIT} most recent of {filtered.length} nights — narrow the dates to see
+                  older ones. The stats and chart above cover the whole range.
                 </p>
               )}
             </>
@@ -423,9 +453,7 @@ export default function AttendancePage() {
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selected ? formatDate(selected.date) : ""}</DialogTitle>
-            <DialogDescription>
-              {selected?.registerType ?? "Register"}
-            </DialogDescription>
+            <DialogDescription>{selected?.registerType ?? "Register"}</DialogDescription>
           </DialogHeader>
           {!detail ? (
             <div className="space-y-3">
@@ -435,19 +463,11 @@ export default function AttendancePage() {
           ) : (
             <div className="flex flex-col gap-5">
               {group === "ncos" ? (
-                <RosterList
-                  people={detail.cadets.filter((p) => p.isNco)}
-                  icon={ShieldUser}
-                  title="NCOs"
-                />
+                <RosterList people={detail.cadets.filter((p) => p.isNco)} icon={ShieldUser} title="NCOs" />
               ) : (
                 <>
-                  {group !== "staff" && (
-                    <RosterList people={detail.cadets} icon={Users} title="Cadets" />
-                  )}
-                  {group !== "cadets" && (
-                    <RosterList people={detail.staff} icon={UserCog} title="Staff" />
-                  )}
+                  {group !== "staff" && <RosterList people={detail.cadets} icon={Users} title="Cadets" />}
+                  {group !== "cadets" && <RosterList people={detail.staff} icon={UserCog} title="Staff" />}
                 </>
               )}
             </div>

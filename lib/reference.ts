@@ -103,7 +103,11 @@ export function useReference(): Reference {
 // ── Pure helpers (take the data they need, so they work outside components) ──
 
 /** Build the badge name string from a category and the chosen sub-type/level. */
-export function buildBadgeName(category: BadgeCategory, subType: string | null, level: string | null): string | null {
+export function buildBadgeName(
+  category: BadgeCategory,
+  subType: string | null,
+  level: string | null
+): string | null {
   if (category.items) return subType ?? null;
   if (category.subTypes) return subType && level ? `${subType} – ${level}` : null;
   if (category.levels) return level ? `${category.prefix} – ${level}` : null;
@@ -123,14 +127,19 @@ export function parseBadgeName(
     const prefix = name.slice(0, sep);
     const level = name.slice(sep + 3);
     for (const cat of categories) {
-      if (cat.subTypes?.includes(prefix) && cat.levels?.includes(level)) return { category: cat, subType: prefix, level };
-      if (cat.prefix === prefix && cat.levels?.includes(level)) return { category: cat, subType: null, level };
+      if (cat.subTypes?.includes(prefix) && cat.levels?.includes(level))
+        return { category: cat, subType: prefix, level };
+      if (cat.prefix === prefix && cat.levels?.includes(level))
+        return { category: cat, subType: null, level };
     }
   }
   return { category: null, subType: null, level: null };
 }
 
-export function gainedWhereLabel(options: GainedWhereOption[], value: string | null | undefined): string | null {
+export function gainedWhereLabel(
+  options: GainedWhereOption[],
+  value: string | null | undefined
+): string | null {
   return options.find((o) => o.value === value)?.label ?? null;
 }
 

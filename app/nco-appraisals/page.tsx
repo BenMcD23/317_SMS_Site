@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  AlertTriangle, BellPlus, CalendarClock, ClipboardList, Plus, Trash2,
-} from "lucide-react";
+import { AlertTriangle, BellPlus, CalendarClock, ClipboardList, Plus, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -20,23 +18,25 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
-} from "@/components/ui/empty";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { formatDate } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
 import {
-  deleteReminder, saveReminder, todayInput,
-  type AppraisalOverview, type UpcomingReview,
+  deleteReminder,
+  saveReminder,
+  todayInput,
+  type AppraisalOverview,
+  type UpcomingReview,
 } from "@/lib/nco-appraisals";
 
 /** How the countdown to a review is worded. "Due in 9 days" is more use at a
@@ -57,10 +57,7 @@ export default function NcoAppraisalsPage() {
   const { confirm, confirmDialog } = useConfirm();
   const token = session?.id_token;
 
-  const { data, isLoading, error } = useApiQuery<AppraisalOverview>(
-    ["nco-appraisals"],
-    "/nco-appraisals",
-  );
+  const { data, isLoading, error } = useApiQuery<AppraisalOverview>(["nco-appraisals"], "/nco-appraisals");
 
   const [reminderOpen, setReminderOpen] = useState(false);
   const [reminderCin, setReminderCin] = useState("");
@@ -75,10 +72,7 @@ export default function NcoAppraisalsPage() {
 
   // Reminders only make sense for NCOs with no appraisal — anyone appraised
   // already has a next-review date driving the list.
-  const remindable = useMemo(
-    () => (data?.ncos ?? []).filter((n) => !n.last_appraisal_id),
-    [data],
-  );
+  const remindable = useMemo(() => (data?.ncos ?? []).filter((n) => !n.last_appraisal_id), [data]);
   const overdueCount = upcoming.filter((row) => row.overdue).length;
 
   function openReminder(cin?: number) {
@@ -166,11 +160,13 @@ export default function NcoAppraisalsPage() {
               {upcoming.length === 0 ? (
                 <Empty>
                   <EmptyHeader>
-                    <EmptyMedia variant="icon"><CalendarClock /></EmptyMedia>
+                    <EmptyMedia variant="icon">
+                      <CalendarClock />
+                    </EmptyMedia>
                     <EmptyTitle>Nothing scheduled</EmptyTitle>
                     <EmptyDescription>
-                      Reviews appear here once an appraisal sets a next-review date.
-                      For an NCO who hasn&apos;t had one yet, add a reminder.
+                      Reviews appear here once an appraisal sets a next-review date. For an NCO who
+                      hasn&apos;t had one yet, add a reminder.
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -196,9 +192,7 @@ export default function NcoAppraisalsPage() {
                               Reminder
                             </Badge>
                           )}
-                          {row.note && (
-                            <p className="mt-0.5 text-xs text-muted-foreground">{row.note}</p>
-                          )}
+                          {row.note && <p className="text-muted-foreground mt-0.5 text-xs">{row.note}</p>}
                         </TableCell>
                         <TableCell>{formatDate(row.due_date)}</TableCell>
                         <TableCell>
@@ -206,10 +200,10 @@ export default function NcoAppraisalsPage() {
                             className={cn(
                               "text-sm",
                               row.overdue
-                                ? "font-medium text-destructive"
+                                ? "text-destructive font-medium"
                                 : row.days_until <= 31
                                   ? "text-warning"
-                                  : "text-muted-foreground",
+                                  : "text-muted-foreground"
                             )}
                           >
                             {dueLabel(row)}
@@ -247,7 +241,7 @@ export default function NcoAppraisalsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertTriangle className="size-4 text-warning" />
+                  <AlertTriangle className="text-warning size-4" />
                   Never appraised
                 </CardTitle>
               </CardHeader>
@@ -259,7 +253,7 @@ export default function NcoAppraisalsPage() {
                   >
                     <span>{nco.nco_name}</span>
                     {nco.reminder_id ? (
-                      <Badge variant="outline" className="font-normal text-muted-foreground">
+                      <Badge variant="outline" className="text-muted-foreground font-normal">
                         Reminder set
                       </Badge>
                     ) : (
@@ -289,11 +283,12 @@ export default function NcoAppraisalsPage() {
               {appraisals.length === 0 ? (
                 <Empty>
                   <EmptyHeader>
-                    <EmptyMedia variant="icon"><ClipboardList /></EmptyMedia>
+                    <EmptyMedia variant="icon">
+                      <ClipboardList />
+                    </EmptyMedia>
                     <EmptyTitle>No appraisals yet</EmptyTitle>
                     <EmptyDescription>
-                      Write the first one and it&apos;ll be kept here, ready to download
-                      or email to the NCO.
+                      Write the first one and it&apos;ll be kept here, ready to download or email to the NCO.
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -313,40 +308,39 @@ export default function NcoAppraisalsPage() {
                     {appraisals.map((appraisal) => (
                       <TableRow key={appraisal.id}>
                         <TableCell className="font-medium">
-                          <Link
-                            href={`/nco-appraisals/${appraisal.id}`}
-                            className="hover:underline"
-                          >
+                          <Link href={`/nco-appraisals/${appraisal.id}`} className="hover:underline">
                             {appraisal.nco_name}
                           </Link>
                         </TableCell>
                         <TableCell>{formatDate(appraisal.appraisal_date)}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {formatDate(appraisal.next_review_date)}
-                          <span className="ml-1 text-xs">
-                            ({appraisal.next_review_months}m)
-                          </span>
+                          <span className="ml-1 text-xs">({appraisal.next_review_months}m)</span>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {appraisal.cause_for_concern && (
-                              <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive">
+                              <Badge
+                                variant="outline"
+                                className="border-destructive/40 bg-destructive/10 text-destructive"
+                              >
                                 Cause for concern
                               </Badge>
                             )}
                             {appraisal.extend_probation && (
-                              <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning">
+                              <Badge
+                                variant="outline"
+                                className="border-warning/40 bg-warning/15 text-warning"
+                              >
                                 Probation extended
                               </Badge>
                             )}
                             {!appraisal.cause_for_concern && !appraisal.extend_probation && (
-                              <span className="text-sm text-muted-foreground">—</span>
+                              <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {appraisal.author_name}
-                        </TableCell>
+                        <TableCell className="text-muted-foreground">{appraisal.author_name}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {appraisal.emailed_at ? formatDate(appraisal.emailed_at) : "Not sent"}
                         </TableCell>
@@ -365,8 +359,8 @@ export default function NcoAppraisalsPage() {
           <DialogHeader>
             <DialogTitle>Add an appraisal reminder</DialogTitle>
             <DialogDescription>
-              For an NCO who hasn&apos;t been appraised yet. They&apos;ll show on the
-              upcoming list from this date until an appraisal is written.
+              For an NCO who hasn&apos;t been appraised yet. They&apos;ll show on the upcoming list from this
+              date until an appraisal is written.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -385,9 +379,8 @@ export default function NcoAppraisalsPage() {
                 </SelectContent>
               </Select>
               {remindable.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Every NCO has an appraisal already, so their next review date is
-                  set from it.
+                <p className="text-muted-foreground text-xs">
+                  Every NCO has an appraisal already, so their next review date is set from it.
                 </p>
               )}
             </div>
@@ -412,7 +405,9 @@ export default function NcoAppraisalsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReminderOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setReminderOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={submitReminder} disabled={saving || !reminderCin || !reminderDate}>
               {saving ? "Saving…" : "Add reminder"}
             </Button>

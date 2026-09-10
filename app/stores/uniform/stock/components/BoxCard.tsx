@@ -44,12 +44,11 @@ export function BoxCard({
     if (next && next !== box.label) onRename?.(next);
     setRenameOpen(false);
   }
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: `box-${box.label}`,
-      data: { box },
-      disabled: !editMode,
-    });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `box-${box.label}`,
+    data: { box },
+    disabled: !editMode,
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -57,20 +56,18 @@ export function BoxCard({
     cursor: overlay ? "grabbing" : editMode ? "grab" : "pointer",
   };
 
-  const totalQty = stock
-    .filter((i) => i.box === box.label)
-    .reduce((s, i) => s + i.quantity, 0);
+  const totalQty = stock.filter((i) => i.box === box.label).reduce((s, i) => s + i.quantity, 0);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative flex flex-col gap-1 rounded-lg border bg-card p-3 shadow-sm select-none w-full h-full ${
+      className={`bg-card relative flex h-full w-full flex-col gap-1 rounded-lg border p-3 shadow-sm select-none ${
         overlay
-          ? "shadow-lg ring-2 ring-primary"
+          ? "ring-primary shadow-lg ring-2"
           : editMode
-          ? "border-dashed border-primary/40 bg-primary/5"
-          : "hover:border-primary/50 transition-colors"
+            ? "border-primary/40 bg-primary/5 border-dashed"
+            : "hover:border-primary/50 transition-colors"
       }`}
       {...(editMode ? attributes : {})}
     >
@@ -79,7 +76,7 @@ export function BoxCard({
           {/* Drag handle — centred */}
           <div
             {...listeners}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted cursor-grab active:cursor-grabbing transition-colors"
+            className="text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted absolute top-1/2 left-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 cursor-grab items-center justify-center rounded-md transition-colors active:cursor-grabbing"
             onClick={(e) => e.stopPropagation()}
           >
             <GripVertical className="h-5 w-5" />
@@ -93,7 +90,10 @@ export function BoxCard({
                 variant="ghost"
                 className="h-6 w-6"
                 title={isMisc ? "Rename area" : "Rename box"}
-                onClick={() => { setRenameValue(box.label); setRenameOpen(true); }}
+                onClick={() => {
+                  setRenameValue(box.label);
+                  setRenameOpen(true);
+                }}
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -101,7 +101,12 @@ export function BoxCard({
           )}
 
           {/* Rename dialog */}
-          <Dialog open={renameOpen} onOpenChange={(o) => { if (!o) setRenameOpen(false); }}>
+          <Dialog
+            open={renameOpen}
+            onOpenChange={(o) => {
+              if (!o) setRenameOpen(false);
+            }}
+          >
             <DialogContent className="sm:max-w-xs">
               <DialogHeader>
                 <DialogTitle>Rename {isMisc ? "Area" : "Box"}</DialogTitle>
@@ -112,14 +117,21 @@ export function BoxCard({
                   id={`rename-box-${box.label}`}
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => { if (e.key === "Enter") submitRename(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitRename();
+                  }}
                   maxLength={isMisc ? 20 : 10}
                   autoFocus
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button>
-                <Button onClick={submitRename} disabled={!renameValue.trim() || renameValue.trim().toUpperCase() === box.label}>
+                <Button variant="outline" onClick={() => setRenameOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={submitRename}
+                  disabled={!renameValue.trim() || renameValue.trim().toUpperCase() === box.label}
+                >
                   Save
                 </Button>
               </DialogFooter>
@@ -141,7 +153,7 @@ export function BoxCard({
           </div>
 
           {/* Arrow down — bottom-right */}
-          <div className="absolute bottom-1 right-1" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute right-1 bottom-1" onClick={(e) => e.stopPropagation()}>
             <Button
               size="icon"
               variant="ghost"
@@ -160,7 +172,7 @@ export function BoxCard({
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6 text-destructive/60 hover:text-destructive"
+                className="text-destructive/60 hover:text-destructive h-6 w-6"
                 title="Delete box"
                 onClick={() => setDeleteConfirm(true)}
               >
@@ -170,18 +182,31 @@ export function BoxCard({
           )}
 
           {/* Delete confirm dialog */}
-          <Dialog open={deleteConfirm} onOpenChange={(o) => { if (!o) setDeleteConfirm(false); }}>
+          <Dialog
+            open={deleteConfirm}
+            onOpenChange={(o) => {
+              if (!o) setDeleteConfirm(false);
+            }}
+          >
             <DialogContent className="sm:max-w-xs">
               <DialogHeader>
                 <DialogTitle>Delete {isMisc ? box.label : `Box ${box.label}`}?</DialogTitle>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                Are you sure you want to delete {isMisc ? box.label : `box ${box.label}`}?
-                All sections and their stock will be permanently removed. This cannot be undone.
+              <p className="text-muted-foreground text-sm">
+                Are you sure you want to delete {isMisc ? box.label : `box ${box.label}`}? All sections and
+                their stock will be permanently removed. This cannot be undone.
               </p>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
-                <Button variant="destructive" onClick={() => { setDeleteConfirm(false); onDeleteBox?.(); }}>
+                <Button variant="outline" onClick={() => setDeleteConfirm(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setDeleteConfirm(false);
+                    onDeleteBox?.();
+                  }}
+                >
                   Delete {isMisc ? "Area" : "Box"}
                 </Button>
               </DialogFooter>
@@ -192,20 +217,20 @@ export function BoxCard({
 
       {/* Content — not clickable in edit mode */}
       {editMode ? (
-        <div className="text-left w-full pointer-events-none opacity-50">
-          <p className="text-lg font-bold leading-none">{isMisc ? box.label : `Box ${box.label}`}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+        <div className="pointer-events-none w-full text-left opacity-50">
+          <p className="text-lg leading-none font-bold">{isMisc ? box.label : `Box ${box.label}`}</p>
+          <p className="text-muted-foreground mt-1 text-xs">
             {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}
           </p>
-          <p className="text-xs text-muted-foreground">{totalQty} items</p>
+          <p className="text-muted-foreground text-xs">{totalQty} items</p>
         </div>
       ) : (
-        <button className="cursor-pointer text-left w-full" onClick={onClick} tabIndex={0}>
-          <p className="text-lg font-bold leading-none">{isMisc ? box.label : `Box ${box.label}`}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+        <button className="w-full cursor-pointer text-left" onClick={onClick} tabIndex={0}>
+          <p className="text-lg leading-none font-bold">{isMisc ? box.label : `Box ${box.label}`}</p>
+          <p className="text-muted-foreground mt-1 text-xs">
             {box.sections.length} section{box.sections.length !== 1 ? "s" : ""}
           </p>
-          <p className="text-xs text-muted-foreground">{totalQty} items</p>
+          <p className="text-muted-foreground text-xs">{totalQty} items</p>
         </button>
       )}
     </div>

@@ -15,7 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiQuery } from "@/lib/use-api-query";
 import {
-  createAppraisal, emptyDraft, type AppraisalDraft, type AppraisalOverview,
+  createAppraisal,
+  emptyDraft,
+  type AppraisalDraft,
+  type AppraisalOverview,
 } from "@/lib/nco-appraisals";
 
 /** useSearchParams opts the tree into client-side rendering, so Next needs a
@@ -41,10 +44,7 @@ function NewAppraisal() {
   const [edited, setEdited] = useState<AppraisalDraft | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const { data, isLoading, error } = useApiQuery<AppraisalOverview>(
-    ["nco-appraisals"],
-    "/nco-appraisals",
-  );
+  const { data, isLoading, error } = useApiQuery<AppraisalOverview>(["nco-appraisals"], "/nco-appraisals");
   const ncos = useMemo(() => data?.ncos ?? [], [data]);
 
   // ?cin= preselects the NCO, so "Appraise" on the upcoming list lands here with

@@ -117,7 +117,7 @@ function InfoTooltip({ text }: { text: string }) {
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
           aria-label="More information"
         >
           <Info className="size-3.5" />
@@ -216,14 +216,14 @@ function AssessmentPdfRow({
 
   return (
     <div className="border-t first:border-t-0">
-      <div className="flex items-center gap-3 px-4 py-2.5 pl-4 sm:pl-10 hover:bg-muted/30 transition-colors">
+      <div className="hover:bg-muted/30 flex items-center gap-3 px-4 py-2.5 pl-4 transition-colors sm:pl-10">
         <div className="shrink-0">
           {assessment.passed === true ? (
-            <CheckCircle2 className="size-3.5 text-success" />
+            <CheckCircle2 className="text-success size-3.5" />
           ) : assessment.passed === false ? (
-            <XCircle className="size-3.5 text-destructive" />
+            <XCircle className="text-destructive size-3.5" />
           ) : (
-            <div className="size-3.5 rounded-full border-2 border-muted-foreground/30" />
+            <div className="border-muted-foreground/30 size-3.5 rounded-full border-2" />
           )}
         </div>
 
@@ -246,20 +246,23 @@ function AssessmentPdfRow({
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             {formatDate(assessment.created_at)}
             {assessment.total_score !== null && (
-              <> · <span className="font-mono">{assessment.total_score}/50</span></>
+              <>
+                {" "}
+                · <span className="font-mono">{assessment.total_score}/50</span>
+              </>
             )}
             {assessment.assessor_name && <> · {assessment.assessor_name}</>}
           </p>
         </div>
 
-        <div className="shrink-0 flex items-center gap-1 ml-1">
+        <div className="ml-1 flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={handleDownload}
-            className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs transition-colors"
             title="Download PDF"
           >
             <Download className="h-3.5 w-3.5" />
@@ -267,7 +270,7 @@ function AssessmentPdfRow({
           <button
             type="button"
             onClick={handleToggle}
-            className="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-colors"
           >
             {loadingPdf ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -296,7 +299,7 @@ function AssessmentPdfRow({
             </button>
           ) : locked ? (
             <span
-              className="flex items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground/60"
+              className="text-muted-foreground/60 flex items-center gap-1 rounded px-1.5 py-1 text-xs"
               title="Completed assessments are locked — reopen to edit"
             >
               <Lock className="size-3.5" />
@@ -309,14 +312,14 @@ function AssessmentPdfRow({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                className="text-destructive hover:bg-destructive/10 cursor-pointer rounded px-1.5 py-1 text-xs font-medium transition-colors"
               >
                 {deleting ? <Loader2 className="size-3.5 animate-spin" /> : "Confirm"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmDelete(false)}
-                className="cursor-pointer rounded px-1.5 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
+                className="text-muted-foreground hover:bg-muted cursor-pointer rounded px-1.5 py-1 text-xs transition-colors"
               >
                 Cancel
               </button>
@@ -325,7 +328,7 @@ function AssessmentPdfRow({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs transition-colors"
               title="Delete assessment"
             >
               <Trash2 className="size-3.5" />
@@ -349,7 +352,7 @@ function AssessmentPdfRow({
       {expanded && (
         <div className="px-4 pb-3 pl-4 sm:pl-10">
           {pdfError ? (
-            <p className="text-xs text-destructive">{pdfError}</p>
+            <p className="text-destructive text-xs">{pdfError}</p>
           ) : pdfUrl ? (
             <iframe
               src={pdfUrl}
@@ -358,7 +361,7 @@ function AssessmentPdfRow({
               title={`Assessment ${assessment.id}`}
             />
           ) : (
-            <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+            <div className="text-muted-foreground flex items-center gap-2 py-4 text-xs">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading PDF…
             </div>
           )}
@@ -399,9 +402,7 @@ function UploadButton({
     const toastId = `upload-${assessmentIds[0]}`;
     toast.loading("Connecting to SMS…", { id: toastId, duration: Infinity });
 
-    const es = new EventSource(
-      `${API_BASE}/scraper-stream?token=${encodeURIComponent(token)}`
-    );
+    const es = new EventSource(`${API_BASE}/scraper-stream?token=${encodeURIComponent(token)}`);
     esRef.current = es;
 
     es.onmessage = (e) => {
@@ -463,11 +464,16 @@ function UploadButton({
     }
   };
 
-  useEffect(() => () => { esRef.current?.close(); }, []);
+  useEffect(
+    () => () => {
+      esRef.current?.close();
+    },
+    []
+  );
 
   if (done) {
     return (
-      <Badge variant="outline" className="gap-1.5 border-success/40 bg-success/10 text-success">
+      <Badge variant="outline" className="border-success/40 bg-success/10 text-success gap-1.5">
         <CheckCircle2 className="size-3" /> Uploaded
       </Badge>
     );
@@ -475,14 +481,12 @@ function UploadButton({
 
   if (!canUpload) {
     return (
-      <Badge variant="outline" className="gap-1.5 text-muted-foreground">
+      <Badge variant="outline" className="text-muted-foreground gap-1.5">
         <AlertCircle className="size-3" />
         <span className="hidden sm:inline">
           {assessmentType === "Blue Leadership" ? "Needs 2 passes" : "Needs 1 pass"}
         </span>
-        <span className="sm:hidden">
-          {assessmentType === "Blue Leadership" ? "2 passes" : "1 pass"}
-        </span>
+        <span className="sm:hidden">{assessmentType === "Blue Leadership" ? "2 passes" : "1 pass"}</span>
       </Badge>
     );
   }
@@ -556,14 +560,10 @@ function CompletionControl({
   if (uploaded) {
     return (
       <div className="flex flex-col items-end gap-1">
-        <Badge variant="outline" className="gap-1.5 border-success/40 bg-success/10 text-success">
+        <Badge variant="outline" className="border-success/40 bg-success/10 text-success gap-1.5">
           <CheckCircle2 className="size-3" /> Completed
         </Badge>
-        {uploadedAt && (
-          <span className="text-[11px] text-muted-foreground">
-            {formatDate(uploadedAt)}
-          </span>
-        )}
+        {uploadedAt && <span className="text-muted-foreground text-[11px]">{formatDate(uploadedAt)}</span>}
         {(() => {
           const days = daysUntilDeletion(uploadedAt);
           if (days === null) return null;
@@ -571,7 +571,7 @@ function CompletionControl({
             <span
               className={cn(
                 "text-[11px]",
-                days < 30 ? "font-medium text-warning" : "text-muted-foreground/70"
+                days < 30 ? "text-warning font-medium" : "text-muted-foreground/70"
               )}
             >
               {days === 0 ? "Deletes today" : `Deletes in ${days}d`}
@@ -585,14 +585,14 @@ function CompletionControl({
                 type="button"
                 onClick={() => setCompleted(false)}
                 disabled={loading}
-                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] font-medium text-warning transition-colors hover:bg-warning/15"
+                className="text-warning hover:bg-warning/15 cursor-pointer rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors"
               >
                 {loading ? <Loader2 className="size-3 animate-spin" /> : "Reopen"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirm(false)}
-                className="cursor-pointer rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted"
+                className="text-muted-foreground hover:bg-muted cursor-pointer rounded px-1.5 py-0.5 text-[11px] transition-colors"
               >
                 Cancel
               </button>
@@ -601,13 +601,13 @@ function CompletionControl({
             <button
               type="button"
               onClick={() => setConfirm(true)}
-              className="flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-warning"
+              className="text-muted-foreground hover:text-warning flex cursor-pointer items-center gap-1 text-[11px] transition-colors"
               title="Move back to active"
             >
               <RotateCcw className="size-3" /> Reopen
             </button>
           ))}
-        {error && <p className="text-[11px] text-destructive">{error}</p>}
+        {error && <p className="text-destructive text-[11px]">{error}</p>}
       </div>
     );
   }
@@ -622,14 +622,14 @@ function CompletionControl({
             type="button"
             onClick={() => setCompleted(true)}
             disabled={loading}
-            className="cursor-pointer rounded px-1.5 py-1 text-xs font-medium text-success transition-colors hover:bg-success/10"
+            className="text-success hover:bg-success/10 cursor-pointer rounded px-1.5 py-1 text-xs font-medium transition-colors"
           >
             {loading ? <Loader2 className="size-3.5 animate-spin" /> : "Confirm"}
           </button>
           <button
             type="button"
             onClick={() => setConfirm(false)}
-            className="cursor-pointer rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
+            className="text-muted-foreground hover:bg-muted cursor-pointer rounded px-1.5 py-1 text-xs transition-colors"
           >
             Cancel
           </button>
@@ -638,14 +638,14 @@ function CompletionControl({
         <button
           type="button"
           onClick={() => setConfirm(true)}
-          className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-success/10 hover:text-success"
+          className="text-muted-foreground hover:bg-success/10 hover:text-success flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs transition-colors"
           title="Mark this set as completed without uploading to SMS"
         >
           <CheckCheck className="size-3.5" />
           <span className="hidden sm:inline">Mark complete</span>
         </button>
       )}
-      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-[11px]">{error}</p>}
     </div>
   );
 }
@@ -684,18 +684,18 @@ function CombinedPdfButton({
   };
 
   return (
-    <div className="flex items-center gap-2 border-t bg-muted/30 px-4 py-2">
+    <div className="bg-muted/30 flex items-center gap-2 border-t px-4 py-2">
       <button
         type="button"
         onClick={handleView}
         disabled={loading}
-        className="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        className="text-muted-foreground hover:text-foreground hover:bg-muted flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs transition-colors"
         title="Every assessment sheet and lesson plan for this qualification, oldest first, as one PDF"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
         Combined record (sheets + lesson plans)
       </button>
-      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      {error && <p className="text-destructive text-[11px]">{error}</p>}
     </div>
   );
 }
@@ -718,10 +718,10 @@ function AssessmentGroupRow({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="bg-card rounded-lg border">
       {/* Header: stacks on mobile (type row, then passes + actions full-width),
           two columns on sm+ (type left, passes + actions stacked right). */}
-      <div className="flex w-full flex-col gap-2 px-4 py-3 hover:bg-muted/40 transition-colors sm:flex-row sm:items-start sm:gap-3">
+      <div className="hover:bg-muted/40 flex w-full flex-col gap-2 px-4 py-3 transition-colors sm:flex-row sm:items-start sm:gap-3">
         <div
           role="button"
           tabIndex={0}
@@ -729,21 +729,17 @@ function AssessmentGroupRow({
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") setExpanded((v) => !v);
           }}
-          className="flex flex-1 cursor-pointer items-center gap-2 min-w-0 pt-0.5"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 pt-0.5"
         >
           <span className="text-muted-foreground shrink-0">
-            {expanded ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </span>
           <div className="min-w-0">
             <Badge variant="outline" className="gap-1.5">
               <span className={cn("size-2 rounded-full", typeDotColour(group.assessment_type))} />
               {typeLabel(group.assessment_type)}
             </Badge>
-            <p className="mt-0.5 pl-0.5 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-0.5 pl-0.5 text-xs">
               {group.assessments.length} assessment{group.assessments.length !== 1 ? "s" : ""}
             </p>
           </div>
@@ -752,7 +748,7 @@ function AssessmentGroupRow({
         {/* Passes count + upload/completion controls. Full-width row (indented
             under the badge) on mobile; stacked right column on sm+. */}
         <div className="flex items-center justify-between gap-2 pl-6 sm:shrink-0 sm:flex-col sm:items-end sm:justify-start sm:gap-1.5 sm:pl-0">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="text-muted-foreground text-xs whitespace-nowrap">
             <span
               className={cn(
                 "font-semibold",
@@ -761,9 +757,7 @@ function AssessmentGroupRow({
             >
               {group.passed_count}
             </span>
-            {group.assessment_type !== "MOI" && (
-              <span>/{group.required_to_upload}</span>
-            )}
+            {group.assessment_type !== "MOI" && <span>/{group.required_to_upload}</span>}
             {" passed"}
           </span>
 
@@ -860,13 +854,13 @@ function CadetAssessmentCard({
                   </Badge>
                 )}
                 {readyCount > 0 && (
-                  <Badge variant="outline" className="gap-1 border-warning/40 bg-warning/15 text-warning">
+                  <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning gap-1">
                     <Upload className="size-2.5" />
                     {readyCount} ready
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {totalAssessments} assessment{totalAssessments !== 1 ? "s" : ""}
               </p>
             </div>
@@ -875,7 +869,7 @@ function CadetAssessmentCard({
           <Button
             variant="ghost"
             size="sm"
-            className="shrink-0 text-xs text-muted-foreground"
+            className="text-muted-foreground shrink-0 text-xs"
             onClick={() => router.push(`/cadets/${cadet.cin}`)}
           >
             View profile
@@ -883,7 +877,7 @@ function CadetAssessmentCard({
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-2">
+      <CardContent className="space-y-2 pt-0">
         {cadet.groups.map((group) => (
           <AssessmentGroupRow
             key={group.assessment_type}
@@ -937,9 +931,7 @@ export default function AssessmentsOverviewPage() {
             .map((group) => ({
               ...group,
               assessments: group.assessments.filter((a) => a.id !== deletedId),
-              passed_count: group.assessments
-                .filter((a) => a.id !== deletedId && a.passed === true)
-                .length,
+              passed_count: group.assessments.filter((a) => a.id !== deletedId && a.passed === true).length,
             }))
             .filter((group) => group.assessments.length > 0),
         }))
@@ -951,12 +943,9 @@ export default function AssessmentsOverviewPage() {
     fetchData();
   }, [token]);
 
-  const availableTypes = Array.from(
-    new Set(cadets.flatMap((c) => c.groups.map((g) => g.assessment_type)))
-  );
+  const availableTypes = Array.from(new Set(cadets.flatMap((c) => c.groups.map((g) => g.assessment_type))));
 
-  const matchesType = (g: AssessmentGroup) =>
-    !typeFilter || g.assessment_type === typeFilter;
+  const matchesType = (g: AssessmentGroup) => !typeFilter || g.assessment_type === typeFilter;
 
   const filtered = cadets
     .map((c) => ({
@@ -975,9 +964,7 @@ export default function AssessmentsOverviewPage() {
     });
 
   const countForFilter = (f: AssessmentFilter) =>
-    cadets.filter((c) =>
-      c.groups.some((g) => groupMatchesFilter(g, f) && matchesType(g))
-    ).length;
+    cadets.filter((c) => c.groups.some((g) => groupMatchesFilter(g, f) && matchesType(g))).length;
   const tabCounts: Record<AssessmentFilter, number> = {
     active: countForFilter("active"),
     ready: countForFilter("ready"),
@@ -1002,7 +989,7 @@ export default function AssessmentsOverviewPage() {
         </Alert>
       )}
 
-      <div className="sticky top-0 z-10 flex flex-col gap-3 border-b bg-background/95 pb-3 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 flex flex-col gap-3 border-b pt-2 pb-3 backdrop-blur">
         <div className="flex flex-col gap-3 sm:flex-row">
           <InputGroup className="flex-1">
             <InputGroupAddon>
@@ -1023,7 +1010,7 @@ export default function AssessmentsOverviewPage() {
             {(["active", "ready", "completed"] as const).map((f) => (
               <ToggleGroupItem key={f} value={f} className="gap-1.5 capitalize">
                 {f}
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                <span className="bg-muted text-muted-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums">
                   {tabCounts[f]}
                 </span>
               </ToggleGroupItem>
@@ -1040,7 +1027,7 @@ export default function AssessmentsOverviewPage() {
                 "cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                 typeFilter === null
                   ? "border-foreground/20 bg-foreground/10 text-foreground"
-                  : "border-transparent bg-muted text-muted-foreground hover:bg-muted/70"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70 border-transparent"
               )}
             >
               All types
@@ -1054,7 +1041,7 @@ export default function AssessmentsOverviewPage() {
                   "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                   typeFilter === t
                     ? "border-foreground/20 bg-foreground/10 text-foreground"
-                    : "border-transparent bg-muted text-muted-foreground hover:bg-muted/70"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70 border-transparent"
                 )}
               >
                 <span className={cn("size-2 rounded-full", typeDotColour(t))} />
@@ -1068,7 +1055,7 @@ export default function AssessmentsOverviewPage() {
       {!loading && filter === "completed" && filtered.length > 0 && (
         <Alert>
           <Info />
-          <AlertTitle className="font-normal text-muted-foreground">
+          <AlertTitle className="text-muted-foreground font-normal">
             Completed assessments are automatically deleted 6 months after they were uploaded.
           </AlertTitle>
         </Alert>
@@ -1095,10 +1082,10 @@ export default function AssessmentsOverviewPage() {
               {search
                 ? `No cadets match "${search}".`
                 : filter === "active"
-                ? "No active assessments — everything is uploaded or completed."
-                : filter === "ready"
-                ? "No assessments are ready to upload."
-                : "No completed assessments yet."}
+                  ? "No active assessments — everything is uploaded or completed."
+                  : filter === "ready"
+                    ? "No assessments are ready to upload."
+                    : "No completed assessments yet."}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

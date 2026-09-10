@@ -13,7 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, FileText, Loader2, Save, Send, Trash2, Upload } from "lucide-react";
 import { savePlan, submitPlan, uploadAttachments } from "@/lib/session-plans-api";
 import {
-  ATTACHMENT_ACCEPT, EMPTY_PLAN, MAX_ATTACHMENT_BYTES, missingForSubmit,
+  ATTACHMENT_ACCEPT,
+  EMPTY_PLAN,
+  MAX_ATTACHMENT_BYTES,
+  missingForSubmit,
   type SessionPlanContent,
 } from "@/lib/session-plans";
 
@@ -84,7 +87,9 @@ export default function NewSessionPlanPage() {
         description="Save it as a draft while you work on it, then send it to staff for approval"
         actions={
           <Button asChild variant="ghost" size="sm">
-            <Link href="/session-plans"><ArrowLeft /> Back</Link>
+            <Link href="/session-plans">
+              <ArrowLeft /> Back
+            </Link>
           </Button>
         }
       />
@@ -94,7 +99,7 @@ export default function NewSessionPlanPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Attachments</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             A map, a diagram, anything else staff should see. PNG, JPEG, WebP or PDF, up to 5 MB each.
           </p>
         </CardHeader>
@@ -103,7 +108,7 @@ export default function NewSessionPlanPage() {
             <ul className="flex flex-col divide-y">
               {files.map((f, i) => (
                 <li key={`${f.name}-${i}`} className="flex items-center gap-2 py-2">
-                  <FileText className="size-4 shrink-0 text-muted-foreground" />
+                  <FileText className="text-muted-foreground size-4 shrink-0" />
                   <span className="flex-1 truncate text-sm">{f.name}</span>
                   <Button
                     variant="ghost"
@@ -124,7 +129,9 @@ export default function NewSessionPlanPage() {
             accept={ATTACHMENT_ACCEPT}
             multiple
             className="hidden"
-            onChange={(e) => { if (e.target.files?.length) addFiles(e.target.files); }}
+            onChange={(e) => {
+              if (e.target.files?.length) addFiles(e.target.files);
+            }}
           />
           <Button
             variant="outline"
@@ -134,9 +141,7 @@ export default function NewSessionPlanPage() {
           >
             <Upload /> Attach a file
           </Button>
-          <p className="text-xs text-muted-foreground">
-            These upload when you save the plan.
-          </p>
+          <p className="text-muted-foreground text-xs">These upload when you save the plan.</p>
         </CardContent>
       </Card>
 
@@ -148,7 +153,7 @@ export default function NewSessionPlanPage() {
           {busy === "submit" ? <Loader2 className="animate-spin" /> : <Send />} Submit for approval
         </Button>
         {missing.length > 0 && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Still needed before submitting: {missing.join(", ")}.
           </p>
         )}

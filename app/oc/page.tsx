@@ -10,16 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ShieldAlert, GraduationCap, Clock } from "lucide-react";
 import {
-  type CommitteeRequestSummary, type CommitteeRequestStatus,
-  STATUS_LABELS, STATUS_STYLE, formatGBP,
+  type CommitteeRequestSummary,
+  type CommitteeRequestStatus,
+  STATUS_LABELS,
+  STATUS_STYLE,
+  formatGBP,
 } from "@/lib/committee";
 import { rateOf, totalOf, type StateCounts } from "@/lib/attendance";
 import { formatDate } from "@/lib/format";
@@ -74,37 +73,57 @@ interface CommitteeList {
 }
 
 const QUAL_LABELS: Record<string, string> = {
-  duke_of_edinburgh: "Duke of Edinburgh", first_aid: "First Aid", leadership: "Leadership",
-  cyber: "Cyber", radio: "Radio", road_marching: "Road Marching", space: "Space",
-  music: "Music", flying_badge: "Flying", fieldcraft: "Fieldcraft", shooting: "Shooting",
-  presentation_skills: "Presentation Skills", moi: "MOI",
-  swimming_proficiency: "Swimming", climatic_injuries: "Climatic Injuries",
+  duke_of_edinburgh: "Duke of Edinburgh",
+  first_aid: "First Aid",
+  leadership: "Leadership",
+  cyber: "Cyber",
+  radio: "Radio",
+  road_marching: "Road Marching",
+  space: "Space",
+  music: "Music",
+  flying_badge: "Flying",
+  fieldcraft: "Fieldcraft",
+  shooting: "Shooting",
+  presentation_skills: "Presentation Skills",
+  moi: "MOI",
+  swimming_proficiency: "Swimming",
+  climatic_injuries: "Climatic Injuries",
 };
 
 const ACTION_STATUSES: CommitteeRequestStatus[] = ["submitted", "sent_to_committee", "sent_for_payment"];
 
 // Ladder order, not alphabetical — matches the labels compute_stats emits.
 const CLASSIFICATION_ORDER = [
-  "Junior Cadet", "First Class Cadet", "Leading Cadet", "Senior Cadet", "Master Air Cadet",
+  "Junior Cadet",
+  "First Class Cadet",
+  "Leading Cadet",
+  "Senior Cadet",
+  "Master Air Cadet",
 ] as const;
 
 function PlaceholderCard({
-  icon: Icon, title, description,
+  icon: Icon,
+  title,
+  description,
 }: {
-  icon: React.ElementType; title: string; description: string;
+  icon: React.ElementType;
+  title: string;
+  description: string;
 }) {
   return (
     <Card className="border-dashed">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Icon className="size-4 text-muted-foreground" />
+          <Icon className="text-muted-foreground size-4" />
           <CardTitle className="text-base">{title}</CardTitle>
-          <Badge variant="secondary" className="ml-auto">Placeholder — no data yet</Badge>
+          <Badge variant="secondary" className="ml-auto">
+            Placeholder — no data yet
+          </Badge>
         </div>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex h-24 items-center justify-center rounded-md bg-muted/30 text-sm text-muted-foreground">
+        <div className="bg-muted/30 text-muted-foreground flex h-24 items-center justify-center rounded-md text-sm">
           Coming soon
         </div>
       </CardContent>
@@ -114,15 +133,23 @@ function PlaceholderCard({
 
 type TrendRow = {
   label: string;
-  cadetRate: number; staffRate: number;
-  cadetPresent: number; cadetTotal: number;
-  staffPresent: number; staffTotal: number;
+  cadetRate: number;
+  staffRate: number;
+  cadetPresent: number;
+  cadetTotal: number;
+  staffPresent: number;
+  staffTotal: number;
 };
 
 /** One series, 0–100%, so both copies of this chart compare directly by eye
  *  without needing a second colour that the theme can't separate. */
 function TurnoutChart({
-  title, description, data, dataKey, presentKey, totalKey,
+  title,
+  description,
+  data,
+  dataKey,
+  presentKey,
+  totalKey,
 }: {
   title: string;
   description: string;
@@ -139,24 +166,26 @@ function TurnoutChart({
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No parade nights recorded yet.</p>
+          <p className="text-muted-foreground text-sm">No parade nights recorded yet.</p>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data} barSize={22} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis
-                dataKey="label" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)"
-                interval="preserveStartEnd" minTickGap={12}
-              />
-              <YAxis
-                domain={[0, 100]} unit="%" tick={{ fontSize: 11 }}
+                dataKey="label"
+                tick={{ fontSize: 11 }}
                 stroke="var(--muted-foreground)"
+                interval="preserveStartEnd"
+                minTickGap={12}
               />
+              <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
               <Tooltip
                 cursor={{ fill: "var(--muted)", opacity: 0.4 }}
                 contentStyle={{
-                  background: "var(--popover)", border: "1px solid var(--border)",
-                  borderRadius: "8px", fontSize: "13px",
+                  background: "var(--popover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  fontSize: "13px",
                 }}
                 formatter={(value, _name, item) => [
                   `${value}% — ${item?.payload?.[presentKey]} of ${item?.payload?.[totalKey]}`,
@@ -176,12 +205,12 @@ export default function OcDashboardPage() {
   const { data: session } = useSession();
   const allowed = isOc(session?.user?.email);
 
-  const { data: dash, isLoading } = useApiQuery<OcDashboard>(
-    ["oc-dashboard"], "/oc/dashboard", { enabled: allowed },
-  );
-  const { data: committee } = useApiQuery<CommitteeList>(
-    ["committee-requests"], "/committee-requests", { enabled: allowed },
-  );
+  const { data: dash, isLoading } = useApiQuery<OcDashboard>(["oc-dashboard"], "/oc/dashboard", {
+    enabled: allowed,
+  });
+  const { data: committee } = useApiQuery<CommitteeList>(["committee-requests"], "/committee-requests", {
+    enabled: allowed,
+  });
 
   if (!allowed) {
     return (
@@ -189,12 +218,10 @@ export default function OcDashboardPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <ShieldAlert className="size-5 text-destructive" />
+              <ShieldAlert className="text-destructive size-5" />
               <CardTitle>OC access required</CardTitle>
             </div>
-            <CardDescription>
-              This dashboard is only available to the Officer Commanding.
-            </CardDescription>
+            <CardDescription>This dashboard is only available to the Officer Commanding.</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -213,7 +240,7 @@ export default function OcDashboardPage() {
   // read on the same scale despite very different head counts.
   const trend = dash?.attendance_trend ?? [];
   const trendData = trend.map((night) => ({
-    label: formatDate(night.date).replace(/ \d{4}$/, ""),   // "6 Aug" — the year is noise here
+    label: formatDate(night.date).replace(/ \d{4}$/, ""), // "6 Aug" — the year is noise here
     cadetRate: rateOf(night.cadets) ?? 0,
     staffRate: rateOf(night.staff) ?? 0,
     cadetPresent: night.cadets.present,
@@ -225,10 +252,13 @@ export default function OcDashboardPage() {
   // Averages across the window, weighted by head count rather than by night, so
   // a night with three cadets on the register doesn't swing it.
   const sumCounts = (pick: (n: TrendNight) => StateCounts) =>
-    trend.reduce((acc, n) => {
-      const c = pick(n);
-      return { present: acc.present + c.present, total: acc.total + totalOf(c) };
-    }, { present: 0, total: 0 });
+    trend.reduce(
+      (acc, n) => {
+        const c = pick(n);
+        return { present: acc.present + c.present, total: acc.total + totalOf(c) };
+      },
+      { present: 0, total: 0 }
+    );
   const cadetTotals = sumCounts((n) => n.cadets);
   const staffTotals = sumCounts((n) => n.staff);
   const cadetAvg = cadetTotals.total ? Math.round((cadetTotals.present / cadetTotals.total) * 100) : null;
@@ -258,7 +288,7 @@ export default function OcDashboardPage() {
       {/* ── Committee requests ──────────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
             Committee Requests
           </h2>
           <Button asChild variant="ghost" size="sm">
@@ -266,8 +296,11 @@ export default function OcDashboardPage() {
           </Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Awaiting you" value={(counts.submitted ?? 0) + (counts.sent_to_committee ?? 0)}
-            detail="To send or decide" />
+          <StatCard
+            label="Awaiting you"
+            value={(counts.submitted ?? 0) + (counts.sent_to_committee ?? 0)}
+            detail="To send or decide"
+          />
           <StatCard label="Approved" value={counts.approved ?? 0} detail="Awaiting receipts" />
           <StatCard label="To pay" value={counts.sent_for_payment ?? 0} detail="Awaiting payment" />
           <StatCard label="Paid" value={counts.paid ?? 0} />
@@ -289,16 +322,25 @@ export default function OcDashboardPage() {
                 {actionable.map((r) => {
                   const style = STATUS_STYLE[r.status];
                   return (
-                    <TableRow key={r.id} className="cursor-pointer"
-                      onClick={() => { window.location.href = `/committee/requests/${r.id}`; }}>
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        window.location.href = `/committee/requests/${r.id}`;
+                      }}
+                    >
                       <TableCell className="font-medium">
-                        <Link href={`/committee/requests/${r.id}`} className="hover:underline">{r.reference}</Link>
+                        <Link href={`/committee/requests/${r.id}`} className="hover:underline">
+                          {r.reference}
+                        </Link>
                       </TableCell>
                       <TableCell className="max-w-[16rem] truncate">{r.title}</TableCell>
                       <TableCell>{r.requester_name}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatGBP(r.total)}</TableCell>
                       <TableCell>
-                        <Badge variant={style.variant} className={style.className}>{STATUS_LABELS[r.status]}</Badge>
+                        <Badge variant={style.variant} className={style.className}>
+                          {STATUS_LABELS[r.status]}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );
@@ -311,7 +353,7 @@ export default function OcDashboardPage() {
 
       {/* ── Strength & attendance ───────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
           Strength &amp; Attendance
         </h2>
         {isLoading ? (
@@ -369,25 +411,15 @@ export default function OcDashboardPage() {
 
       {/* ── Qualifications ──────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
           Qualifications
         </h2>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Total held" value={dash?.qual_summary.total ?? 0} />
-          <StatCard
-            label="Expired"
-            value={dash?.qual_summary.expired ?? 0}
-            detail="Already lapsed"
-          />
-          <StatCard
-            label="Expiring in 30 days"
-            value={dash?.qual_summary.expiring_30 ?? 0}
-          />
-          <StatCard
-            label="Expiring in 3 months"
-            value={dash?.qual_summary.expiring_90 ?? 0}
-          />
+          <StatCard label="Expired" value={dash?.qual_summary.expired ?? 0} detail="Already lapsed" />
+          <StatCard label="Expiring in 30 days" value={dash?.qual_summary.expiring_30 ?? 0} />
+          <StatCard label="Expiring in 3 months" value={dash?.qual_summary.expiring_90 ?? 0} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -396,22 +428,20 @@ export default function OcDashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Badge coverage</CardTitle>
-              <CardDescription>
-                Cadets holding each badge at any level, out of {totalCadets}
-              </CardDescription>
+              <CardDescription>Cadets holding each badge at any level, out of {totalCadets}</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-48 w-full" />
               ) : coverage.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No qualification data.</p>
+                <p className="text-muted-foreground text-sm">No qualification data.</p>
               ) : (
                 <div className="flex flex-col gap-2.5">
                   {coverage.map((badge) => (
                     <div key={badge.key} className="flex items-center gap-3">
                       <span className="w-36 shrink-0 truncate text-sm">{badge.label}</span>
                       <div
-                        className="h-2 flex-1 overflow-hidden rounded-full bg-muted"
+                        className="bg-muted h-2 flex-1 overflow-hidden rounded-full"
                         role="img"
                         aria-label={`${badge.label}: ${badge.held} of ${totalCadets} cadets`}
                       >
@@ -420,7 +450,7 @@ export default function OcDashboardPage() {
                           style={{ width: `${badge.pct}%` }}
                         />
                       </div>
-                      <span className="w-16 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      <span className="text-muted-foreground w-16 shrink-0 text-right text-xs tabular-nums">
                         {badge.held} · {badge.pct}%
                       </span>
                     </div>
@@ -440,15 +470,16 @@ export default function OcDashboardPage() {
                 <Skeleton className="h-48 w-full" />
               ) : (
                 <div className="divide-y">
-                  {CLASSIFICATION_ORDER
-                    .map((label) => [label, dash?.strength.by_classification?.[label] ?? 0] as const)
+                  {CLASSIFICATION_ORDER.map(
+                    (label) => [label, dash?.strength.by_classification?.[label] ?? 0] as const
+                  )
                     .filter(([, n]) => n > 0)
                     .map(([label, n]) => (
                       <div key={label} className="flex items-center justify-between py-2 text-sm">
                         <span>{label}</span>
                         <span className="font-medium tabular-nums">
                           {n}
-                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          <span className="text-muted-foreground ml-2 text-xs font-normal">
                             {totalCadets ? Math.round((n / totalCadets) * 100) : 0}%
                           </span>
                         </span>
@@ -463,7 +494,7 @@ export default function OcDashboardPage() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <GraduationCap className="size-4 text-muted-foreground" />
+              <GraduationCap className="text-muted-foreground size-4" />
               <CardTitle className="text-base">Within the next 3 months</CardTitle>
             </div>
           </CardHeader>
@@ -471,7 +502,7 @@ export default function OcDashboardPage() {
             {isLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : (dash?.expiring_quals.length ?? 0) === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing expiring in the next 3 months.</p>
+              <p className="text-muted-foreground text-sm">Nothing expiring in the next 3 months.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -490,7 +521,11 @@ export default function OcDashboardPage() {
                         <TableCell>{QUAL_LABELS[q.qual_type] ?? q.qual_type}</TableCell>
                         <TableCell>{q.date_expires}</TableCell>
                         <TableCell className="text-right">
-                          <span className={q.days_left <= 30 ? "font-semibold text-destructive" : "text-muted-foreground"}>
+                          <span
+                            className={
+                              q.days_left <= 30 ? "text-destructive font-semibold" : "text-muted-foreground"
+                            }
+                          >
                             {q.days_left} days
                           </span>
                         </TableCell>
@@ -506,7 +541,7 @@ export default function OcDashboardPage() {
 
       {/* ── Stubbed sections ────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
           In the Pipeline
         </h2>
         <div className="grid gap-4 lg:grid-cols-2">

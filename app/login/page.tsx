@@ -31,20 +31,18 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Left panel — brand */}
-      <div className="hidden flex-col justify-between bg-sidebar p-10 text-sidebar-foreground lg:flex">
+      <div className="bg-sidebar text-sidebar-foreground hidden flex-col justify-between p-10 lg:flex">
         <div className="flex items-center gap-3">
           <Image src="/icon.jpg" alt="" width={36} height={36} className="rounded-md object-cover" />
           <span className="text-sm font-semibold tracking-wide">317 (Failsworth) Squadron RAFAC</span>
         </div>
         <div className="flex flex-col gap-2">
-          <p className="text-2xl font-semibold text-sidebar-accent-foreground">
-            Squadron Management System
-          </p>
-          <p className="max-w-md text-sm text-sidebar-foreground/70">
+          <p className="text-sidebar-accent-foreground text-2xl font-semibold">Squadron Management System</p>
+          <p className="text-sidebar-foreground/70 max-w-md text-sm">
             Cadet records, assessments, stores and squadron tools in one place.
           </p>
         </div>
-        <p className="text-xs text-sidebar-foreground/50">For authorised staff and NCOs only.</p>
+        <p className="text-sidebar-foreground/50 text-xs">For authorised staff and NCOs only.</p>
       </div>
 
       {/* Right panel — sign in */}
@@ -61,9 +59,7 @@ export default function LoginPage() {
             />
             <div className="flex flex-col gap-1">
               <h1 className="text-2xl font-semibold">Sign in</h1>
-              <p className="text-sm text-muted-foreground">
-                Use your squadron Google account to continue.
-              </p>
+              <p className="text-muted-foreground text-sm">Use your squadron Google account to continue.</p>
             </div>
           </div>
 
@@ -80,7 +76,7 @@ export default function LoginPage() {
             Continue with Google
           </Button>
 
-          <p className="text-center text-xs text-muted-foreground lg:text-left">
+          <p className="text-muted-foreground text-center text-xs lg:text-left">
             Access is restricted to members of the 317 staff and NCO teams.
           </p>
 
@@ -88,7 +84,7 @@ export default function LoginPage() {
               provider behind it only exists when AUTH_DEV_BYPASS=1. */}
           {process.env.NODE_ENV !== "production" && (
             <div className="flex flex-col gap-2">
-              <p className="text-xs text-muted-foreground">Dev sign-in</p>
+              <p className="text-muted-foreground text-xs">Dev sign-in</p>
               <div className="flex gap-2">
                 {(["staff", "snco", "nco"] as const).map((role) => (
                   <Button

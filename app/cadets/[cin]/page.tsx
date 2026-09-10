@@ -9,14 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -148,7 +141,7 @@ function EditableField({
 
   return (
     <div className="group/field">
-      <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
         {Icon && <Icon className="h-3 w-3" />}
         {label}
       </p>
@@ -167,17 +160,25 @@ function EditableField({
               }}
             />
             <Button
-              size="icon" variant="ghost"
-              className="size-8 shrink-0 text-success hover:text-success"
-              onClick={handleSave} disabled={saving}
+              size="icon"
+              variant="ghost"
+              className="text-success hover:text-success size-8 shrink-0"
+              onClick={handleSave}
+              disabled={saving}
             >
               {saving ? <Loader2 className="animate-spin" /> : <Save />}
             </Button>
-            <Button size="icon" variant="ghost" className="size-8 shrink-0" onClick={handleCancel} disabled={saving}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 shrink-0"
+              onClick={handleCancel}
+              disabled={saving}
+            >
               <X />
             </Button>
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p className="text-destructive text-xs">{error}</p>}
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -186,8 +187,11 @@ function EditableField({
           </span>
           <button
             type="button"
-            onClick={() => { setDraft(value ?? ""); setEditing(true); }}
-            className="opacity-0 group-hover/field:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              setDraft(value ?? "");
+              setEditing(true);
+            }}
+            className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover/field:opacity-100"
           >
             <Pencil className="h-3 w-3" />
           </button>
@@ -200,21 +204,27 @@ function EditableField({
 // ─── Stat pill ────────────────────────────────────────────────────────────────
 
 function StatPill({
-  label, value, variant = "default",
+  label,
+  value,
+  variant = "default",
 }: {
   label: string;
   value: string | number;
   variant?: "default" | "success" | "muted";
 }) {
   return (
-    <div className={cn(
-      "rounded-lg border px-3 py-2 text-center",
-      variant === "success" && "border-success/30 bg-success/10",
-      variant === "muted" && "border-muted bg-muted/40",
-      variant === "default" && "border bg-card",
-    )}>
-      <p className={cn("text-xl font-semibold tabular-nums", variant === "success" && "text-success")}>{value}</p>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+    <div
+      className={cn(
+        "rounded-lg border px-3 py-2 text-center",
+        variant === "success" && "border-success/30 bg-success/10",
+        variant === "muted" && "border-muted bg-muted/40",
+        variant === "default" && "bg-card border"
+      )}
+    >
+      <p className={cn("text-xl font-semibold tabular-nums", variant === "success" && "text-success")}>
+        {value}
+      </p>
+      <p className="text-muted-foreground mt-0.5 text-[11px]">{label}</p>
     </div>
   );
 }
@@ -247,7 +257,9 @@ export default function CadetOverviewPage() {
     }
   };
 
-  useEffect(() => { fetchCadet(); }, [token, cin]);
+  useEffect(() => {
+    fetchCadet();
+  }, [token, cin]);
 
   const patchField = async (field: string, value: string) => {
     const res = await apiFetch(`${API_BASE}/cadets/${cin}`, {
@@ -277,7 +289,7 @@ export default function CadetOverviewPage() {
         body: JSON.stringify({ banned: !cadet.banned }),
       });
       if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
-      setCadet((prev) => prev ? { ...prev, banned: !prev.banned } : prev);
+      setCadet((prev) => (prev ? { ...prev, banned: !prev.banned } : prev));
     } finally {
       setBanLoading(false);
     }
@@ -291,7 +303,9 @@ export default function CadetOverviewPage() {
           <Skeleton className="h-4 w-40" />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
         </div>
       </div>
     );
@@ -308,12 +322,13 @@ export default function CadetOverviewPage() {
   const passedAssessments = cadet.assessments.filter((a) => a.passed === true).length;
   const attendedEvents = cadet.events.filter((e) => e.attended).length;
   const cadetAge = age(cadet.date_of_birth);
-  const expiredCount = cadet.qualifications.filter(q => expiryStatus(q.expires_date) === "expired").length;
-  const expiringSoonCount = cadet.qualifications.filter(q => expiryStatus(q.expires_date) === "soon").length;
+  const expiredCount = cadet.qualifications.filter((q) => expiryStatus(q.expires_date) === "expired").length;
+  const expiringSoonCount = cadet.qualifications.filter(
+    (q) => expiryStatus(q.expires_date) === "soon"
+  ).length;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-16">
-
       <PageHeader
         title={`${cadet.first_name} ${cadet.last_name}`}
         description={
@@ -328,12 +343,17 @@ export default function CadetOverviewPage() {
             size="sm"
             variant={cadet.banned ? "destructive" : "outline"}
             className={cn(
-              !cadet.banned && "border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive",
+              !cadet.banned &&
+                "border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             )}
             onClick={toggleBan}
             disabled={banLoading}
           >
-            {banLoading ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Ban data-icon="inline-start" />}
+            {banLoading ? (
+              <Loader2 className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <Ban data-icon="inline-start" />
+            )}
             <span className="hidden sm:inline">{cadet.banned ? "Remove ban" : "Ban from events"}</span>
             <span className="sm:hidden">{cadet.banned ? "Unban" : "Ban"}</span>
           </Button>
@@ -352,7 +372,10 @@ export default function CadetOverviewPage() {
           <AlertTriangle className="text-warning" />
           <AlertTitle>
             {expiredCount > 0 && (
-              <>{expiredCount} qualification{expiredCount !== 1 ? "s" : ""} expired{expiringSoonCount > 0 ? " · " : ""}</>
+              <>
+                {expiredCount} qualification{expiredCount !== 1 ? "s" : ""} expired
+                {expiringSoonCount > 0 ? " · " : ""}
+              </>
             )}
             {expiringSoonCount > 0 && <>{expiringSoonCount} expiring within 60 days</>}
           </AlertTitle>
@@ -363,7 +386,11 @@ export default function CadetOverviewPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatPill label="Qualifications" value={cadet.qualifications.length} />
         <StatPill label="Events Attended" value={`${attendedEvents} / ${cadet.events.length}`} />
-        <StatPill label="Assessments Passed" value={passedAssessments} variant={passedAssessments > 0 ? "success" : "muted"} />
+        <StatPill
+          label="Assessments Passed"
+          value={passedAssessments}
+          variant={passedAssessments > 0 ? "success" : "muted"}
+        />
         {cadetAge !== null && <StatPill label="Age" value={cadetAge} />}
       </div>
 
@@ -378,135 +405,142 @@ export default function CadetOverviewPage() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-        {/* Personal details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              Personal Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-5 sm:grid-cols-2">
-            <EditableField
-              label="Email"
-              value={cadet.email}
-              onSave={(v) => patchField("email", v)}
-              icon={Mail}
-              placeholder="No email set"
-              type="email"
-            />
-            <EditableField
-              label="Mobile"
-              value={cadet.phone_number}
-              onSave={(v) => patchField("phone_number", v)}
-              icon={Phone}
-              placeholder="No number set"
-              type="tel"
-            />
-            <div>
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <Calendar className="h-3 w-3" /> Date of Birth
-              </p>
-              <span className="text-sm font-medium">
-                {cadet.date_of_birth
-                  ? `${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`
-                  : "—"}
-              </span>
-            </div>
-            <div>
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <Shield className="h-3 w-3" /> Rank
-              </p>
-              <span className="text-sm font-medium">{cadet.rank ?? "—"}</span>
-            </div>
-            <div>
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <Plane className="h-3 w-3" /> Flight
-              </p>
-              <span className="text-sm font-medium">{cadet.flight ?? "—"}</span>
-            </div>
-            <div>
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <Award className="h-3 w-3" /> Classification
-              </p>
-              <span className="text-sm font-medium">{cadet.classification || "Junior Cadet"}</span>
-            </div>
-          </CardContent>
-        </Card>
-
+          {/* Personal details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <User className="text-muted-foreground h-4 w-4" />
+                Personal Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-5 sm:grid-cols-2">
+              <EditableField
+                label="Email"
+                value={cadet.email}
+                onSave={(v) => patchField("email", v)}
+                icon={Mail}
+                placeholder="No email set"
+                type="email"
+              />
+              <EditableField
+                label="Mobile"
+                value={cadet.phone_number}
+                onSave={(v) => patchField("phone_number", v)}
+                icon={Phone}
+                placeholder="No number set"
+                type="tel"
+              />
+              <div>
+                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                  <Calendar className="h-3 w-3" /> Date of Birth
+                </p>
+                <span className="text-sm font-medium">
+                  {cadet.date_of_birth
+                    ? `${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`
+                    : "—"}
+                </span>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                  <Shield className="h-3 w-3" /> Rank
+                </p>
+                <span className="text-sm font-medium">{cadet.rank ?? "—"}</span>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                  <Plane className="h-3 w-3" /> Flight
+                </p>
+                <span className="text-sm font-medium">{cadet.flight ?? "—"}</span>
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                  <Award className="h-3 w-3" /> Classification
+                </p>
+                <span className="text-sm font-medium">{cadet.classification || "Junior Cadet"}</span>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="qualifications" className="mt-4">
-        {/* Qualifications table */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Award className="h-4 w-4 text-muted-foreground" />
-              Qualifications
-              <Badge variant="secondary" className="ml-auto text-xs font-normal">
-                {cadet.qualifications.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {cadet.qualifications.length === 0 ? (
-              <p className="px-6 py-4 text-sm text-muted-foreground">No qualifications recorded.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="pl-6">Qualification</TableHead>
-                    <TableHead>Date awarded</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cadet.qualifications.map((q) => {
-                    const status = expiryStatus(q.expires_date);
-                    return (
-                      <TableRow key={q.id}>
-                        <TableCell className="pl-6 font-medium">{q.qualification_name}</TableCell>
-                        <TableCell className="whitespace-nowrap text-muted-foreground">
-                          {formatDate(q.achieved_date)}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            "whitespace-nowrap",
-                            status === "expired" && "font-medium text-destructive",
-                            status === "soon" && "font-medium text-warning",
-                            (status === "ok" || status === "none") && "text-muted-foreground",
-                          )}
-                        >
-                          {q.expires_date ? formatDate(q.expires_date) : "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          {status === "expired" && (
-                            <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive">
-                              Expired
-                            </Badge>
-                          )}
-                          {status === "soon" && (
-                            <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning">
-                              Expires soon
-                            </Badge>
-                          )}
-                          {status === "ok" && (
-                            <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
-                              Valid
-                            </Badge>
-                          )}
-                          {status === "none" && <span className="text-xs text-muted-foreground">—</span>}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
+          {/* Qualifications table */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Award className="text-muted-foreground h-4 w-4" />
+                Qualifications
+                <Badge variant="secondary" className="ml-auto text-xs font-normal">
+                  {cadet.qualifications.length}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {cadet.qualifications.length === 0 ? (
+                <p className="text-muted-foreground px-6 py-4 text-sm">No qualifications recorded.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="pl-6">Qualification</TableHead>
+                      <TableHead>Date awarded</TableHead>
+                      <TableHead>Expires</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cadet.qualifications.map((q) => {
+                      const status = expiryStatus(q.expires_date);
+                      return (
+                        <TableRow key={q.id}>
+                          <TableCell className="pl-6 font-medium">{q.qualification_name}</TableCell>
+                          <TableCell className="text-muted-foreground whitespace-nowrap">
+                            {formatDate(q.achieved_date)}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              "whitespace-nowrap",
+                              status === "expired" && "text-destructive font-medium",
+                              status === "soon" && "text-warning font-medium",
+                              (status === "ok" || status === "none") && "text-muted-foreground"
+                            )}
+                          >
+                            {q.expires_date ? formatDate(q.expires_date) : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {status === "expired" && (
+                              <Badge
+                                variant="outline"
+                                className="border-destructive/40 bg-destructive/10 text-destructive"
+                              >
+                                Expired
+                              </Badge>
+                            )}
+                            {status === "soon" && (
+                              <Badge
+                                variant="outline"
+                                className="border-warning/40 bg-warning/15 text-warning"
+                              >
+                                Expires soon
+                              </Badge>
+                            )}
+                            {status === "ok" && (
+                              <Badge
+                                variant="outline"
+                                className="border-success/40 bg-success/10 text-success"
+                              >
+                                Valid
+                              </Badge>
+                            )}
+                            {status === "none" && <span className="text-muted-foreground text-xs">—</span>}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="attendance" className="mt-4">
@@ -514,116 +548,117 @@ export default function CadetOverviewPage() {
         </TabsContent>
 
         <TabsContent value="assessments" className="mt-4">
-        {/* Assessments */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              Assessments
-              <Badge variant="secondary" className="ml-auto text-xs font-normal">
-                {cadet.assessments.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {cadet.assessments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No assessments recorded.</p>
-            ) : (
-              <div className="divide-y">
-                {cadet.assessments.map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                    <div className="shrink-0">
-                      {a.passed === true ? (
-                        <CheckCircle2 className="size-4 text-success" />
-                      ) : a.passed === false ? (
-                        <XCircle className="size-4 text-destructive" />
-                      ) : (
-                        <div className="size-4 rounded-full border-2 border-muted-foreground/30" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium capitalize">
-                        {a.assessment_type.replace(/_/g, " ")}
-                        {a.exercise_name && (
-                          <span className="ml-1.5 font-normal text-muted-foreground">— {a.exercise_name}</span>
+          {/* Assessments */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ClipboardList className="text-muted-foreground h-4 w-4" />
+                Assessments
+                <Badge variant="secondary" className="ml-auto text-xs font-normal">
+                  {cadet.assessments.length}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {cadet.assessments.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No assessments recorded.</p>
+              ) : (
+                <div className="divide-y">
+                  {cadet.assessments.map((a) => (
+                    <div key={a.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="shrink-0">
+                        {a.passed === true ? (
+                          <CheckCircle2 className="text-success size-4" />
+                        ) : a.passed === false ? (
+                          <XCircle className="text-destructive size-4" />
+                        ) : (
+                          <div className="border-muted-foreground/30 size-4 rounded-full border-2" />
                         )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(a.created_at)}
-                        {a.assessor_name && <> · {a.assessor_name}</>}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      {a.total_score !== null && (
-                        <span className="font-mono text-sm font-semibold">{a.total_score}/50</span>
-                      )}
-                      {a.passed !== null && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "ml-2",
-                            a.passed
-                              ? "border-success/40 bg-success/10 text-success"
-                              : "border-destructive/40 bg-destructive/10 text-destructive"
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium capitalize">
+                          {a.assessment_type.replace(/_/g, " ")}
+                          {a.exercise_name && (
+                            <span className="text-muted-foreground ml-1.5 font-normal">
+                              — {a.exercise_name}
+                            </span>
                           )}
-                        >
-                          {a.passed ? "Pass" : "Fail"}
-                        </Badge>
-                      )}
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          {formatDate(a.created_at)}
+                          {a.assessor_name && <> · {a.assessor_name}</>}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        {a.total_score !== null && (
+                          <span className="font-mono text-sm font-semibold">{a.total_score}/50</span>
+                        )}
+                        {a.passed !== null && (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "ml-2",
+                              a.passed
+                                ? "border-success/40 bg-success/10 text-success"
+                                : "border-destructive/40 bg-destructive/10 text-destructive"
+                            )}
+                          >
+                            {a.passed ? "Pass" : "Fail"}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="events" className="mt-4">
-        {/* Events */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              Events
-              <Badge variant="secondary" className="ml-auto text-xs font-normal">
-                {attendedEvents} / {cadet.events.length} attended
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {cadet.events.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No events recorded.</p>
-            ) : (
-              <div className="divide-y">
-                {cadet.events.map((e) => (
-                  <div key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <div className="shrink-0">
-                      {e.attended ? (
-                        <CheckCircle2 className="size-4 text-success" />
-                      ) : (
-                        <XCircle className="size-4 text-muted-foreground/40" />
-                      )}
+          {/* Events */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Calendar className="text-muted-foreground h-4 w-4" />
+                Events
+                <Badge variant="secondary" className="ml-auto text-xs font-normal">
+                  {attendedEvents} / {cadet.events.length} attended
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {cadet.events.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No events recorded.</p>
+              ) : (
+                <div className="divide-y">
+                  {cadet.events.map((e) => (
+                    <div key={e.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <div className="shrink-0">
+                        {e.attended ? (
+                          <CheckCircle2 className="text-success size-4" />
+                        ) : (
+                          <XCircle className="text-muted-foreground/40 size-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{e.event_name}</p>
+                      </div>
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {formatDate(e.event_date)}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{e.event_name}</p>
-                    </div>
-                    <span className="shrink-0 text-xs text-muted-foreground">{formatDate(e.event_date)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="uniform" className="mt-4">
           <UniformIssuancesCard baseUrl={`/api/stores/issuances/${cin}`} />
         </TabsContent>
       </Tabs>
-
     </div>
   );
 }

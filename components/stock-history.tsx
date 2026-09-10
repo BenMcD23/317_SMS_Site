@@ -12,13 +12,13 @@ export function StockHistory({ events }: { events?: StockEvent[] }) {
   return (
     <>
       {events.map((event) => (
-        <div key={event.id} className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2.5 py-1.5">
+        <div key={event.id} className="bg-muted/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
           {event.action === "removed" ? (
-            <PackageMinus className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <PackageMinus className="text-muted-foreground h-3 w-3 shrink-0" />
           ) : (
-            <PackagePlus className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <PackagePlus className="text-muted-foreground h-3 w-3 shrink-0" />
           )}
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             {event.action === "removed" ? "Removed from stock" : "Added back to stock"}{" "}
             {formatTimestamp(event.timestamp)}
             {event.by && <> · {event.by}</>}

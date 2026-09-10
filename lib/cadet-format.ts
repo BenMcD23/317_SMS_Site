@@ -4,10 +4,10 @@ export const FLIGHT_ORDER = ["NCO", "A", "B", "C"];
 export const RANK_ORDER = ["Cadet", "Cpl", "Sgt", "FS", "CWO"];
 
 const FLIGHT_BADGE_CLASSES: Record<string, string> = {
-  Alpha:   "border-chart-1/40 bg-chart-1/10 text-chart-1",
-  Bravo:   "border-destructive/40 bg-destructive/10 text-destructive",
+  Alpha: "border-chart-1/40 bg-chart-1/10 text-chart-1",
+  Bravo: "border-destructive/40 bg-destructive/10 text-destructive",
   Charlie: "border-success/40 bg-success/10 text-success",
-  Delta:   "border-warning/40 bg-warning/15 text-warning",
+  Delta: "border-warning/40 bg-warning/15 text-warning",
 };
 
 export function flightBadgeClass(flight: string | null | undefined): string {

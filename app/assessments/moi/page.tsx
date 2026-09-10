@@ -71,7 +71,10 @@ const SECTIONS = [
     title: "Evaluation of Lesson",
     commentLimit: 900,
     questions: [
-      { id: 12, text: "During the session, did the instructor actively adapt to any changes in the lesson plan?" },
+      {
+        id: 12,
+        text: "During the session, did the instructor actively adapt to any changes in the lesson plan?",
+      },
       { id: 13, text: "During debrief, was the instructor able to evaluate their lesson?" },
     ],
   },
@@ -103,8 +106,8 @@ function ScoreButton({
           ? score === 1
             ? "border-destructive bg-destructive text-white shadow-sm"
             : score === 5
-            ? "border-success bg-success text-white shadow-sm"
-            : "border-primary bg-primary text-primary-foreground shadow-sm"
+              ? "border-success bg-success text-white shadow-sm"
+              : "border-primary bg-primary text-primary-foreground shadow-sm"
           : "border-muted text-muted-foreground hover:border-primary/40 hover:bg-muted"
       )}
     >
@@ -123,14 +126,14 @@ function QuestionRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="py-3 sm:flex sm:items-center sm:gap-3 space-y-2.5 sm:space-y-0">
+    <div className="space-y-2.5 py-3 sm:flex sm:items-center sm:gap-3 sm:space-y-0">
       <div className="flex gap-2 sm:flex-1">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary mt-0.5">
+        <span className="bg-primary/10 text-primary mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
           {question.id}
         </span>
         <p className="text-sm leading-snug">{question.text}</p>
       </div>
-      <div className="flex gap-1.5 pl-7 sm:pl-0 sm:shrink-0">
+      <div className="flex gap-1.5 pl-7 sm:shrink-0 sm:pl-0">
         {[1, 2, 3, 4, 5].map((s) => (
           <ScoreButton key={s} score={s} selected={value === s} onClick={() => onChange(s)} />
         ))}
@@ -181,7 +184,12 @@ const initialState = (): FormState => ({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function MoiAssessmentPage() {
   const { data: session } = useSession();
-  const { state: form, setState: setForm, clearDraft, draftRestored } = useAssessmentDraft("moi", initialState(), session?.user?.email, (s) => s.cadetCin !== null);
+  const {
+    state: form,
+    setState: setForm,
+    clearDraft,
+    draftRestored,
+  } = useAssessmentDraft("moi", initialState(), session?.user?.email, (s) => s.cadetCin !== null);
   const [draftBannerDismissed, setDraftBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -216,9 +224,9 @@ export default function MoiAssessmentPage() {
       headers: { Authorization: `Bearer ${session.id_token}` },
     }).then((res) => {
       if (res.ok)
-        res.json().then((d) =>
-          setForm((f) => ({ ...f, assessorName: d.assessor_name || session.user?.name || "" }))
-        );
+        res
+          .json()
+          .then((d) => setForm((f) => ({ ...f, assessorName: d.assessor_name || session.user?.name || "" })));
     });
 
     setSigLoading(true);
@@ -353,33 +361,37 @@ export default function MoiAssessmentPage() {
           <p className="text-muted-foreground">Air Cadet Methods of Instruction Course</p>
         </div>
 
-        <div className="flex flex-col items-center gap-6 rounded-xl border border-success/30 bg-success/10 px-8 py-12 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/20">
-            <CheckCircle2 className="h-8 w-8 text-success" />
+        <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
+          <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
+            <CheckCircle2 className="text-success h-8 w-8" />
           </div>
           <div className="space-y-1">
             <h2 className="text-xl font-semibold">Assessment Saved</h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {form.cadetForename} {form.cadetSurname}&apos;s MOI assessment has been recorded.
             </p>
             {assessmentId && (
-              <p className="text-xs text-muted-foreground mt-1">Assessment ID: #{assessmentId}</p>
+              <p className="text-muted-foreground mt-1 text-xs">Assessment ID: #{assessmentId}</p>
             )}
           </div>
 
-          <div className="w-full max-w-xs rounded-lg border bg-card px-4 py-3 text-left text-sm space-y-1.5">
+          <div className="bg-card w-full max-w-xs space-y-1.5 rounded-lg border px-4 py-3 text-left text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Candidate</span>
-              <span className="font-medium">{form.cadetForename} {form.cadetSurname}</span>
+              <span className="font-medium">
+                {form.cadetForename} {form.cadetSurname}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Score</span>
-              <span className="font-medium">{totalScore} / {MAX_SCORE}</span>
+              <span className="font-medium">
+                {totalScore} / {MAX_SCORE}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Result</span>
               {passed ? (
-                <Badge className="bg-success text-white hover:bg-success gap-1 text-xs">
+                <Badge className="bg-success hover:bg-success gap-1 text-xs text-white">
                   <CheckCircle2 className="h-3 w-3" /> PASS
                 </Badge>
               ) : (
@@ -416,9 +428,16 @@ export default function MoiAssessmentPage() {
       </div>
 
       {draftRestored && !draftBannerDismissed && (
-        <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+        <div className="border-warning/30 bg-warning/10 flex items-center justify-between rounded-lg border px-4 py-3 text-sm">
           <span className="text-warning">Draft restored from your last session.</span>
-          <Button variant="outline" size="sm" onClick={handleReset} className="ml-4 border-warning/40 text-warning hover:bg-warning/10 hover:text-warning">Reset Form</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            className="border-warning/40 text-warning hover:bg-warning/10 hover:text-warning ml-4"
+          >
+            Reset Form
+          </Button>
         </div>
       )}
 
@@ -493,317 +512,326 @@ export default function MoiAssessmentPage() {
         </div>
       ) : (
         <>
-      {/* Candidate details */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Candidate Details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Candidate</Label>
-            <CadetSearchInput
-              token={session?.id_token ?? null}
-              selectedCin={form.cadetCin}
-              selectedName={`${form.cadetForename} ${form.cadetSurname}`.trim()}
-              onSelect={(cin, name) => {
-                const parts = name.trim().split(" ");
-                const forename = parts.slice(0, -1).join(" ");
-                const surname = parts[parts.length - 1] ?? "";
-                setForm((f) => ({
-                  ...f,
-                  cadetCin: cin || null,
-                  cadetForename: forename,
-                  cadetSurname: surname,
-                }));
-              }}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="sqnDf">Sqn/DF</Label>
-            <Input
-              id="sqnDf"
-              placeholder="e.g. 317"
-              value={form.sqnDf}
-              onChange={(e) => setForm((f) => ({ ...f, sqnDf: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="wingCcf">Wing/CCF</Label>
-            <Input
-              id="wingCcf"
-              placeholder="e.g. Yorkshire"
-              value={form.wingCcf}
-              onChange={(e) => setForm((f) => ({ ...f, wingCcf: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="baderReference">Bader Reference</Label>
-            <Input
-              id="baderReference"
-              placeholder="Bader ref."
-              value={form.baderReference}
-              onChange={(e) => setForm((f) => ({ ...f, baderReference: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="placeOfAssessment">Place of Assessment</Label>
-            <Input
-              id="placeOfAssessment"
-              placeholder="e.g. Squadron HQ"
-              value={form.placeOfAssessment}
-              onChange={(e) => setForm((f) => ({ ...f, placeOfAssessment: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="dateOfAssessment">Date of Assessment</Label>
-            <Input
-              id="dateOfAssessment"
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lesson plan upload */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Lesson Plan</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            Optional. Attached to this assessment&apos;s record — when later assessments are done for
-            the same lesson, each new sheet and lesson plan builds onto the same combined PDF.
-          </p>
-          {lessonPlanFile ? (
-            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
-              <span className="flex items-center gap-2 truncate">
-                <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate">{lessonPlanFile.name}</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => handleLessonPlanChange(null)}
-                className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                title="Remove lesson plan"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <Input
-              type="file"
-              accept="application/pdf"
-              onChange={(e) => handleLessonPlanChange(e.target.files?.[0] ?? null)}
-            />
-          )}
-          {lessonPlanError && <p className="text-xs text-destructive">{lessonPlanError}</p>}
-        </CardContent>
-      </Card>
-
-      {/* Progress bar */}
-      <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
-        <div className="flex-1">
-          <div className="mb-1.5 flex items-center justify-between text-sm">
-            <span className="font-medium text-muted-foreground">
-              {answeredScores.length} / {ALL_QUESTIONS.length} answered
-            </span>
-            {allAnswered && (
-              <span className="font-mono font-semibold">
-                Score: {totalScore} / {MAX_SCORE}
-              </span>
-            )}
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-300"
-              style={{ width: `${completionPct}%` }}
-            />
-          </div>
-        </div>
-        {allAnswered && (
-          <div className="shrink-0">
-            {passed ? (
-              <Badge className="gap-1.5 bg-success text-white hover:bg-success">
-                <CheckCircle2 className="h-3.5 w-3.5" /> PASS
-              </Badge>
-            ) : (
-              <Badge variant="destructive" className="gap-1.5">
-                <XCircle className="h-3.5 w-3.5" /> FAIL
-              </Badge>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Sections */}
-      {SECTIONS.map((section) => (
-        <Card key={section.id}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">{section.title}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-{section.questions.map((q, i) => (
-              <div key={q.id}>
-                <QuestionRow
-                  question={q}
-                  value={form.scores[q.id]}
-                  onChange={(v) =>
-                    setForm((f) => ({ ...f, scores: { ...f.scores, [q.id]: v } }))
-                  }
+          {/* Candidate details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Candidate Details</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Candidate</Label>
+                <CadetSearchInput
+                  token={session?.id_token ?? null}
+                  selectedCin={form.cadetCin}
+                  selectedName={`${form.cadetForename} ${form.cadetSurname}`.trim()}
+                  onSelect={(cin, name) => {
+                    const parts = name.trim().split(" ");
+                    const forename = parts.slice(0, -1).join(" ");
+                    const surname = parts[parts.length - 1] ?? "";
+                    setForm((f) => ({
+                      ...f,
+                      cadetCin: cin || null,
+                      cadetForename: forename,
+                      cadetSurname: surname,
+                    }));
+                  }}
                 />
-                {i < section.questions.length - 1 && <div className="border-t border-dashed" />}
               </div>
-            ))}
-            <div className="pt-3">
-              <Label className="text-xs text-muted-foreground">Comments</Label>
-              <Textarea
-                rows={2}
-                placeholder="Section comments..."
-                className="mt-1 text-sm"
-                maxLength={section.commentLimit}
-                value={form.sectionComments[section.id]}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    sectionComments: { ...f.sectionComments, [section.id]: e.target.value },
-                  }))
-                }
-              />
-              <p className={`text-xs text-right mt-0.5 ${form.sectionComments[section.id].length > section.commentLimit ? "text-destructive" : "text-muted-foreground"}`}>
-                {form.sectionComments[section.id].length}/{section.commentLimit}
+              <div className="space-y-1.5">
+                <Label htmlFor="sqnDf">Sqn/DF</Label>
+                <Input
+                  id="sqnDf"
+                  placeholder="e.g. 317"
+                  value={form.sqnDf}
+                  onChange={(e) => setForm((f) => ({ ...f, sqnDf: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="wingCcf">Wing/CCF</Label>
+                <Input
+                  id="wingCcf"
+                  placeholder="e.g. Yorkshire"
+                  value={form.wingCcf}
+                  onChange={(e) => setForm((f) => ({ ...f, wingCcf: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="baderReference">Bader Reference</Label>
+                <Input
+                  id="baderReference"
+                  placeholder="Bader ref."
+                  value={form.baderReference}
+                  onChange={(e) => setForm((f) => ({ ...f, baderReference: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="placeOfAssessment">Place of Assessment</Label>
+                <Input
+                  id="placeOfAssessment"
+                  placeholder="e.g. Squadron HQ"
+                  value={form.placeOfAssessment}
+                  onChange={(e) => setForm((f) => ({ ...f, placeOfAssessment: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="dateOfAssessment">Date of Assessment</Label>
+                <Input
+                  id="dateOfAssessment"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lesson plan upload */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Lesson Plan</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-muted-foreground text-xs">
+                Optional. Attached to this assessment&apos;s record — when later assessments are done for the
+                same lesson, each new sheet and lesson plan builds onto the same combined PDF.
               </p>
+              {lessonPlanFile ? (
+                <div className="bg-muted/40 flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                  <span className="flex items-center gap-2 truncate">
+                    <Paperclip className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{lessonPlanFile.name}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleLessonPlanChange(null)}
+                    className="text-muted-foreground hover:bg-muted hover:text-destructive shrink-0 cursor-pointer rounded p-1"
+                    title="Remove lesson plan"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <Input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) => handleLessonPlanChange(e.target.files?.[0] ?? null)}
+                />
+              )}
+              {lessonPlanError && <p className="text-destructive text-xs">{lessonPlanError}</p>}
+            </CardContent>
+          </Card>
+
+          {/* Progress bar */}
+          <div className="bg-card flex items-center gap-4 rounded-lg border p-4">
+            <div className="flex-1">
+              <div className="mb-1.5 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground font-medium">
+                  {answeredScores.length} / {ALL_QUESTIONS.length} answered
+                </span>
+                {allAnswered && (
+                  <span className="font-mono font-semibold">
+                    Score: {totalScore} / {MAX_SCORE}
+                  </span>
+                )}
+              </div>
+              <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+                <div
+                  className="bg-primary h-full rounded-full transition-all duration-300"
+                  style={{ width: `${completionPct}%` }}
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      ))}
-
-      {/* Pass/fail detail */}
-      {allAnswered && (
-        <div
-          className={cn(
-            "rounded-lg border px-4 py-3 text-sm",
-            passed
-              ? "border-success/30 bg-success/10 text-success"
-              : "border-destructive/30 bg-destructive/10 text-destructive"
-          )}
-        >
-          {passed ? (
-            <p>
-              <strong>PASS</strong> — Score of <strong>{totalScore}/{MAX_SCORE}</strong>, no scores
-              of 1. Candidate has met the MOI pass standard.
-            </p>
-          ) : (
-            <p>
-              <strong>FAIL</strong> — Score of <strong>{totalScore}/{MAX_SCORE}</strong>.{" "}
-              {totalScore < PASS_SCORE
-                ? `Needs at least ${PASS_SCORE} to pass (${PASS_SCORE - totalScore} more required).`
-                : "Has at least one score of 1."}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Overall feedback */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Overall Feedback</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="strengthsSummary">Summary of Strengths</Label>
-            <Textarea
-              id="strengthsSummary"
-              rows={3}
-              placeholder="Key strengths observed..."
-              maxLength={1150}
-              value={form.strengthsSummary}
-              onChange={(e) => setForm((f) => ({ ...f, strengthsSummary: e.target.value }))}
-            />
-            <p className={`text-xs text-right mt-0.5 ${form.strengthsSummary.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}>
-              {form.strengthsSummary.length}/1150
-            </p>
+            {allAnswered && (
+              <div className="shrink-0">
+                {passed ? (
+                  <Badge className="bg-success hover:bg-success gap-1.5 text-white">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> PASS
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="gap-1.5">
+                    <XCircle className="h-3.5 w-3.5" /> FAIL
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="improvementsSummary">Summary of Areas of Improvement</Label>
-            <Textarea
-              id="improvementsSummary"
-              rows={3}
-              placeholder="Areas to develop..."
-              maxLength={1150}
-              value={form.improvementsSummary}
-              onChange={(e) => setForm((f) => ({ ...f, improvementsSummary: e.target.value }))}
-            />
-            <p className={`text-xs text-right mt-0.5 ${form.improvementsSummary.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}>
-              {form.improvementsSummary.length}/1150
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="generalComments">General Comments</Label>
-            <Textarea
-              id="generalComments"
-              rows={3}
-              placeholder="Any other comments..."
-              maxLength={1150}
-              value={form.generalComments}
-              onChange={(e) => setForm((f) => ({ ...f, generalComments: e.target.value }))}
-            />
-            <p className={`text-xs text-right mt-0.5 ${form.generalComments.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}>
-              {form.generalComments.length}/1150
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Assessor */}
-      <AssessorCard
-        assessorName={form.assessorName}
-        onAssessorNameChange={(v) => setForm((f) => ({ ...f, assessorName: v }))}
-        date={form.date}
-        onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
-        showNameFromAccount={!!session?.user?.name}
-        sigLoading={sigLoading}
-        savedSignatureUrl={savedSignatureUrl}
-        overrideSignature={overrideSignature}
-        onOverrideSignature={setOverrideSignature}
-        showDraw={showDrawOverride}
-        onSetShowDraw={setShowDrawOverride}
-        showRole
-        assessorRole={form.assessorRole}
-        onAssessorRoleChange={(v) => setForm((f) => ({ ...f, assessorRole: v }))}
-        cadetSignature={form.cadetSignature}
-        onCadetSignature={(v) => setForm((f) => ({ ...f, cadetSignature: v }))}
-      />
+          {/* Sections */}
+          {SECTIONS.map((section) => (
+            <Card key={section.id}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{section.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                {section.questions.map((q, i) => (
+                  <div key={q.id}>
+                    <QuestionRow
+                      question={q}
+                      value={form.scores[q.id]}
+                      onChange={(v) => setForm((f) => ({ ...f, scores: { ...f.scores, [q.id]: v } }))}
+                    />
+                    {i < section.questions.length - 1 && <div className="border-t border-dashed" />}
+                  </div>
+                ))}
+                <div className="pt-3">
+                  <Label className="text-muted-foreground text-xs">Comments</Label>
+                  <Textarea
+                    rows={2}
+                    placeholder="Section comments..."
+                    className="mt-1 text-sm"
+                    maxLength={section.commentLimit}
+                    value={form.sectionComments[section.id]}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        sectionComments: { ...f.sectionComments, [section.id]: e.target.value },
+                      }))
+                    }
+                  />
+                  <p
+                    className={`mt-0.5 text-right text-xs ${form.sectionComments[section.id].length > section.commentLimit ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {form.sectionComments[section.id].length}/{section.commentLimit}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
 
-      {error && (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-
-      <div className="flex gap-3">
-        <Button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="flex-1 sm:min-w-48 sm:flex-none"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving…
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Submit Assessment
-            </>
+          {/* Pass/fail detail */}
+          {allAnswered && (
+            <div
+              className={cn(
+                "rounded-lg border px-4 py-3 text-sm",
+                passed
+                  ? "border-success/30 bg-success/10 text-success"
+                  : "border-destructive/30 bg-destructive/10 text-destructive"
+              )}
+            >
+              {passed ? (
+                <p>
+                  <strong>PASS</strong> — Score of{" "}
+                  <strong>
+                    {totalScore}/{MAX_SCORE}
+                  </strong>
+                  , no scores of 1. Candidate has met the MOI pass standard.
+                </p>
+              ) : (
+                <p>
+                  <strong>FAIL</strong> — Score of{" "}
+                  <strong>
+                    {totalScore}/{MAX_SCORE}
+                  </strong>
+                  .{" "}
+                  {totalScore < PASS_SCORE
+                    ? `Needs at least ${PASS_SCORE} to pass (${PASS_SCORE - totalScore} more required).`
+                    : "Has at least one score of 1."}
+                </p>
+              )}
+            </div>
           )}
-        </Button>
-        <Button variant="outline" onClick={handleReset}>
-          Reset Form
-        </Button>
-      </div>
+
+          {/* Overall feedback */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Overall Feedback</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="strengthsSummary">Summary of Strengths</Label>
+                <Textarea
+                  id="strengthsSummary"
+                  rows={3}
+                  placeholder="Key strengths observed..."
+                  maxLength={1150}
+                  value={form.strengthsSummary}
+                  onChange={(e) => setForm((f) => ({ ...f, strengthsSummary: e.target.value }))}
+                />
+                <p
+                  className={`mt-0.5 text-right text-xs ${form.strengthsSummary.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {form.strengthsSummary.length}/1150
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="improvementsSummary">Summary of Areas of Improvement</Label>
+                <Textarea
+                  id="improvementsSummary"
+                  rows={3}
+                  placeholder="Areas to develop..."
+                  maxLength={1150}
+                  value={form.improvementsSummary}
+                  onChange={(e) => setForm((f) => ({ ...f, improvementsSummary: e.target.value }))}
+                />
+                <p
+                  className={`mt-0.5 text-right text-xs ${form.improvementsSummary.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {form.improvementsSummary.length}/1150
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="generalComments">General Comments</Label>
+                <Textarea
+                  id="generalComments"
+                  rows={3}
+                  placeholder="Any other comments..."
+                  maxLength={1150}
+                  value={form.generalComments}
+                  onChange={(e) => setForm((f) => ({ ...f, generalComments: e.target.value }))}
+                />
+                <p
+                  className={`mt-0.5 text-right text-xs ${form.generalComments.length > 1150 ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {form.generalComments.length}/1150
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assessor */}
+          <AssessorCard
+            assessorName={form.assessorName}
+            onAssessorNameChange={(v) => setForm((f) => ({ ...f, assessorName: v }))}
+            date={form.date}
+            onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
+            showNameFromAccount={!!session?.user?.name}
+            sigLoading={sigLoading}
+            savedSignatureUrl={savedSignatureUrl}
+            overrideSignature={overrideSignature}
+            onOverrideSignature={setOverrideSignature}
+            showDraw={showDrawOverride}
+            onSetShowDraw={setShowDrawOverride}
+            showRole
+            assessorRole={form.assessorRole}
+            onAssessorRoleChange={(v) => setForm((f) => ({ ...f, assessorRole: v }))}
+            cadetSignature={form.cadetSignature}
+            onCadetSignature={(v) => setForm((f) => ({ ...f, cadetSignature: v }))}
+          />
+
+          {error && (
+            <p className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-3">
+            <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Submit Assessment
+                </>
+              )}
+            </Button>
+            <Button variant="outline" onClick={handleReset}>
+              Reset Form
+            </Button>
+          </div>
         </>
       )}
     </div>

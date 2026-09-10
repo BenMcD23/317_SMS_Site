@@ -20,8 +20,18 @@ import { API_BASE } from "@/lib/config";
 import type { Newsletter } from "./types";
 
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const currentYear = new Date().getFullYear();
@@ -136,9 +146,7 @@ export function NewsletterDialog({
     if (mode === "add") formData.append("issue", issue);
 
     const url =
-      mode === "add"
-        ? `${API_BASE}/upload-newsletter`
-        : `${API_BASE}/newsletters/${newsletter!.issue}`;
+      mode === "add" ? `${API_BASE}/upload-newsletter` : `${API_BASE}/newsletters/${newsletter!.issue}`;
 
     try {
       const resp = await fetch(url, {
@@ -183,20 +191,20 @@ export function NewsletterDialog({
             <Label>{mode === "add" ? "Newsletter PDF" : "Replace PDF (optional)"}</Label>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 p-6 text-center transition-colors hover:border-primary/50 hover:bg-accent/5"
+              className="border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/5 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors"
             >
               {file ? (
                 <>
-                  <FileText className="h-8 w-8 text-primary" />
+                  <FileText className="text-primary h-8 w-8" />
                   <p className="text-sm font-medium">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     {(file.size / 1024 / 1024).toFixed(1)} MB — click to change
                   </p>
                 </>
               ) : (
                 <>
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
+                  <Upload className="text-muted-foreground h-8 w-8" />
+                  <p className="text-muted-foreground text-sm">
                     {mode === "add" ? "Click to select a PDF" : "Click to replace the current PDF"}
                   </p>
                 </>
@@ -231,7 +239,9 @@ export function NewsletterDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {MONTHS.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -245,7 +255,9 @@ export function NewsletterDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {YEARS.map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -285,7 +297,7 @@ export function NewsletterDialog({
                 onChange={(e) => setCoverColor(e.target.value)}
                 className="h-9 w-14 cursor-pointer rounded border bg-transparent p-0.5"
               />
-              <span className="font-mono text-sm text-muted-foreground">{coverColor}</span>
+              <span className="text-muted-foreground font-mono text-sm">{coverColor}</span>
             </div>
           </div>
         </div>
