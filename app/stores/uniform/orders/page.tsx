@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Order, OrderItem, QmNote, StockItem, SizingDetailsJSON, LogsForm, isRemovedFromStock } from "@/lib/stores-types";
-import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
+import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -91,6 +91,7 @@ function SizingDetailsDisplay({ raw }: { raw: string }) {
 
 export default function OrdersPage() {
   const { data: session } = useSession();
+  const { itemTypes, noSizeItems } = useReference();
   const token = (session as { id_token?: string } | null)?.id_token ?? null;
   const currentUser =
     (session as { user?: { name?: string; email?: string } } | null)?.user?.name ??
@@ -195,7 +196,7 @@ export default function OrdersPage() {
   }
 
   function findStockMatch(itemType: string, size: string): StockItem | undefined {
-    if (NO_SIZE_ITEMS.has(itemType)) {
+    if (noSizeItems.has(itemType)) {
       return stock.find((s) => s.itemType === itemType);
     }
     return stock.find((s) => s.itemType === itemType && s.size === size);
@@ -826,7 +827,7 @@ export default function OrdersPage() {
 
                               {!isCompleted && (
                                 <div className="flex shrink-0 flex-col gap-1.5 items-end w-36">
-                                  {!NO_SIZE_ITEMS.has(orderItem.itemType) && (
+                                  {!noSizeItems.has(orderItem.itemType) && (
                                     <Button size="sm" variant="outline" className="h-7 w-full text-xs"
                                       onClick={() => openEditSize(order.id, orderItem)}>
                                       {orderItem.needSizing ? "Enter Size" : "Edit Size"}
@@ -856,7 +857,7 @@ export default function OrdersPage() {
                                         addingToLogsFormId === orderItem.id ||
                                         onLogsFormItemIds.has(orderItem.id) ||
                                         orderItem.needSizing ||
-                                        (!NO_SIZE_ITEMS.has(orderItem.itemType) && !orderItem.size)
+                                        (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
                                       }
                                       onClick={() => handleAddToLogsForm(orderItem)}>
                                       <FileSpreadsheet className="h-3 w-3 mr-1" />
@@ -872,7 +873,7 @@ export default function OrdersPage() {
                                   </Button>
                                   <Button size="sm" variant="outline"
                                     className="h-7 w-full text-xs border-success/40 text-success hover:bg-success/10 hover:text-success disabled:opacity-40"
-                                    disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt || orderItem.needSizing || (!NO_SIZE_ITEMS.has(orderItem.itemType) && !orderItem.size)}
+                                    disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt || orderItem.needSizing || (!noSizeItems.has(orderItem.itemType) && !orderItem.size)}
                                     onClick={() => handleMarkItemAsGiven(order, orderItem)}>
                                     <PackageCheck className="h-3 w-3 mr-1" />
                                     Mark as Given
@@ -984,11 +985,11 @@ export default function OrdersPage() {
                                 onValueChange={(v) => setAddItemDraft((d) => ({ ...d, itemType: v }))}>
                                 <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Item type" /></SelectTrigger>
                                 <SelectContent>
-                                  {ITEM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                  {itemTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>
-                            {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
+                            {!noSizeItems.has(addItemDraft.itemType) && (
                               <div className="w-28">
                                 <SizeCombobox
                                   className="h-8 text-sm"
@@ -999,7 +1000,7 @@ export default function OrdersPage() {
                                 />
                               </div>
                             )}
-                            {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && (
+                            {!noSizeItems.has(addItemDraft.itemType) && (
                               <div className="flex items-center gap-1.5">
                                 <Checkbox id={`ns-add-${order.id}`} checked={addItemDraft.needSizing}
                                   onCheckedChange={(c) => setAddItemDraft((d) => ({ ...d, needSizing: !!c, size: !!c ? "" : d.size }))} />
@@ -1009,7 +1010,7 @@ export default function OrdersPage() {
                               </div>
                             )}
                           </div>
-                          {!NO_SIZE_ITEMS.has(addItemDraft.itemType) && addItemDraft.needSizing && (
+                          {!noSizeItems.has(addItemDraft.itemType) && addItemDraft.needSizing && (
                             <Input className="h-8 text-sm" placeholder="Sizing details (optional)"
                               value={addItemDraft.sizingDetails}
                               onChange={(e) => setAddItemDraft((d) => ({ ...d, sizingDetails: e.target.value }))} />
@@ -1258,11 +1259,11 @@ export default function OrdersPage() {
                         onValueChange={(v) => setNewItems((prev) => prev.map((it, i) => i === idx ? { ...it, itemType: v } : it))}>
                         <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Item type" /></SelectTrigger>
                         <SelectContent>
-                          {ITEM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                          {itemTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                    {!NO_SIZE_ITEMS.has(item.itemType) && (
+                    {!noSizeItems.has(item.itemType) && (
                       <div className="w-24">
                         <SizeCombobox
                           className="h-8 text-sm"
@@ -1279,7 +1280,7 @@ export default function OrdersPage() {
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                  {!NO_SIZE_ITEMS.has(item.itemType) && (
+                  {!noSizeItems.has(item.itemType) && (
                     <>
                       <div className="flex items-center gap-1.5 px-0.5">
                         <Checkbox id={`ns-new-${idx}`} checked={item.needSizing}

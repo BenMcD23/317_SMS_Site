@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
-import { ITEM_TYPES, ITEM_SIZES, NO_SIZE_ITEMS } from "@/lib/stores-items";
+import { useReference } from "@/lib/reference";
 
 interface AddStockDialogProps {
   open: boolean;
@@ -49,12 +49,13 @@ export function AddStockDialog({
   // stops overriding them until the item or size changes again.
   const [userOverrode, setUserOverrode] = useState(false);
 
-  const needsSize = itemType !== "" && !NO_SIZE_ITEMS.has(itemType);
+  const { itemTypes, noSizeItems, sizes } = useReference();
+  const needsSize = itemType !== "" && !noSizeItems.has(itemType);
 
   const sizeOptions = useMemo(() => {
-    if (!itemType || NO_SIZE_ITEMS.has(itemType)) return [];
-    return ITEM_SIZES[itemType] ?? [];
-  }, [itemType]);
+    if (!itemType || noSizeItems.has(itemType)) return [];
+    return sizes[itemType] ?? [];
+  }, [itemType, noSizeItems, sizes]);
 
   const boxOptions = useMemo(
     () => shelfStructure.boxes.map((b) => b.label),
@@ -115,7 +116,7 @@ export function AddStockDialog({
     setBox("");
     setSection("");
     setSuggestionSource(null);
-  }, [itemType, size, stock, needsSize]);
+  }, [itemType, size, stock, needsSize, userOverrode]);
 
   // Reset section if it no longer exists in the selected box
   useEffect(() => {
@@ -209,7 +210,7 @@ export function AddStockDialog({
                 <SelectValue placeholder="Select item type…" />
               </SelectTrigger>
               <SelectContent>
-                {ITEM_TYPES.map((t) => (
+                {itemTypes.map((t) => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
                 ))}
               </SelectContent>

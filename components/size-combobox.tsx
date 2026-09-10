@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { ITEM_SIZES } from "@/lib/stores-items";
+import { useReference } from "@/lib/reference";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,8 @@ export function SizeCombobox({
   }
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const suggestions = ITEM_SIZES[itemType] ?? [];
+  const { sizes } = useReference();
+  const suggestions = sizes[itemType] ?? [];
   const filtered = value.trim()
     ? suggestions.filter((s) => s.toLowerCase().includes(value.trim().toLowerCase()))
     : suggestions;

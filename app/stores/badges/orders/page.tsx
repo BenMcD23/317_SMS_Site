@@ -33,13 +33,12 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BadgeOrder, BadgeOrderItem, QmNote, BadgeGrid, BadgeItem, BadgeCell, BadgeOrderListEntry, isRemovedFromStock } from "@/lib/stores-types";
 import {
-  BADGE_CATEGORIES,
-  BadgeCategory,
+  type BadgeCategory,
+  type GainedWhereOption,
   buildBadgeName,
-  GAINED_WHERE_OPTIONS,
-  gainedWhereNeedsDates,
   gainedWhereLabel,
-} from "../badge-types";
+  useReference,
+} from "@/lib/reference";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StockHistory } from "@/components/stock-history";
@@ -66,15 +65,16 @@ function BadgePicker({
   onSubType: (s: string | null) => void;
   onLevel: (l: string | null) => void;
 }) {
+  const { badgeCategories } = useReference();
   return (
     <div className="space-y-2">
       <Select
         value={category?.id ?? ""}
-        onValueChange={(v) => onCategory(BADGE_CATEGORIES.find((c) => c.id === v) ?? null)}
+        onValueChange={(v) => onCategory(badgeCategories.find((c) => c.id === v) ?? null)}
       >
         <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Badge type…" /></SelectTrigger>
         <SelectContent>
-          {BADGE_CATEGORIES.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          {badgeCategories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
         </SelectContent>
       </Select>
 
@@ -119,12 +119,14 @@ function emptyGainedWhere(): GainedWhereState {
 function isGainedWhereComplete(g: GainedWhereState): boolean {
   if (!g.gainedWhere) return false;
   if (g.gainedWhere === "other" && !g.gainedWhereDetail.trim()) return false;
-  if (gainedWhereNeedsDates(g.gainedWhere) && (!g.gainedDateFrom || !g.gainedDateTo)) return false;
+  if (!g.gainedDateFrom || !g.gainedDateTo) return false;
   return true;
 }
 
 function GainedWhereFields({ value, onChange }: { value: GainedWhereState; onChange: (v: GainedWhereState) => void }) {
-  const needsDates = gainedWhereNeedsDates(value.gainedWhere);
+  const { gainedWhereOptions } = useReference();
+  // Every option records the dates attended.
+  const needsDates = !!value.gainedWhere;
   return (
     <div className="space-y-2">
       <Select
@@ -133,7 +135,7 @@ function GainedWhereFields({ value, onChange }: { value: GainedWhereState; onCha
       >
         <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Gained where…" /></SelectTrigger>
         <SelectContent>
-          {GAINED_WHERE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          {gainedWhereOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
         </SelectContent>
       </Select>
 
@@ -168,8 +170,8 @@ function GainedWhereFields({ value, onChange }: { value: GainedWhereState; onCha
   );
 }
 
-function gainedWhereSummary(g: { gainedWhere?: string | null; gainedWhereDetail?: string | null; gainedDateFrom?: string | null; gainedDateTo?: string | null }): string | null {
-  const label = g.gainedWhere === "other" ? g.gainedWhereDetail : gainedWhereLabel(g.gainedWhere);
+function gainedWhereSummary(options: GainedWhereOption[], g: { gainedWhere?: string | null; gainedWhereDetail?: string | null; gainedDateFrom?: string | null; gainedDateTo?: string | null }): string | null {
+  const label = g.gainedWhere === "other" ? g.gainedWhereDetail : gainedWhereLabel(options, g.gainedWhere);
   if (!label) return null;
   if (g.gainedDateFrom && g.gainedDateTo) {
     return `${label} (${g.gainedDateFrom.slice(0, 10)} – ${g.gainedDateTo.slice(0, 10)})`;
@@ -187,6 +189,7 @@ type NewBadgeEntry = {
 
 export default function BadgeOrdersPage() {
   const { data: session } = useSession();
+  const { gainedWhereOptions } = useReference();
   const token = (session as { id_token?: string } | null)?.id_token ?? null;
   const currentUser =
     (session as { user?: { name?: string; email?: string } } | null)?.user?.name ??
@@ -1056,8 +1059,8 @@ export default function BadgeOrdersPage() {
                                     </Badge>
                                   )}
                                 </p>
-                                {gainedWhereSummary(orderItem) && (
-                                  <p className="text-xs text-muted-foreground">{gainedWhereSummary(orderItem)}</p>
+                                {gainedWhereSummary(gainedWhereOptions, orderItem) && (
+                                  <p className="text-xs text-muted-foreground">{gainedWhereSummary(gainedWhereOptions, orderItem)}</p>
                                 )}
 
                                 {!isCompleted && (
@@ -1473,7 +1476,7 @@ export default function BadgeOrdersPage() {
                     <li key={idx} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm">
                       <span className="min-w-0 flex-1">
                         <span className="block">{b.badgeName}</span>
-                        <span className="block text-xs text-muted-foreground">{gainedWhereSummary(b)}</span>
+                        <span className="block text-xs text-muted-foreground">{gainedWhereSummary(gainedWhereOptions, b)}</span>
                       </span>
                       <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground"
                         onClick={() => setNewBadges((prev) => prev.filter((_, i) => i !== idx))}>

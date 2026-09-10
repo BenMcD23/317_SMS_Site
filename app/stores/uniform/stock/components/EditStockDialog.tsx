@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
-import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
+import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
 
 interface EditStockDialogProps {
@@ -58,7 +58,8 @@ export function EditStockDialog({
     }
   }, [item]);
 
-  const needsSize = itemType !== "" && !NO_SIZE_ITEMS.has(itemType);
+  const { itemTypes, noSizeItems } = useReference();
+  const needsSize = itemType !== "" && !noSizeItems.has(itemType);
 
   const boxOptions = useMemo(
     () => shelfStructure.boxes.map((b) => b.label),
@@ -75,7 +76,7 @@ export function EditStockDialog({
 
   function handleItemTypeChange(v: string) {
     setItemType(v);
-    setSize(NO_SIZE_ITEMS.has(v) ? "N/A" : (NO_SIZE_ITEMS.has(itemType) ? "" : size));
+    setSize(noSizeItems.has(v) ? "N/A" : (noSizeItems.has(itemType) ? "" : size));
   }
 
   function handleBoxChange(v: string) {
@@ -130,7 +131,7 @@ export function EditStockDialog({
                 <SelectValue placeholder="Select item type" />
               </SelectTrigger>
               <SelectContent>
-                {ITEM_TYPES.map((t) => (
+                {itemTypes.map((t) => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
                 ))}
               </SelectContent>

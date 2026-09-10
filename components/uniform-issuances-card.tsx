@@ -1,5 +1,6 @@
 "use client";
 
+import { useReference } from "@/lib/reference";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,24 +15,13 @@ type Issuance = {
   sizeGiven: string | null;
 };
 
-const ISSUANCE_CATEGORIES = [
-  "Beret",
-  "Wedgewood Shirt",
-  "Working Blue Shirt",
-  "Jumper",
-  "Slacks/Trousers",
-  "Skirt",
-  "Tie",
-  "Brassard",
-  "Belt",
-];
-
 interface Props {
   /** GET + POST endpoint (e.g. /api/stores/issuances/123 or /api/stores/issuances/user/5) */
   baseUrl: string;
 }
 
 export function UniformIssuancesCard({ baseUrl }: Props) {
+  const { issuanceCategories } = useReference();
   const [issuances, setIssuances] = useState<Issuance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +104,7 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
           </div>
         ) : (
           <div className="divide-y">
-            {ISSUANCE_CATEGORIES.map((category) => {
+            {issuanceCategories.map((category) => {
               const record = issuances.find((i) => i.itemCategory === category);
               const isEditing = editing === category;
 

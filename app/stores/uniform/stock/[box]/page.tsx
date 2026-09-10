@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShelfStructure, ShelfBox, StockItem } from "@/lib/stores-types";
-import { ITEM_TYPES, NO_SIZE_ITEMS } from "@/lib/stores-items";
+import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
 import { BoxDetailView } from "../components/BoxDetailView";
 import { EditStockDialog } from "../components/EditStockDialog";
@@ -76,7 +76,7 @@ export default function BoxPage() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  // Load once on mount.
   useEffect(() => { loadAll(); }, []);
 
   const selectedBox: ShelfBox | null = useMemo(
@@ -340,11 +340,12 @@ function ItemForm({
   boxes: string[];
   structure: Record<string, string[]>;
 }) {
+  const { itemTypes, noSizeItems } = useReference();
   const sections = form.box ? (structure[form.box] ?? []) : [];
-  const noSize = NO_SIZE_ITEMS.has(form.itemType);
+  const noSize = noSizeItems.has(form.itemType);
 
   function handleItemTypeChange(v: string) {
-    setForm((f) => ({ ...f, itemType: v, size: NO_SIZE_ITEMS.has(v) ? "N/A" : (NO_SIZE_ITEMS.has(f.itemType) ? "" : f.size) }));
+    setForm((f) => ({ ...f, itemType: v, size: noSizeItems.has(v) ? "N/A" : (noSizeItems.has(f.itemType) ? "" : f.size) }));
   }
 
   return (
@@ -354,7 +355,7 @@ function ItemForm({
         <Select value={form.itemType} onValueChange={handleItemTypeChange}>
           <SelectTrigger id="itemType"><SelectValue placeholder="Select item type" /></SelectTrigger>
           <SelectContent>
-            {ITEM_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            {itemTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>

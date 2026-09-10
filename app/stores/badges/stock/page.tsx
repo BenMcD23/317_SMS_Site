@@ -26,9 +26,10 @@ import {
 } from "@/components/ui/select";
 import { BadgeGrid, BadgeItem } from "@/lib/stores-types";
 import { BadgeGridView } from "../components/BadgeGridView";
-import { BADGE_CATEGORIES, BadgeCategory, buildBadgeName, parseBadgeName } from "../badge-types";
+import { type BadgeCategory, buildBadgeName, parseBadgeName, useReference } from "@/lib/reference";
 
 export default function BadgeStockPage() {
+  const { badgeCategories } = useReference();
   const [grid, setGrid] = useState<BadgeGrid | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +77,7 @@ export default function BadgeStockPage() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  // Load once on mount.
   useEffect(() => { load(); }, []);
 
   async function handleAddRow() {
@@ -199,7 +200,7 @@ export default function BadgeStockPage() {
     : null;
 
   function openEditBadge(item: BadgeItem, cellId: number) {
-    const parsed = parseBadgeName(item.name);
+    const parsed = parseBadgeName(badgeCategories, item.name);
     setEditItem(item);
     setEditCellId(cellId);
     setEditQuantity(item.quantity);
@@ -440,7 +441,7 @@ export default function BadgeStockPage() {
               <Select
                 value={selectedCategory?.id ?? ""}
                 onValueChange={(v) => {
-                  const cat = BADGE_CATEGORIES.find((c) => c.id === v) ?? null;
+                  const cat = badgeCategories.find((c) => c.id === v) ?? null;
                   setSelectedCategory(cat);
                   setSelectedSubType(null);
                   setSelectedLevel(null);
@@ -450,7 +451,7 @@ export default function BadgeStockPage() {
                   <SelectValue placeholder="Select type…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BADGE_CATEGORIES.map((c) => (
+                  {badgeCategories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -566,7 +567,7 @@ export default function BadgeStockPage() {
               <Select
                 value={editCategory?.id ?? ""}
                 onValueChange={(v) => {
-                  const cat = BADGE_CATEGORIES.find((c) => c.id === v) ?? null;
+                  const cat = badgeCategories.find((c) => c.id === v) ?? null;
                   setEditCategory(cat);
                   setEditSubType(null);
                   setEditLevel(null);
@@ -574,7 +575,7 @@ export default function BadgeStockPage() {
               >
                 <SelectTrigger><SelectValue placeholder="Select type…" /></SelectTrigger>
                 <SelectContent>
-                  {BADGE_CATEGORIES.map((c) => (
+                  {badgeCategories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>

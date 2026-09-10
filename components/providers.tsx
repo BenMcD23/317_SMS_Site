@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
 
 import { ApiStatusOverlay } from "@/components/api-status-overlay";
+import { ReferenceProvider } from "@/lib/reference";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // One QueryClient per browser session. staleTime keeps recently fetched data
@@ -38,7 +39,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           defaultTheme="dark"
           disableTransitionOnChange
         >
-          {children}
+          <ReferenceProvider>{children}</ReferenceProvider>
           <Toaster position="top-right" richColors />
           <ApiStatusOverlay />
         </ThemeProvider>
