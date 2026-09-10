@@ -54,6 +54,8 @@ type AssessmentEntry = {
   total_score: number | null;
   exercise_name: string | null;
   assessor_name: string | null;
+  /** True when the signed-in user is the assessor who created it. */
+  is_mine: boolean;
 };
 
 type AssessmentGroup = {
@@ -150,8 +152,13 @@ function AssessmentPdfRow({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
+  const { data: session } = useSession();
 
-  const canEdit = !locked && EDITABLE_TYPES.includes(assessment.assessment_type);
+  // Mirrors the API rule: only the assessor who created a sheet, or staff, may edit it.
+  const canEdit =
+    !locked &&
+    EDITABLE_TYPES.includes(assessment.assessment_type) &&
+    (assessment.is_mine || session?.role === "staff");
 
   const fetchPdf = async (): Promise<string | null> => {
     if (pdfUrl) return pdfUrl;
