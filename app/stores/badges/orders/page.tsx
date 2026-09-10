@@ -23,10 +23,12 @@ import {
   ExternalLink,
   Truck,
   Inbox,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -134,8 +136,6 @@ function BadgePicker({
     </div>
   );
 }
-
-// ─── Gained where ─────────────────────────────────────────────────────────────
 
 type GainedWhereState = {
   gainedWhere: string | null;
@@ -599,8 +599,6 @@ export default function BadgeOrdersPage() {
     setAddLevel(null);
     setAddGainedWhere(emptyGainedWhere());
   }
-
-  // ── Order list ─────────────────────────────────────────────────────────────
 
   // Order list entries only keep the id of the order item they were made from, so
   // resolve that back to the live order/item to link to it and to reach its QM notes.
@@ -1093,9 +1091,11 @@ export default function BadgeOrdersPage() {
       )}
 
       {!loading && activeTab !== "orderlist" && orders.length === 0 && (
-        <p className="text-muted-foreground py-12 text-center text-sm">
-          No badge orders yet. Create one with the button above.
-        </p>
+        <EmptyState
+          icon={Award}
+          title="No badge orders yet"
+          description="Create one with the button above."
+        />
       )}
 
       {!loading && activeTab !== "orderlist" && orders.length > 0 && filteredOrders.length === 0 && (

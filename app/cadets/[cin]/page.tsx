@@ -39,8 +39,6 @@ import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type Qualification = {
   id: number;
   qualification_name: string;
@@ -81,8 +79,6 @@ type CadetDetail = {
   assessments: Assessment[];
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function age(dob: string | null) {
   if (!dob) return null;
   const diff = Date.now() - new Date(dob).getTime();
@@ -97,8 +93,6 @@ function expiryStatus(expires_date: string | null): "expired" | "soon" | "ok" | 
   if (d < new Date(Date.now() + 1000 * 60 * 60 * 24 * 60)) return "soon";
   return "ok";
 }
-
-// ─── Inline editable field ────────────────────────────────────────────────────
 
 function EditableField({
   label,
@@ -201,8 +195,6 @@ function EditableField({
   );
 }
 
-// ─── Stat pill ────────────────────────────────────────────────────────────────
-
 function StatPill({
   label,
   value,
@@ -228,8 +220,6 @@ function StatPill({
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CadetOverviewPage() {
   const { data: session } = useSession();

@@ -17,8 +17,8 @@ import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
+import { SectionHeading } from "@/components/section-heading";
 
-// ─── Criteria ─────────────────────────────────────────────────────────────────
 const CRITERIA = [
   { id: "callsigns", label: "Correct Use of Both Full Callsigns" },
   { id: "auth_1a", label: "1a) Authenticate Requested" },
@@ -44,7 +44,6 @@ const CRITERIA = [
   },
 ];
 
-// ─── Criterion toggle ──────────────────────────────────────────────────────────
 function CriterionRow({
   criterion,
   checked,
@@ -77,7 +76,6 @@ function CriterionRow({
 
 const COMMENTS_MAX = 140;
 
-// ─── Form state ───────────────────────────────────────────────────────────────
 type FormState = {
   cadetCin: number | null;
   cadetName: string;
@@ -100,7 +98,6 @@ const initialState = (): FormState => ({
   date: new Date().toISOString().split("T")[0],
 });
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function RadioAssessmentPage() {
   const { data: session } = useSession();
   const {
@@ -237,14 +234,10 @@ export default function RadioAssessmentPage() {
     }
   };
 
-  // ── Success screen ────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6 pb-16">
-        <div>
-          <h1 className="text-xl font-semibold">Radio Assessment</h1>
-          <p className="text-muted-foreground">Blue Badge — Basic Radio Operator Award</p>
-        </div>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+        <SectionHeading title="Radio Assessment" description="Blue Badge — Basic Radio Operator Award" />
 
         <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
           <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
@@ -302,13 +295,9 @@ export default function RadioAssessmentPage() {
     );
   }
 
-  // ── Main form ─────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      <div>
-        <h1 className="text-xl font-semibold">Radio Assessment</h1>
-        <p className="text-muted-foreground">Blue Badge — Basic Radio Operator Award</p>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <SectionHeading title="Radio Assessment" description="Blue Badge — Basic Radio Operator Award" />
 
       {draftRestored && !draftBannerDismissed && (
         <div className="border-warning/30 bg-warning/10 flex items-center justify-between rounded-lg border px-4 py-3 text-sm">

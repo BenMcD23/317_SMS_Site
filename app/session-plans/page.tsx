@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Plus, ClipboardList } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { type SessionPlanSummary, STATUS_LABELS, STATUS_STYLE } from "@/lib/session-plans";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorAlert } from "@/components/error-alert";
 
 interface ListResponse {
   plans: SessionPlanSummary[];
@@ -44,30 +46,21 @@ export default function SessionPlansPage() {
       />
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        <ListSkeleton rows={4} />
       ) : error ? (
-        <p className="text-destructive text-sm">Failed to load session plans: {error.message}</p>
+        <ErrorAlert message={error.message} title="Could not load session plans" />
       ) : !data || data.plans.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ClipboardList />
-            </EmptyMedia>
-            <EmptyTitle>No session plans yet</EmptyTitle>
-            <EmptyDescription>
-              Write up a session you&apos;re running and send it to staff for approval.
-            </EmptyDescription>
-          </EmptyHeader>
+        <EmptyState
+          icon={ClipboardList}
+          title="No session plans yet"
+          description="Write up a session you're running and send it to staff for approval."
+        >
           <Button asChild size="sm">
             <Link href="/session-plans/new">
               <Plus /> New Plan
             </Link>
           </Button>
-        </Empty>
+        </EmptyState>
       ) : (
         <>
           {data.is_staff && awaiting.length > 0 && (
@@ -95,6 +88,7 @@ function PlanTable({
   plans: SessionPlanSummary[];
   showAuthor: boolean;
 }) {
+  const router = useRouter();
   return (
     <div className="flex flex-col gap-2">
       {title && <h2 className="text-muted-foreground text-sm font-medium">{title}</h2>}
@@ -117,9 +111,7 @@ function PlanTable({
                 <TableRow
                   key={p.id}
                   className="cursor-pointer"
-                  onClick={() => {
-                    window.location.href = `/session-plans/${p.id}`;
-                  }}
+                  onClick={() => router.push(`/session-plans/${p.id}`)}
                 >
                   <TableCell className="max-w-[16rem] truncate font-medium">
                     <Link href={`/session-plans/${p.id}`} className="hover:underline">

@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { formatDate } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
@@ -38,6 +37,7 @@ import {
   type AppraisalOverview,
   type UpcomingReview,
 } from "@/lib/nco-appraisals";
+import { EmptyState } from "@/components/empty-state";
 
 /** How the countdown to a review is worded. "Due in 9 days" is more use at a
  *  glance than the date alone, and overdue has to be unmissable. */
@@ -158,18 +158,11 @@ export default function NcoAppraisalsPage() {
             </CardHeader>
             <CardContent>
               {upcoming.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <CalendarClock />
-                    </EmptyMedia>
-                    <EmptyTitle>Nothing scheduled</EmptyTitle>
-                    <EmptyDescription>
-                      Reviews appear here once an appraisal sets a next-review date. For an NCO who
-                      hasn&apos;t had one yet, add a reminder.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
+                <EmptyState
+                  icon={CalendarClock}
+                  title="Nothing scheduled"
+                  description="Reviews appear here once an appraisal sets a next-review date. For an NCO who hasn't had one yet, add a reminder."
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -281,17 +274,11 @@ export default function NcoAppraisalsPage() {
             </CardHeader>
             <CardContent>
               {appraisals.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <ClipboardList />
-                    </EmptyMedia>
-                    <EmptyTitle>No appraisals yet</EmptyTitle>
-                    <EmptyDescription>
-                      Write the first one and it&apos;ll be kept here, ready to download or email to the NCO.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
+                <EmptyState
+                  icon={ClipboardList}
+                  title="No appraisals yet"
+                  description="Write the first one and it'll be kept here, ready to download or email to the NCO."
+                />
               ) : (
                 <Table>
                   <TableHeader>

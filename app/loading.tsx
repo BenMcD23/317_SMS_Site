@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/list-skeleton";
 
 // Instant fallback Next.js swaps in the moment navigation starts (see
 // node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/loading.md) —
@@ -13,11 +14,7 @@ export default function Loading() {
           <Skeleton className="h-4 w-72" />
         </div>
       </div>
-      <div className="flex flex-col gap-2">
-        {[...Array(8)].map((_, i) => (
-          <Skeleton key={i} className="h-12" />
-        ))}
-      </div>
+      <ListSkeleton rows={8} />
     </div>
   );
 }

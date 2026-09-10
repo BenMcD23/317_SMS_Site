@@ -18,8 +18,8 @@ import { apiFetch } from "@/lib/api-fetch";
 
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
+import { SectionHeading } from "@/components/section-heading";
 
-// ─── Questions ────────────────────────────────────────────────────────────────
 const DEBRIEF_MAX = 540;
 
 const QUESTIONS = [
@@ -59,7 +59,6 @@ const QUESTIONS = [
   },
 ];
 
-// ─── Score selector ───────────────────────────────────────────────────────────
 function ScoreSelector({
   question,
   value,
@@ -116,7 +115,6 @@ function ScoreSelector({
   );
 }
 
-// ─── Form state ───────────────────────────────────────────────────────────────
 type FormState = {
   cadetCin: number | null;
   cadetName: string;
@@ -141,7 +139,6 @@ const initialState = (): FormState => ({
   debriefingNotes: "",
 });
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LeadershipAssessmentPage() {
   const { data: session } = useSession();
   const {
@@ -176,7 +173,6 @@ export default function LeadershipAssessmentPage() {
     }
   }, [session]);
 
-  // ── Load assessor name + signature ────────────────────────────────────────
   useEffect(() => {
     if (!session?.id_token) return;
 
@@ -207,7 +203,6 @@ export default function LeadershipAssessmentPage() {
       .finally(() => setSigLoading(false));
   }, [session]);
 
-  // ── Derived score values ──────────────────────────────────────────────────
   const answeredScores = Object.values(form.scores).filter((v): v is number => v !== null);
   const totalScore = answeredScores.reduce((a, b) => a + b, 0);
   const allAnswered = answeredScores.length === QUESTIONS.length;
@@ -229,7 +224,6 @@ export default function LeadershipAssessmentPage() {
     loadAssessorName();
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!form.cadetCin || !form.exerciseNo || !form.exerciseName) {
       setError("Please select a cadet from the search results and fill in exercise details.");
@@ -285,14 +279,10 @@ export default function LeadershipAssessmentPage() {
     }
   };
 
-  // ── Success screen ────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6 pb-16">
-        <div>
-          <h1 className="text-xl font-semibold">Leadership Assessment</h1>
-          <p className="text-muted-foreground">Blue Badge — Air Cadet Foundation</p>
-        </div>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+        <SectionHeading title="Leadership Assessment" description="Blue Badge — Air Cadet Foundation" />
 
         <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
           <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
@@ -352,13 +342,9 @@ export default function LeadershipAssessmentPage() {
     );
   }
 
-  // ── Main form ─────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      <div>
-        <h1 className="text-xl font-semibold">Leadership Assessment</h1>
-        <p className="text-muted-foreground">Blue Badge — Air Cadet Foundation</p>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <SectionHeading title="Leadership Assessment" description="Blue Badge — Air Cadet Foundation" />
 
       {draftRestored && !draftBannerDismissed && (
         <div className="border-warning/30 bg-warning/10 flex items-center justify-between rounded-lg border px-4 py-3 text-sm">

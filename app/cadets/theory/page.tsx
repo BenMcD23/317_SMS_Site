@@ -29,9 +29,8 @@ import { formatDate } from "@/lib/format";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { Search, Check, X } from "lucide-react";
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
 
 type Cadet = {
   cin: number;
@@ -60,8 +59,6 @@ type TheoryResult = Cadet & {
   lessons_check: LessonCheck[];
 };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
 /** Group lessons by category, preserving first-seen category order. */
 function groupByCategory(lessons: Lesson[]): [string, Lesson[]][] {
   const groups = new Map<string, Lesson[]>();
@@ -71,8 +68,6 @@ function groupByCategory(lessons: Lesson[]): [string, Lesson[]][] {
   }
   return [...groups.entries()];
 }
-
-// ─── Lesson selector ─────────────────────────────────────────────────────────
 
 function LessonSelector({
   lessons,
@@ -100,13 +95,7 @@ function LessonSelector({
   }
 
   if (lessons.length === 0) {
-    return (
-      <div className="flex flex-col gap-2">
-        {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-8" />
-        ))}
-      </div>
-    );
+    return <ListSkeleton rows={3} className="h-8" />;
   }
 
   return (
@@ -159,8 +148,6 @@ function LessonSelector({
     </div>
   );
 }
-
-// ─── Cadet multi-select ──────────────────────────────────────────────────────
 
 function CadetPicker({
   cadets,
@@ -274,8 +261,6 @@ function CadetPicker({
   );
 }
 
-// ─── Tab 1: Record Progress ──────────────────────────────────────────────────
-
 function RecordTab({ lessons }: { lessons: Lesson[] }) {
   const { data: session } = useSession();
   const { data: cadets = [], isLoading: loadingCadets } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
@@ -377,8 +362,6 @@ function RecordTab({ lessons }: { lessons: Lesson[] }) {
     </div>
   );
 }
-
-// ─── Tab 2: View Progress ─────────────────────────────────────────────────────
 
 function ProgressTab({ lessons }: { lessons: Lesson[] }) {
   const { data: session } = useSession();
@@ -659,8 +642,6 @@ function TheoryResultsTable({
     </div>
   );
 }
-
-// ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TheoryProgressPage() {
   const { data: lessons = [] } = useApiQuery<Lesson[]>(["theory-lessons"], "/cadets/theory/lessons");

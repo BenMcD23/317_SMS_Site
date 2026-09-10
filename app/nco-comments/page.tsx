@@ -14,12 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
   addReply,
@@ -32,6 +30,9 @@ import {
   type NcoComment,
   type NcoCommentList,
 } from "@/lib/nco-comments";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorAlert } from "@/components/error-alert";
 
 type Tab = "cadets" | "by-cadet" | "general";
 
@@ -104,13 +105,9 @@ export default function NcoCommentsPage() {
       </Tabs>
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full" />
-          ))}
-        </div>
+        <ListSkeleton rows={3} className="h-28" />
       ) : error ? (
-        <p className="text-destructive text-sm">Failed to load comments: {error.message}</p>
+        <ErrorAlert message={error.message} title="Could not load comments" />
       ) : tab === "by-cadet" ? (
         selectedGroup ? (
           <div className="flex flex-col gap-4">
@@ -142,19 +139,15 @@ export default function NcoCommentsPage() {
               className="max-w-xs"
             />
             {filteredGroups.length === 0 ? (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <User />
-                  </EmptyMedia>
-                  <EmptyTitle>No cadets yet</EmptyTitle>
-                  <EmptyDescription>
-                    {cadetFilter
-                      ? "No cadet here matches that name."
-                      : "Comments filed against a cadet will list them here."}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
+              <EmptyState
+                icon={User}
+                title="No cadets yet"
+                description={
+                  cadetFilter
+                    ? "No cadet here matches that name."
+                    : "Comments filed against a cadet will list them here."
+                }
+              />
             ) : (
               <div className="divide-y rounded-lg border">
                 {filteredGroups.map((group) => (
@@ -232,18 +225,13 @@ function CommentList({
 }) {
   if (comments.length === 0) {
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <MessageSquare />
-          </EmptyMedia>
-          <EmptyTitle>{emptyTitle}</EmptyTitle>
-          <EmptyDescription>
-            Drop a quick note here and any NCO or staff member can pick it up and reply.
-          </EmptyDescription>
-        </EmptyHeader>
+      <EmptyState
+        icon={MessageSquare}
+        title={emptyTitle}
+        description="Drop a quick note here and any NCO or staff member can pick it up and reply."
+      >
         {emptyAction}
-      </Empty>
+      </EmptyState>
     );
   }
   return (

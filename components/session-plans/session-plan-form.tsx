@@ -53,7 +53,7 @@ export function SessionPlanForm({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ── Header block ──────────────────────────────────────────────────── */}
+      {/* Header block */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">The Session</CardTitle>
@@ -85,7 +85,7 @@ export function SessionPlanForm({
         </CardContent>
       </Card>
 
-      {/* ── Section plan ──────────────────────────────────────────────────── */}
+      {/* Section plan */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Section Plan</CardTitle>
@@ -119,7 +119,7 @@ export function SessionPlanForm({
         </CardContent>
       </Card>
 
-      {/* ── Extras ────────────────────────────────────────────────────────── */}
+      {/* Extras */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Extras</CardTitle>

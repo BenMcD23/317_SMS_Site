@@ -19,8 +19,6 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
-// ─── Level styling ─────────────────────────────────────────────────────────────────
-
 const LEVEL_STYLES: Record<string, string> = {
   blue: "border-blue-200 bg-blue-50 text-blue-700",
   bronze: "border-amber-300 bg-amber-50 text-amber-800",
@@ -42,8 +40,6 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB");
 }
-
-// ─── Types ─────────────────────────────────────────────────────────────────────────
 
 type Cadet = {
   cin: number;
@@ -105,8 +101,6 @@ type EventEntry = {
   cadets: Cadet[];
   sub_apps: SubApp[];
 };
-
-// ─── Shared components ───────────────────────────────────────────────────────────
 
 type LevelSelection = Record<string, string[]>;
 
@@ -519,8 +513,6 @@ function AuditResultsTable({
   );
 }
 
-// ─── Tab 2: Cadet Check ─────────────────────────────────────────────────────────
-
 function CadetCheckTab() {
   const { data: session } = useSession();
   const { data: allCadets = [], isLoading: loadingCadets } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
@@ -733,8 +725,6 @@ function CadetCheckTab() {
   );
 }
 
-// ─── Tab 3: Event Audit ─────────────────────────────────────────────────────────
-
 function EventCheckTab() {
   const { data: session } = useSession();
   const { data: events = [], isLoading: loadingEvents } = useApiQuery<EventEntry[]>(
@@ -933,8 +923,6 @@ function EventCheckTab() {
     </div>
   );
 }
-
-// ─── Main Page ─────────────────────────────────────────────────────────────────────
 
 export default function AuditPage() {
   return (

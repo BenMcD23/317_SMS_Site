@@ -32,8 +32,6 @@ import {
   type StateCounts,
 } from "@/lib/attendance";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type NcoNight = {
   date: string; // "YYYY-MM-DD"
   registerType: string | null;
@@ -60,8 +58,6 @@ const ALL_TYPES = "__all__";
  *  figures — the cap only stops a year's register becoming 50 columns. */
 const COLUMN_LIMIT = 20;
 
-// ─── Date range ───────────────────────────────────────────────────────────────
-
 const iso = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
@@ -73,8 +69,6 @@ function monthRange(offset = 0) {
   const last = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
   return { from: iso(first), to: iso(last) };
 }
-
-// ─── Cells ────────────────────────────────────────────────────────────────────
 
 /** One night for one NCO. The letter carries the state on its own, so the
  *  colour is reinforcement rather than the only signal. */
@@ -111,8 +105,6 @@ function Turnout({ counts }: { counts: StateCounts }) {
     </span>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NcoAttendancePage() {
   const [{ from, to }, setRange] = useState(() => monthRange());

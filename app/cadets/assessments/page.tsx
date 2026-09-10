@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
@@ -41,10 +40,9 @@ import {
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
+import { EmptyState } from "@/components/empty-state";
 
 const EDITABLE_TYPES = ["Blue Leadership", "Blue Radio", "MOI"];
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AssessmentEntry = {
   id: number;
@@ -74,8 +72,6 @@ type CadetAssessments = {
   flight: string | null;
   groups: AssessmentGroup[];
 };
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function typeLabel(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -109,8 +105,6 @@ function groupMatchesFilter(g: AssessmentGroup, filter: AssessmentFilter) {
   return g.uploaded;
 }
 
-// ─── Info tooltip ─────────────────────────────────────────────────────────────
-
 function InfoTooltip({ text }: { text: string }) {
   return (
     <Tooltip>
@@ -127,8 +121,6 @@ function InfoTooltip({ text }: { text: string }) {
     </Tooltip>
   );
 }
-
-// ─── PDF Row (with delete) ────────────────────────────────────────────────────
 
 function AssessmentPdfRow({
   assessment,
@@ -371,7 +363,6 @@ function AssessmentPdfRow({
   );
 }
 
-// ─── Upload button ────────────────────────────────────────────────────────────
 // Logs are surfaced via sonner toasts so they survive the component being
 // replaced by CompletionControl once onUploaded() triggers a data refetch.
 
@@ -504,8 +495,6 @@ function UploadButton({
     </Button>
   );
 }
-
-// ─── Manual mark-complete control ─────────────────────────────────────────────
 
 function CompletionControl({
   cin,
@@ -650,8 +639,6 @@ function CompletionControl({
   );
 }
 
-// ─── Combined PDF ─────────────────────────────────────────────────────────────
-
 function CombinedPdfButton({
   cin,
   assessmentType,
@@ -699,8 +686,6 @@ function CombinedPdfButton({
     </div>
   );
 }
-
-// ─── Assessment group row ─────────────────────────────────────────────────────
 
 function AssessmentGroupRow({
   cin,
@@ -815,8 +800,6 @@ function AssessmentGroupRow({
   );
 }
 
-// ─── Cadet card ───────────────────────────────────────────────────────────────
-
 function CadetAssessmentCard({
   cadet,
   token,
@@ -892,8 +875,6 @@ function CadetAssessmentCard({
     </Card>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AssessmentsOverviewPage() {
   const { data: session } = useSession();
@@ -1072,13 +1053,11 @@ export default function AssessmentsOverviewPage() {
       )}
 
       {!loading && !error && filtered.length === 0 && (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ClipboardList />
-            </EmptyMedia>
-            <EmptyTitle>Nothing here</EmptyTitle>
-            <EmptyDescription>
+        <EmptyState
+          icon={ClipboardList}
+          title="Nothing here"
+          description={
+            <>
               {search
                 ? `No cadets match "${search}".`
                 : filter === "active"
@@ -1086,9 +1065,9 @@ export default function AssessmentsOverviewPage() {
                   : filter === "ready"
                     ? "No assessments are ready to upload."
                     : "No completed assessments yet."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+            </>
+          }
+        />
       )}
 
       {!loading &&

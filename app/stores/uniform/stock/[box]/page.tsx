@@ -84,8 +84,6 @@ export default function BoxPage() {
 
   const boxLabels = useMemo(() => shelfStructure?.boxes.map((b) => b.label).sort() ?? [], [shelfStructure]);
 
-  // ── Item CRUD ──────────────────────────────────────────────────────────────
-
   function openAdd(box = boxLabel, section = "") {
     setForm(emptyForm(box, section));
     setAddOpen(true);
@@ -131,8 +129,6 @@ export default function BoxPage() {
     }
   }
 
-  // ── Box management ─────────────────────────────────────────────────────────
-
   async function handleDeleteBox(box: string) {
     try {
       const res = await fetch("/api/stores/structure", {
@@ -146,8 +142,6 @@ export default function BoxPage() {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
   }
-
-  // ── Section management ─────────────────────────────────────────────────────
 
   async function handleAddSection(box: string, sectionName: string) {
     const name = sectionName.trim();
@@ -203,8 +197,6 @@ export default function BoxPage() {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
   }
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -318,8 +310,6 @@ export default function BoxPage() {
     </div>
   );
 }
-
-// ── Item form ──────────────────────────────────────────────────────────────────
 
 function ItemForm({
   form,

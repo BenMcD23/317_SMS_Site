@@ -1,6 +1,10 @@
 import { cn } from "@/lib/utils";
 
-/** Standard page header — title on the left, optional actions on the right. */
+/**
+ * Standard page header — title on the left, optional actions on the right.
+ * Every page opens with one so the sidebar's link, the breadcrumb and the
+ * heading agree on what the page is called.
+ */
 export function PageHeader({
   title,
   description,
@@ -13,12 +17,12 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-end justify-between gap-3 border-b pb-4", className)}>
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        {description && <p className="text-muted-foreground text-sm">{description}</p>}
+    <div className={cn("flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b pb-5", className)}>
+      <div className="flex min-w-0 flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-balance">{title}</h1>
+        {description && <p className="text-muted-foreground text-sm text-pretty">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

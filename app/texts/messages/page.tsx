@@ -18,7 +18,7 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { EmptyState } from "@/components/empty-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,14 +59,13 @@ import {
   ChevronDown,
   Cpu,
   Info,
+  MessageSquareText,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { streamSse } from "@/lib/sse";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 // `name` is absent on messages sent before recipients were tied to accounts.
 type SendResult = { phone: string; name?: string; status: "sent" | "failed"; error?: string };
@@ -155,8 +154,6 @@ const MONTHS = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 3 }, (_, i) => currentYear + 1 - i);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function formatParadeDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "long",
@@ -209,8 +206,6 @@ function ModelLine({ message }: { message: ParadeMessage }) {
     </p>
   );
 }
-
-// ─── Message card ─────────────────────────────────────────────────────────────
 
 function MessageCard({
   message,
@@ -529,8 +524,6 @@ function MessageCard({
     </Card>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TextMessagesPage() {
   const { data: session } = useSession();
@@ -898,16 +891,11 @@ export default function TextMessagesPage() {
           ))}
         </div>
       ) : messages.length === 0 && Object.keys(failed).length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>
-              No messages for {MONTHS[Number(month) - 1]} {year}
-            </EmptyTitle>
-            <EmptyDescription>
-              Use &quot;Generate from programme&quot; to create drafts from the programme doc.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <EmptyState
+          icon={MessageSquareText}
+          title={`No messages for ${MONTHS[Number(month) - 1]} ${year}`}
+          description="Use “Generate from programme” to create drafts from the programme doc."
+        />
       ) : (
         messages.map((m) => (
           <MessageCard

@@ -290,8 +290,6 @@ function ConsolePanel({
   );
 }
 
-// ─── Schedule tab ─────────────────────────────────────────────────────────────
-
 type Schedule = {
   enabled: boolean;
   days: string[];
@@ -485,7 +483,6 @@ function ScheduleTab({ token }: { token: string }) {
   );
 }
 
-// ─── Attachment checks tab ────────────────────────────────────────────────────
 // A squadron-wide list of exact Bader qualification names the cadet-quali
 // scraper checks for a proof attachment. Missing ones are flagged in the run
 // log and saved on each cadet's qualification.

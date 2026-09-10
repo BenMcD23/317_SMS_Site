@@ -371,8 +371,6 @@ export default function StockPage() {
   );
 }
 
-// ── Search result row ──────────────────────────────────────────────────────────
-
 function SearchResultRow({
   item,
   isMisc,

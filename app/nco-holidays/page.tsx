@@ -14,12 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
   bookHoliday,
@@ -31,6 +29,9 @@ import {
   type NcoHoliday,
   type NcoHolidayList,
 } from "@/lib/nco-holidays";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorAlert } from "@/components/error-alert";
 
 type Filter = "upcoming" | "all" | "mine";
 
@@ -141,34 +142,27 @@ export default function NcoHolidaysPage() {
       </Tabs>
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        <ListSkeleton rows={4} />
       ) : error ? (
-        <p className="text-destructive text-sm">Failed to load holidays: {error.message}</p>
+        <ErrorAlert message={error.message} title="Could not load holidays" />
       ) : holidays.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <CalendarOff />
-            </EmptyMedia>
-            <EmptyTitle>{filter === "upcoming" ? "No holidays booked" : "Nothing here yet"}</EmptyTitle>
-            <EmptyDescription>
-              {filter !== "upcoming"
-                ? "Bookings stay on this list once made, even after they're cancelled."
-                : data?.can_book
-                  ? "Book time off and it'll show on the squadron's NCO Holidays calendar."
-                  : "No NCO has booked time off yet."}
-            </EmptyDescription>
-          </EmptyHeader>
+        <EmptyState
+          icon={CalendarOff}
+          title={filter === "upcoming" ? "No holidays booked" : "Nothing here yet"}
+          description={
+            filter !== "upcoming"
+              ? "Bookings stay on this list once made, even after they're cancelled."
+              : data?.can_book
+                ? "Book time off and it'll show on the squadron's NCO Holidays calendar."
+                : "No NCO has booked time off yet."
+          }
+        >
           {data?.can_book && (
             <Button size="sm" onClick={openBook}>
               <Plus /> Book Holiday
             </Button>
           )}
-        </Empty>
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>

@@ -23,6 +23,7 @@ import {
   type SessionPlanContent,
   type SessionPlanDetail,
 } from "@/lib/session-plans";
+import { ErrorAlert } from "@/components/error-alert";
 
 export default function EditSessionPlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -122,7 +123,7 @@ export default function EditSessionPlanPage({ params }: { params: Promise<{ id: 
   if (error || !saved || !plan) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-destructive text-sm">{error?.message ?? "Session plan not found."}</p>
+        <ErrorAlert message={error?.message ?? "Session plan not found."} />
         <Button asChild variant="ghost" size="sm" className="mt-2">
           <Link href="/session-plans">
             <ArrowLeft /> Back to session plans
@@ -177,7 +178,7 @@ export default function EditSessionPlanPage({ params }: { params: Promise<{ id: 
 
       <SessionPlanForm value={plan} onChange={setPlan} feedback={saved.feedback} disabled={busy !== null} />
 
-      {/* ── Attachments (the sheet's map box) ───────────────────────────────── */}
+      {/* Attachments (the sheet's map box) */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Attachments</CardTitle>

@@ -30,8 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { flightBadgeClass } from "@/lib/cadet-format";
+import { EmptyState } from "@/components/empty-state";
 import { toast } from "sonner";
 import {
   Search,
@@ -47,7 +47,6 @@ import {
   Trash2,
 } from "lucide-react";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
 type Note = { region: string; text: string };
 type TimelineEntry = {
   date: string;
@@ -135,7 +134,6 @@ function numberComments(faults: Note[], positives: Note[]): NumberedNote[] {
   return out;
 }
 
-// ─── Read-only figure with numbered fault/positive markers ────────────────────
 function InspectionFigureView({ notes }: { notes: NumberedNote[] }) {
   const byRegion = new Map<string, NumberedNote[]>();
   for (const note of notes) {
@@ -176,7 +174,6 @@ function InspectionFigureView({ notes }: { notes: NumberedNote[] }) {
   );
 }
 
-// ─── One cadet row in the per-date inspection view ────────────────────────────
 function HistoryCadetCard({ cadet }: { cadet: SheetCadet }) {
   const notes = numberComments(cadet.faults, cadet.positives);
 
@@ -230,7 +227,6 @@ function HistoryCadetCard({ cadet }: { cadet: SheetCadet }) {
   );
 }
 
-// ─── Compact AWOL / absent lists shown under a flight's present cadets ─────────
 function AbsenceLists({ awol, absent }: { awol: SheetCadet[]; absent: SheetCadet[] }) {
   const column = (title: string, people: SheetCadet[], tone: "awol" | "absent") => (
     <div className="overflow-hidden rounded-md border">
@@ -265,7 +261,6 @@ function AbsenceLists({ awol, absent }: { awol: SheetCadet[]; absent: SheetCadet
   );
 }
 
-// ─── Inspection History tab (browse by date + PDF export) ─────────────────────
 function HistoryTab() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -340,17 +335,11 @@ function HistoryTab() {
   if (sheetsLoading) return <Skeleton className="h-96 w-full" />;
   if (sheets.length === 0)
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <CalendarDays />
-          </EmptyMedia>
-          <EmptyTitle>No inspections recorded</EmptyTitle>
-          <EmptyDescription>
-            Submit an inspection marking sheet and it will show up here to browse and export.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <EmptyState
+        icon={CalendarDays}
+        title="No inspections recorded"
+        description="Submit an inspection marking sheet and it will show up here to browse and export."
+      />
     );
 
   return (
@@ -454,7 +443,6 @@ function HistoryTab() {
   );
 }
 
-// ─── Leaderboard sorting ──────────────────────────────────────────────────────
 type SortKey = "name" | "attendance_avg" | "score_avg" | "overall" | "overall_rank";
 
 function SortHead({
@@ -491,7 +479,6 @@ function SortHead({
   );
 }
 
-// ─── Tiny markdown renderer for the AI summary ────────────────────────────────
 function AiMarkdown({ text }: { text: string }) {
   const blocks: React.ReactNode[] = [];
   let bullets: string[] = [];
@@ -559,7 +546,6 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-// ─── Per-cadet detail dialog (leaderboard) ────────────────────────────────────
 function CadetDetail({ cadet }: { cadet: CadetHistory }) {
   const { data: session } = useSession();
   const [ai, setAi] = useState<{
@@ -711,7 +697,6 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
   );
 }
 
-// ─── Leaderboard tab ──────────────────────────────────────────────────────────
 function LeaderboardTab() {
   const { data, isLoading, error } = useApiQuery<HistoryResp>(["inspection-history"], "/inspections/history");
   const [search, setSearch] = useState("");
@@ -754,17 +739,11 @@ function LeaderboardTab() {
   if (error) return <ErrorAlert message={error.message} />;
   if ((data?.inspection_count ?? 0) === 0)
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Shirt />
-          </EmptyMedia>
-          <EmptyTitle>No inspections yet</EmptyTitle>
-          <EmptyDescription>
-            Submit an inspection marking sheet and per-cadet trends will appear here.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <EmptyState
+        icon={Shirt}
+        title="No inspections yet"
+        description="Submit an inspection marking sheet and per-cadet trends will appear here."
+      />
     );
 
   return (
@@ -888,7 +867,6 @@ function LeaderboardTab() {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function InspectionHistoryPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">

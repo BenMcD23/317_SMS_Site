@@ -45,6 +45,7 @@ import {
   formatGBP,
   formatDateTime,
 } from "@/lib/committee";
+import { ErrorAlert } from "@/components/error-alert";
 
 const RECEIPT_ACCEPT = "image/png,image/jpeg,application/pdf";
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -221,7 +222,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
   if (error || !req) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-destructive text-sm">{error?.message ?? "Request not found."}</p>
+        <ErrorAlert message={error?.message ?? "Request not found."} />
         <Button asChild variant="ghost" size="sm" className="mt-2">
           <Link href="/committee/requests">
             <ArrowLeft /> Back to requests
@@ -265,7 +266,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
         }
       />
 
-      {/* ── Actions ─────────────────────────────────────────────────────────── */}
+      {/* Actions */}
       {showActions && (
         <Card>
           <CardHeader className="pb-3">
@@ -438,7 +439,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
         </Card>
       )}
 
-      {/* ── Items ───────────────────────────────────────────────────────────── */}
+      {/* Items */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Items</CardTitle>
@@ -473,7 +474,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
         </CardContent>
       </Card>
 
-      {/* ── Receipts ────────────────────────────────────────────────────────── */}
+      {/* Receipts */}
       {(req.receipts.length > 0 || (isRequester && req.status === "approved")) && (
         <Card>
           <CardHeader className="pb-3">
@@ -516,7 +517,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
         </Card>
       )}
 
-      {/* ── Timeline ────────────────────────────────────────────────────────── */}
+      {/* Timeline */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">History</CardTitle>

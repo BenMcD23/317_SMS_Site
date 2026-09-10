@@ -29,36 +29,42 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Left panel — brand */}
-      <div className="bg-sidebar text-sidebar-foreground hidden flex-col justify-between p-10 lg:flex">
-        <div className="flex items-center gap-3">
-          <Image src="/icon.jpg" alt="" width={36} height={36} className="rounded-md object-cover" />
-          <span className="text-sm font-semibold tracking-wide">317 (Failsworth) Squadron RAFAC</span>
+    <div className="grid min-h-screen lg:grid-cols-[5fr_4fr]">
+      {/* Brand panel: a wash of the sidebar accent, nothing busier. */}
+      <div className="bg-sidebar text-sidebar-foreground relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12">
+        <div className="from-sidebar-primary/25 pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-transparent" />
+        <div className="relative flex items-center gap-3">
+          <Image src="/icon.jpg" alt="" width={40} height={40} className="rounded-md object-cover" />
+          <div className="leading-tight">
+            <p className="text-sm font-semibold">317 (Failsworth) Squadron</p>
+            <p className="text-sidebar-foreground/60 text-xs">Royal Air Force Air Cadets</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <p className="text-sidebar-accent-foreground text-2xl font-semibold">Squadron Management System</p>
-          <p className="text-sidebar-foreground/70 max-w-md text-sm">
-            Cadet records, assessments, stores and squadron tools in one place.
+        <div className="relative flex max-w-md flex-col gap-3">
+          <p className="text-sidebar-accent-foreground text-3xl font-semibold tracking-tight text-balance">
+            Squadron Management System
+          </p>
+          <p className="text-sidebar-foreground/70 text-sm leading-relaxed">
+            Cadet records, marking sheets, stores and the parade-night tools, all in one place for the staff
+            and NCO teams.
           </p>
         </div>
-        <p className="text-sidebar-foreground/50 text-xs">For authorised staff and NCOs only.</p>
+        <p className="text-sidebar-foreground/50 relative text-xs">For authorised staff and NCOs only.</p>
       </div>
 
-      {/* Right panel — sign in */}
       <div className="flex items-center justify-center p-6">
         <div className="flex w-full max-w-sm flex-col gap-8">
-          <div className="flex flex-col items-center gap-4 text-center lg:items-start lg:text-left">
+          <div className="flex flex-col items-center gap-5 text-center lg:items-start lg:text-left">
             <Image
               src="/icon.jpg"
               alt="317 Squadron crest"
-              width={64}
-              height={64}
-              className="rounded-lg object-cover lg:hidden"
+              width={72}
+              height={72}
+              className="rounded-xl object-cover shadow-sm lg:hidden"
               priority
             />
-            <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold">Sign in</h1>
+            <div className="flex flex-col gap-1.5">
+              <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
               <p className="text-muted-foreground text-sm">Use your squadron Google account to continue.</p>
             </div>
           </div>
@@ -83,7 +89,7 @@ export default function LoginPage() {
           {/* ponytail: dev-only role picker for the fake login. The credentials
               provider behind it only exists when AUTH_DEV_BYPASS=1. */}
           {process.env.NODE_ENV !== "production" && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 border-t pt-6">
               <p className="text-muted-foreground text-xs">Dev sign-in</p>
               <div className="flex gap-2">
                 {(["staff", "snco", "nco"] as const).map((role) => (

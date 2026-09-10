@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
 import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
+import { SectionHeading } from "@/components/section-heading";
+import { Stat } from "@/components/stat";
 import { ArrowRight, FileText, DatabaseZap, Calendar, Newspaper, Printer } from "lucide-react";
 import {
   BarChart,
@@ -25,8 +26,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CurrentStats {
   total_cadets: number;
@@ -41,8 +40,6 @@ interface HistoryPoint {
   date: string;
   data: CurrentStats;
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const BADGE_LABELS: Record<string, string> = {
   duke_of_edinburgh: "Duke of Edinburgh",
@@ -93,8 +90,6 @@ function fmtDate(iso: string): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-// ─── Stat cards ───────────────────────────────────────────────────────────────
-
 function breakdownLine(counts: Record<string, number>, order: string[]): string {
   const known = order.filter((k) => counts[k] !== undefined).map((k) => `${counts[k]} ${k}`);
   const extra = Object.keys(counts)
@@ -102,8 +97,6 @@ function breakdownLine(counts: Record<string, number>, order: string[]): string 
     .map((k) => `${counts[k]} ${k}`);
   return [...known, ...extra].join(" · ");
 }
-
-// ─── Age bar chart ────────────────────────────────────────────────────────────
 
 function AgeChart({ byAge }: { byAge: Record<string, number> }) {
   const data = Object.entries(byAge)
@@ -144,8 +137,6 @@ function AgeChart({ byAge }: { byAge: Record<string, number> }) {
     </Card>
   );
 }
-
-// ─── Classification bar chart ─────────────────────────────────────────────────
 
 const CLASSIFICATION_ORDER = [
   "Junior Cadet",
@@ -201,8 +192,6 @@ function ClassificationChart({ byClassification }: { byClassification: Record<st
     </Card>
   );
 }
-
-// ─── Badge progression card ───────────────────────────────────────────────────
 
 function BadgeStatCard({
   badgeKey,
@@ -323,8 +312,6 @@ function BadgeStatCard({
   );
 }
 
-// ─── Quick links (staff tools) ────────────────────────────────────────────────
-
 const QUICK_TOOLS = [
   {
     title: "JI/AO Generator",
@@ -355,30 +342,28 @@ const QUICK_TOOLS = [
 function QuickTools() {
   return (
     <section className="no-print flex flex-col gap-3">
-      <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">Tools</h2>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <SectionHeading title="Tools" />
+      <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
         {QUICK_TOOLS.map((t) => (
-          <Link key={t.href} href={t.href} className="group">
-            <Card className="group-hover:border-primary/40 h-full gap-2 py-5 transition-colors">
-              <CardHeader className="pb-0">
-                <div className="flex items-center justify-between">
-                  <t.icon className="text-muted-foreground size-4" />
-                  <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground size-3.5 transition-all group-hover:translate-x-0.5" />
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-0.5">
-                <p className="text-sm font-medium">{t.title}</p>
-                <p className="text-muted-foreground text-xs">{t.desc}</p>
-              </CardContent>
-            </Card>
+          <Link
+            key={t.href}
+            href={t.href}
+            className="group bg-card hover:border-primary/40 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-xs transition-colors"
+          >
+            <span className="bg-muted text-muted-foreground group-hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-md transition-colors">
+              <t.icon className="size-4" />
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span className="text-sm font-medium">{t.title}</span>
+              <span className="text-muted-foreground truncate text-xs">{t.desc}</span>
+            </span>
+            <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground ml-auto size-4 shrink-0 transition-all group-hover:translate-x-0.5" />
           </Link>
         ))}
       </div>
     </section>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 function DashboardSkeleton() {
   return (
@@ -443,23 +428,24 @@ export default function HomePage() {
         <h1 className="text-xl font-semibold">317 Squadron — Badge Progression</h1>
         <p className="text-muted-foreground text-sm">Printed {printedOn}</p>
       </div>
-      {session?.role === "staff" && <QuickTools />}
       {loading ? (
         <DashboardSkeleton />
       ) : (
         stats && (
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <StatCard label="Cadets on strength" value={total} />
-              <StatCard
+              <Stat size="lg" label="Cadets on strength" value={total} />
+              <Stat
+                size="lg"
                 label="Flights"
                 value={Object.keys(stats.by_flight).length}
-                detail={breakdownLine(stats.by_flight, FLIGHT_ORDER)}
+                hint={breakdownLine(stats.by_flight, FLIGHT_ORDER)}
               />
-              <StatCard
+              <Stat
+                size="lg"
                 label="NCOs"
                 value={ncoCount}
-                detail={breakdownLine(
+                hint={breakdownLine(
                   Object.fromEntries(
                     Object.entries(stats.by_rank).filter(([r]) => r !== "Cadet" && r !== "Unknown")
                   ),
@@ -468,15 +454,15 @@ export default function HomePage() {
               />
             </section>
 
+            {session?.role === "staff" && <QuickTools />}
+
             <div className="grid gap-3 lg:grid-cols-2">
               <AgeChart byAge={stats.by_age} />
               <ClassificationChart byClassification={stats.by_classification ?? {}} />
             </div>
 
             <section className="flex flex-col gap-3">
-              <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-                Badge progression
-              </h2>
+              <SectionHeading title="Badge progression" />
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {Object.keys(BADGE_LABELS).map((key) => (
                   <BadgeStatCard

@@ -4,13 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
+import { ListSkeleton } from "@/components/list-skeleton";
 import { Search, ChevronRight, UserCog } from "lucide-react";
 
 type StaffMember = {
@@ -66,21 +66,13 @@ export default function StaffOverviewPage() {
       <ErrorAlert message={error?.message ?? null} title="Could not load staff" />
 
       {loading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full" />
-          ))}
-        </div>
+        <ListSkeleton rows={6} className="h-14" />
       ) : filtered.length === 0 && !error ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <UserCog />
-            </EmptyMedia>
-            <EmptyTitle>No staff members found</EmptyTitle>
-            {search && <EmptyDescription>Nothing matches &quot;{search}&quot;.</EmptyDescription>}
-          </EmptyHeader>
-        </Empty>
+        <EmptyState
+          icon={UserCog}
+          title="No staff members found"
+          description={search ? `Nothing matches "${search}".` : undefined}
+        />
       ) : (
         <Card className="overflow-hidden py-0">
           <div className="divide-y">

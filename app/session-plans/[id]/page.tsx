@@ -48,6 +48,7 @@ import {
   type SessionPlanDetail,
   type SessionPlanSectionKey,
 } from "@/lib/session-plans";
+import { ErrorAlert } from "@/components/error-alert";
 
 export default function SessionPlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -104,7 +105,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
   if (error || !plan) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-destructive text-sm">{error?.message ?? "Session plan not found."}</p>
+        <ErrorAlert message={error?.message ?? "Session plan not found."} />
         <Button asChild variant="ghost" size="sm" className="mt-2">
           <Link href="/session-plans">
             <ArrowLeft /> Back to session plans
@@ -150,7 +151,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         }
       />
 
-      {/* ── What staff said ─────────────────────────────────────────────────── */}
+      {/* What staff said */}
       {plan.status === "amendments_requested" && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
           <p className="font-medium">
@@ -174,7 +175,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
 
-      {/* ── Author actions ──────────────────────────────────────────────────── */}
+      {/* Author actions */}
       {plan.is_author && plan.status !== "approved" && (
         <Card>
           <CardHeader className="pb-3">
@@ -247,7 +248,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         </Card>
       )}
 
-      {/* ── Staff review ────────────────────────────────────────────────────── */}
+      {/* Staff review */}
       {plan.can_review && (
         <Card>
           <CardHeader className="pb-3">
@@ -326,7 +327,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         </Card>
       )}
 
-      {/* ── The plan ────────────────────────────────────────────────────────── */}
+      {/* The plan */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">The Session</CardTitle>
@@ -418,7 +419,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         </Card>
       )}
 
-      {/* ── Comments ────────────────────────────────────────────────────────── */}
+      {/* Comments */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Comments</CardTitle>
@@ -484,7 +485,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         </CardContent>
       </Card>
 
-      {/* ── Timeline ────────────────────────────────────────────────────────── */}
+      {/* Timeline */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">History</CardTitle>

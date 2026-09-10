@@ -27,8 +27,6 @@ import {
   isoDateForInput,
 } from "@/lib/assessment-fields";
 
-// ─── Score selector (1–5) ─────────────────────────────────────────────────────
-
 function ScoreRow({
   id,
   text,
@@ -84,8 +82,6 @@ function ResultBadge({ passed }: { passed: boolean }) {
     </Badge>
   );
 }
-
-// ─── Editor ───────────────────────────────────────────────────────────────────
 
 type EditorState = {
   // shared
@@ -160,7 +156,6 @@ export function AssessmentEditor({
     reader.readAsDataURL(file);
   };
 
-  // ── Load existing data ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -224,7 +219,6 @@ export function AssessmentEditor({
     setForm((f) => (f ? { ...f, [key]: value } : f));
   }, []);
 
-  // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!token || !form) return;
     setSaving(true);
@@ -289,7 +283,6 @@ export function AssessmentEditor({
     }
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="text-muted-foreground flex items-center gap-2 py-6 text-xs">

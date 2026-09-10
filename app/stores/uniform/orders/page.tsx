@@ -19,10 +19,12 @@ import {
   FileSpreadsheet,
   Download,
   Lock,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -541,8 +543,6 @@ export default function OrdersPage() {
     setAddItemDraft(emptyDraftItem());
   }
 
-  // ── Logs form ──────────────────────────────────────────────────────────────
-
   const openLogsForm = logsForms.find((f) => !f.orderedAt) ?? null;
   const pastLogsForms = logsForms.filter((f) => !!f.orderedAt);
   const onLogsFormItemIds = new Set(
@@ -767,9 +767,11 @@ export default function OrdersPage() {
       )}
 
       {!loading && activeTab !== "logsform" && orders.length === 0 && (
-        <p className="text-muted-foreground py-12 text-center text-sm">
-          No orders yet. Create one with the button above.
-        </p>
+        <EmptyState
+          icon={ShoppingCart}
+          title="No orders yet"
+          description="Create one with the button above."
+        />
       )}
 
       {!loading && activeTab !== "logsform" && orders.length > 0 && filteredOrders.length === 0 && (

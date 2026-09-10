@@ -4,11 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
@@ -16,6 +14,8 @@ import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, ChevronRight, Users } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 
 type Cadet = {
   cin: number;
@@ -60,26 +60,16 @@ export default function CadetsPage() {
 
       <ErrorAlert message={error?.message ?? null} title="Could not load cadets" />
 
-      {loading && (
-        <div className="flex flex-col gap-2">
-          {[...Array(8)].map((_, i) => (
-            <Skeleton key={i} className="h-12" />
-          ))}
-        </div>
-      )}
+      {loading && <ListSkeleton rows={8} />}
 
       {!loading && !error && filtered.length === 0 && (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Users />
-            </EmptyMedia>
-            <EmptyTitle>No cadets found</EmptyTitle>
-            <EmptyDescription>
-              {search ? `Nothing matches "${search}".` : "Run the cadet scraper to populate this list."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <EmptyState
+          icon={Users}
+          title="No cadets found"
+          description={
+            search ? `Nothing matches "${search}".` : "Run the cadet scraper to populate this list."
+          }
+        />
       )}
 
       {!loading && filtered.length > 0 && (

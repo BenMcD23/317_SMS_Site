@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Plus, ReceiptText } from "lucide-react";
 import {
   type CommitteeRequestSummary,
@@ -16,6 +15,9 @@ import {
   formatGBP,
   formatDate,
 } from "@/lib/committee";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorAlert } from "@/components/error-alert";
 
 interface ListResponse {
   requests: CommitteeRequestSummary[];
@@ -23,6 +25,7 @@ interface ListResponse {
 }
 
 export default function CommitteeRequestsPage() {
+  const router = useRouter();
   const { data, isLoading, error } = useApiQuery<ListResponse>(["committee-requests"], "/committee-requests");
 
   return (
@@ -40,28 +43,21 @@ export default function CommitteeRequestsPage() {
       />
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        <ListSkeleton rows={4} />
       ) : error ? (
-        <p className="text-destructive text-sm">Failed to load requests: {error.message}</p>
+        <ErrorAlert message={error.message} title="Could not load requests" />
       ) : !data || data.requests.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ReceiptText />
-            </EmptyMedia>
-            <EmptyTitle>No committee requests yet</EmptyTitle>
-            <EmptyDescription>Create a request to get a purchase approved and reimbursed.</EmptyDescription>
-          </EmptyHeader>
+        <EmptyState
+          icon={ReceiptText}
+          title="No committee requests yet"
+          description="Create a request to get a purchase approved and reimbursed."
+        >
           <Button asChild size="sm">
             <Link href="/committee/requests/new">
               <Plus /> New Request
             </Link>
           </Button>
-        </Empty>
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
@@ -82,9 +78,7 @@ export default function CommitteeRequestsPage() {
                   <TableRow
                     key={r.id}
                     className="cursor-pointer"
-                    onClick={() => {
-                      window.location.href = `/committee/requests/${r.id}`;
-                    }}
+                    onClick={() => router.push(`/committee/requests/${r.id}`)}
                   >
                     <TableCell className="font-medium">
                       <Link href={`/committee/requests/${r.id}`} className="hover:underline">

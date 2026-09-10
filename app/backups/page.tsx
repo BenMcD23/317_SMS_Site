@@ -22,17 +22,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 import { API_BASE, OWNER_EMAIL } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { RefreshCw, ShieldX, DatabaseBackup, Eye, RotateCcw } from "lucide-react";
 
 type Backup = {
@@ -179,7 +173,6 @@ export default function BackupsPage() {
       .finally(() => setRestoring(false));
   }, [token, restoreFor, authHeaders]);
 
-  // ── Access control (defence in depth — the API also enforces owner-only) ──
   if (status === "loading") {
     return (
       <div className="flex flex-col gap-6">
@@ -193,11 +186,7 @@ export default function BackupsPage() {
             <Skeleton className="h-8 w-32" />
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-12" />
-          ))}
-        </div>
+        <ListSkeleton rows={6} />
       </div>
     );
   }
@@ -205,20 +194,15 @@ export default function BackupsPage() {
   if (!isOwner) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center p-6">
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ShieldX />
-            </EmptyMedia>
-            <EmptyTitle>Not authorised</EmptyTitle>
-            <EmptyDescription>This page is restricted to the site owner.</EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="outline" asChild>
-              <Link href="/">Back to dashboard</Link>
-            </Button>
-          </EmptyContent>
-        </Empty>
+        <EmptyState
+          icon={ShieldX}
+          title="Not authorised"
+          description="This page is restricted to the site owner."
+        >
+          <Button variant="outline" asChild>
+            <Link href="/">Back to dashboard</Link>
+          </Button>
+        </EmptyState>
       </div>
     );
   }
@@ -243,13 +227,7 @@ export default function BackupsPage() {
 
       {error && <p className="text-destructive text-sm">{error}</p>}
 
-      {backups === null && loading && (
-        <div className="flex flex-col gap-2">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-12" />
-          ))}
-        </div>
-      )}
+      {backups === null && loading && <ListSkeleton rows={6} />}
 
       {backups !== null && backups.length === 0 && !loading && (
         <p className="text-muted-foreground text-sm">

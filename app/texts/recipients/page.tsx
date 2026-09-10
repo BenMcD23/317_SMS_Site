@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { EmptyState } from "@/components/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -31,11 +30,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
-import { Plus, Pencil, Trash2, Download, Upload, MessageCircle, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Upload, MessageCircle, ExternalLink, Contact } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { ListSkeleton } from "@/components/list-skeleton";
 
 type Source = "cadet" | "staff" | "extra";
 
@@ -449,21 +449,13 @@ export default function TextRecipientsPage() {
       </Card>
 
       {loading ? (
-        <div className="flex flex-col gap-2">
-          {[...Array(8)].map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        <ListSkeleton rows={8} />
       ) : recipients.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>No recipients yet</EmptyTitle>
-            <EmptyDescription>
-              Nobody has saved a mobile number yet, and no numbers have been added by hand — so there is
-              nowhere for a text to go.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <EmptyState
+          icon={Contact}
+          title="No recipients yet"
+          description="Nobody has saved a mobile number yet, and no numbers have been added by hand — so there is nowhere for a text to go."
+        />
       ) : (
         <>
           <p className="text-muted-foreground text-sm">

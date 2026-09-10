@@ -30,8 +30,6 @@ import {
   type StateCounts,
 } from "@/lib/attendance";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type Night = {
   date: string; // "YYYY-MM-DD"
   registerType: string | null;
@@ -158,8 +156,6 @@ function RosterList({
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AttendancePage() {
   const [nights, setNights] = useState<Night[]>([]);

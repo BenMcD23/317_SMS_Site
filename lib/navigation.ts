@@ -274,6 +274,11 @@ export function flattenLinks(sections: NavSection[]): Array<NavLink & { path: st
 
 export type Crumb = { label: string; href?: string };
 
+/** Pages reachable only from menus (not the sidebar), so the trail still names them. */
+const UNLISTED_PAGES: Record<string, string> = {
+  "/settings": "Settings",
+};
+
 /**
  * Breadcrumb trail for the header, from the deepest nav link that matches the
  * current path. Pages deeper than any nav link (e.g. /cadets/1234) get the
@@ -289,7 +294,10 @@ export function breadcrumbsFor(pathname: string): Crumb[] {
     ];
     best = { crumbs, len: link.href.length };
   }
-  if (!best) return [];
+  if (!best) {
+    const label = UNLISTED_PAGES[pathname];
+    return label ? [{ label }] : [];
+  }
   const exact = best.crumbs[best.crumbs.length - 1].href === pathname;
   return exact ? best.crumbs.map((c, i, a) => (i === a.length - 1 ? { label: c.label } : c)) : best.crumbs;
 }

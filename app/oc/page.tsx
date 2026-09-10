@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { isOc } from "@/lib/config";
 import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,8 @@ import {
 } from "@/lib/committee";
 import { rateOf, totalOf, type StateCounts } from "@/lib/attendance";
 import { formatDate } from "@/lib/format";
+import { SectionHeading } from "@/components/section-heading";
+import { Stat } from "@/components/stat";
 
 interface StaffAttendance {
   cin: number;
@@ -202,6 +204,7 @@ function TurnoutChart({
 }
 
 export default function OcDashboardPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const allowed = isOc(session?.user?.email);
 
@@ -285,25 +288,25 @@ export default function OcDashboardPage() {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
       <PageHeader title="OC Dashboard" description="Squadron oversight at a glance" />
 
-      {/* ── Committee requests ──────────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-            Committee Requests
-          </h2>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/committee/requests">View all</Link>
-          </Button>
-        </div>
+        <SectionHeading
+          title="Committee Requests"
+          actions={
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/committee/requests">View all</Link>
+            </Button>
+          }
+        />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
+          <Stat
+            size="lg"
             label="Awaiting you"
             value={(counts.submitted ?? 0) + (counts.sent_to_committee ?? 0)}
-            detail="To send or decide"
+            hint="To send or decide"
           />
-          <StatCard label="Approved" value={counts.approved ?? 0} detail="Awaiting receipts" />
-          <StatCard label="To pay" value={counts.sent_for_payment ?? 0} detail="Awaiting payment" />
-          <StatCard label="Paid" value={counts.paid ?? 0} />
+          <Stat size="lg" label="Approved" value={counts.approved ?? 0} hint="Awaiting receipts" />
+          <Stat size="lg" label="To pay" value={counts.sent_for_payment ?? 0} hint="Awaiting payment" />
+          <Stat size="lg" label="Paid" value={counts.paid ?? 0} />
         </div>
 
         {actionable.length > 0 && (
@@ -325,9 +328,7 @@ export default function OcDashboardPage() {
                     <TableRow
                       key={r.id}
                       className="cursor-pointer"
-                      onClick={() => {
-                        window.location.href = `/committee/requests/${r.id}`;
-                      }}
+                      onClick={() => router.push(`/committee/requests/${r.id}`)}
                     >
                       <TableCell className="font-medium">
                         <Link href={`/committee/requests/${r.id}`} className="hover:underline">
@@ -351,27 +352,26 @@ export default function OcDashboardPage() {
         )}
       </section>
 
-      {/* ── Strength & attendance ───────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-          Strength &amp; Attendance
-        </h2>
+        <SectionHeading title="Strength & Attendance" />
         {isLoading ? (
           <Skeleton className="h-40 w-full" />
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Total cadets" value={dash?.strength.total_cadets ?? 0} />
-              <StatCard label="Total staff" value={dash?.strength.total_staff ?? 0} />
-              <StatCard
+              <Stat size="lg" label="Total cadets" value={dash?.strength.total_cadets ?? 0} />
+              <Stat size="lg" label="Total staff" value={dash?.strength.total_staff ?? 0} />
+              <Stat
+                size="lg"
                 label="Cadet turnout"
                 value={cadetAvg === null ? "—" : `${cadetAvg}%`}
-                detail={`Last ${trend.length} parade night${trend.length !== 1 ? "s" : ""}`}
+                hint={`Last ${trend.length} parade night${trend.length !== 1 ? "s" : ""}`}
               />
-              <StatCard
+              <Stat
+                size="lg"
                 label="Staff turnout"
                 value={staffAvg === null ? "—" : `${staffAvg}%`}
-                detail={`Last ${trend.length} parade night${trend.length !== 1 ? "s" : ""}`}
+                hint={`Last ${trend.length} parade night${trend.length !== 1 ? "s" : ""}`}
               />
             </div>
 
@@ -379,7 +379,7 @@ export default function OcDashboardPage() {
               {Object.entries(dash?.strength.by_flight ?? {})
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([flight, n]) => (
-                  <StatCard key={flight} label={`${flight} Flight`} value={n} />
+                  <Stat size="lg" key={flight} label={`${flight} Flight`} value={n} />
                 ))}
             </div>
 
@@ -409,17 +409,14 @@ export default function OcDashboardPage() {
         )}
       </section>
 
-      {/* ── Qualifications ──────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-          Qualifications
-        </h2>
+        <SectionHeading title="Qualifications" />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total held" value={dash?.qual_summary.total ?? 0} />
-          <StatCard label="Expired" value={dash?.qual_summary.expired ?? 0} detail="Already lapsed" />
-          <StatCard label="Expiring in 30 days" value={dash?.qual_summary.expiring_30 ?? 0} />
-          <StatCard label="Expiring in 3 months" value={dash?.qual_summary.expiring_90 ?? 0} />
+          <Stat size="lg" label="Total held" value={dash?.qual_summary.total ?? 0} />
+          <Stat size="lg" label="Expired" value={dash?.qual_summary.expired ?? 0} hint="Already lapsed" />
+          <Stat size="lg" label="Expiring in 30 days" value={dash?.qual_summary.expiring_30 ?? 0} />
+          <Stat size="lg" label="Expiring in 3 months" value={dash?.qual_summary.expiring_90 ?? 0} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -539,11 +536,8 @@ export default function OcDashboardPage() {
         </Card>
       </section>
 
-      {/* ── Stubbed sections ────────────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-          In the Pipeline
-        </h2>
+        <SectionHeading title="In the Pipeline" />
         <div className="grid gap-4 lg:grid-cols-2">
           <PlaceholderCard
             icon={Clock}

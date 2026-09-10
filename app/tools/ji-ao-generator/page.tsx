@@ -15,13 +15,13 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { PageHeader } from "@/components/page-header";
 import { Download, FileText, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { EmptyState } from "@/components/empty-state";
 import { AoPreview, JiPreview, type Fields } from "./document-preview";
 
 type Event317 = { id: number; title: string };
@@ -170,17 +170,11 @@ export default function JiGenerator() {
       </Card>
 
       {!selectedEvent ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <FileText />
-            </EmptyMedia>
-            <EmptyTitle>No event selected</EmptyTitle>
-            <EmptyDescription>
-              Pick an event above to see how its joining instruction and admin order will read.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <EmptyState
+          icon={FileText}
+          title="No event selected"
+          description="Pick an event above to see how its joining instruction and admin order will read."
+        />
       ) : loadingFields || !fields ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-10 w-64" />

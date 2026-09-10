@@ -5,10 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
@@ -17,6 +15,8 @@ import { Search, CalendarDays, Users, ChevronDown, ChevronRight, Ban } from "luc
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { ListSkeleton } from "@/components/list-skeleton";
+import { EmptyState } from "@/components/empty-state";
 
 type EventCadet = {
   cin: number;
@@ -335,26 +335,18 @@ export default function CadetEventListPage() {
 
       <ErrorAlert message={error} title="Could not load events" />
 
-      {loading && (
-        <div className="flex flex-col gap-2">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-12" />
-          ))}
-        </div>
-      )}
+      {loading && <ListSkeleton rows={6} />}
 
       {!loading && !error && filtered.length === 0 && (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <CalendarDays />
-            </EmptyMedia>
-            <EmptyTitle>No events found</EmptyTitle>
-            <EmptyDescription>
+        <EmptyState
+          icon={CalendarDays}
+          title="No events found"
+          description={
+            <>
               {search ? `Nothing matches "${search}".` : "Run the cadet event scraper to populate this list."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+            </>
+          }
+        />
       )}
 
       {!loading && !error && (

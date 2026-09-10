@@ -10,17 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 import { API_BASE, OWNER_EMAIL } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { EmptyState } from "@/components/empty-state";
 import { RefreshCw, ShieldX } from "lucide-react";
 
 type ApiRun = {
@@ -89,7 +82,6 @@ export default function ApiLogsPage() {
 
   const selected = runs?.find((r) => r.id === selectedId) ?? null;
 
-  // ── Access control (defence in depth — the API also enforces owner-only) ──
   if (status === "loading") {
     return (
       <div className="flex flex-col gap-6">
@@ -118,20 +110,15 @@ export default function ApiLogsPage() {
   if (!isOwner) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center p-6">
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ShieldX />
-            </EmptyMedia>
-            <EmptyTitle>Not authorised</EmptyTitle>
-            <EmptyDescription>This page is restricted to the site owner.</EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="outline" asChild>
-              <Link href="/">Back to dashboard</Link>
-            </Button>
-          </EmptyContent>
-        </Empty>
+        <EmptyState
+          icon={ShieldX}
+          title="Not authorised"
+          description="This page is restricted to the site owner."
+        >
+          <Button variant="outline" asChild>
+            <Link href="/">Back to dashboard</Link>
+          </Button>
+        </EmptyState>
       </div>
     );
   }

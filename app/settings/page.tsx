@@ -14,17 +14,16 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw, ExternalLink } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { SectionHeading } from "@/components/section-heading";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
 
-  // ── Initial page load ───────────────────────────────────────────────────────
   // Signature, assessor name, phone number and bank details are fetched
   // independently below; this flips false once all four have settled so the
   // form isn't shown with fields still silently populating.
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // ── Credentials ─────────────────────────────────────────────────────────────
   const [credsLoading, setCredsLoading] = useState(false);
   const [showRolePass, setShowRolePass] = useState(false);
   const [showPersPass, setShowPersPass] = useState(false);
@@ -35,7 +34,6 @@ export default function SettingsPage() {
     pers_pass: "",
   });
 
-  // ── Signature ────────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
@@ -47,12 +45,10 @@ export default function SettingsPage() {
   const [hasDrawn, setHasDrawn] = useState(false);
   const [drawnDataUrl, setDrawnDataUrl] = useState<string | null>(null);
 
-  // ── Assessor name ────────────────────────────────────────────────────────────
   const [assessorName, setAssessorName] = useState("");
   const [assessorNameLoading, setAssessorNameLoading] = useState(false);
   const [assessorNameDirty, setAssessorNameDirty] = useState(false);
 
-  // ── Parade night text number ─────────────────────────────────────────────────
   const [phone, setPhone] = useState("");
   const [phoneKind, setPhoneKind] = useState<"staff" | "cadet" | null>(null);
   const [phoneLinked, setPhoneLinked] = useState<boolean | null>(null);
@@ -64,7 +60,6 @@ export default function SettingsPage() {
   // The number on file, as opposed to what's currently typed in the box.
   const [savedPhone, setSavedPhone] = useState("");
 
-  // ── Bank details (committee reimbursements) ────────────────────────────────────
   const [bank, setBank] = useState({
     bank_account_name: "",
     bank_sort_code: "",
@@ -190,8 +185,6 @@ export default function SettingsPage() {
     setHasDrawn(false);
     setDrawnDataUrl(null);
   };
-
-  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -463,11 +456,9 @@ export default function SettingsPage() {
         </>
       ) : (
         <>
-          {/* ── Assessor identity ─────────────────────────────────────────────────── */}
+          {/* Assessor identity */}
           <section className="flex flex-col gap-3">
-            <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-              Assessor identity
-            </h2>
+            <SectionHeading title="Assessor identity" />
 
             <Card>
               <CardHeader className="pb-3">
@@ -619,11 +610,9 @@ export default function SettingsPage() {
             </Card>
           </section>
 
-          {/* ── Parade night texts ───────────────────────────────────────────────── */}
+          {/* Parade night texts */}
           <section className="flex flex-col gap-3">
-            <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-              Parade night texts
-            </h2>
+            <SectionHeading title="Parade night texts" />
 
             <Card>
               <CardHeader className="pb-3">
@@ -688,12 +677,10 @@ export default function SettingsPage() {
             </Card>
           </section>
 
-          {/* ── Bader credentials — staff only ────────────────────────────────────── */}
+          {/* Bader credentials — staff only */}
           {session?.role === "staff" && (
             <section className="flex flex-col gap-3">
-              <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-                Bader credentials
-              </h2>
+              <SectionHeading title="Bader credentials" />
 
               <Card>
                 <CardHeader className="pb-3">
@@ -789,12 +776,10 @@ export default function SettingsPage() {
             </section>
           )}
 
-          {/* ── Bank details — staff only ─────────────────────────────────────────── */}
+          {/* Bank details — staff only */}
           {session?.role === "staff" && (
             <section className="flex flex-col gap-3">
-              <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
-                Bank details
-              </h2>
+              <SectionHeading title="Bank details" />
 
               <Card>
                 <CardHeader className="pb-3">

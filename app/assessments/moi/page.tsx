@@ -17,8 +17,8 @@ import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
+import { SectionHeading } from "@/components/section-heading";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
 const SECTIONS = [
   {
     id: "identifying",
@@ -86,7 +86,6 @@ const ALL_QUESTIONS: { id: number; text: string }[] = SECTIONS.flatMap((s) =>
 const PASS_SCORE = 35;
 const MAX_SCORE = ALL_QUESTIONS.length * 5;
 
-// ─── Score selector ───────────────────────────────────────────────────────────
 function ScoreButton({
   score,
   selected,
@@ -142,7 +141,6 @@ function QuestionRow({
   );
 }
 
-// ─── Form state ───────────────────────────────────────────────────────────────
 type FormState = {
   cadetCin: number | null;
   cadetSurname: string;
@@ -181,7 +179,6 @@ const initialState = (): FormState => ({
   cadetSignature: null,
 });
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function MoiAssessmentPage() {
   const { data: session } = useSession();
   const {
@@ -244,7 +241,6 @@ export default function MoiAssessmentPage() {
       .finally(() => setSigLoading(false));
   }, [session]);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
   const answeredScores = Object.values(form.scores).filter((v): v is number => v !== null);
   const totalScore = answeredScores.reduce((a, b) => a + b, 0);
   const allAnswered = answeredScores.length === ALL_QUESTIONS.length;
@@ -285,7 +281,6 @@ export default function MoiAssessmentPage() {
     reader.readAsDataURL(file);
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!form.cadetCin || !form.cadetSurname) {
       setError("Please select a candidate from the search.");
@@ -352,14 +347,10 @@ export default function MoiAssessmentPage() {
     }
   };
 
-  // ── Success screen ────────────────────────────────────────────────────────
   if (submitted) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6 pb-16">
-        <div>
-          <h1 className="text-xl font-semibold">MOI Assessment</h1>
-          <p className="text-muted-foreground">Air Cadet Methods of Instruction Course</p>
-        </div>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+        <SectionHeading title="MOI Assessment" description="Air Cadet Methods of Instruction Course" />
 
         <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
           <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
@@ -419,13 +410,9 @@ export default function MoiAssessmentPage() {
     );
   }
 
-  // ── Main form ─────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-16">
-      <div>
-        <h1 className="text-xl font-semibold">MOI Assessment</h1>
-        <p className="text-muted-foreground">Air Cadet Methods of Instruction Course</p>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+      <SectionHeading title="MOI Assessment" description="Air Cadet Methods of Instruction Course" />
 
       {draftRestored && !draftBannerDismissed && (
         <div className="border-warning/30 bg-warning/10 flex items-center justify-between rounded-lg border px-4 py-3 text-sm">

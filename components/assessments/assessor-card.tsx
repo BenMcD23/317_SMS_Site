@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, RotateCcw, Pencil, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-// ─── Signature section ────────────────────────────────────────────────────────
 function SignatureSection({
   savedSignatureUrl,
   onOverride,
@@ -176,7 +175,6 @@ function SignatureSection({
   );
 }
 
-// ─── Simple draw pad (for cadet signature) ───────────────────────────────────
 function DrawPad({
   label,
   value,
@@ -289,7 +287,6 @@ function DrawPad({
   );
 }
 
-// ─── Assessor card ────────────────────────────────────────────────────────────
 export type AssessorCardProps = {
   assessorName: string;
   onAssessorNameChange: (v: string) => void;

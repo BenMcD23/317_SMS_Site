@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
-import { PageHeader } from "@/components/page-header";
+import { SectionHeading } from "@/components/section-heading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,9 +38,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { ErrorAlert } from "@/components/error-alert";
 import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
 type Mark = { score: string; comments: Comment[]; absent?: boolean };
@@ -68,7 +68,6 @@ const REGIONS = [
 
 const emptyMark = (): Mark => ({ score: "", comments: [] });
 
-// ─── Clickable figure ─────────────────────────────────────────────────────────
 function InspectionFigure({
   comments,
   onAdd,
@@ -237,7 +236,6 @@ function RegionButton({
   );
 }
 
-// ─── Per-cadet card ─────────────────────────────────────────────────────────
 function CadetCard({
   cadet,
   mark,
@@ -314,7 +312,6 @@ function CadetCard({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function InspectionPage() {
   const { data: session } = useSession();
   const { data: cadets = [], isLoading, error: cadetsError } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
@@ -462,7 +459,7 @@ export default function InspectionPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-16">
-      <PageHeader
+      <SectionHeading
         title="Inspection Marking Sheet"
         description="Tap a part of the uniform to log a fault or a positive. Scores save automatically."
         actions={
@@ -555,7 +552,7 @@ export default function InspectionPage() {
         // Say why the roster is empty. A 403 here used to read as "no cadets in
         // this flight", which sent us looking at the flight data instead of the
         // permission that was actually blocking it.
-        <p className="text-destructive text-sm">Couldn&apos;t load the cadet roster: {cadetsError.message}</p>
+        <ErrorAlert message={cadetsError.message} title="Could not load cadet roster" />
       ) : flightCadets.length === 0 ? (
         <p className="text-muted-foreground text-sm">No cadets found for this flight.</p>
       ) : (
