@@ -2,7 +2,7 @@ version: 2
 
 updates:
   - package-ecosystem: "npm"
-    directory: "/317-sms-ui"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"

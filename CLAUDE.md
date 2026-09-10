@@ -1,4 +1,4 @@
-# 317-sms-ui conventions
+# 317 SMS conventions
 
 Next.js (App Router) + TypeScript + shadcn/ui frontend. The conventions below
 are what the codebase actually follows — match them rather than introducing new
@@ -64,5 +64,13 @@ Backend-unreachable in the proxy surfaces a clean `503`, not an opaque `500`.
 
 ## Before committing
 
-Run `npm run lint` (and `npm run build` for type-level changes) from
-`317-sms-ui/`. ESLint config is `eslint.config.mjs`.
+Run `npm run check` (lint + typecheck); `npm run build` for anything that touches
+routing or config. ESLint config is `eslint.config.mjs`; formatting is prettier
+(`npm run format`).
+
+## Navigation and reference data
+
+- New pages are registered in `lib/navigation.ts` (sidebar, breadcrumbs and the
+  ⌘K palette all read it) and gated in `lib/access.ts`.
+- Item types, sizes and the badge catalogue come from `useReference()` in
+  `lib/reference.ts` (the API's `/reference`). Never hardcode them.
