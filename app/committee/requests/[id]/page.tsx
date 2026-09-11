@@ -253,7 +253,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
         }
         description={req.title}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={downloadPdf} disabled={busy === "pdf"}>
               {busy === "pdf" ? <Loader2 className="animate-spin" /> : <Download />} PDF
             </Button>

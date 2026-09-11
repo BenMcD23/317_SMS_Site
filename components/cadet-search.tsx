@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Search, ChevronsUpDown, Check, X, Loader2 } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -23,98 +33,110 @@ interface CadetSearchInputProps {
 }
 
 export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }: CadetSearchInputProps) {
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CadetResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [open, setOpen] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const search = useCallback(
-    (q: string) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (q.length < 2) {
+  // Debounced server search; Command's own filtering is off so the API decides.
+  // The spinner is flipped on in the change handler, not here — setState in an
+  // effect body cascades a render.
+  useEffect(() => {
+    if (query.trim().length < 2) return;
+    const t = setTimeout(async () => {
+      try {
+        const res = await apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(query)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setResults(await res.json());
+      } catch {
         setResults([]);
-        setOpen(false);
-        return;
+      } finally {
+        setSearching(false);
       }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, token]);
 
-      debounceRef.current = setTimeout(async () => {
-        setSearching(true);
-        try {
-          const res = await apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(q)}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data: CadetResult[] = await res.json();
-          setResults(data);
-          setOpen(data.length > 0);
-        } catch {
-          setResults([]);
-        } finally {
-          setSearching(false);
-        }
-      }, 250);
-    },
-    [token]
-  );
+  return (
+    <div className="flex items-center gap-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn("w-full justify-between", !selectedCin && "text-muted-foreground")}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              {selectedCin ? (
+                <Check className="h-4 w-4 shrink-0 text-green-600" />
+              ) : (
+                <Search className="h-4 w-4 shrink-0" />
+              )}
+              <span className="truncate">{selectedCin ? selectedName : "Search cadet…"}</span>
+            </span>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Type a name…"
+              value={query}
+              onValueChange={(v) => {
+                setQuery(v);
+                const short = v.trim().length < 2;
+                setSearching(!short);
+                if (short) setResults([]);
+              }}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {searching ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Searching…
+                  </span>
+                ) : query.trim().length < 2 ? (
+                  "Type at least 2 characters."
+                ) : (
+                  "No cadet found."
+                )}
+              </CommandEmpty>
+              <CommandGroup>
+                {results.map((c) => (
+                  <CommandItem
+                    key={c.cin}
+                    value={String(c.cin)}
+                    onSelect={() => {
+                      onSelect(c.cin, `${c.first_name} ${c.last_name}`);
+                      setQuery("");
+                      setOpen(false);
+                    }}
+                  >
+                    <Check className={cn("h-4 w-4", c.cin === selectedCin ? "opacity-100" : "opacity-0")} />
+                    <span className="flex-1 truncate">
+                      {c.rank ? `${c.rank} ` : ""}
+                      {c.first_name} {c.last_name}
+                    </span>
+                    {c.flight && <span className="text-muted-foreground text-xs">Flt {c.flight}</span>}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
-  // Show selected cadet with "Change" button
-  if (selectedCin) {
-    return (
-      <div className="bg-muted/40 flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-        <span className="flex-1 font-medium">{selectedName}</span>
+      {selectedCin && (
         <button
           type="button"
           onClick={() => onSelect(0, "")}
-          className="text-muted-foreground hover:text-destructive text-xs"
+          className="text-muted-foreground hover:text-destructive"
+          aria-label="Clear selected cadet"
         >
-          ✕ Change
+          <X className="h-4 w-4" />
         </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Input
-          placeholder="Search cadet name..."
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            search(e.target.value);
-          }}
-          onFocus={() => results.length > 0 && setOpen(true)}
-          autoComplete="off"
-        />
-        {searching && (
-          <Loader2 className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin" />
-        )}
-      </div>
-
-      {open && (
-        <div className="bg-popover absolute z-50 mt-1 w-full rounded-md border shadow-md">
-          {results.map((c) => (
-            <button
-              key={c.cin}
-              type="button"
-              className="hover:bg-accent flex w-full items-center gap-3 px-3 py-2 text-left text-sm"
-              onClick={() => {
-                const name = `${c.rank ? c.rank + " " : ""}${c.first_name} ${c.last_name}`;
-                onSelect(c.cin, `${c.first_name} ${c.last_name}`);
-                setQuery(name);
-                setOpen(false);
-              }}
-            >
-              <span className="font-medium">
-                {c.first_name} {c.last_name}
-              </span>
-              <span className="text-muted-foreground ml-auto flex items-center gap-2 text-xs">
-                {c.rank && <span>{c.rank}</span>}
-                {c.flight && <span>Flt {c.flight}</span>}
-              </span>
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );

@@ -348,7 +348,7 @@ function QuickTools() {
           <Link
             key={t.href}
             href={t.href}
-            className="group bg-card hover:border-primary/40 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-xs transition-colors"
+            className="group bg-card hover:border-primary/40 flex min-w-0 items-center gap-3 rounded-lg border px-4 py-3 shadow-xs transition-colors"
           >
             <span className="bg-muted text-muted-foreground group-hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-md transition-colors">
               <t.icon className="size-4" />

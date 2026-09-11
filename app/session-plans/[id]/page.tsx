@@ -134,7 +134,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         }
         description={`${plan.author_name} · ${formatDate(plan.session_date, "no date set")}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Plain link, not a fetch — the proxy route attaches the token
                 server-side and streams the file straight to the browser. */}
             <Button asChild variant="outline" size="sm">
