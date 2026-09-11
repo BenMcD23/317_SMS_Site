@@ -39,13 +39,10 @@ export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }:
   const [searching, setSearching] = useState(false);
 
   // Debounced server search; Command's own filtering is off so the API decides.
+  // The spinner is flipped on in the change handler, not here — setState in an
+  // effect body cascades a render.
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
+    if (query.trim().length < 2) return;
     const t = setTimeout(async () => {
       try {
         const res = await apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(query)}`, {
@@ -84,7 +81,16 @@ export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }:
         </PopoverTrigger>
         <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
           <Command shouldFilter={false}>
-            <CommandInput placeholder="Type a name…" value={query} onValueChange={setQuery} />
+            <CommandInput
+              placeholder="Type a name…"
+              value={query}
+              onValueChange={(v) => {
+                setQuery(v);
+                const short = v.trim().length < 2;
+                setSearching(!short);
+                if (short) setResults([]);
+              }}
+            />
             <CommandList>
               <CommandEmpty>
                 {searching ? (

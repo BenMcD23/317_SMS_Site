@@ -463,7 +463,7 @@ export default function InspectionPage() {
         title="Inspection Marking Sheet"
         description="Tap a part of the uniform to log a fault or a positive. Scores save automatically."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Label htmlFor="insp-date" className="text-sm">
               Date
             </Label>

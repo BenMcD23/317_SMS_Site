@@ -22,7 +22,7 @@ export function SectionHeading({
         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
         {description && <p className="text-muted-foreground text-sm">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }
