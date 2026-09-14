@@ -113,7 +113,8 @@ export const NAV_SECTIONS: NavSection[] = [
       // Staff-only (see lib/access.ts); the NCO gets their copy by email.
       { label: "Appraisals", href: "/nco-appraisals", icon: UserCheck, keywords: ["nco appraisals"] },
       { label: "Comments", href: "/nco-comments", icon: MessageSquare, keywords: ["nco comments", "notes"] },
-      { label: "Attendance", href: "/attendance/ncos", icon: CalendarCheck, keywords: ["nco attendance"] },
+      // Per-NCO attendance isn't listed here; it's reached from the Squadron
+      // attendance page's "Per NCO" button.
     ],
   },
   {
