@@ -54,6 +54,9 @@ import {
   gainedWhereLabel,
   useReference,
 } from "@/lib/reference";
+import { BadgeQualChip, BadgeQualNotice } from "@/components/badge-qual-notice";
+import { type BadgeQualChecks } from "@/lib/badge-quals";
+import { useApiQuery } from "@/lib/use-api-query";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StockHistory } from "@/components/stock-history";
@@ -68,6 +71,21 @@ type OrderItemRef = { order: BadgeOrder; item: BadgeOrderItem };
 /** Note composers are keyed so the one in an order and the one on the order list stay independent. */
 function entryNoteKey(entryId: string) {
   return `list:${entryId}`;
+}
+
+/**
+ * What SMS says a cadet actually holds, for every badge in the catalogue at
+ * once, so the picker can show a verdict per selection without a request per
+ * badge. Undefined until a cadet is chosen and if the lookup fails — which
+ * reads everywhere as "couldn't check" rather than "doesn't hold it".
+ */
+function useBadgeQualChecks(cin: number | null | undefined) {
+  const { data } = useApiQuery<BadgeQualChecks>(
+    ["badge-qual-check", cin],
+    `/cadets/${cin}/badge-qual-check`,
+    { enabled: !!cin, staleTime: 5 * 60 * 1000 }
+  );
+  return data;
 }
 
 function BadgePicker({
@@ -542,6 +560,11 @@ export default function BadgeOrdersPage() {
 
   const currentBadgeName = newCategory ? buildBadgeName(newCategory, newSubType, newLevel) : null;
   const addBadgeName = addCategory ? buildBadgeName(addCategory, addSubType, addLevel) : null;
+
+  // One lookup per cadet being ordered for — the new-order dialog's, and the
+  // one whose order a badge is being added to inline.
+  const newQualChecks = useBadgeQualChecks(newCadetCin);
+  const addQualChecks = useBadgeQualChecks(orders.find((o) => o.id === addingToOrderId)?.cadetCin);
 
   function openNewOrder() {
     setNewCadetCin(null);
@@ -1171,6 +1194,7 @@ export default function BadgeOrdersPage() {
                               <div className="min-w-0 flex-1 space-y-1.5">
                                 <p className="text-sm font-medium">
                                   {orderItem.badgeName}
+                                  <BadgeQualChip check={orderItem.qualStatus} />
                                   {orderItem.replacement && (
                                     <Badge
                                       variant="outline"
@@ -1470,6 +1494,7 @@ export default function BadgeOrdersPage() {
                               {addBadgeName}
                             </p>
                           )}
+                          {addBadgeName && <BadgeQualNotice check={addQualChecks?.[addBadgeName]} />}
                           {addBadgeName && (
                             <GainedWhereFields value={addGainedWhere} onChange={setAddGainedWhere} />
                           )}
@@ -1745,6 +1770,7 @@ export default function BadgeOrdersPage() {
                 {currentBadgeName && (
                   <p className="bg-muted rounded-md px-3 py-1.5 text-xs font-medium">{currentBadgeName}</p>
                 )}
+                {currentBadgeName && <BadgeQualNotice check={newQualChecks?.[currentBadgeName]} />}
                 {currentBadgeName && (
                   <GainedWhereFields value={newGainedWhere} onChange={setNewGainedWhere} />
                 )}

@@ -1,3 +1,5 @@
+import type { BadgeQualStatus } from "@/lib/badge-quals";
+
 export interface BoxSection {
   label: string;
   position: number;
@@ -87,6 +89,9 @@ export interface SizingDetailsJSON {
 export interface BadgeOrderItem {
   id: string;
   badgeName: string;
+  /** Recomputed by the API on every read — whether the cadet's SMS record
+   *  evidences this badge. Optional so an older cached payload still parses. */
+  qualStatus?: BadgeQualStatus;
   replacement?: boolean; // replacement badges carry a £2 fee
   qmNotes: QmNote[];
   givenAt: string | null;
