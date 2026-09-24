@@ -16,7 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
-import { Download, FileText, RotateCcw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Download, FileText, RotateCcw, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
@@ -26,7 +27,7 @@ import { AoPreview, JiPreview, type Fields } from "./document-preview";
 
 type Event317 = { id: number; title: string };
 type Action = "ji" | "ao";
-type BothFields = { ji: Fields; ao: Fields };
+type BothFields = { ji: Fields; ao: Fields; signature_missing: boolean };
 
 const DOC_LABEL: Record<Action, string> = { ji: "JI", ao: "AO" };
 
@@ -122,7 +123,12 @@ export default function JiGenerator() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success(`${DOC_LABEL[action]} generated.`);
+      // Checked per download since the Adult IC may have been edited since load.
+      if (response.headers.get("X-Signature-Missing") === "1") {
+        toast.warning(`${DOC_LABEL[action]} generated unsigned — the Adult IC has no saved signature.`);
+      } else {
+        toast.success(`${DOC_LABEL[action]} generated.`);
+      }
     } catch {
       toast.error("Error generating file.");
     } finally {
@@ -192,6 +198,17 @@ export default function JiGenerator() {
               Reset to event data
             </Button>
           </div>
+
+          {fields.signature_missing && (
+            <Alert className="mt-3">
+              <TriangleAlert />
+              <AlertTitle>No signature for the Adult IC</AlertTitle>
+              <AlertDescription>
+                {fields.ji.adult_ic || "The Adult IC"} hasn&apos;t saved a signature in Settings, so the document
+                will be generated with a blank space to sign by hand.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <p className="text-muted-foreground mt-3 text-sm">
             The highlighted boxes are editable and appear exactly where they will in the document. Edits apply
