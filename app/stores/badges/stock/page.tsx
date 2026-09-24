@@ -1,5 +1,6 @@
 "use client";
 
+import { loadError } from "@/lib/api-fetch";
 import { useState, useEffect, useMemo } from "react";
 import { Check, Plus, Search, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +56,7 @@ export default function BadgeStockPage() {
     setError(null);
     try {
       const res = await fetch("/api/stores/badges");
-      if (!res.ok) throw new Error("Failed to load badge stock");
+      if (!res.ok) throw await loadError(res);
       setGrid(await res.json());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");

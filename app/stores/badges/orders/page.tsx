@@ -1,5 +1,6 @@
 "use client";
 
+import { loadError } from "@/lib/api-fetch";
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -343,7 +344,7 @@ export default function BadgeOrdersPage() {
         fetch("/api/stores/badges"),
         fetch("/api/stores/badges/order-lists"),
       ]);
-      if (!ordersRes.ok || !gridRes.ok || !listsRes.ok) throw new Error("Failed to fetch data");
+      if (!ordersRes.ok || !gridRes.ok || !listsRes.ok) throw await loadError(ordersRes, gridRes, listsRes);
       setOrders(await ordersRes.json());
       setGrid(await gridRes.json());
       setOrderListEntries(await listsRes.json());

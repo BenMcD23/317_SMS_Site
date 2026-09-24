@@ -126,3 +126,24 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
 
   return res;
 }
+
+/**
+ * Builds a load error naming each failed response's path, status and the
+ * backend's message, and logs them to the browser console.
+ */
+export async function loadError(...responses: Response[]): Promise<Error> {
+  const failed = await Promise.all(
+    responses
+      .filter((r) => !r.ok)
+      .map(async (r) => {
+        const body = await r
+          .clone()
+          .json()
+          .catch(() => null);
+        const why = body?.detail ?? body?.error ?? r.statusText;
+        return `${new URL(r.url).pathname} → ${r.status}${why ? ` (${why})` : ""}`;
+      })
+  );
+  console.error("[load] failed:", failed);
+  return new Error(`Failed to load: ${failed.join("; ")}`);
+}

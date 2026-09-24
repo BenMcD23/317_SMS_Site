@@ -1,5 +1,6 @@
 "use client";
 
+import { loadError } from "@/lib/api-fetch";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -207,7 +208,7 @@ export default function OrdersPage() {
         fetch("/api/stores/stock"),
         fetch("/api/stores/logs-forms"),
       ]);
-      if (!ordersRes.ok || !stockRes.ok || !formsRes.ok) throw new Error("Failed to fetch data");
+      if (!ordersRes.ok || !stockRes.ok || !formsRes.ok) throw await loadError(ordersRes, stockRes, formsRes);
       setOrders(await ordersRes.json());
       setStock(await stockRes.json());
       setLogsForms(await formsRes.json());

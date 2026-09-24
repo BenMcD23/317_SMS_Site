@@ -1,5 +1,6 @@
 "use client";
 
+import { loadError } from "@/lib/api-fetch";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, FolderPlus, Check, Settings2, Plus, Pencil } from "lucide-react";
@@ -49,7 +50,7 @@ export default function StockPage() {
         fetch("/api/stores/stock"),
         fetch("/api/stores/structure"),
       ]);
-      if (!stockRes.ok || !structRes.ok) throw new Error("Failed to load data");
+      if (!stockRes.ok || !structRes.ok) throw await loadError(stockRes, structRes);
       const [stockData, structData] = await Promise.all([stockRes.json(), structRes.json()]);
       setStock(stockData);
       setShelfStructure(structData);
