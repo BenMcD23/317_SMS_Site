@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
-import { Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 
 const LEVEL_STYLES: Record<string, string> = {
   blue: "border-blue-200 bg-blue-50 text-blue-700",
@@ -39,6 +41,11 @@ function fmtDate(iso: string): string {
   // ISO date → DD/MM/YYYY; leave anything unparseable as-is.
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB");
+}
+
+// Filename-safe date for export names ("2026-09-27" sorts correctly in a folder).
+function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 type Cadet = {
@@ -332,6 +339,7 @@ function AuditResultsTable({
   includeMedical,
   includeDietary,
   includeMissingAttachments,
+  exportName,
 }: {
   results: AuditResult[];
   badgeTypes: BadgeType[];
@@ -339,7 +347,10 @@ function AuditResultsTable({
   includeMedical: boolean;
   includeDietary: boolean;
   includeMissingAttachments: boolean;
+  exportName: string;
 }) {
+  const { data: session } = useSession();
+  const [exporting, setExporting] = useState(false);
   const qualCols = badgeTypes.filter((b) => (selected[b.key] ?? []).length > 0);
   const hasQualCriteria = qualCols.length > 0;
 
@@ -377,138 +388,216 @@ function AuditResultsTable({
       })
     : rows;
 
+  // Build the sheet from the same filtered, sorted rows and columns as the
+  // table, so the export always matches what's on screen. The API only
+  // formats it — the filters live here, not duplicated server-side.
+  async function exportXlsx() {
+    if (!session?.id_token) return;
+    const headers = [
+      "Surname",
+      "First name",
+      "CIN",
+      "Rank",
+      "Flight",
+      "Classification",
+      ...qualCols.flatMap((b) => [b.name, `${b.name} awarded`]),
+      ...(includeMedical ? ["Allergies"] : []),
+      ...(includeDietary ? ["Dietary"] : []),
+      ...(includeMissingAttachments ? ["Missing attachments"] : []),
+    ];
+    const exportRows = sortedRows.map((r) => [
+      r.last_name,
+      r.first_name,
+      r.cin,
+      r.rank,
+      r.flight,
+      r.classification || "Junior Cadet",
+      ...qualCols.flatMap((b) => {
+        const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
+        const lvl = matchedLevel(check, selected[b.key] ?? []);
+        if (lvl === "none") return ["None", null];
+        if (!lvl) return [null, null];
+        return [check?.kind === "boolean" ? "Yes" : levelLabel(lvl), check?.date_achieved ?? null];
+      }),
+      ...(includeMedical
+        ? [
+            r.allergies?.length
+              ? r.allergies
+                  .map((a) => `${a.allergy_name}${a.auto_injector === "Yes" ? " (EpiPen)" : ""}`)
+                  .join("; ")
+              : "None",
+          ]
+        : []),
+      ...(includeDietary ? [r.dietary?.length ? r.dietary.map((d) => d.name).join("; ") : "None"] : []),
+      ...(includeMissingAttachments ? [r.missing_attachments?.join("; ") || "None"] : []),
+    ]);
+    setExporting(true);
+    try {
+      const res = await apiFetch(`${API_BASE}/cadets/audit/export`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.id_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filename: exportName, headers, rows: exportRows }),
+      });
+      if (!res.ok) throw new Error(res.statusText);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${exportName}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (rows.length === 0) {
     return <p className="text-muted-foreground py-6 text-center text-sm">No results.</p>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-40 pl-4">Cadet</TableHead>
-            <TableHead className="min-w-28">Classification</TableHead>
-            {qualCols.map((b) => {
-              const active = sort?.key === b.key;
-              return (
-                <TableHead key={b.key} className="min-w-24 text-center">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort(b.key)}
-                    className="hover:text-foreground mx-auto inline-flex items-center gap-1"
-                    title={
-                      !active
-                        ? `Sort by ${b.name} date awarded (newest first)`
-                        : sort!.dir === "desc"
-                          ? `Sort by ${b.name} date awarded (oldest first)`
-                          : "Clear sorting"
-                    }
-                  >
-                    {b.name}
-                    {active ? (
-                      sort!.dir === "desc" ? (
-                        <ArrowDown className="size-3" />
-                      ) : (
-                        <ArrowUp className="size-3" />
-                      )
-                    ) : (
-                      <ArrowUpDown className="size-3 opacity-40" />
-                    )}
-                  </button>
-                </TableHead>
-              );
-            })}
-            {includeMedical && <TableHead className="min-w-40">Allergies</TableHead>}
-            {includeDietary && <TableHead className="min-w-40">Dietary</TableHead>}
-            {includeMissingAttachments && <TableHead className="min-w-40">Missing attachments</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedRows.map((r) => (
-            <TableRow key={r.cin}>
-              <TableCell className="pl-4">
-                <p className="font-medium">
-                  {r.last_name}, {r.first_name}
-                </p>
-                <p className="text-muted-foreground text-xs">CIN {r.cin}</p>
-              </TableCell>
-              <TableCell>
-                <span className="text-sm">{r.classification || "Junior Cadet"}</span>
-              </TableCell>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-sm">
+          {rows.length} cadet{rows.length !== 1 ? "s" : ""}
+        </p>
+        <Button variant="outline" size="sm" onClick={exportXlsx} disabled={exporting}>
+          <Download /> {exporting ? "Exporting…" : "Export to Excel"}
+        </Button>
+      </div>
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-40 pl-4">Cadet</TableHead>
+              <TableHead className="min-w-28">Classification</TableHead>
               {qualCols.map((b) => {
-                const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
-                const lvl = matchedLevel(check, selected[b.key] ?? []);
+                const active = sort?.key === b.key;
                 return (
-                  <TableCell key={b.key} className="text-center">
-                    {lvl === "none" ? (
-                      <span className="text-muted-foreground text-xs">None</span>
-                    ) : lvl ? (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
-                          {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
-                        </Badge>
-                        {check?.date_achieved && (
-                          <span className="text-muted-foreground text-xs">
-                            {fmtDate(check.date_achieved)}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </TableCell>
+                  <TableHead key={b.key} className="min-w-24 text-center">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(b.key)}
+                      className="hover:text-foreground mx-auto inline-flex items-center gap-1"
+                      title={
+                        !active
+                          ? `Sort by ${b.name} date awarded (newest first)`
+                          : sort!.dir === "desc"
+                            ? `Sort by ${b.name} date awarded (oldest first)`
+                            : "Clear sorting"
+                      }
+                    >
+                      {b.name}
+                      {active ? (
+                        sort!.dir === "desc" ? (
+                          <ArrowDown className="size-3" />
+                        ) : (
+                          <ArrowUp className="size-3" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="size-3 opacity-40" />
+                      )}
+                    </button>
+                  </TableHead>
                 );
               })}
-              {includeMedical && (
-                <TableCell>
-                  {r.allergies && r.allergies.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {r.allergies.map((a, i) => (
-                        <Badge key={i} variant="destructive" className="text-xs">
-                          {a.allergy_name}
-                          {a.auto_injector === "Yes" ? " (EpiPen)" : ""}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">None</span>
-                  )}
-                </TableCell>
-              )}
-              {includeDietary && (
-                <TableCell>
-                  {r.dietary && r.dietary.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {r.dietary.map((d, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {d.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">None</span>
-                  )}
-                </TableCell>
-              )}
-              {includeMissingAttachments && (
-                <TableCell>
-                  {r.missing_attachments && r.missing_attachments.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {r.missing_attachments.map((q, i) => (
-                        <Badge key={i} variant="destructive" className="text-xs">
-                          {q}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">None</span>
-                  )}
-                </TableCell>
-              )}
+              {includeMedical && <TableHead className="min-w-40">Allergies</TableHead>}
+              {includeDietary && <TableHead className="min-w-40">Dietary</TableHead>}
+              {includeMissingAttachments && <TableHead className="min-w-40">Missing attachments</TableHead>}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {sortedRows.map((r) => (
+              <TableRow key={r.cin}>
+                <TableCell className="pl-4">
+                  <p className="font-medium">
+                    {r.last_name}, {r.first_name}
+                  </p>
+                  <p className="text-muted-foreground text-xs">CIN {r.cin}</p>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm">{r.classification || "Junior Cadet"}</span>
+                </TableCell>
+                {qualCols.map((b) => {
+                  const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
+                  const lvl = matchedLevel(check, selected[b.key] ?? []);
+                  return (
+                    <TableCell key={b.key} className="text-center">
+                      {lvl === "none" ? (
+                        <span className="text-muted-foreground text-xs">None</span>
+                      ) : lvl ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                            {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
+                          </Badge>
+                          {check?.date_achieved && (
+                            <span className="text-muted-foreground text-xs">
+                              {fmtDate(check.date_achieved)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                  );
+                })}
+                {includeMedical && (
+                  <TableCell>
+                    {r.allergies && r.allergies.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {r.allergies.map((a, i) => (
+                          <Badge key={i} variant="destructive" className="text-xs">
+                            {a.allergy_name}
+                            {a.auto_injector === "Yes" ? " (EpiPen)" : ""}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">None</span>
+                    )}
+                  </TableCell>
+                )}
+                {includeDietary && (
+                  <TableCell>
+                    {r.dietary && r.dietary.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {r.dietary.map((d, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {d.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">None</span>
+                    )}
+                  </TableCell>
+                )}
+                {includeMissingAttachments && (
+                  <TableCell>
+                    {r.missing_attachments && r.missing_attachments.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {r.missing_attachments.map((q, i) => (
+                          <Badge key={i} variant="destructive" className="text-xs">
+                            {q}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">None</span>
+                    )}
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
@@ -719,6 +808,7 @@ function CadetCheckTab() {
           includeMedical={includeMedical}
           includeDietary={includeDietary}
           includeMissingAttachments={includeMissingAttachments}
+          exportName={`Audit - Cadet check - ${todayStamp()}`}
         />
       )}
     </div>
@@ -918,6 +1008,7 @@ function EventCheckTab() {
           includeMedical={includeMedical}
           includeDietary={includeDietary}
           includeMissingAttachments={includeMissingAttachments}
+          exportName={`Audit - ${selectedSubApp?.title ?? selectedEvent?.title ?? "Event"} - ${todayStamp()}`}
         />
       )}
     </div>
