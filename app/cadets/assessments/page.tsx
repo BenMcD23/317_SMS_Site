@@ -393,7 +393,33 @@ function UploadButton({
     const toastId = `upload-${assessmentIds[0]}`;
     toast.loading("Connecting to SMS…", { id: toastId, duration: Infinity });
 
-    const es = new EventSource(`${API_BASE}/scraper-stream?token=${encodeURIComponent(token)}`);
+    // Each upload runs as its own API job with its own log stream, so the job
+    // has to exist before there is anything to subscribe to. The stream
+    // replays the job's log from the start, so nothing is missed by opening
+    // it after the POST returns.
+    let jobId: string;
+    try {
+      const res = await apiFetch(`${API_BASE}/assessments/upload-to-bader`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assessment_ids: assessmentIds }),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(detail?.detail ?? "Upload failed");
+      }
+      ({ job_id: jobId } = await res.json());
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed";
+      setLoading(false);
+      toast.error("Upload failed", { id: toastId, description: msg, duration: 8000 });
+      return;
+    }
+
+    const es = new EventSource(`${API_BASE}/upload-stream/${jobId}?token=${encodeURIComponent(token)}`);
     esRef.current = es;
 
     es.onmessage = (e) => {
@@ -433,26 +459,6 @@ function UploadButton({
         duration: 8000,
       });
     };
-
-    try {
-      const res = await apiFetch(`${API_BASE}/assessments/upload-to-bader`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ assessment_ids: assessmentIds }),
-      });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(detail?.detail ?? "Upload failed");
-      }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed";
-      setLoading(false);
-      esRef.current?.close();
-      toast.error("Upload failed", { id: toastId, description: msg, duration: 8000 });
-    }
   };
 
   useEffect(
