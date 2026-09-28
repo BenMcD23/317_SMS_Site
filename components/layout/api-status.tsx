@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { AlertTriangle, WifiOff } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
+import { API_OUTAGE_EVENT } from "@/components/api-status-overlay";
 import { AUTH_LOOP_EVENT, clearReauthMark, reauth } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
-import { cn } from "@/lib/utils";
 
-export type ApiStatus = "checking" | "ok" | "api-down" | "auth-error";
+export type ApiStatus = "checking" | "ok" | "auth-error";
 
 /**
  * Confirms, once per session change, that the API accepts our token.
@@ -17,6 +17,10 @@ export type ApiStatus = "checking" | "ok" | "api-down" | "auth-error";
  * has just been tried, `reauth()` declines and fires AUTH_LOOP_EVENT, which
  * turns into the "sign in again" badge instead of another lap through Google.
  * A 403 is an account outside the Workspace, which no re-auth can fix.
+ *
+ * Any other failure isn't a token problem, and one failed request from the
+ * browser can't tell an API outage from a flaky connection — so it's handed to
+ * the API-down overlay to confirm rather than shown here as "API offline".
  */
 export function useApiStatus(): ApiStatus {
   const { data: session } = useSession();
@@ -54,11 +58,11 @@ export function useApiStatus(): ApiStatus {
         } else if (res.status === 403) {
           setStatus("auth-error");
         } else {
-          setStatus("api-down");
+          window.dispatchEvent(new Event(API_OUTAGE_EVENT));
         }
       })
       .catch(() => {
-        if (!cancelled) setStatus("api-down");
+        if (!cancelled) window.dispatchEvent(new Event(API_OUTAGE_EVENT));
       });
     return () => {
       cancelled = true;
@@ -69,36 +73,24 @@ export function useApiStatus(): ApiStatus {
 }
 
 export function ApiStatusBadge({ status }: { status: ApiStatus }) {
-  if (status === "ok" || status === "checking") return null;
+  if (status !== "auth-error") return null;
 
   return (
     <div
       role="status"
-      className={cn(
-        "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
-        status === "api-down" ? "bg-destructive/10 text-destructive" : "bg-warning/15 text-warning"
-      )}
+      className="bg-warning/15 text-warning flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium"
     >
-      {status === "api-down" ? (
-        <>
-          <WifiOff className="size-3.5" />
-          API offline
-        </>
-      ) : (
-        <>
-          <AlertTriangle className="size-3.5" />
-          <span className="hidden sm:inline">Session expired —&nbsp;</span>
-          <button
-            type="button"
-            // force: an explicit click is always honoured, even inside the
-            // cooldown that stops automatic re-auth from looping.
-            onClick={() => void reauth(window.location.pathname, { force: true })}
-            className="underline underline-offset-2"
-          >
-            sign in again
-          </button>
-        </>
-      )}
+      <AlertTriangle className="size-3.5" />
+      <span className="hidden sm:inline">Session expired —&nbsp;</span>
+      <button
+        type="button"
+        // force: an explicit click is always honoured, even inside the
+        // cooldown that stops automatic re-auth from looping.
+        onClick={() => void reauth(window.location.pathname, { force: true })}
+        className="underline underline-offset-2"
+      >
+        sign in again
+      </button>
     </div>
   );
 }
