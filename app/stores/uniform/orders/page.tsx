@@ -48,7 +48,8 @@ import { SizeCombobox } from "@/components/size-combobox";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StockHistory } from "@/components/stock-history";
-import { formatTimestamp } from "@/lib/format";
+import Link from "next/link";
+import { formatDate, formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type DraftItem = {
@@ -809,7 +810,13 @@ export default function OrdersPage() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold">{order.cadetName}</p>
+                        {(order as { subjectType?: string }).subjectType === "cadet" ? (
+                          <Link href={`/cadets/${order.cadetCin}?tab=uniform`} className="font-semibold hover:underline">
+                            {order.cadetName}
+                          </Link>
+                        ) : (
+                          <p className="font-semibold">{order.cadetName}</p>
+                        )}
                         {(order as { subjectType?: string }).subjectType === "user" && (
                           <span className="rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-400">
                             Staff
@@ -855,6 +862,13 @@ export default function OrdersPage() {
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1 space-y-1.5">
                                 <p className="text-sm font-medium">{orderItem.itemType}</p>
+                                <p className="text-muted-foreground text-xs">
+                                  {orderItem.lastIssued
+                                    ? `Last received: ${formatDate(orderItem.lastIssued.date)}${
+                                        orderItem.lastIssued.size ? ` (size ${orderItem.lastIssued.size})` : ""
+                                      }`
+                                    : "Never received"}
+                                </p>
 
                                 {orderItem.needSizing ? (
                                   <div className="space-y-1">

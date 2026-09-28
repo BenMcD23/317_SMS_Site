@@ -58,6 +58,7 @@ import {
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { StockHistory } from "@/components/stock-history";
+import Link from "next/link";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -1129,7 +1130,9 @@ export default function BadgeOrdersPage() {
                 <CardHeader className="pb-0">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <p className="font-semibold">{order.cadetName}</p>
+                      <Link href={`/cadets/${order.cadetCin}?tab=qualifications`} className="font-semibold hover:underline">
+                        {order.cadetName}
+                      </Link>
                       <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

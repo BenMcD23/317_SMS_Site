@@ -59,6 +59,7 @@ export interface OrderItem {
   givenBy: string | null;
   readyToCollect: string | null;
   stockEvents?: StockEvent[];
+  lastIssued?: { date: string; size: string | null } | null; // from the cadet's Uniform tab
 }
 
 export interface Order {

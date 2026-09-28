@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -225,6 +225,8 @@ export default function CadetOverviewPage() {
   const { data: session } = useSession();
   const params = useParams();
   const cin = Number(params?.cin);
+  // ?tab=qualifications|uniform|… — links from the stores order pages open a tab directly.
+  const initialTab = useSearchParams().get("tab") ?? "overview";
 
   const [cadet, setCadet] = useState<CadetDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -384,7 +386,7 @@ export default function CadetOverviewPage() {
         {cadetAge !== null && <StatPill label="Age" value={cadetAge} />}
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={initialTab}>
         <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="qualifications">Qualifications</TabsTrigger>
