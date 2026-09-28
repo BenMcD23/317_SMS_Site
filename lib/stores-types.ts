@@ -88,6 +88,7 @@ export interface BadgeOrderItem {
   id: string;
   badgeName: string;
   replacement?: boolean; // replacement badges carry a £2 fee
+  qualHeld?: boolean | null; // null: no qualification behind this badge (Core badges)
   qmNotes: QmNote[];
   givenAt: string | null;
   givenBy: string | null;
