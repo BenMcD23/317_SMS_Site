@@ -1181,6 +1181,18 @@ export default function BadgeOrdersPage() {
                                     </Badge>
                                   )}
                                 </p>
+                                {orderItem.qualHeld != null &&
+                                  (orderItem.qualHeld ? (
+                                    <p className="text-success flex items-center gap-1 text-xs font-medium">
+                                      <Check className="h-3 w-3" />
+                                      Qualification is held
+                                    </p>
+                                  ) : (
+                                    <p className="text-destructive flex items-center gap-1 text-xs font-medium">
+                                      <X className="h-3 w-3" />
+                                      Qualification not held
+                                    </p>
+                                  ))}
                                 {gainedWhereSummary(gainedWhereOptions, orderItem) && (
                                   <p className="text-muted-foreground text-xs">
                                     {gainedWhereSummary(gainedWhereOptions, orderItem)}
