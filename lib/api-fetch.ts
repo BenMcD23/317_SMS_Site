@@ -107,7 +107,8 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   try {
     res = await fetch(url, options);
   } catch (e) {
-    // Network-level failure — likely the API is down; tell the overlay.
+    // Network-level failure — could be the API or just this device's
+    // connection. Only nudges the overlay to re-check; it decides which.
     flagPossibleOutage();
     throw e;
   }
