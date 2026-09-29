@@ -209,7 +209,8 @@ function BadgeStatCard({
   const completedCount = total - noneCount;
   const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
 
-  const sortedLevels = LEVEL_ORDER.filter((l) => l !== "None" && (levels[l] ?? 0) > 0).map((l) => ({
+  // "None" leads the list so the cadets still to start the badge are visible alongside the held levels.
+  const sortedLevels = LEVEL_ORDER.filter((l) => l === "None" || (levels[l] ?? 0) > 0).map((l) => ({
     level: l,
     count: levels[l] ?? 0,
   }));
@@ -247,20 +248,16 @@ function BadgeStatCard({
           <span className="text-muted-foreground text-xs tabular-nums">{pct}%</span>
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {sortedLevels.length === 0 ? (
-            <span className="text-muted-foreground text-xs">Not yet held by any cadet</span>
-          ) : (
-            sortedLevels.map(({ level, count }) => (
-              <div key={level} className="flex items-center gap-1.5">
-                <span
-                  className="inline-block size-2 rounded-full"
-                  style={{ background: levelColor(level) }}
-                />
-                <span className="text-xs font-medium">{level}</span>
-                <span className="text-muted-foreground text-xs tabular-nums">{count}</span>
-              </div>
-            ))
-          )}
+          {sortedLevels.map(({ level, count }) => (
+            <div key={level} className="flex items-center gap-1.5">
+              <span
+                className="inline-block size-2 rounded-full"
+                style={{ background: levelColor(level) }}
+              />
+              <span className="text-xs font-medium">{level}</span>
+              <span className="text-muted-foreground text-xs tabular-nums">{count}</span>
+            </div>
+          ))}
         </div>
 
         {chartData.length >= 2 && (
