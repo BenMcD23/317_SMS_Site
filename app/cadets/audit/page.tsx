@@ -16,6 +16,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { cn } from "@/lib/utils";
+import { classificationBadgeClass } from "@/lib/cadet-format";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -521,7 +522,9 @@ function AuditResultsTable({
                   <p className="text-muted-foreground text-xs">CIN {r.cin}</p>
                 </TableCell>
                 <TableCell>
-                  <span className="text-sm">{r.classification || "Junior Cadet"}</span>
+                  <Badge variant="outline" className={classificationBadgeClass(r.classification)}>
+                    {r.classification || "Junior Cadet"}
+                  </Badge>
                 </TableCell>
                 {qualCols.map((b) => {
                   const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
