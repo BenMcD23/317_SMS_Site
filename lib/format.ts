@@ -28,3 +28,16 @@ export function formatTimestamp(ts: string): string {
     hour12: false,
   });
 }
+
+/** "Just now" / "5m ago" / "3h ago" / "2d ago", then the date — for "last synced"
+ *  style readings where how long ago matters more than the exact time. */
+export function formatAgo(iso: string | null | undefined, fallback = "Never"): string {
+  if (!iso) return fallback;
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days < 7 ? `${days}d ago` : formatDate(iso);
+}

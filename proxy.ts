@@ -42,5 +42,10 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
 export const config = {
   // Note: `api/` (with slash) so real /api/* routes (NextAuth) are excluded,
   // but app pages like /api-logs are still covered by the auth middleware.
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
+  // vp-sync-collector.js is loaded into a Volunteer Portal tab, where the SMS
+  // session cookie isn't sent, so it must not bounce to /login. It holds no
+  // data; everything it sends goes through the signed-in VP Sync page.
+  matcher: [
+    "/((?!api/|_next/static|_next/image|favicon.ico|vp-sync-collector\\.js$|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
+  ],
 };

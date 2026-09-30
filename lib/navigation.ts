@@ -7,6 +7,7 @@ import {
   CalendarOff,
   ClipboardCheck,
   ClipboardList,
+  CloudDownload,
   Contact,
   DatabaseBackup,
   DatabaseZap,
@@ -221,6 +222,12 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Data",
     items: [
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap, keywords: ["sync", "import"] },
+      {
+        label: "VP Sync",
+        href: "/tools/vp-sync",
+        icon: CloudDownload,
+        keywords: ["volunteer portal", "vp", "mandatory training", "wht", "import"],
+      },
       { label: "Backups", href: "/backups", icon: DatabaseBackup, ownerOnly: true },
       { label: "API Logs", href: "/api-logs", icon: ScrollText, ownerOnly: true },
     ],
