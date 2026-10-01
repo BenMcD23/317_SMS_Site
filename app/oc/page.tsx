@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useApiQuery } from "@/lib/use-api-query";
 import { isOc } from "@/lib/config";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -61,8 +65,16 @@ interface QualSummary {
   expiring_90: number;
 }
 
+interface BadgeCoverage {
+  // Cadets the coverage is counted over — the whole squadron, or everyone
+  // past Junior when the filter is on.
+  cadets: number;
+  badges: Record<string, Record<string, number>>;
+}
+
 interface OcDashboard {
   strength: Strength;
+  badge_coverage: BadgeCoverage;
   staff_attendance: StaffAttendance[];
   attendance_trend: TrendNight[];
   qual_summary: QualSummary;
@@ -208,9 +220,14 @@ export default function OcDashboardPage() {
   const { data: session } = useSession();
   const allowed = isOc(session?.user?.email);
 
-  const { data: dash, isLoading } = useApiQuery<OcDashboard>(["oc-dashboard"], "/oc/dashboard", {
-    enabled: allowed,
-  });
+  const [excludeJuniors, setExcludeJuniors] = useState(false);
+  const { data: dash, isLoading } = useApiQuery<OcDashboard>(
+    ["oc-dashboard", { excludeJuniors }],
+    `/oc/dashboard${excludeJuniors ? "?exclude_juniors=true" : ""}`,
+    // Keep the current numbers on screen while the other view loads, rather
+    // than collapsing the whole page to skeletons on every toggle.
+    { enabled: allowed, placeholderData: keepPreviousData }
+  );
   const { data: committee } = useApiQuery<CommitteeList>(["committee-requests"], "/committee-requests", {
     enabled: allowed,
   });
@@ -267,9 +284,11 @@ export default function OcDashboardPage() {
   const cadetAvg = cadetTotals.total ? Math.round((cadetTotals.present / cadetTotals.total) * 100) : null;
   const staffAvg = staffTotals.total ? Math.round((staffTotals.present / staffTotals.total) * 100) : null;
 
-  // Qualification coverage — how many cadets hold something vs nothing per badge.
-  const badges = dash?.strength.badges ?? {};
-  const totalCadets = dash?.strength.total_cadets ?? 0;
+  // Qualification coverage — how many cadets hold something vs nothing per badge,
+  // out of the cohort the backend counted (juniors dropped when filtered).
+  const badges = dash?.badge_coverage.badges ?? {};
+  const totalCadets = dash?.badge_coverage.cadets ?? 0;
+  const classifications = CLASSIFICATION_ORDER.filter((label) => !excludeJuniors || label !== "Junior Cadet");
   const coverage = Object.entries(badges)
     .map(([key, levels]) => {
       const held = Object.entries(levels)
@@ -410,7 +429,21 @@ export default function OcDashboardPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <SectionHeading title="Qualifications" />
+        <SectionHeading
+          title="Qualifications"
+          actions={
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="exclude-juniors"
+                checked={excludeJuniors}
+                onCheckedChange={(v) => setExcludeJuniors(v === true)}
+              />
+              <Label htmlFor="exclude-juniors" className="text-sm font-normal">
+                Exclude junior cadets
+              </Label>
+            </div>
+          }
+        />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat size="lg" label="Total held" value={dash?.qual_summary.total ?? 0} />
@@ -467,9 +500,8 @@ export default function OcDashboardPage() {
                 <Skeleton className="h-48 w-full" />
               ) : (
                 <div className="divide-y">
-                  {CLASSIFICATION_ORDER.map(
-                    (label) => [label, dash?.strength.by_classification?.[label] ?? 0] as const
-                  )
+                  {classifications
+                    .map((label) => [label, dash?.strength.by_classification?.[label] ?? 0] as const)
                     .filter(([, n]) => n > 0)
                     .map(([label, n]) => (
                       <div key={label} className="flex items-center justify-between py-2 text-sm">

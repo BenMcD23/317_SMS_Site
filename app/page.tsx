@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 
@@ -9,6 +9,8 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
@@ -27,6 +29,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+interface BadgeBreakdown {
+  total_cadets: number;
+  badges: Record<string, Record<string, number>>;
+}
+
 interface CurrentStats {
   total_cadets: number;
   by_flight: Record<string, number>;
@@ -34,11 +41,20 @@ interface CurrentStats {
   by_rank: Record<string, number>;
   by_classification: Record<string, number>;
   badges: Record<string, Record<string, number>>;
+  // Same breakdown over cadets past Junior. Optional because snapshots taken
+  // before it existed don't carry it.
+  non_junior?: BadgeBreakdown;
 }
 
 interface HistoryPoint {
   date: string;
   data: CurrentStats;
+}
+
+// What a badge card's trend chart needs from a snapshot, whichever cohort.
+interface BadgeHistoryPoint {
+  date: string;
+  data: BadgeBreakdown;
 }
 
 const BADGE_LABELS: Record<string, string> = {
@@ -202,7 +218,7 @@ function BadgeStatCard({
   badgeKey: string;
   levels: Record<string, number>;
   total: number;
-  history: HistoryPoint[];
+  history: BadgeHistoryPoint[];
 }) {
   const label = BADGE_LABELS[badgeKey] ?? badgeKey;
   const noneCount = levels["None"] ?? 0;
@@ -250,10 +266,7 @@ function BadgeStatCard({
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {sortedLevels.map(({ level, count }) => (
             <div key={level} className="flex items-center gap-1.5">
-              <span
-                className="inline-block size-2 rounded-full"
-                style={{ background: levelColor(level) }}
-              />
+              <span className="inline-block size-2 rounded-full" style={{ background: levelColor(level) }} />
               <span className="text-xs font-medium">{level}</span>
               <span className="text-muted-foreground text-xs tabular-nums">{count}</span>
             </div>
@@ -395,7 +408,15 @@ export default function HomePage() {
     "/stats/history"
   );
 
+  const [excludeJuniors, setExcludeJuniors] = useState(false);
+
   const total = stats?.total_cadets ?? 0;
+  const badgeCohort = (excludeJuniors ? stats?.non_junior : stats) ?? { total_cadets: 0, badges: {} };
+  // Older snapshots have no non-junior breakdown, so the filtered trend starts
+  // from the first one that does rather than plotting zeros.
+  const badgeHistory: BadgeHistoryPoint[] = excludeJuniors
+    ? history.flatMap((h) => (h.data.non_junior ? [{ date: h.date, data: h.data.non_junior }] : []))
+    : history;
   const ncoCount = stats
     ? Object.entries(stats.by_rank)
         .filter(([rank]) => rank !== "Cadet" && rank !== "Unknown")
@@ -459,15 +480,30 @@ export default function HomePage() {
             </div>
 
             <section className="flex flex-col gap-3">
-              <SectionHeading title="Badge progression" />
+              <SectionHeading
+                title="Badge progression"
+                description={excludeJuniors ? "Excluding junior cadets" : undefined}
+                actions={
+                  <div className="no-print flex items-center gap-2">
+                    <Checkbox
+                      id="exclude-juniors"
+                      checked={excludeJuniors}
+                      onCheckedChange={(v) => setExcludeJuniors(v === true)}
+                    />
+                    <Label htmlFor="exclude-juniors" className="text-sm font-normal">
+                      Exclude junior cadets
+                    </Label>
+                  </div>
+                }
+              />
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {Object.keys(BADGE_LABELS).map((key) => (
                   <BadgeStatCard
                     key={key}
                     badgeKey={key}
-                    levels={stats.badges[key] ?? {}}
-                    total={total}
-                    history={history}
+                    levels={badgeCohort.badges[key] ?? {}}
+                    total={badgeCohort.total_cadets}
+                    history={badgeHistory}
                   />
                 ))}
               </div>
