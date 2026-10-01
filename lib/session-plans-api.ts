@@ -1,7 +1,7 @@
 "use client";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch, apiRequest, errorDetail } from "@/lib/api-fetch";
 import type { SessionPlanContent, SessionPlanDetail } from "@/lib/session-plans";
 
 /**
@@ -10,27 +10,12 @@ import type { SessionPlanContent, SessionPlanDetail } from "@/lib/session-plans"
  * one place. Rejects with the backend's message, so callers just
  * `catch (e) { toast.error(...) }`.
  */
-async function request<T>(
+function request<T>(
   token: string,
   path: string,
   init: { method: string; body?: unknown } = { method: "POST" }
 ): Promise<T> {
-  let res: Response;
-  try {
-    res = await apiFetch(`${API_BASE}/session-plans${path}`, {
-      method: init.method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-    });
-  } catch {
-    throw new Error("Server unreachable.");
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.detail ?? "Something went wrong.");
-  return data as T;
+  return apiRequest<T>(token, `${API_BASE}/session-plans${path}`, init);
 }
 
 /** Create a draft (no `id`) or save an existing one. */
@@ -100,7 +85,7 @@ export async function uploadAttachments(
     throw new Error("Server unreachable.");
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.detail ?? "Upload failed.");
+  if (!res.ok) throw new Error(errorDetail(data) ?? "Upload failed.");
   return data as SessionPlanDetail;
 }
 

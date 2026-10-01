@@ -148,3 +148,48 @@ export async function loadError(...responses: Response[]): Promise<Error> {
   console.error("[load] failed:", failed);
   return new Error(`Failed to load: ${failed.join("; ")}`);
 }
+
+/**
+ * The backend's error as one sentence. FastAPI's `detail` is a string for our
+ * own HTTPExceptions but a list of per-field objects when validation rejects a
+ * body — without flattening, a 422 reaches the toast as "[object Object]".
+ */
+export function errorDetail(data: unknown): string | null {
+  const detail = (data as { detail?: unknown } | null)?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail.map((d) => (d as { msg?: string })?.msg).filter((m): m is string => !!m);
+    if (messages.length) return messages.join(", ");
+  }
+  return null;
+}
+
+/**
+ * Authenticated JSON call to the backend that rejects with the backend's own
+ * message, so callers just `catch (e) { toast.error(e.message) }`. Shared by
+ * the lib/ write helpers (holidays, comments, session plans, appraisals) that
+ * each used to carry a copy.
+ */
+export async function apiRequest<T>(
+  token: string,
+  url: string,
+  init: { method: string; body?: unknown },
+  fallback = "Something went wrong."
+): Promise<T> {
+  let res: Response;
+  try {
+    res = await apiFetch(url, {
+      method: init.method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
+  } catch {
+    throw new Error("Server unreachable.");
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(errorDetail(data) ?? fallback);
+  return data as T;
+}

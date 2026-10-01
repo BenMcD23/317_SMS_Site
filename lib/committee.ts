@@ -81,14 +81,8 @@ export function formatGBP(amount: number): string {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
 }
 
-export function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+// Re-exported so committee pages keep one import; the formatting lives in lib/format.
+export { formatDate } from "@/lib/format";
 
 export function formatDateTime(iso: string | null): string {
   if (!iso) return "—";

@@ -29,6 +29,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test
+        run: npm test
+
       - name: Build
         # No secrets: auth and the API are only read at request time, so a
         # build only needs the public defaults.
