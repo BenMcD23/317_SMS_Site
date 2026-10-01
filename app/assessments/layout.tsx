@@ -10,6 +10,7 @@ const TABS = [
   { label: "Inspection", href: "/assessments/inspection", sncoOnly: true },
   { label: "Leadership", href: "/assessments/leadership" },
   { label: "Radio", href: "/assessments/radio" },
+  { label: "Space", href: "/assessments/space" },
   { label: "MOI", href: "/assessments/moi" },
 ];
 
