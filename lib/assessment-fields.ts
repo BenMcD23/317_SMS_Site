@@ -85,6 +85,26 @@ export function radioPassed(criteria: Record<string, boolean>): boolean {
   return RADIO_CRITERIA.every((c) => criteria[c.id]);
 }
 
+// ─── Space ──────────────────────────────────────────────────────────────────
+
+export const SPACE_EXPERIMENTS_MAX = 500;
+
+// The hexagon tick boxes on the Blue Space workbook checklist, in sheet order.
+export const SPACE_CHECKLIST = [
+  { id: "pts", label: "Blue Space PTS" },
+  { id: "section_1a", label: "Section 1a: The Inner Solar System" },
+  { id: "section_1b", label: "Section 1b: The Outer Solar System" },
+  { id: "section_2", label: "Section 2: How The Universe Was Formed" },
+  { id: "section_3", label: "Section 3: The Moon" },
+  { id: "section_4", label: "Section 4: Layers Of Earth's Atmosphere" },
+  { id: "section_5", label: "Section 5: Orbit" },
+  { id: "practical", label: "Practical experiments to support PTS" },
+] as const;
+
+export function spacePassed(checklist: Record<string, boolean>): boolean {
+  return SPACE_CHECKLIST.every((c) => checklist[c.id]);
+}
+
 // ─── MOI ────────────────────────────────────────────────────────────────────
 
 export const MOI_SECTIONS = [

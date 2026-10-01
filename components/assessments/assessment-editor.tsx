@@ -18,6 +18,9 @@ import {
   RADIO_CRITERIA,
   RADIO_COMMENTS_MAX,
   radioPassed,
+  SPACE_CHECKLIST,
+  SPACE_EXPERIMENTS_MAX,
+  spacePassed,
   MOI_SECTIONS,
   MOI_ALL_QUESTIONS,
   MOI_MAX_SCORE,
@@ -95,6 +98,10 @@ type EditorState = {
   criteria: Record<string, boolean>;
   cyberSecDate: string;
   comments: string;
+  // space
+  checklist: Record<string, boolean>;
+  ptsDate: string;
+  experiments: string;
   // moi
   cadetSurname: string;
   cadetForename: string;
@@ -136,6 +143,7 @@ export function AssessmentEditor({
 
   const isLeadership = assessmentType === "Blue Leadership";
   const isRadio = assessmentType === "Blue Radio";
+  const isSpace = assessmentType === "Blue Space";
   const isMoi = assessmentType === "MOI";
 
   const handleLessonPlanChange = (file: File | null) => {
@@ -189,6 +197,9 @@ export function AssessmentEditor({
           criteria: Object.fromEntries(RADIO_CRITERIA.map((c) => [c.id, Boolean(f.criteria?.[c.id])])),
           cyberSecDate: isoDateForInput(f.cyber_sec_date_iso, f.cyber_sec_date),
           comments: f.comments ?? "",
+          checklist: Object.fromEntries(SPACE_CHECKLIST.map((c) => [c.id, Boolean(f.checklist?.[c.id])])),
+          ptsDate: isoDateForInput(f.pts_date_iso, f.pts_date),
+          experiments: f.experiments ?? "",
           cadetSurname: f.cadet_surname ?? "",
           cadetForename: f.cadet_forename ?? "",
           sqnDf: f.sqn_df ?? "",
@@ -238,6 +249,13 @@ export function AssessmentEditor({
         criteria: form.criteria,
         cyber_sec_date: form.cyberSecDate,
         comments: form.comments,
+        date: form.date,
+      };
+    } else if (isSpace) {
+      payload = {
+        checklist: form.checklist,
+        pts_date: form.ptsDate,
+        experiments: form.experiments,
         date: form.date,
       };
     } else {
@@ -299,7 +317,9 @@ export function AssessmentEditor({
     ? leadershipPassed(form.scores)
     : isRadio
       ? radioPassed(form.criteria)
-      : moiPassed(form.scores);
+      : isSpace
+        ? spacePassed(form.checklist)
+        : moiPassed(form.scores);
 
   return (
     <div className="bg-card space-y-4 rounded-lg border p-4">
@@ -431,6 +451,82 @@ export function AssessmentEditor({
               onChange={(e) => update("comments", e.target.value.slice(0, RADIO_COMMENTS_MAX))}
             />
           </div>
+        </div>
+      )}
+
+      {/* Space */}
+      {isSpace && (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            {SPACE_CHECKLIST.map((c) => {
+              const checked = form.checklist[c.id];
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => update("checklist", { ...form.checklist, [c.id]: !checked })}
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-all",
+                    checked ? "border-success/40 bg-success/5" : "hover:border-primary/30"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
+                      checked ? "border-success bg-success" : "border-muted-foreground/40"
+                    )}
+                  >
+                    {checked && <CheckCircle2 className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <p className="text-sm leading-snug">{c.label}</p>
+                </div>
+              );
+            })}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor={`pts-${assessmentId}`}>PTS completed date</Label>
+              <Input
+                id={`pts-${assessmentId}`}
+                type="date"
+                value={form.ptsDate}
+                onChange={(e) => update("ptsDate", e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`date-${assessmentId}`}>Sign-off date</Label>
+              <Input
+                id={`date-${assessmentId}`}
+                type="date"
+                value={form.date}
+                onChange={(e) => update("date", e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor={`experiments-${assessmentId}`}>Practical experiments</Label>
+              <span
+                className={cn(
+                  "text-xs",
+                  form.experiments.length > SPACE_EXPERIMENTS_MAX
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+                )}
+              >
+                {form.experiments.length} / {SPACE_EXPERIMENTS_MAX}
+              </span>
+            </div>
+            <Textarea
+              id={`experiments-${assessmentId}`}
+              rows={3}
+              maxLength={SPACE_EXPERIMENTS_MAX}
+              value={form.experiments}
+              onChange={(e) => update("experiments", e.target.value.slice(0, SPACE_EXPERIMENTS_MAX))}
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">
+            The instructor and cadet signatures from the original checklist are kept.
+          </p>
         </div>
       )}
 

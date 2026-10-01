@@ -42,7 +42,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
 import { EmptyState } from "@/components/empty-state";
 
-const EDITABLE_TYPES = ["Blue Leadership", "Blue Radio", "MOI"];
+const EDITABLE_TYPES = ["Blue Leadership", "Blue Radio", "Blue Space", "MOI"];
 
 type AssessmentEntry = {
   id: number;
