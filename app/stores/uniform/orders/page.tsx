@@ -1142,6 +1142,7 @@ export default function OrdersPage() {
                             {!noSizeItems.has(addItemDraft.itemType) && (
                               <div className="w-28">
                                 <SizeCombobox
+                                  strict
                                   className="h-8 text-sm"
                                   itemType={addItemDraft.itemType}
                                   value={addItemDraft.size}
@@ -1497,6 +1498,7 @@ export default function OrdersPage() {
                     {!noSizeItems.has(item.itemType) && (
                       <div className="w-24">
                         <SizeCombobox
+                          strict
                           className="h-8 text-sm"
                           itemType={item.itemType}
                           value={item.size}
@@ -1695,6 +1697,7 @@ export default function OrdersPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="editSize">Size</Label>
                 <SizeCombobox
+                  strict
                   id="editSize"
                   itemType={editSizeItemType}
                   value={editSizeValue}
