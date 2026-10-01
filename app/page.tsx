@@ -273,7 +273,14 @@ function BadgeStatCard({
           ))}
         </div>
 
-        {chartData.length >= 2 && (
+        {chartData.length < 2 ? (
+          // Keeps the card height stable. The filtered cohort is only recorded in
+          // newer snapshots, so right after ticking the filter there can be too
+          // few points to draw a trend.
+          <div className="text-muted-foreground flex h-[90px] items-center justify-center text-xs">
+            Not enough history to chart a trend yet
+          </div>
+        ) : (
           <ResponsiveContainer width="100%" height={90}>
             <LineChart data={chartData} margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
