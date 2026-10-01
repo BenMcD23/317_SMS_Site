@@ -21,6 +21,7 @@ import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Search, ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
+import { todayLocal } from "@/lib/format";
 
 const LEVEL_STYLES: Record<string, string> = {
   blue: "border-blue-200 bg-blue-50 text-blue-700",
@@ -46,7 +47,7 @@ function fmtDate(iso: string): string {
 
 // Filename-safe date for export names ("2026-09-27" sorts correctly in a folder).
 function todayStamp(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayLocal();
 }
 
 type Cadet = {

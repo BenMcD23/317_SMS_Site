@@ -3,16 +3,28 @@
 export const FLIGHT_ORDER = ["NCO", "A", "B", "C"];
 export const RANK_ORDER = ["Cadet", "Cpl", "Sgt", "FS", "CWO"];
 
+const ALPHA = "border-chart-1/40 bg-chart-1/10 text-chart-1";
+const BRAVO = "border-destructive/40 bg-destructive/10 text-destructive";
+const CHARLIE = "border-success/40 bg-success/10 text-success";
+const DELTA = "border-warning/40 bg-warning/15 text-warning";
+const NO_FLIGHT = "border-border bg-muted text-muted-foreground";
+
+// Flights are stored as the letter ("A", "C" — see FLIGHT_ORDER and the API's
+// kit-flight query); the spelled-out names are kept so either form colours.
 const FLIGHT_BADGE_CLASSES: Record<string, string> = {
-  Alpha: "border-chart-1/40 bg-chart-1/10 text-chart-1",
-  Bravo: "border-destructive/40 bg-destructive/10 text-destructive",
-  Charlie: "border-success/40 bg-success/10 text-success",
-  Delta: "border-warning/40 bg-warning/15 text-warning",
+  A: ALPHA,
+  B: BRAVO,
+  C: CHARLIE,
+  D: DELTA,
+  Alpha: ALPHA,
+  Bravo: BRAVO,
+  Charlie: CHARLIE,
+  Delta: DELTA,
 };
 
 export function flightBadgeClass(flight: string | null | undefined): string {
-  if (!flight) return "border-border bg-muted text-muted-foreground";
-  return FLIGHT_BADGE_CLASSES[flight] ?? "border-border bg-muted text-muted-foreground";
+  if (!flight) return NO_FLIGHT;
+  return FLIGHT_BADGE_CLASSES[flight.trim()] ?? NO_FLIGHT;
 }
 
 // Classification steps up in the same order as the dashboard chart, so the

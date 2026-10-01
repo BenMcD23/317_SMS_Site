@@ -28,3 +28,11 @@ export function formatTimestamp(ts: string): string {
     hour12: false,
   });
 }
+
+/** Today as "YYYY-MM-DD" in the user's local time — the value a date <input>
+ *  wants. `toISOString()` is UTC, so between midnight and 1am in summer it
+ *  hands back yesterday. */
+export function todayLocal(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}

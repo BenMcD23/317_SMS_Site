@@ -8,7 +8,8 @@
 "use client";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { apiRequest } from "@/lib/api-fetch";
+import { todayLocal } from "@/lib/format";
 
 export interface NcoCommentReply {
   id: number;
@@ -51,9 +52,7 @@ export interface NewComment {
 
 /** Today as "YYYY-MM-DD" in local time — the date a new comment starts on. */
 export function todayISO(): string {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+  return todayLocal();
 }
 
 export function isAboutCadet(comment: NcoComment): boolean {
@@ -92,23 +91,8 @@ export function groupByCadet(comments: NcoComment[]): {
   return [...groups.values()];
 }
 
-async function request<T>(token: string, path: string, init: { method: string; body?: unknown }): Promise<T> {
-  let res: Response;
-  try {
-    res = await apiFetch(`${API_BASE}/nco-comments${path}`, {
-      method: init.method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-    });
-  } catch {
-    throw new Error("Server unreachable.");
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.detail ?? "Something went wrong.");
-  return data as T;
+function request<T>(token: string, path: string, init: { method: string; body?: unknown }): Promise<T> {
+  return apiRequest<T>(token, `${API_BASE}/nco-comments${path}`, init);
 }
 
 export function createComment(token: string, body: NewComment): Promise<NcoComment> {

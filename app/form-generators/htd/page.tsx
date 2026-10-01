@@ -13,6 +13,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { saveResponseAsFile } from "@/lib/download";
+import { todayLocal } from "@/lib/format";
 
 const PLACE_OF_DUTY = "75 Oldham Rd, Failsworth, Manchester M35 0BH";
 const RATE = 0.25;
@@ -94,7 +96,7 @@ export default function HTDPage() {
   const [postcode, setPostcode] = useState("");
   const [distance, setDistance] = useState("");
   const [bankLast3, setBankLast3] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayLocal());
 
   const [halfId, setHalfId] = useState("");
   const [months, setMonths] = useState<MonthRow[]>([]);
@@ -220,16 +222,7 @@ export default function HTDPage() {
         toast.error(err.detail ?? "Failed to generate document.");
         return;
       }
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match ? match[1] : `HTD_${surname || "claim"}.docx`;
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      await saveResponseAsFile(res, `HTD_${surname || "claim"}.docx`);
     } catch {
       toast.error("Server unreachable.");
     } finally {

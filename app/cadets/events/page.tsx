@@ -14,7 +14,7 @@ import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, CalendarDays, Users, ChevronDown, ChevronRight, Ban } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch, loadError } from "@/lib/api-fetch";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 
@@ -247,12 +247,15 @@ export default function CadetEventListPage() {
     const headers = { Authorization: `Bearer ${session.id_token}` };
     setLoading(true);
     Promise.all([
-      apiFetch(`${API_BASE}/cadet-events`, { headers }).then((r) => r.json()),
-      apiFetch(`${API_BASE}/bans`, { headers }).then((r) => r.json()),
+      apiFetch(`${API_BASE}/cadet-events`, { headers }),
+      apiFetch(`${API_BASE}/bans`, { headers }),
     ])
-      .then(([evts, bannedCadets]) => {
-        setEvents(evts);
-        setBans(bannedCadets);
+      .then(async ([evtsRes, bansRes]) => {
+        // An error body is `{detail}`, not a list; storing it crashed the page
+        // on `.filter` instead of showing what went wrong.
+        if (!evtsRes.ok || !bansRes.ok) throw await loadError(evtsRes, bansRes);
+        setEvents(await evtsRes.json());
+        setBans(await bansRes.json());
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));

@@ -19,6 +19,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
 import { SectionHeading } from "@/components/section-heading";
+import { todayLocal } from "@/lib/format";
 
 const DEBRIEF_MAX = 540;
 
@@ -135,7 +136,7 @@ const initialState = (): FormState => ({
   scores: Object.fromEntries(QUESTIONS.map((q) => [q.id, null])),
   assessorName: "",
   assessorRole: "",
-  date: new Date().toISOString().split("T")[0],
+  date: todayLocal(),
   debriefingNotes: "",
 });
 

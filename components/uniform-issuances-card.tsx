@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Shirt, Pencil, Check, X, Loader2 } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { formatDate, todayLocal } from "@/lib/format";
 
 type Issuance = {
   id: number;
@@ -42,7 +42,7 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
   function startEdit(category: string) {
     const record = issuances.find((i) => i.itemCategory === category);
     setEditing(category);
-    setEditDate(record ? record.lastGiven.slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setEditDate(record ? record.lastGiven.slice(0, 10) : todayLocal());
     setEditSize(record?.sizeGiven ?? "");
     setError(null);
   }
@@ -131,6 +131,7 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
                             className="text-success hover:text-success h-8 w-8"
                             onClick={() => save(category)}
                             disabled={saving || !editDate}
+                            aria-label={`Save ${category}`}
                           >
                             {saving ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -144,6 +145,7 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
                             className="text-muted-foreground h-8 w-8"
                             onClick={() => setEditing(null)}
                             disabled={saving}
+                            aria-label="Cancel"
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -179,6 +181,7 @@ export function UniformIssuancesCard({ baseUrl }: Props) {
                           variant="ghost"
                           className="text-muted-foreground hover:text-foreground h-7 w-7"
                           onClick={() => startEdit(category)}
+                          aria-label={`Edit ${category}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>

@@ -19,6 +19,7 @@ import { SPACE_CHECKLIST, SPACE_EXPERIMENTS_MAX, spacePassed } from "@/lib/asses
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
 import { SectionHeading } from "@/components/section-heading";
+import { todayLocal } from "@/lib/format";
 
 function ChecklistRow({
   label,
@@ -71,7 +72,7 @@ const initialState = (): FormState => ({
   cadetSignature: null,
   assessorName: "",
   assessorRole: "",
-  date: new Date().toISOString().split("T")[0],
+  date: todayLocal(),
 });
 
 export default function SpaceAssessmentPage() {

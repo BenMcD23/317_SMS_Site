@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { UserProfileCard, type UserProfile } from "@/components/user-profile-card";
+import { saveResponseAsFile } from "@/lib/download";
 
 type JourneyEntry = {
   id: number;
@@ -442,16 +443,7 @@ export default function F1771ePage() {
         toast.error(err.detail ?? "Failed to generate document.");
         return;
       }
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const match = disposition.match(/filename="([^"]+)"/);
-      const filename = match ? match[1] : "F1771e.docx";
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      await saveResponseAsFile(res, "F1771e.docx");
     } catch {
       toast.error("Server unreachable.");
     } finally {
