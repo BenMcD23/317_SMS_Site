@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SizeCombobox } from "@/components/size-combobox";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
 
@@ -37,13 +38,8 @@ export function AddStockDialog({
   // stops overriding them until the item or size changes again.
   const [userOverrode, setUserOverrode] = useState(false);
 
-  const { itemTypes, noSizeItems, sizes } = useReference();
+  const { itemTypes, noSizeItems } = useReference();
   const needsSize = itemType !== "" && !noSizeItems.has(itemType);
-
-  const sizeOptions = useMemo(() => {
-    if (!itemType || noSizeItems.has(itemType)) return [];
-    return sizes[itemType] ?? [];
-  }, [itemType, noSizeItems, sizes]);
 
   const boxOptions = useMemo(() => shelfStructure.boxes.map((b) => b.label), [shelfStructure]);
 
@@ -52,15 +48,16 @@ export function AddStockDialog({
     return shelfStructure.boxes.find((b) => b.label === box)?.sections.map((s) => s.label) ?? [];
   }, [box, shelfStructure]);
 
+  const trimmedSize = size.trim();
   const isValid =
-    itemType !== "" && (!needsSize || size !== "") && quantity >= 1 && box !== "" && section !== "";
+    itemType !== "" && (!needsSize || trimmedSize !== "") && quantity >= 1 && box !== "" && section !== "";
 
   // Auto-suggestion
   useEffect(() => {
-    const readyToSuggest = itemType !== "" && (!needsSize || size !== "");
+    const readyToSuggest = itemType !== "" && (!needsSize || trimmedSize !== "");
     if (!readyToSuggest || userOverrode) return;
 
-    const effectiveSize = needsSize ? size : "N/A";
+    const effectiveSize = needsSize ? trimmedSize : "N/A";
 
     // Priority 1: exact match (same type + size)
     const exact = stock.find((i) => i.itemType === itemType && i.size === effectiveSize);
@@ -98,7 +95,7 @@ export function AddStockDialog({
     setBox("");
     setSection("");
     setSuggestionSource(null);
-  }, [itemType, size, stock, needsSize, userOverrode]);
+  }, [itemType, trimmedSize, stock, needsSize, userOverrode]);
 
   // Reset section if it no longer exists in the selected box
   useEffect(() => {
@@ -159,7 +156,7 @@ export function AddStockDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itemType,
-          size: needsSize ? size : "N/A",
+          size: needsSize ? trimmedSize : "N/A",
           box,
           section,
           quantity,
@@ -185,9 +182,9 @@ export function AddStockDialog({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Item Type</Label>
+            <Label htmlFor="addstock-type">Item Type</Label>
             <Select value={itemType} onValueChange={handleItemTypeChange}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="addstock-type" className="w-full">
                 <SelectValue placeholder="Select item type…" />
               </SelectTrigger>
               <SelectContent>
@@ -202,19 +199,17 @@ export function AddStockDialog({
 
           {needsSize && (
             <div className="space-y-1.5">
-              <Label>Size</Label>
-              <Select value={size} onValueChange={handleSizeChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select size…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sizeOptions.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="addstock-size">Size</Label>
+              {/* Free text, not a catalogue-only list: a stock count has to be able
+                  to record whatever is physically in the box, including sizes the
+                  catalogue doesn't list yet. Orders are the ones restricted. */}
+              <SizeCombobox
+                id="addstock-size"
+                itemType={itemType}
+                value={size}
+                onChange={handleSizeChange}
+                placeholder="e.g. 95/36 or 74"
+              />
             </div>
           )}
 
@@ -232,9 +227,9 @@ export function AddStockDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Box</Label>
+              <Label htmlFor="addstock-box">Box</Label>
               <Select value={box} onValueChange={handleBoxChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="addstock-box" className="w-full">
                   <SelectValue placeholder="Box…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -247,13 +242,13 @@ export function AddStockDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Section</Label>
+              <Label htmlFor="addstock-section">Section</Label>
               <Select
                 value={section}
                 onValueChange={handleSectionChange}
                 disabled={!box || sectionOptions.length === 0}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="addstock-section" className="w-full">
                   <SelectValue placeholder="Section…" />
                 </SelectTrigger>
                 <SelectContent>
