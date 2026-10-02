@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -36,9 +36,13 @@ import {
   RotateCcw,
   Pencil,
   Lock,
+  Clock,
+  CloudUpload,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useBaderUploads, type UploadStatus } from "@/lib/bader-upload";
+import { useConfirm } from "@/components/confirm-dialog";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
 import { EmptyState } from "@/components/empty-state";
 
@@ -103,6 +107,10 @@ function groupMatchesFilter(g: AssessmentGroup, filter: AssessmentFilter) {
   if (filter === "active") return !g.uploaded;
   if (filter === "ready") return g.can_upload && !g.uploaded;
   return g.uploaded;
+}
+
+function uploadKey(cin: number, assessmentType: string) {
+  return `${cin}:${assessmentType}`;
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -363,112 +371,26 @@ function AssessmentPdfRow({
   );
 }
 
-// Logs are surfaced via sonner toasts so they survive the component being
-// replaced by CompletionControl once onUploaded() triggers a data refetch.
+// The upload itself runs in useBaderUploads, so its progress (a toast) and its
+// place in the queue survive this button being replaced once a refetch moves
+// the group to Completed.
 
 function UploadButton({
-  assessmentIds,
   assessmentType,
   canUpload,
   uploaded,
-  token,
-  onUploaded,
+  status,
+  onUpload,
 }: {
-  assessmentIds: number[];
   assessmentType: string;
   canUpload: boolean;
   uploaded: boolean;
-  token: string | null;
-  onUploaded: () => void;
+  status: UploadStatus | undefined;
+  onUpload: () => void;
 }) {
   const { data: session } = useSession();
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(uploaded);
-  const esRef = useRef<EventSource | null>(null);
 
-  const handleUpload = async () => {
-    if (!token) return;
-    setLoading(true);
-
-    const toastId = `upload-${assessmentIds[0]}`;
-    toast.loading("Connecting to SMS…", { id: toastId, duration: Infinity });
-
-    // Each upload runs as its own API job with its own log stream, so the job
-    // has to exist before there is anything to subscribe to. The stream
-    // replays the job's log from the start, so nothing is missed by opening
-    // it after the POST returns.
-    let jobId: string;
-    try {
-      const res = await apiFetch(`${API_BASE}/assessments/upload-to-bader`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ assessment_ids: assessmentIds }),
-      });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(detail?.detail ?? "Upload failed");
-      }
-      ({ job_id: jobId } = await res.json());
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed";
-      setLoading(false);
-      toast.error("Upload failed", { id: toastId, description: msg, duration: 8000 });
-      return;
-    }
-
-    const es = new EventSource(`${API_BASE}/upload-stream/${jobId}?token=${encodeURIComponent(token)}`);
-    esRef.current = es;
-
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "info" || msg.type === "warning" || msg.type === "log") {
-          toast.loading(msg.value, { id: toastId, duration: Infinity });
-        }
-        if (msg.type === "status" && msg.value === "done") {
-          setDone(true);
-          setLoading(false);
-          es.close();
-          toast.success("Upload complete", {
-            id: toastId,
-            description: "Qualification uploaded to Bader SMS.",
-            duration: 6000,
-          });
-          onUploaded();
-        }
-        if (msg.type === "error") {
-          setLoading(false);
-          es.close();
-          toast.error("Upload failed", {
-            id: toastId,
-            description: msg.value,
-            duration: 8000,
-          });
-        }
-      } catch {}
-    };
-    es.onerror = () => {
-      es.close();
-      setLoading(false);
-      toast.error("Upload failed", {
-        id: toastId,
-        description: "Connection to scraper lost.",
-        duration: 8000,
-      });
-    };
-  };
-
-  useEffect(
-    () => () => {
-      esRef.current?.close();
-    },
-    []
-  );
-
-  if (done) {
+  if (uploaded || status === "done") {
     return (
       <Badge variant="outline" className="border-success/40 bg-success/10 text-success gap-1.5">
         <CheckCircle2 className="size-3" /> Uploaded
@@ -490,14 +412,17 @@ function UploadButton({
 
   if (session?.role !== "staff") return null;
 
+  const busy = status === "queued" || status === "uploading";
   return (
-    <Button size="sm" onClick={handleUpload} disabled={loading}>
-      {loading ? (
+    <Button size="sm" onClick={onUpload} disabled={busy}>
+      {status === "uploading" ? (
         <Loader2 className="animate-spin" data-icon="inline-start" />
+      ) : status === "queued" ? (
+        <Clock data-icon="inline-start" />
       ) : (
         <Upload data-icon="inline-start" />
       )}
-      {loading ? "Uploading…" : "Upload to SMS"}
+      {status === "uploading" ? "Uploading…" : status === "queued" ? "Queued" : "Upload to SMS"}
     </Button>
   );
 }
@@ -697,12 +622,16 @@ function AssessmentGroupRow({
   cin,
   group,
   token,
+  uploadStatus,
+  onUpload,
   onUploaded,
   onAssessmentDeleted,
 }: {
   cin: number;
   group: AssessmentGroup;
   token: string | null;
+  uploadStatus: UploadStatus | undefined;
+  onUpload: () => void;
   onUploaded: () => void;
   onAssessmentDeleted: (id: number) => void;
 }) {
@@ -764,14 +693,13 @@ function AssessmentGroupRow({
           ) : (
             <div className="flex flex-wrap items-center justify-end gap-1.5">
               <UploadButton
-                assessmentIds={group.assessments.map((a) => a.id)}
                 assessmentType={group.assessment_type}
                 canUpload={group.can_upload}
                 uploaded={group.uploaded}
-                token={token}
-                onUploaded={onUploaded}
+                status={uploadStatus}
+                onUpload={onUpload}
               />
-              <InfoTooltip text="Starts a background scraper that adds this qualification and uploads the assessment PDFs directly to Bader SMS." />
+              <InfoTooltip text="Starts a background scraper that adds this qualification and uploads the assessment PDFs directly to Bader SMS, then puts in the badge order for it." />
               <CompletionControl
                 cin={cin}
                 assessmentType={group.assessment_type}
@@ -809,11 +737,15 @@ function AssessmentGroupRow({
 function CadetAssessmentCard({
   cadet,
   token,
+  uploadStatuses,
+  onUpload,
   onUploaded,
   onAssessmentDeleted,
 }: {
   cadet: CadetAssessments;
   token: string | null;
+  uploadStatuses: Record<string, UploadStatus>;
+  onUpload: (cadet: CadetAssessments, group: AssessmentGroup) => void;
   onUploaded: () => void;
   onAssessmentDeleted: (id: number) => void;
 }) {
@@ -873,6 +805,8 @@ function CadetAssessmentCard({
             cin={cadet.cin}
             group={group}
             token={token}
+            uploadStatus={uploadStatuses[uploadKey(cadet.cin, group.assessment_type)]}
+            onUpload={() => onUpload(cadet, group)}
             onUploaded={onUploaded}
             onAssessmentDeleted={onAssessmentDeleted}
           />
@@ -892,16 +826,21 @@ export default function AssessmentsOverviewPage() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const token = session?.id_token ?? null;
+  const { confirm, confirmDialog } = useConfirm();
+  const [bulk, setBulk] = useState<{ total: number; finished: number } | null>(null);
 
-  const fetchData = async () => {
+  // `quiet` refreshes after an upload without swapping the list for skeletons —
+  // during "Upload all" that would flash the page once per cadet.
+  const fetchData = async ({ quiet = false } = {}) => {
     if (!token) return;
-    setLoading(true);
+    if (!quiet) setLoading(true);
     try {
       const res = await apiFetch(`${API_BASE}/assessments/overview`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail ?? res.statusText);
       setCadets(await res.json());
+      setError(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -929,6 +868,15 @@ export default function AssessmentsOverviewPage() {
   useEffect(() => {
     fetchData();
   }, [token]);
+
+  const { statuses: uploadStatuses, upload } = useBaderUploads(token, () => fetchData({ quiet: true }));
+
+  const uploadGroup = (cadet: CadetAssessments, group: AssessmentGroup) =>
+    upload(
+      uploadKey(cadet.cin, group.assessment_type),
+      group.assessments.map((a) => a.id),
+      `${typeLabel(group.assessment_type)} for ${cadet.first_name} ${cadet.last_name}`
+    );
 
   const availableTypes = Array.from(new Set(cadets.flatMap((c) => c.groups.map((g) => g.assessment_type))));
 
@@ -959,6 +907,39 @@ export default function AssessmentsOverviewPage() {
   };
 
   const readyTotal = countForFilter("ready");
+
+  // What "Upload all" would send: every ready group currently on screen (so the
+  // search and type filters narrow it) that isn't already queued or running.
+  const pendingUploads = filtered.flatMap((cadet) =>
+    cadet.groups
+      .filter((g) => {
+        const status = uploadStatuses[uploadKey(cadet.cin, g.assessment_type)];
+        return (
+          g.can_upload && !g.uploaded && status !== "queued" && status !== "uploading" && status !== "done"
+        );
+      })
+      .map((group) => ({ cadet, group }))
+  );
+
+  const uploadAll = () => {
+    const batch = pendingUploads;
+    setBulk({ total: batch.length, finished: 0 });
+    let succeeded = 0;
+    Promise.all(
+      batch.map(({ cadet, group }) =>
+        uploadGroup(cadet, group).then((ok) => {
+          if (ok) succeeded++;
+          setBulk((b) => b && { ...b, finished: b.finished + 1 });
+        })
+      )
+    ).then(() => {
+      setBulk(null);
+      const failed = batch.length - succeeded;
+      if (failed)
+        toast.error(`${succeeded} of ${batch.length} uploaded — ${failed} failed`, { duration: 8000 });
+      else toast.success(`All ${batch.length} qualification${batch.length !== 1 ? "s" : ""} uploaded`);
+    });
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
@@ -1039,6 +1020,33 @@ export default function AssessmentsOverviewPage() {
         )}
       </div>
 
+      {!loading && filter === "ready" && session?.role === "staff" && (pendingUploads.length > 0 || bulk) && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-muted-foreground text-sm">
+            {bulk
+              ? `${bulk.finished} of ${bulk.total} finished — up to 3 upload at once, the rest are queued.`
+              : `${pendingUploads.length} qualification${pendingUploads.length !== 1 ? "s" : ""} ready to upload.`}
+          </p>
+          <Button
+            size="sm"
+            disabled={!!bulk || pendingUploads.length === 0}
+            onClick={() =>
+              confirm(
+                `Upload ${pendingUploads.length} qualification${pendingUploads.length !== 1 ? "s" : ""} to Bader SMS and order their badges? Up to 3 run at once; the rest queue.`,
+                uploadAll
+              )
+            }
+          >
+            {bulk ? (
+              <Loader2 className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <CloudUpload data-icon="inline-start" />
+            )}
+            {bulk ? "Uploading…" : `Upload all (${pendingUploads.length})`}
+          </Button>
+        </div>
+      )}
+
       {!loading && filter === "completed" && filtered.length > 0 && (
         <Alert>
           <Info />
@@ -1082,10 +1090,13 @@ export default function AssessmentsOverviewPage() {
             key={cadet.cin}
             cadet={cadet}
             token={token}
-            onUploaded={fetchData}
+            uploadStatuses={uploadStatuses}
+            onUpload={uploadGroup}
+            onUploaded={() => fetchData()}
             onAssessmentDeleted={handleAssessmentDeleted}
           />
         ))}
+      {confirmDialog}
     </div>
   );
 }
