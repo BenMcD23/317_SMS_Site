@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 
 import { reauth } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
+import { type BadgeBreakdown, type BadgeHistoryPoint, withLivePoint } from "@/lib/badge-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,11 +30,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-interface BadgeBreakdown {
-  total_cadets: number;
-  badges: Record<string, Record<string, number>>;
-}
-
 interface CurrentStats {
   total_cadets: number;
   by_flight: Record<string, number>;
@@ -49,12 +45,6 @@ interface CurrentStats {
 interface HistoryPoint {
   date: string;
   data: CurrentStats;
-}
-
-// What a badge card's trend chart needs from a snapshot, whichever cohort.
-interface BadgeHistoryPoint {
-  date: string;
-  data: BadgeBreakdown;
 }
 
 const BADGE_LABELS: Record<string, string> = {
@@ -273,10 +263,8 @@ function BadgeStatCard({
           ))}
         </div>
 
-        {chartData.length < 2 ? (
-          // Keeps the card height stable. The filtered cohort is only recorded in
-          // newer snapshots, so right after ticking the filter there can be too
-          // few points to draw a trend.
+        {chartData.length === 0 ? (
+          // Keeps the card height stable.
           <div className="text-muted-foreground flex h-[90px] items-center justify-center text-xs">
             Not enough history to chart a trend yet
           </div>
@@ -316,7 +304,9 @@ function BadgeStatCard({
                   dataKey={l}
                   stroke={levelColor(l)}
                   strokeWidth={2}
-                  dot={false}
+                  // A lone point has no line to draw, so show it as a dot until
+                  // more history builds up.
+                  dot={chartData.length === 1 ? { r: 3, fill: levelColor(l) } : false}
                   activeDot={{ r: 3 }}
                   strokeDasharray={l === "None" ? "4 3" : undefined}
                 />
@@ -410,10 +400,13 @@ export default function HomePage() {
   }, [session?.error]);
 
   const { data: stats = null } = useApiQuery<CurrentStats>(["stats", "current"], "/stats/current");
-  const { data: history = [], isLoading: loading } = useApiQuery<HistoryPoint[]>(
+  const { data: historyData, isLoading: loading } = useApiQuery<HistoryPoint[]>(
     ["stats", "history"],
     "/stats/history"
   );
+
+  // An error body in place of the list would otherwise crash the badge charts.
+  const history = Array.isArray(historyData) ? historyData : [];
 
   const [excludeJuniors, setExcludeJuniors] = useState(false);
 
@@ -421,9 +414,12 @@ export default function HomePage() {
   const badgeCohort = (excludeJuniors ? stats?.non_junior : stats) ?? { total_cadets: 0, badges: {} };
   // Older snapshots have no non-junior breakdown, so the filtered trend starts
   // from the first one that does rather than plotting zeros.
-  const badgeHistory: BadgeHistoryPoint[] = excludeJuniors
-    ? history.flatMap((h) => (h.data.non_junior ? [{ date: h.date, data: h.data.non_junior }] : []))
-    : history;
+  const badgeHistory: BadgeHistoryPoint[] = withLivePoint(
+    excludeJuniors
+      ? history.flatMap((h) => (h.data.non_junior ? [{ date: h.date, data: h.data.non_junior }] : []))
+      : history,
+    excludeJuniors ? stats?.non_junior : stats
+  );
   const ncoCount = stats
     ? Object.entries(stats.by_rank)
         .filter(([rank]) => rank !== "Cadet" && rank !== "Unknown")
