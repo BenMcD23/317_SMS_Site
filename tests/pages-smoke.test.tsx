@@ -51,10 +51,12 @@ vi.mock("@/lib/reference", async (importOriginal) => {
 });
 
 // Server components, layouts and the login page are out of scope here.
-const PAGES = import.meta.glob<{ default: ComponentType<Record<string, unknown>> }>([
-  "../app/**/page.tsx",
-  "!../app/login/**",
-]);
+// Asserted rather than passed as a type argument: Next 16.3's own `import.meta.glob`
+// typing is non-generic and shadows Vite's.
+const PAGES = import.meta.glob(["../app/**/page.tsx", "!../app/login/**"]) as Record<
+  string,
+  () => Promise<{ default: ComponentType<Record<string, unknown>> }>
+>;
 
 let fetchMode: "pending" | "error";
 
