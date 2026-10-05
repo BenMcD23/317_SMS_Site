@@ -25,7 +25,9 @@ type RouteModule = Record<
   string,
   (req: NextRequest, ctx: { params: Promise<Record<string, string>> }) => Promise<Response>
 >;
-const MODULES = import.meta.glob<RouteModule>("../app/api/**/route.ts");
+// Next 16.3 ships its own non-generic `import.meta.glob` typing that shadows Vite's
+// generic one, so the module shape is asserted here instead of passed as a type argument.
+const MODULES = import.meta.glob("../app/api/**/route.ts") as Record<string, () => Promise<RouteModule>>;
 const load = (route: string) => MODULES[`../app/api/${route}/route.ts`]();
 
 const ROUTES = Object.keys(MODULES)
