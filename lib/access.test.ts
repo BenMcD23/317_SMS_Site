@@ -4,7 +4,7 @@ import { canAccess } from "@/lib/access";
 
 describe("canAccess", () => {
   it("lets staff reach everything", () => {
-    for (const path of ["/", "/stores/uniform/orders", "/assessments/inspection", "/api-logs", "/oc"]) {
+    for (const path of ["/", "/stores/uniform/orders", "/assessments/inspection", "/usage", "/oc"]) {
       expect(canAccess("staff", path)).toBe(true);
     }
   });
