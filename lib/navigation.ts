@@ -10,6 +10,7 @@ import {
   Contact,
   DatabaseBackup,
   DatabaseZap,
+  FileSearch,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -197,6 +198,13 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/tools/ji-ao-generator",
         icon: FileText,
         keywords: ["joining instructions", "admin order"],
+      },
+      // Staff-only: lib/access.ts doesn't list it for NCOs, and the API requires staff.
+      {
+        label: "Docs Assistant",
+        href: "/tools/docs-assistant",
+        icon: FileSearch,
+        keywords: ["ai", "chatbot", "rafac documents", "policy", "acp", "jsp", "sharepoint"],
       },
       {
         kind: "group",
