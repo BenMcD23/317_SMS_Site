@@ -33,7 +33,8 @@ describe("middleware proxy", () => {
   it("runs on pages but never on API routes, Next internals or images", async () => {
     const { config } = await import("@/proxy");
     const matcher = new RegExp(`^${config.matcher[0]}$`);
-    for (const path of ["/", "/cadets", "/api-logs", "/stores/uniform/stock"])
+    // "/api-keys" is no page today — it pins that only "/api/" is excluded, not every "api" prefix.
+    for (const path of ["/", "/cadets", "/usage", "/api-keys", "/stores/uniform/stock"])
       expect(matcher.test(path)).toBe(true);
     for (const path of [
       "/api/status",

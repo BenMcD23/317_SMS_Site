@@ -5,6 +5,7 @@ import {
   Calendar,
   CalendarCheck,
   CalendarOff,
+  ChartNoAxesColumn,
   ClipboardCheck,
   ClipboardList,
   Contact,
@@ -21,7 +22,6 @@ import {
   Package,
   Radio,
   ReceiptText,
-  ScrollText,
   Shirt,
   ShieldCheck,
   ShieldUser,
@@ -232,7 +232,13 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap, keywords: ["sync", "import"] },
       { label: "Backups", href: "/backups", icon: DatabaseBackup, ownerOnly: true },
-      { label: "API Logs", href: "/api-logs", icon: ScrollText, ownerOnly: true },
+      {
+        label: "Usage",
+        href: "/usage",
+        icon: ChartNoAxesColumn,
+        ownerOnly: true,
+        keywords: ["analytics", "stats"],
+      },
     ],
   },
 ];

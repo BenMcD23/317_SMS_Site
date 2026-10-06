@@ -41,6 +41,6 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
 
 export const config = {
   // Note: `api/` (with slash) so real /api/* routes (NextAuth) are excluded,
-  // but app pages like /api-logs are still covered by the auth middleware.
+  // but a page whose path merely starts with "api" (say /api-keys) is still covered by the auth middleware.
   matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
 };
