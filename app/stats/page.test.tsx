@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import StatsPage from "@/app/stats/page";
@@ -123,7 +123,7 @@ describe("time range", () => {
     await renderStats();
     expect(requested(fetch, "/stats/history?days=182")).toBe(true);
     expect(requested(fetch, "/stats/awards?days=182")).toBe(true);
-    expect(screen.getByRole("radio", { name: "Last 6M" }).getAttribute("data-state")).toBe("on");
+    expect(screen.getByRole("radio", { name: "Last 6 months" }).getAttribute("data-state")).toBe("on");
   });
 
   it("asks for all history with no window", async () => {
@@ -141,15 +141,143 @@ describe("time range", () => {
   it("choosing a range puts it in the URL", async () => {
     stubApi();
     await renderStats();
-    await act(async () => screen.getByRole("radio", { name: "Last 1Y" }).click());
+    await act(async () => screen.getByRole("radio", { name: "Last year" }).click());
     expect(lastUrl()).toBe("/stats?range=1y");
   });
 
   it("choosing the default range clears it from the URL, keeping other filters", async () => {
     stubApi();
     await renderStats("range=1y&juniors=0");
-    await act(async () => screen.getByRole("radio", { name: "Last 6M" }).click());
+    await act(async () => screen.getByRole("radio", { name: "Last 6 months" }).click());
     expect(lastUrl()).toBe("/stats?juniors=0");
+  });
+});
+
+describe("2 week and 1 month ranges", () => {
+  it.each([
+    ["Last 2 weeks", "range=2w", "days=14"],
+    ["Last month", "range=1m", "days=30"],
+  ])("%s toggles into the URL and asks the API for %s", async (name, url, query) => {
+    const fetch = stubApi();
+    await renderStats();
+    await act(async () => screen.getByRole("radio", { name }).click());
+    expect(lastUrl()).toBe(`/stats?${url}`);
+
+    await renderStats(url);
+    expect(requested(fetch, `/stats/history?${query}`)).toBe(true);
+    expect(requested(fetch, `/stats/awards?${query}`)).toBe(true);
+  });
+});
+
+describe("time range picker", () => {
+  async function openPicker() {
+    await act(async () => screen.getByRole("button", { name: /^Time range:/ }).click());
+  }
+  const typeDate = (label: string, value: string) =>
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+
+  it("names the current range on its button", async () => {
+    stubApi();
+    await renderStats("range=1m");
+    expect(screen.getByRole("button", { name: "Time range: Last month" })).toBeTruthy();
+  });
+
+  it("applies a from/to range, replacing the preset in the URL", async () => {
+    stubApi();
+    await renderStats("range=1y&juniors=0");
+    await openPicker();
+    typeDate("From", "2026-03-01");
+    typeDate("To", "2026-04-15");
+    await act(async () => screen.getByRole("button", { name: "Apply time range" }).click());
+    expect(lastUrl()).toBe("/stats?juniors=0&from=2026-03-01&to=2026-04-15");
+  });
+
+  it("won't apply a range that ends before it starts, and says why", async () => {
+    stubApi();
+    await renderStats();
+    await openPicker();
+    typeDate("From", "2026-05-01");
+    typeDate("To", "2026-04-01");
+    expect(screen.getByRole("alert").textContent).toBe("From must be on or before To");
+    expect(screen.getByRole("button", { name: "Apply time range" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("won't apply with a date missing", async () => {
+    stubApi();
+    await renderStats();
+    await openPicker();
+    // To starts as today; From is empty until picked.
+    expect(screen.getByRole("button", { name: "Apply time range" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("opens on the custom range being shown, so one end can be nudged", async () => {
+    stubApi();
+    await renderStats("from=2026-03-01&to=2026-04-15");
+    await openPicker();
+    expect((screen.getByLabelText("From") as HTMLInputElement).value).toBe("2026-03-01");
+    expect((screen.getByLabelText("To") as HTMLInputElement).value).toBe("2026-04-15");
+  });
+
+  it("a quick range from the picker clears a custom one", async () => {
+    stubApi();
+    await renderStats("from=2026-03-01&to=2026-04-15&flight=A");
+    await openPicker();
+    await act(async () =>
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Last 2 weeks" }).click()
+    );
+    expect(lastUrl()).toBe("/stats?flight=A&range=2w");
+  });
+
+  it("a custom range asks the API for those dates, and no preset toggle is pressed", async () => {
+    const fetch = stubApi();
+    await renderStats("from=2026-03-01&to=2026-04-15");
+    expect(requested(fetch, "/stats/history?start=2026-03-01&end=2026-04-15")).toBe(true);
+    expect(requested(fetch, "/stats/awards?start=2026-03-01&end=2026-04-15")).toBe(true);
+    for (const radio of screen.getAllByRole("radio")) expect(radio.getAttribute("data-state")).toBe("off");
+    expect(screen.getByRole("button", { name: "Time range: 1 Mar 2026 – 15 Apr 2026" })).toBeTruthy();
+  });
+
+  it("a past range shows its last snapshot, not today's numbers", async () => {
+    stubApi({
+      "/stats/history": [
+        [
+          {
+            date: "2026-03-05T19:00:00",
+            data: { ...current, badges: breakdown(10).badges, total_cadets: 10 },
+          },
+          {
+            date: "2026-04-10T19:00:00",
+            data: { ...current, badges: breakdown(14).badges, total_cadets: 14 },
+          },
+        ],
+      ],
+    });
+    await renderStats("from=2026-03-01&to=2026-04-15");
+    // Live is 19/20; the range ended at 13/14.
+    expect(screen.getByText("13/14")).toBeTruthy();
+    expect(screen.queryByText("19/20")).toBeNull();
+    expect(screen.getByText("+4 between 1 Mar 2026 and 15 Apr 2026")).toBeTruthy();
+  });
+
+  it("a range reaching today still ends on the live numbers", async () => {
+    stubApi({ "/stats/history": [[{ date: "2026-09-05T19:00:00", data: current }]] });
+    await renderStats("from=2026-09-01&to=2026-10-02");
+    expect(screen.getByText("19/20")).toBeTruthy();
+  });
+
+  it("a past range with no snapshots says so instead of showing blank charts", async () => {
+    stubApi();
+    await renderStats("from=2025-01-01&to=2025-02-01");
+    expect(screen.getByRole("status").textContent).toContain(
+      "No snapshots were taken between 1 Jan 2025 and 1 Feb 2025"
+    );
+  });
+
+  it("a half-written custom range in the URL falls back to the preset", async () => {
+    const fetch = stubApi();
+    await renderStats("range=1m&from=2026-03-01");
+    expect(requested(fetch, "/stats/history?days=30")).toBe(true);
   });
 });
 
@@ -167,7 +295,7 @@ describe("filters", () => {
     stubApi();
     await renderStats();
     screen.getByRole("checkbox", { name: "Exclude junior cadets" }).click();
-    screen.getByRole("radio", { name: "Last 1Y" }).click();
+    screen.getByRole("radio", { name: "Last year" }).click();
     expect(lastUrl()).toBe("/stats?juniors=0&range=1y");
   });
 
@@ -278,7 +406,7 @@ describe("lists", () => {
   it("says when the range had no awards", async () => {
     stubApi({ "/stats/awards": [[]] });
     await renderStats("range=3m");
-    expect(screen.getByText("No badges gained in the last 3M.")).toBeTruthy();
+    expect(screen.getByText("No badges gained in the last 3 months.")).toBeTruthy();
   });
 });
 
@@ -296,7 +424,7 @@ describe("failures", () => {
   it("a failed current-stats load leaves the filters usable", async () => {
     stubApi({ "/stats/current": [{ detail: "boom" }, 500] });
     await renderStats();
-    expect(screen.getByRole("radiogroup", { name: "Time range" })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Quick time range" })).toBeTruthy();
     expect(screen.queryByText("Cadets on strength")).toBeNull();
   });
 });
