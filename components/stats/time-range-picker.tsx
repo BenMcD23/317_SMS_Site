@@ -20,10 +20,12 @@ export function TimeRangePicker({
   value,
   onQuick,
   onAbsolute,
+  className,
 }: {
   value: TimeRange;
   onQuick: (id: QuickRangeId) => void;
   onAbsolute: (from: string, to: string) => void;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const today = todayLocal();
@@ -43,7 +45,12 @@ export function TimeRangePicker({
   return (
     <Popover open={open} onOpenChange={openWith}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" aria-label={`Time range: ${rangeLabel(value)}`}>
+        <Button
+          variant="outline"
+          size="sm"
+          className={className}
+          aria-label={`Time range: ${rangeLabel(value)}`}
+        >
           <CalendarRange />
           <span className="max-w-[16rem] truncate">{rangeLabel(value)}</span>
           <ChevronDown className="opacity-60" />

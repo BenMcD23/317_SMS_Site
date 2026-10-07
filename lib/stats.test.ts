@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import type { BadgeHistoryPoint } from "@/lib/badge-history";
 import {
+  addDays,
   badgeHistoryFor,
+  describeTarget,
+  dragRange,
+  rangeBounds,
+  shiftRange,
+  type StatsTarget,
+  targetOutlook,
+  targetPct,
+  targetSeries,
+  zoomOutRange,
   cohortOf,
   flightColor,
   heldDelta,
@@ -268,5 +278,135 @@ describe("time ranges", () => {
     expect(rangeIncludesToday({ kind: "quick", id: "2w" }, NOW)).toBe(true);
     expect(rangeIncludesToday({ kind: "absolute", from: "2026-01-01", to: "2026-10-07" }, NOW)).toBe(true);
     expect(rangeIncludesToday({ kind: "absolute", from: "2026-01-01", to: "2026-10-06" }, NOW)).toBe(false);
+  });
+});
+
+describe("addDays", () => {
+  it("counts calendar days across month ends and clock changes", () => {
+    expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
+    // The clocks go back on 25 Oct 2026; a 24-hour step would land on the same day.
+    expect(addDays("2026-10-24", 1)).toBe("2026-10-25");
+    expect(addDays("2026-10-25", 1)).toBe("2026-10-26");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+  });
+});
+
+describe("stepping and zooming the range", () => {
+  const abs = (from: string, to: string) => ({ kind: "absolute", from, to }) as const;
+
+  it("reads a preset as the days it covers, ending today", () => {
+    expect(rangeBounds({ kind: "quick", id: "2w" }, NOW)).toEqual({ from: "2026-09-23", to: "2026-10-07" });
+    expect(rangeBounds({ kind: "quick", id: "all" }, NOW)).toBeNull();
+  });
+
+  it("steps back by the range's own length", () => {
+    expect(shiftRange(abs("2026-03-01", "2026-03-31"), -1, NOW)).toEqual(abs("2026-01-29", "2026-02-28"));
+    // A preset steps back into a custom range of the same length.
+    expect(shiftRange({ kind: "quick", id: "2w" }, -1, NOW)).toEqual(abs("2026-09-08", "2026-09-22"));
+  });
+
+  it("steps forward, stopping at today", () => {
+    expect(shiftRange(abs("2026-03-01", "2026-03-31"), 1, NOW)).toEqual(abs("2026-04-01", "2026-05-01"));
+    expect(shiftRange(abs("2026-09-20", "2026-09-30"), 1, NOW)).toEqual(abs("2026-09-27", "2026-10-07"));
+  });
+
+  it("can't step past today or move 'All time'", () => {
+    expect(shiftRange({ kind: "quick", id: "1m" }, 1, NOW)).toBeNull();
+    expect(shiftRange(abs("2026-09-01", "2026-10-07"), 1, NOW)).toBeNull();
+    expect(shiftRange({ kind: "quick", id: "all" }, -1, NOW)).toBeNull();
+  });
+
+  it("zooms out to twice the length around the same middle", () => {
+    expect(zoomOutRange(abs("2026-03-10", "2026-03-19"), NOW)).toEqual(abs("2026-03-05", "2026-03-24"));
+  });
+
+  it("zooming out near today pushes the extra days into the past", () => {
+    expect(zoomOutRange(abs("2026-09-28", "2026-10-07"), NOW)).toEqual(abs("2026-09-18", "2026-10-07"));
+    expect(zoomOutRange({ kind: "quick", id: "all" }, NOW)).toBeNull();
+  });
+
+  it("turns a drag either way into a range, and a click into nothing", () => {
+    expect(dragRange("2026-05-01T19:00:00", "2026-03-01")).toEqual(abs("2026-03-01", "2026-05-01"));
+    expect(dragRange("2026-05-01T19:00:00", "2026-05-01T21:00:00")).toBeNull();
+  });
+});
+
+const target = (over: Partial<StatsTarget> = {}): StatsTarget => ({
+  id: 1,
+  badge: "first_aid",
+  min_level: "Bronze",
+  flight: null,
+  exclude_juniors: false,
+  target_pct: 50,
+  due: "2027-01-01",
+  levels: ["Bronze", "Silver", "Gold"],
+  created_by: null,
+  ...over,
+});
+
+describe("targets", () => {
+  const cohort = { total_cadets: 10, badges: { first_aid: { None: 4, Blue: 2, Bronze: 3, Gold: 1 } } };
+
+  it("counts only the levels that meet the target", () => {
+    expect(targetPct(cohort, "first_aid", ["Bronze", "Silver", "Gold"])).toBe(40);
+    expect(targetPct({ total_cadets: 0, badges: {} }, "first_aid", ["Gold"])).toBeNull();
+    expect(targetPct(undefined, "first_aid", ["Gold"])).toBeNull();
+  });
+
+  it("follows the target's cohort through history, skipping snapshots without it", () => {
+    const history: StatsPoint[] = [
+      { date: "2026-08-01T19:00:00", data: stats({ flights: undefined }) },
+      { date: "2026-09-01T19:00:00", data: stats() },
+    ];
+    const series = targetSeries(history, stats(), target({ flight: "A", levels: ["Blue"] }), NOW);
+    expect(series).toEqual([
+      { date: "2026-09-01", pct: 66.7 },
+      { date: "2026-10-07", pct: 66.7 },
+    ]);
+  });
+
+  const line = (...pcts: number[]) => pcts.map((pct, i) => ({ date: addDays("2026-01-01", i * 7), pct }));
+
+  it("says a target is met once the latest point reaches it", () => {
+    expect(targetOutlook(line(10, 50), target())).toEqual({ status: "met" });
+  });
+
+  it("won't project from less than a fortnight of history", () => {
+    expect(targetOutlook(line(10), target())).toEqual({ status: "unknown" });
+    expect(
+      targetOutlook(
+        [
+          { date: "2026-01-01", pct: 10 },
+          { date: "2026-01-05", pct: 20 },
+        ],
+        target()
+      )
+    ).toEqual({
+      status: "unknown",
+    });
+  });
+
+  it("projects when a steady rise reaches the goal", () => {
+    // +5 points a week from 10%: 50% is 8 weeks in, five weeks after the last point.
+    expect(targetOutlook(line(10, 15, 20, 25), target())).toEqual({
+      status: "on-track",
+      projectedDate: "2026-02-26",
+    });
+    expect(targetOutlook(line(10, 15, 20, 25), target({ due: "2026-02-01" }))).toEqual({
+      status: "behind",
+      projectedDate: "2026-02-26",
+    });
+  });
+
+  it("is behind with no date when the trend is flat or falling", () => {
+    expect(targetOutlook(line(30, 30, 30), target())).toEqual({ status: "behind", projectedDate: null });
+    expect(targetOutlook(line(40, 30, 20), target())).toEqual({ status: "behind", projectedDate: null });
+  });
+
+  it("describes a target in words", () => {
+    expect(describeTarget(target({ flight: "A", exclude_juniors: true, target_pct: 80 }))).toBe(
+      "80% of non-juniors in A Flight with Bronze or better First Aid by 1 Jan 2027"
+    );
+    expect(describeTarget(target({ min_level: null }))).toBe("50% of cadets with First Aid by 1 Jan 2027");
   });
 });

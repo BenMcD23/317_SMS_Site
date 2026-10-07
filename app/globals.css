@@ -183,3 +183,10 @@
 .print-only {
   display: none;
 }
+
+/* Recharts makes each chart focusable for keyboard users; keep its outline for
+   keyboard focus only, not for every click or drag-to-zoom. */
+.recharts-surface:focus:not(:focus-visible),
+.recharts-wrapper:focus:not(:focus-visible) {
+  outline: none;
+}

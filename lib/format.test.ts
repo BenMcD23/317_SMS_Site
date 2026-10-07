@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatShortDate, formatTimestamp } from "@/lib/format";
+import { formatDate, formatMonth, formatShortDate, formatTimestamp } from "@/lib/format";
 
 describe("formatDate", () => {
   it("formats an ISO date the British way", () => {
@@ -46,5 +46,12 @@ describe("todayLocal", () => {
     // In winter London is on UTC.
     expect(todayLocal(new Date("2026-01-05T23:30:00Z"))).toBe("2026-01-05");
     expect(todayLocal(new Date(2026, 0, 9))).toBe("2026-01-09");
+  });
+});
+
+describe("formatMonth", () => {
+  it("names an intake month", () => {
+    expect(formatMonth("2026-09")).toBe("Sept 2026");
+    expect(formatMonth("2027-01")).toBe("Jan 2027");
   });
 });
