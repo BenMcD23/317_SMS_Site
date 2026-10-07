@@ -17,6 +17,12 @@ export function formatShortDate(iso: string | null | undefined, fallback = "—"
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+/** "Sept 2026" from "2026-09" — the month a cadet intake joined. */
+export function formatMonth(yearMonth: string): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+}
+
 /** "05 Jan 2026, 19:30" — used on order timelines. */
 export function formatTimestamp(ts: string): string {
   return new Date(ts).toLocaleString("en-AU", {

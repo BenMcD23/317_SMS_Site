@@ -80,12 +80,21 @@ const OK: Routes = {
   "/stats/history": [[]],
   "/stats/awards": [awards],
   "/stats/expiring": [expiring],
+  "/stats/funnel": [{ total: 0, steps: [] }],
+  "/stats/retention": [[]],
+  "/stats/targets": [[]],
+  "/stats/badge-levels": [{ first_aid: ["Blue", "Bronze", "Silver", "Gold"] }],
 };
 
+// Keys are a path ("GET" implied) or "METHOD /path".
 function stubApi(over: Routes = {}) {
   const routes = { ...OK, ...over };
-  const fetch = vi.fn((url: string) => {
-    const hit = Object.entries(routes).find(([path]) => String(url).includes(path));
+  const fetch = vi.fn((url: string, init?: RequestInit) => {
+    const method = init?.method ?? "GET";
+    const hit = Object.entries(routes).find(([key]) => {
+      const [m, path] = key.includes(" ") ? key.split(" ") : ["GET", key];
+      return m === method && String(url).includes(path);
+    });
     const [body, status] = hit?.[1] ?? [{ detail: "not stubbed" }, 404];
     return Promise.resolve(new Response(JSON.stringify(body), { status: status ?? 200 }));
   });
@@ -111,6 +120,16 @@ const requested = (fetch: ReturnType<typeof stubApi>, path: string) =>
   fetch.mock.calls.some(([url]) => String(url).includes(path));
 
 beforeEach(() => {
+  SESSION.data.role = "nco";
+  // Radix's checkbox measures itself; jsdom has no ResizeObserver.
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
   vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 9, 2, 20, 0) });
 });
 afterEach(() => {
@@ -426,5 +445,312 @@ describe("failures", () => {
     await renderStats();
     expect(screen.getByRole("radiogroup", { name: "Quick time range" })).toBeTruthy();
     expect(screen.queryByText("Cadets on strength")).toBeNull();
+  });
+});
+
+describe("stepping and zooming the range", () => {
+  it("steps a preset back into the same-length range before it", async () => {
+    stubApi();
+    await renderStats("range=1m");
+    await act(async () => screen.getByRole("button", { name: "Earlier time range" }).click());
+    // Last month is 2 Sept–2 Oct (31 days); the one before ends the day before.
+    expect(lastUrl()).toBe("/stats?from=2026-08-02&to=2026-09-01");
+  });
+
+  it("steps forward from a past range, and can't step past today", async () => {
+    stubApi();
+    await renderStats("from=2026-08-02&to=2026-09-01");
+    await act(async () => screen.getByRole("button", { name: "Later time range" }).click());
+    expect(lastUrl()).toBe("/stats?from=2026-09-02&to=2026-10-02");
+
+    await renderStats("range=1m");
+    expect(screen.getAllByRole("button", { name: "Later time range" }).at(-1)!.hasAttribute("disabled")).toBe(
+      true
+    );
+  });
+
+  it("zooms out to twice the length", async () => {
+    stubApi();
+    await renderStats("from=2026-03-10&to=2026-03-19");
+    await act(async () => screen.getByRole("button", { name: "Zoom out" }).click());
+    expect(lastUrl()).toBe("/stats?from=2026-03-05&to=2026-03-24");
+  });
+
+  it("all time has nowhere to step or zoom", async () => {
+    stubApi();
+    await renderStats("range=all");
+    for (const name of ["Earlier time range", "Later time range", "Zoom out"])
+      expect(screen.getByRole("button", { name }).hasAttribute("disabled")).toBe(true);
+  });
+});
+
+const drillBody = {
+  as_of: null,
+  cadets: [
+    {
+      cin: 7,
+      name: "Zoë Ó Briain",
+      flight: "A",
+      rank: "Cpl",
+      classification: "Leading Cadet",
+      junior: false,
+      level: "Heartstart",
+    },
+  ],
+};
+
+describe("click-through to cadets", () => {
+  it("clicking a badge level lists those cadets, following the page's filters", async () => {
+    const fetch = stubApi({ "/stats/cadets": [drillBody] });
+    await renderStats("flight=A&juniors=0");
+    await act(async () => screen.getByRole("button", { name: "Heartstart: 4 — show these cadets" }).click());
+    for (let i = 0; i < 3; i++) await act(async () => void (await new Promise((r) => setTimeout(r, 0))));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Heartstart First Aid")).toBeTruthy();
+    expect(within(dialog).getByText("Zoë Ó Briain")).toBeTruthy();
+    expect(
+      requested(fetch, "/stats/cadets?badge=first_aid&level=Heartstart&flight=A&exclude_juniors=true")
+    ).toBe(true);
+  });
+
+  it("a past range lists cadets as they stood at its end", async () => {
+    const fetch = stubApi({
+      "/stats/cadets": [{ ...drillBody, as_of: "2026-04-12T21:00:00" }],
+      "/stats/history": [[{ date: "2026-04-12T21:00:00", data: current }]],
+    });
+    await renderStats("from=2026-03-01&to=2026-04-15");
+    await act(async () => screen.getByRole("button", { name: "Heartstart: 19 — show these cadets" }).click());
+    for (let i = 0; i < 3; i++) await act(async () => void (await new Promise((r) => setTimeout(r, 0))));
+    expect(requested(fetch, "&on=2026-04-15")).toBe(true);
+    expect(screen.getByText(/As of the snapshot taken 12 Apr 2026/)).toBeTruthy();
+  });
+
+  it("explains when there's no per-cadet history that far back", async () => {
+    stubApi({
+      "/stats/cadets": [{ detail: "No per-cadet snapshot on or before that day" }, 404],
+      "/stats/history": [[{ date: "2026-04-12T21:00:00", data: current }]],
+    });
+    await renderStats("from=2026-03-01&to=2026-04-15");
+    await act(async () => screen.getByRole("button", { name: "Heartstart: 19 — show these cadets" }).click());
+    for (let i = 0; i < 3; i++) await act(async () => void (await new Promise((r) => setTimeout(r, 0))));
+    expect(screen.getByRole("alert").textContent).toContain("no per-cadet history from that far back");
+  });
+
+  it.each([
+    ["staff", true],
+    ["nco", false],
+  ])("%s %s link through to cadet records", async (role, links) => {
+    SESSION.data.role = role;
+    stubApi({ "/stats/cadets": [drillBody] });
+    await renderStats();
+    await act(async () => screen.getByRole("button", { name: "Heartstart: 19 — show these cadets" }).click());
+    for (let i = 0; i < 3; i++) await act(async () => void (await new Promise((r) => setTimeout(r, 0))));
+    expect(!!within(screen.getByRole("dialog")).queryByRole("link", { name: "Zoë Ó Briain" })).toBe(links);
+  });
+});
+
+const funnel = {
+  total: 20,
+  steps: [
+    {
+      name: "Junior Cadet",
+      reached: 20,
+      pct_of_previous: null,
+      median_days_from_previous: null,
+      timed_cadets: 0,
+    },
+    {
+      name: "First Class Cadet",
+      reached: 9,
+      pct_of_previous: 45,
+      median_days_from_previous: 70,
+      timed_cadets: 3,
+    },
+    {
+      name: "Leading Cadet",
+      reached: 0,
+      pct_of_previous: 0,
+      median_days_from_previous: null,
+      timed_cadets: 0,
+    },
+  ],
+};
+
+describe("classification funnel", () => {
+  it("shows each step's count, share of the step before, and typical time", async () => {
+    stubApi({ "/stats/funnel": [funnel] });
+    await renderStats();
+    expect(screen.getByText("45% of the step before · typically 10 weeks (3 timed)")).toBeTruthy();
+  });
+
+  it("follows the flight filter", async () => {
+    const fetch = stubApi({ "/stats/funnel": [funnel] });
+    await renderStats("flight=B");
+    expect(requested(fetch, "/stats/funnel?flight=B")).toBe(true);
+  });
+
+  it("clicking a step lists everyone who reached it", async () => {
+    const fetch = stubApi({ "/stats/funnel": [funnel], "/stats/cadets": [drillBody] });
+    await renderStats();
+    // Nobody to list for an empty step.
+    expect(
+      screen
+        .getByRole("button", { name: "Leading Cadet: 0 reached — show these cadets" })
+        .hasAttribute("disabled")
+    ).toBe(true);
+    await act(async () =>
+      screen.getByRole("button", { name: "First Class Cadet: 9 reached — show these cadets" }).click()
+    );
+    expect(requested(fetch, "/stats/cadets?min_classification=First+Class+Cadet")).toBe(true);
+  });
+
+  it("an error body doesn't crash the page", async () => {
+    stubApi({ "/stats/funnel": [{ detail: "boom" }, 500] });
+    await renderStats();
+    expect(screen.getByText("Classification funnel")).toBeTruthy();
+  });
+});
+
+describe("intake retention", () => {
+  it("shows each intake with shares still coming, and dashes until a mark is reached", async () => {
+    stubApi({
+      "/stats/retention": [[{ intake: "2026-04", joined: 4, still_on_strength: 3, "6m": 3, "12m": null }]],
+    });
+    await renderStats();
+    const row = screen.getByText("Apr 2026").closest("tr")!;
+    expect(
+      within(row)
+        .getAllByRole("cell")
+        .map((c) => c.textContent)
+    ).toEqual(["Apr 2026", "4", "3 (75%)", "—", "3 (75%)"]);
+  });
+
+  it("explains an empty history", async () => {
+    stubApi();
+    await renderStats();
+    expect(screen.getByText(/No intakes yet/)).toBeTruthy();
+  });
+});
+
+const targetRow = {
+  id: 3,
+  badge: "first_aid",
+  min_level: null,
+  flight: null,
+  exclude_juniors: false,
+  target_pct: 50,
+  due: "2027-07-01",
+  levels: ["Heartstart"],
+  created_by: "staff@317atc.co.uk",
+};
+
+describe("targets", () => {
+  it("NCOs see targets but can't add or delete them", async () => {
+    stubApi({ "/stats/targets": [[targetRow]] });
+    await renderStats();
+    expect(screen.getByText("50% of cadets with First Aid by 1 Jul 2027")).toBeTruthy();
+    // 19 of 20 hold it: met.
+    expect(screen.getByText("Target met")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add target" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Delete target/ })).toBeNull();
+  });
+
+  it("NCOs don't see an empty targets section at all", async () => {
+    stubApi();
+    await renderStats();
+    expect(screen.queryByText("Targets")).toBeNull();
+  });
+
+  it("staff add a target", async () => {
+    SESSION.data.role = "staff";
+    const fetch = stubApi({ "POST /stats/targets": [targetRow, 201] });
+    await renderStats();
+    await act(async () => screen.getByRole("button", { name: "Add target" }).click());
+    fireEvent.change(screen.getByLabelText("Target %"), { target: { value: "75" } });
+    fireEvent.change(screen.getByLabelText("By"), { target: { value: "2027-07-01" } });
+    await act(async () =>
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add target" }).click()
+    );
+    const post = fetch.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === "POST");
+    expect(JSON.parse(String((post![1] as RequestInit).body))).toEqual({
+      badge: "first_aid",
+      min_level: null,
+      flight: null,
+      exclude_juniors: true,
+      target_pct: 75,
+      due: "2027-07-01",
+    });
+  });
+
+  it("won't submit a target outside 1–100%", async () => {
+    SESSION.data.role = "staff";
+    stubApi();
+    await renderStats();
+    await act(async () => screen.getByRole("button", { name: "Add target" }).click());
+    fireEvent.change(screen.getByLabelText("Target %"), { target: { value: "150" } });
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("alert").textContent).toBe("Target must be 1–100%");
+    expect(within(dialog).getByRole("button", { name: "Add target" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("staff delete a target after confirming", async () => {
+    SESSION.data.role = "staff";
+    const fetch = stubApi({ "/stats/targets": [[targetRow]], "DELETE /stats/targets/3": [null, 204] });
+    await renderStats();
+    await act(async () =>
+      screen
+        .getByRole("button", { name: "Delete target: 50% of cadets with First Aid by 1 Jul 2027" })
+        .click()
+    );
+    expect(fetch.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === "DELETE")).toBe(
+      false
+    );
+    await act(async () =>
+      within(screen.getByRole("dialog"))
+        .getByRole("button", { name: /confirm|delete|yes/i })
+        .click()
+    );
+    expect(
+      fetch.mock.calls.some(
+        ([url, init]) => String(url).endsWith("/stats/targets/3") && (init as RequestInit).method === "DELETE"
+      )
+    ).toBe(true);
+  });
+});
+
+describe("CSV downloads", () => {
+  it.each([
+    ["Download strength as CSV", "strength-over-time.csv"],
+    ["Download badges gained as CSV", "badges-gained.csv"],
+    ["Download expiring qualifications as CSV", "expiring-qualifications.csv"],
+    ["Download badge progression as CSV", "badge-progression.csv"],
+    ["Download badges at a glance as CSV", "badges-at-a-glance.csv"],
+  ])("%s saves %s", async (label, filename) => {
+    stubApi();
+    await renderStats();
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:x");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    let saved = "";
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      saved = this.download;
+    });
+    screen.getByRole("button", { name: label }).click();
+    expect(saved).toBe(filename);
+  });
+
+  it("the badges gained CSV follows the filters", async () => {
+    stubApi();
+    await renderStats("flight=B");
+    let blob: Blob | undefined;
+    vi.spyOn(URL, "createObjectURL").mockImplementation((b) => {
+      blob = b as Blob;
+      return "blob:x";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    screen.getByRole("button", { name: "Download badges gained as CSV" }).click();
+    const text = await blob!.text();
+    expect(text).toContain("Ben Bravo");
+    expect(text).not.toContain("Ann Alpha");
   });
 });

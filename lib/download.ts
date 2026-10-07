@@ -29,11 +29,38 @@ export function filenameFromDisposition(header: string | null | undefined, fallb
  */
 export async function saveResponseAsFile(res: Response, fallbackName: string): Promise<string> {
   const filename = filenameFromDisposition(res.headers.get("Content-Disposition"), fallbackName);
-  const url = URL.createObjectURL(await res.blob());
+  saveBlob(await res.blob(), filename);
+  return filename;
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
-  return filename;
+}
+
+/**
+ * Rows as CSV, columns in the order first seen across the rows. Every cell is
+ * quoted when it holds a comma, quote or line break, and a leading =, +, - or
+ * @ is defused so a cadet's name can't run as a spreadsheet formula.
+ */
+export function toCsv(rows: Record<string, unknown>[]): string {
+  const columns = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+  const cell = (v: unknown) => {
+    let text = v === null || v === undefined ? "" : String(v);
+    if (/^[=+\-@]/.test(text) && typeof v !== "number") text = `'${text}`;
+    return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return [columns, ...rows.map((r) => columns.map((c) => r[c]))]
+    .map((line) => line.map(cell).join(","))
+    .join("\r\n");
+}
+
+/** Save rows as a .csv the user can open in Excel. The BOM makes Excel read it
+ *  as UTF-8, or "Zoë" arrives as "ZoÃ«". */
+export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+  saveBlob(new Blob(["\uFEFF" + toCsv(rows)], { type: "text/csv;charset=utf-8" }), filename);
 }

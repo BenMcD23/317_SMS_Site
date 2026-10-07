@@ -1,24 +1,28 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
+import { CsvButton } from "@/components/stats/csv-button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { BadgeHistoryPoint } from "@/lib/badge-history";
 import { formatShortDate } from "@/lib/format";
 import {
   BADGE_LABELS,
   countKey,
+  dragRange,
   flightColor,
   flightLabel,
   heldCount,
@@ -27,6 +31,7 @@ import {
   levelDeltas,
   levelShares,
   trendLevels,
+  type TimeRange,
 } from "@/lib/stats";
 
 /**
@@ -94,6 +99,65 @@ export function shareValue(entry: TooltipEntry, key: string): string {
   return `${entry.value}% (${entry.payload?.[countKey(key)] ?? 0})`;
 }
 
+/** Opens the list of cadets behind a number: the query for /stats/cadets and a title. */
+export type DrillDown = (query: Record<string, string>, title: string) => void;
+
+/**
+ * Grafana's drag-to-zoom: press on a chart, drag across, let go, and that
+ * stretch becomes the page's time range. A press without a drag is just a
+ * click, so tooltips and click-throughs keep working.
+ */
+function useDragZoom(onZoom?: (range: TimeRange) => void) {
+  // Refs, not state, for the drag itself: Recharts can hold on to the handlers
+  // from an earlier render, which would see a stale start and never zoom.
+  const drag = useRef<{ start: string | null; end: string | null }>({ start: null, end: null });
+  const zoom = useRef(onZoom);
+  useEffect(() => {
+    zoom.current = onZoom;
+  }, [onZoom]);
+  const [area, setArea] = useState<[string, string] | null>(null);
+  if (!onZoom) return { handlers: {}, area: null };
+  const label = (state: unknown) => {
+    const l = (state as { activeLabel?: unknown } | null)?.activeLabel;
+    return l === undefined || l === null ? null : String(l);
+  };
+  const reset = () => {
+    drag.current = { start: null, end: null };
+    setArea(null);
+  };
+  return {
+    handlers: {
+      onMouseDown: (state: unknown) => {
+        drag.current = { start: label(state), end: null };
+      },
+      onMouseMove: (state: unknown) => {
+        const { start } = drag.current;
+        const end = label(state);
+        if (!start || !end) return;
+        drag.current.end = end;
+        setArea(start === end ? null : [start, end]);
+      },
+      onMouseUp: () => {
+        const { start, end } = drag.current;
+        reset();
+        const range = start && end ? dragRange(start, end) : null;
+        if (range) zoom.current?.(range);
+      },
+      onMouseLeave: reset,
+    },
+    area: area ? (
+      <ReferenceArea
+        x1={area[0]}
+        x2={area[1]}
+        fill="var(--primary)"
+        fillOpacity={0.15}
+        stroke="var(--primary)"
+        strokeOpacity={0.4}
+      />
+    ) : null,
+  };
+}
+
 function EmptyChart({ height, children }: { height: number; children: React.ReactNode }) {
   // Same height as the chart it replaces, so cards don't jump.
   return (
@@ -107,23 +171,43 @@ function EmptyChart({ height, children }: { height: number; children: React.Reac
 export function StrengthChart({
   data,
   flights,
+  onZoom,
 }: {
   data: Record<string, string | number>[];
   flights: string[];
+  onZoom?: (range: TimeRange) => void;
 }) {
+  const zoom = useDragZoom(onZoom);
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">
           Strength over time{flights.length === 1 && ` · ${flightLabel(flights[0])}`}
         </CardTitle>
+        <CardAction>
+          <CsvButton
+            filename="strength-over-time.csv"
+            label="Download strength as CSV"
+            rows={() =>
+              data.map((p) => ({
+                date: String(p.date).slice(0, 10),
+                ...Object.fromEntries(flights.map((f) => [flightLabel(f), p[f] ?? 0])),
+              }))
+            }
+          />
+        </CardAction>
       </CardHeader>
       <CardContent>
         {data.length < 2 || flights.length === 0 ? (
           <EmptyChart height={220}>Not enough history in this range to chart a trend yet</EmptyChart>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={data} margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
+            <AreaChart
+              data={data}
+              margin={{ top: 5, right: 12, left: 0, bottom: 0 }}
+              className={onZoom ? "cursor-crosshair select-none" : undefined}
+              {...zoom.handlers}
+            >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis
                 dataKey="date"
@@ -151,6 +235,7 @@ export function StrengthChart({
                   isAnimationActive={false}
                 />
               ))}
+              {zoom.area}
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -176,16 +261,27 @@ function CountBarChart({
   data,
   fill,
   barSize,
+  csvName,
+  onBarClick,
 }: {
   title: string;
-  data: { name: string; count: number }[];
+  data: { name: string; count: number; full?: string }[];
   fill: string;
   barSize: number;
+  csvName: string;
+  onBarClick?: (full: string) => void;
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
+        <CardAction>
+          <CsvButton
+            filename={csvName}
+            label={`Download ${title.toLowerCase()} as CSV`}
+            rows={() => data.map((d) => ({ [title]: d.full ?? d.name, cadets: d.count }))}
+          />
+        </CardAction>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
@@ -203,6 +299,15 @@ function CountBarChart({
                 fill={fill}
                 radius={[4, 4, 0, 0]}
                 isAnimationActive={false}
+                className={onBarClick ? "cursor-pointer" : undefined}
+                onClick={
+                  onBarClick
+                    ? (entry) => {
+                        const full = (entry as { payload?: { full?: string } }).payload?.full;
+                        if (full) onBarClick(full);
+                      }
+                    : undefined
+                }
               />
             </BarChart>
           </ResponsiveContainer>
@@ -216,7 +321,15 @@ export function AgeChart({ byAge }: { byAge: Record<string, number> }) {
   const data = Object.entries(byAge)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([name, count]) => ({ name, count }));
-  return <CountBarChart title="Age distribution" data={data} fill="var(--chart-1)" barSize={22} />;
+  return (
+    <CountBarChart
+      title="Age distribution"
+      data={data}
+      fill="var(--chart-1)"
+      barSize={22}
+      csvName="ages.csv"
+    />
+  );
 }
 
 const CLASSIFICATION_ORDER = [
@@ -227,7 +340,13 @@ const CLASSIFICATION_ORDER = [
   "Master Air Cadet",
 ];
 
-export function ClassificationChart({ byClassification }: { byClassification: Record<string, number> }) {
+export function ClassificationChart({
+  byClassification,
+  onDrill,
+}: {
+  byClassification: Record<string, number>;
+  onDrill?: DrillDown;
+}) {
   const data = [
     ...CLASSIFICATION_ORDER,
     ...Object.keys(byClassification).filter((k) => !CLASSIFICATION_ORDER.includes(k)),
@@ -236,9 +355,19 @@ export function ClassificationChart({ byClassification }: { byClassification: Re
     .map((name) => ({
       // Short labels so they fit on the x-axis.
       name: name.replace(" Cadet", "").replace("Master Air", "Master"),
+      full: name,
       count: byClassification[name] ?? 0,
     }));
-  return <CountBarChart title="Classification" data={data} fill="var(--chart-2)" barSize={36} />;
+  return (
+    <CountBarChart
+      title="Classification"
+      data={data}
+      fill="var(--chart-2)"
+      barSize={36}
+      csvName="classifications.csv"
+      onBarClick={onDrill ? (full) => onDrill({ classification: full }, full) : undefined}
+    />
+  );
 }
 
 function signed(n: number): string {
@@ -255,12 +384,17 @@ export function BadgeTrendCard({
   levels,
   total,
   history,
+  onDrill,
+  onZoom,
 }: {
   badgeKey: string;
   levels: Record<string, number>;
   total: number;
   history: BadgeHistoryPoint[];
+  onDrill?: DrillDown;
+  onZoom?: (range: TimeRange) => void;
 }) {
+  const zoom = useDragZoom(onZoom);
   const label = BADGE_LABELS[badgeKey] ?? badgeKey;
   const held = heldCount(levels);
   const pct = total > 0 ? Math.round((held / total) * 100) : 0;
@@ -293,8 +427,28 @@ export function BadgeTrendCard({
           {nowLevels.map(({ level, count }) => (
             <div key={level} className="flex items-center gap-1.5">
               <span className="inline-block size-2 rounded-full" style={{ background: levelColor(level) }} />
-              <span className="text-xs font-medium">{level}</span>
-              <span className="text-muted-foreground text-xs tabular-nums">{count}</span>
+              {onDrill && count > 0 ? (
+                // Click-through to who these cadets are.
+                <button
+                  type="button"
+                  className="hover:text-primary flex items-center gap-1.5 text-xs underline-offset-2 hover:underline"
+                  aria-label={`${level}: ${count} — show these cadets`}
+                  onClick={() =>
+                    onDrill(
+                      { badge: badgeKey, level },
+                      level === "None" ? `Without ${label}` : `${level} ${label}`
+                    )
+                  }
+                >
+                  <span className="font-medium">{level}</span>
+                  <span className="text-muted-foreground tabular-nums">{count}</span>
+                </button>
+              ) : (
+                <>
+                  <span className="text-xs font-medium">{level}</span>
+                  <span className="text-muted-foreground text-xs tabular-nums">{count}</span>
+                </>
+              )}
               {deltas[level] !== undefined && (
                 <span
                   className={
@@ -318,7 +472,13 @@ export function BadgeTrendCard({
           <EmptyChart height={90}>Not enough history to chart a trend yet</EmptyChart>
         ) : (
           <ResponsiveContainer width="100%" height={90}>
-            <AreaChart data={data} stackOffset="expand" margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
+            <AreaChart
+              data={data}
+              stackOffset="expand"
+              margin={{ top: 5, right: 12, left: 0, bottom: 0 }}
+              className={onZoom ? "cursor-crosshair select-none" : undefined}
+              {...zoom.handlers}
+            >
               <XAxis
                 dataKey="date"
                 tickFormatter={(d) => formatShortDate(d)}
@@ -349,6 +509,7 @@ export function BadgeTrendCard({
                   isAnimationActive={false}
                 />
               ))}
+              {zoom.area}
             </AreaChart>
           </ResponsiveContainer>
         )}

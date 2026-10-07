@@ -1,18 +1,23 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Printer } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { ChevronLeft, ChevronRight, Printer, ZoomOut } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section-heading";
 import { BadgeGlance } from "@/components/stats/badge-glance";
+import { CadetDrilldown, type Drill } from "@/components/stats/cadet-drilldown";
 import { AgeChart, BadgeTrendCard, ClassificationChart, StrengthChart } from "@/components/stats/charts";
+import { CsvButton } from "@/components/stats/csv-button";
 import { SquadronKpis } from "@/components/stats/kpis";
+import { ClassificationFunnel, IntakeRetention } from "@/components/stats/progression";
 import { ExpiringQuals, RecentAwards } from "@/components/stats/qual-lists";
+import { TargetsSection } from "@/components/stats/targets";
 import { TimeRangePicker } from "@/components/stats/time-range-picker";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,12 +26,19 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate, formatShortDate } from "@/lib/format";
 import {
   type Award,
+  BADGE_LABELS,
   BADGE_SORTS,
   type BadgeSort,
   badgeHistoryFor,
   cohortOf,
   type ExpiringQual,
   flightLabel,
+  type Funnel,
+  type RetentionRow,
+  shiftRange,
+  type StatsTarget,
+  type TimeRange,
+  zoomOutRange,
   orderedFlights,
   DEFAULT_RANGE,
   parseTimeRange,
@@ -112,12 +124,26 @@ function Stats() {
     `/stats/awards?${awardsQuery}`
   );
   const { data: expiringData } = useApiQuery<ExpiringQual[]>(["stats", "expiring"], "/stats/expiring");
+  const { data: retentionData } = useApiQuery<RetentionRow[]>(["stats", "retention"], "/stats/retention");
+  const { data: targetsData } = useApiQuery<StatsTarget[]>(["stats", "targets"], "/stats/targets");
+  const { data: badgeLevels } = useApiQuery<Record<string, string[]>>(
+    ["stats", "badge-levels"],
+    "/stats/badge-levels",
+    { staleTime: Infinity }
+  );
+  const { data: session } = useSession();
+  const isStaff = session?.role === "staff";
+  const [drill, setDrill] = useState<Drill>(null);
 
   // An error body in place of a list would otherwise crash the charts.
   const history = useMemo(() => (Array.isArray(historyData) ? historyData : []), [historyData]);
   const flights = orderedFlights(Object.keys(stats?.flights ?? stats?.by_flight ?? {}));
   // A stale ?flight= (a flight since renamed or emptied) falls back to everyone.
   const flight = flightParam && flights.includes(flightParam) ? flightParam : null;
+  const { data: funnelData } = useApiQuery<Funnel>(
+    ["stats", "funnel", flight],
+    flight ? `/stats/funnel?flight=${encodeURIComponent(flight)}` : "/stats/funnel"
+  );
 
   const inSlice = (row: { flight: string; junior: boolean }) =>
     (!flight || row.flight === flight) && (!excludeJuniors || !row.junior);
@@ -144,6 +170,26 @@ function Stats() {
       ? undefined
       : `${change >= 0 ? "+" : ""}${change} ${live ? `since ${formatShortDate(first.date)}` : rangePhrase(range)}`;
   const setQuick = (id: string) => set({ range: id === DEFAULT_RANGE ? null : id, from: null, to: null });
+  const applyRange = (r: TimeRange) =>
+    r.kind === "quick" ? setQuick(r.id) : set({ from: r.from, to: r.to, range: null });
+  const earlier = shiftRange(range, -1);
+  const later = shiftRange(range, 1);
+  const wider = zoomOutRange(range);
+
+  // Click-through from the badge cards follows the page's filters, and a past
+  // range lists cadets as they stood at its end.
+  const drillSlice = (query: Record<string, string>, title: string) =>
+    setDrill({
+      query: {
+        ...query,
+        ...(flight ? { flight } : {}),
+        ...(excludeJuniors ? { exclude_juniors: "true" } : {}),
+        ...(!live && range.kind === "absolute" ? { on: range.to } : {}),
+      },
+      title,
+    });
+  // The classification chart and funnel are squadron-wide, today.
+  const drillNow = (query: Record<string, string>, title: string) => setDrill({ query, title });
 
   const sliceLabel = [
     flight ? flightLabel(flight) : "Whole squadron",
@@ -189,11 +235,47 @@ function Stats() {
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-          <TimeRangePicker
-            value={range}
-            onQuick={setQuick}
-            onAbsolute={(from, to) => set({ from, to, range: null })}
-          />
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 rounded-r-none"
+              aria-label="Earlier time range"
+              title="Same length, earlier"
+              disabled={!earlier}
+              onClick={() => earlier && applyRange(earlier)}
+            >
+              <ChevronLeft />
+            </Button>
+            <TimeRangePicker
+              value={range}
+              onQuick={setQuick}
+              onAbsolute={(from, to) => set({ from, to, range: null })}
+              className="rounded-none border-x-0"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 rounded-none border-r-0"
+              aria-label="Later time range"
+              title="Same length, later"
+              disabled={!later}
+              onClick={() => later && applyRange(later)}
+            >
+              <ChevronRight />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 rounded-l-none"
+              aria-label="Zoom out"
+              title="Twice as long"
+              disabled={!wider}
+              onClick={() => wider && applyRange(wider)}
+            >
+              <ZoomOut />
+            </Button>
+          </div>
         </div>
         <Select
           value={flight ?? ALL_FLIGHTS}
@@ -237,17 +319,45 @@ function Stats() {
           <>
             <SquadronKpis stats={stats} strengthHint={strengthHint} />
 
-            <StrengthChart data={strength} flights={strengthFlights} />
+            <StrengthChart data={strength} flights={strengthFlights} onZoom={applyRange} />
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <AgeChart byAge={stats.by_age} />
-              <ClassificationChart byClassification={stats.by_classification ?? {}} />
+              <ClassificationChart byClassification={stats.by_classification ?? {}} onDrill={drillNow} />
             </div>
+
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <ClassificationFunnel funnel={funnelData} flight={flight} onDrill={drillNow} />
+              <IntakeRetention rows={Array.isArray(retentionData) ? retentionData : []} />
+            </div>
+
+            <TargetsSection
+              targets={Array.isArray(targetsData) ? targetsData : []}
+              stats={stats}
+              history={history}
+              live={live}
+              flights={flights}
+              badgeLevels={badgeLevels ?? {}}
+              canEdit={isStaff}
+            />
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Badges at a glance</CardTitle>
+                  <CardAction>
+                    <CsvButton
+                      filename="badges-at-a-glance.csv"
+                      label="Download badges at a glance as CSV"
+                      rows={() =>
+                        order.map((k) => ({
+                          badge: BADGE_LABELS[k] ?? k,
+                          cadets: cohort.total_cadets,
+                          ...cohort.badges[k],
+                        }))
+                      }
+                    />
+                  </CardAction>
                 </CardHeader>
                 <CardContent>
                   {cohort.total_cadets === 0 ? (
@@ -261,6 +371,21 @@ function Stats() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Badges gained</CardTitle>
+                    <CardAction>
+                      <CsvButton
+                        filename="badges-gained.csv"
+                        label="Download badges gained as CSV"
+                        rows={() =>
+                          awards.map((a) => ({
+                            date: a.date,
+                            name: a.name,
+                            flight: flightLabel(a.flight),
+                            badge: BADGE_LABELS[a.badge] ?? a.badge,
+                            level: a.level,
+                          }))
+                        }
+                      />
+                    </CardAction>
                   </CardHeader>
                   <CardContent>
                     <RecentAwards awards={awards} empty={`No badges gained ${rangePhrase(range)}.`} />
@@ -269,6 +394,21 @@ function Stats() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Expiring in the next 3 months</CardTitle>
+                    <CardAction>
+                      <CsvButton
+                        filename="expiring-qualifications.csv"
+                        label="Download expiring qualifications as CSV"
+                        rows={() =>
+                          expiring.map((q) => ({
+                            name: q.name,
+                            flight: flightLabel(q.flight),
+                            qualification: q.qual_type,
+                            expires: q.date_expires,
+                            "days left": q.days_left,
+                          }))
+                        }
+                      />
+                    </CardAction>
                   </CardHeader>
                   <CardContent>
                     <ExpiringQuals quals={expiring} />
@@ -286,18 +426,38 @@ function Stats() {
                     : sliceLabel
                 }
                 actions={
-                  <Select value={sort} onValueChange={(v) => set({ sort: v === "catalogue" ? null : v })}>
-                    <SelectTrigger size="sm" aria-label="Sort badges" className="no-print w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BADGE_SORTS.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-1">
+                    <CsvButton
+                      filename="badge-progression.csv"
+                      label="Download badge progression as CSV"
+                      // Long format, one row per date, badge and level: easy to pivot.
+                      rows={() =>
+                        badgeHistory.flatMap((p) =>
+                          order.flatMap((k) =>
+                            Object.entries(p.data.badges[k] ?? {}).map(([level, n]) => ({
+                              date: p.date.slice(0, 10),
+                              badge: BADGE_LABELS[k] ?? k,
+                              level,
+                              cadets: n,
+                              of: p.data.total_cadets,
+                            }))
+                          )
+                        )
+                      }
+                    />
+                    <Select value={sort} onValueChange={(v) => set({ sort: v === "catalogue" ? null : v })}>
+                      <SelectTrigger size="sm" aria-label="Sort badges" className="no-print w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BADGE_SORTS.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 }
               />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -308,6 +468,8 @@ function Stats() {
                     levels={cohort.badges[key] ?? {}}
                     total={cohort.total_cadets}
                     history={badgeHistory}
+                    onDrill={drillSlice}
+                    onZoom={applyRange}
                   />
                 ))}
               </div>
@@ -315,6 +477,7 @@ function Stats() {
           </>
         )
       )}
+      <CadetDrilldown drill={drill} onClose={() => setDrill(null)} canOpenRecords={isStaff} />
     </div>
   );
 }
