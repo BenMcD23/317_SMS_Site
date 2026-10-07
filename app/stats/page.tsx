@@ -10,6 +10,7 @@ import { BadgeGlance } from "@/components/stats/badge-glance";
 import { AgeChart, BadgeTrendCard, ClassificationChart, StrengthChart } from "@/components/stats/charts";
 import { SquadronKpis } from "@/components/stats/kpis";
 import { ExpiringQuals, RecentAwards } from "@/components/stats/qual-lists";
+import { TimeRangePicker } from "@/components/stats/time-range-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,9 +28,13 @@ import {
   type ExpiringQual,
   flightLabel,
   orderedFlights,
-  parseRange,
-  RANGES,
-  rangeDays,
+  DEFAULT_RANGE,
+  parseTimeRange,
+  QUICK_RANGES,
+  rangeIncludesToday,
+  rangeLabel,
+  rangePhrase,
+  rangeQuery,
   type SquadronStats,
   sortBadges,
   type StatsPoint,
@@ -37,8 +42,8 @@ import {
 } from "@/lib/stats";
 import { useApiQuery } from "@/lib/use-api-query";
 
-// "All" for the awards feed: award dates go back years, so cap at ten.
-const ALL_AWARDS_DAYS = 3650;
+// "All time" for the awards feed, which otherwise defaults to 30 days.
+const ALL_AWARDS = "days=36500";
 const ALL_FLIGHTS = "all";
 
 /** useSearchParams needs a Suspense boundary or the page fails to prerender. */
@@ -68,19 +73,21 @@ function StatsSkeleton() {
 function useFilters() {
   const params = useSearchParams();
   const pathname = usePathname();
-  const set = (key: string, value: string | null) => {
+  const set = (changes: Record<string, string | null>) => {
     // Built from the live URL, not the last render's params: two quick changes
     // (a flight, then a range) would otherwise each drop the other. Native
     // replaceState is synchronous and Next syncs useSearchParams to it.
     const next = new URLSearchParams(window.location.search);
-    if (value === null) next.delete(key);
-    else next.set(key, value);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null) next.delete(key);
+      else next.set(key, value);
+    }
     const qs = next.toString();
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   };
   const sort = BADGE_SORTS.find((s) => s.id === params.get("sort"))?.id ?? "catalogue";
   return {
-    range: parseRange(params.get("range")),
+    range: parseTimeRange(params),
     flight: params.get("flight"),
     excludeJuniors: params.get("juniors") === "0",
     sort: sort as BadgeSort,
@@ -90,16 +97,19 @@ function useFilters() {
 
 function Stats() {
   const { range, flight: flightParam, excludeJuniors, sort, set } = useFilters();
-  const days = rangeDays(range);
+  const historyQuery = rangeQuery(range);
+  const awardsQuery = rangeQuery(range, ALL_AWARDS);
+  // A custom range in the past ends on its last snapshot, not on today's numbers.
+  const live = rangeIncludesToday(range);
 
   const { data: stats, isLoading } = useApiQuery<SquadronStats>(["stats", "current"], "/stats/current");
   const { data: historyData } = useApiQuery<StatsPoint[]>(
-    ["stats", "history", range],
-    days === null ? "/stats/history" : `/stats/history?days=${days}`
+    ["stats", "history", historyQuery],
+    historyQuery ? `/stats/history?${historyQuery}` : "/stats/history"
   );
   const { data: awardsData } = useApiQuery<Award[]>(
-    ["stats", "awards", range],
-    `/stats/awards?days=${days ?? ALL_AWARDS_DAYS}`
+    ["stats", "awards", awardsQuery],
+    `/stats/awards?${awardsQuery}`
   );
   const { data: expiringData } = useApiQuery<ExpiringQual[]>(["stats", "expiring"], "/stats/expiring");
 
@@ -114,22 +124,27 @@ function Stats() {
   const awards = (Array.isArray(awardsData) ? awardsData : []).filter(inSlice);
   const expiring = (Array.isArray(expiringData) ? expiringData : []).filter(inSlice);
 
-  const badgeHistory = badgeHistoryFor(history, stats, flight, excludeJuniors);
-  const cohort = cohortOf(stats, flight, excludeJuniors) ?? { total_cadets: 0, badges: {} };
+  const badgeHistory = badgeHistoryFor(history, live ? stats : null, flight, excludeJuniors);
+  // The cards show where the range ends: today, or a past range's last snapshot.
+  const cohort = (live ? cohortOf(stats, flight, excludeJuniors) : badgeHistory.at(-1)?.data) ?? {
+    total_cadets: 0,
+    badges: {},
+  };
   const order = sortBadges(sort, cohort, badgeHistory);
 
-  const strength = strengthHistory(history, stats);
+  const strength = strengthHistory(history, live ? stats : null);
   const strengthFlights = flight
     ? [flight]
     : orderedFlights(strength.flatMap((p) => Object.keys(p)).filter((k) => k !== "date"));
   const first = history[0];
+  const last = live ? stats : history.at(-1)?.data;
+  const change = first && last ? last.total_cadets - first.data.total_cadets : null;
   const strengthHint =
-    stats && first
-      ? `${stats.total_cadets - first.data.total_cadets >= 0 ? "+" : ""}${stats.total_cadets - first.data.total_cadets} since ${formatShortDate(first.date)}`
-      : undefined;
+    change === null
+      ? undefined
+      : `${change >= 0 ? "+" : ""}${change} ${live ? `since ${formatShortDate(first.date)}` : rangePhrase(range)}`;
+  const setQuick = (id: string) => set({ range: id === DEFAULT_RANGE ? null : id, from: null, to: null });
 
-  const rangeLabel =
-    days === null ? "all recorded history" : `the last ${RANGES.find((r) => r.id === range)!.label}`;
   const sliceLabel = [
     flight ? flightLabel(flight) : "Whole squadron",
     excludeJuniors ? "excluding junior cadets" : null,
@@ -153,32 +168,36 @@ function Stats() {
       <div className="print-only mb-2">
         <h1 className="text-xl font-semibold">317 Squadron — Stats</h1>
         <p className="text-muted-foreground text-sm">
-          {sliceLabel} · {rangeLabel} · printed {formatDate(new Date().toISOString())}
+          {sliceLabel} · {rangeLabel(range)} · printed {formatDate(new Date().toISOString())}
         </p>
       </div>
 
       <div className="no-print flex flex-wrap items-center gap-x-6 gap-y-3">
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={range}
-          onValueChange={(v) => v && set("range", v === "6m" ? null : v)}
-          aria-label="Time range"
-        >
-          {RANGES.map((r) => (
-            <ToggleGroupItem
-              key={r.id}
-              value={r.id}
-              aria-label={r.id === "all" ? "All time" : `Last ${r.label}`}
-            >
-              {r.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <div className="flex flex-wrap items-center gap-2">
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            // Nothing is pressed while a custom range is showing.
+            value={range.kind === "quick" ? range.id : ""}
+            onValueChange={(v) => v && setQuick(v)}
+            aria-label="Quick time range"
+          >
+            {QUICK_RANGES.map((r) => (
+              <ToggleGroupItem key={r.id} value={r.id} aria-label={r.label}>
+                {r.short}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <TimeRangePicker
+            value={range}
+            onQuick={setQuick}
+            onAbsolute={(from, to) => set({ from, to, range: null })}
+          />
+        </div>
         <Select
           value={flight ?? ALL_FLIGHTS}
-          onValueChange={(v) => set("flight", v === ALL_FLIGHTS ? null : v)}
+          onValueChange={(v) => set({ flight: v === ALL_FLIGHTS ? null : v })}
         >
           <SelectTrigger size="sm" aria-label="Flight" className="w-40">
             <SelectValue />
@@ -196,13 +215,20 @@ function Stats() {
           <Checkbox
             id="exclude-juniors"
             checked={excludeJuniors}
-            onCheckedChange={(v) => set("juniors", v === true ? "0" : null)}
+            onCheckedChange={(v) => set({ juniors: v === true ? "0" : null })}
           />
           <Label htmlFor="exclude-juniors" className="text-sm font-normal">
             Exclude junior cadets
           </Label>
         </div>
       </div>
+
+      {!live && Array.isArray(historyData) && history.length === 0 && (
+        <p className="text-muted-foreground rounded-md border border-dashed px-4 py-3 text-sm" role="status">
+          No snapshots were taken {rangePhrase(range)}, so there&apos;s no trend or badge breakdown to show.
+          Snapshots are saved each time the qualifications scraper runs.
+        </p>
+      )}
 
       {isLoading ? (
         <StatsSkeleton />
@@ -237,7 +263,7 @@ function Stats() {
                     <CardTitle className="text-base">Badges gained</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <RecentAwards awards={awards} empty={`No badges gained in ${rangeLabel}.`} />
+                    <RecentAwards awards={awards} empty={`No badges gained ${rangePhrase(range)}.`} />
                   </CardContent>
                 </Card>
                 <Card>
@@ -260,7 +286,7 @@ function Stats() {
                     : sliceLabel
                 }
                 actions={
-                  <Select value={sort} onValueChange={(v) => set("sort", v === "catalogue" ? null : v)}>
+                  <Select value={sort} onValueChange={(v) => set({ sort: v === "catalogue" ? null : v })}>
                     <SelectTrigger size="sm" aria-label="Sort badges" className="no-print w-40">
                       <SelectValue />
                     </SelectTrigger>

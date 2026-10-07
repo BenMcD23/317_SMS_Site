@@ -9,13 +9,17 @@ import {
   levelDeltas,
   levelShares,
   orderedFlights,
-  parseRange,
+  isIsoDay,
+  parseTimeRange,
+  rangeIncludesToday,
+  rangeLabel,
+  rangePhrase,
+  rangeQuery,
   sortBadges,
   type SquadronStats,
   type StatsPoint,
   strengthHistory,
   trendLevels,
-  withinRange,
 } from "@/lib/stats";
 
 const NOW = new Date(2026, 9, 7, 20, 0);
@@ -195,18 +199,6 @@ describe("strengthHistory", () => {
 });
 
 describe("ranges and flights", () => {
-  it("defaults an unknown or missing range to six months", () => {
-    expect(parseRange(null)).toBe("6m");
-    expect(parseRange("forever")).toBe("6m");
-    expect(parseRange("1y")).toBe("1y");
-  });
-
-  it("checks a date against the range ending today", () => {
-    expect(withinRange("2026-07-10", "3m", NOW)).toBe(true);
-    expect(withinRange("2026-07-01", "3m", NOW)).toBe(false);
-    expect(withinRange("1999-01-01", "all", NOW)).toBe(true);
-  });
-
   it("orders known flights first and keeps unknown ones", () => {
     expect(orderedFlights(["Unknown", "C", "A", "NCO", "D"])).toEqual(["NCO", "A", "C", "D", "Unknown"]);
     expect(orderedFlights([])).toEqual([]);
@@ -216,5 +208,65 @@ describe("ranges and flights", () => {
     expect(flightColor("B")).toBe(flightColor("B"));
     expect(flightColor("A")).not.toBe(flightColor("B"));
     expect(flightColor("Unknown")).toBe("var(--muted-foreground)");
+  });
+});
+
+const params = (q: string) => new URLSearchParams(q);
+
+describe("time ranges", () => {
+  it("defaults an unknown or missing range to six months", () => {
+    expect(parseTimeRange(params(""))).toEqual({ kind: "quick", id: "6m" });
+    expect(parseTimeRange(params("range=forever"))).toEqual({ kind: "quick", id: "6m" });
+    expect(parseTimeRange(params("range=2w"))).toEqual({ kind: "quick", id: "2w" });
+  });
+
+  it("prefers a valid from/to over a preset", () => {
+    expect(parseTimeRange(params("range=1y&from=2026-01-05&to=2026-03-03"))).toEqual({
+      kind: "absolute",
+      from: "2026-01-05",
+      to: "2026-03-03",
+    });
+  });
+
+  it.each([
+    ["only one end", "from=2026-01-05"],
+    ["backwards", "from=2026-03-03&to=2026-01-05"],
+    ["not a real day", "from=2026-02-30&to=2026-03-03"],
+    ["the wrong format", "from=05/01/2026&to=2026-03-03"],
+  ])("falls back to the preset when from/to is %s", (_why, q) => {
+    expect(parseTimeRange(params(`range=1m&${q}`))).toEqual({ kind: "quick", id: "1m" });
+  });
+
+  it("recognises real calendar days only", () => {
+    expect(isIsoDay("2028-02-29")).toBe(true);
+    expect(isIsoDay("2026-02-29")).toBe(false);
+    expect(isIsoDay("2026-1-5")).toBe(false);
+    expect(isIsoDay(null)).toBe(false);
+  });
+
+  it("builds the API query for each kind of range", () => {
+    expect(rangeQuery({ kind: "quick", id: "2w" })).toBe("days=14");
+    expect(rangeQuery({ kind: "quick", id: "1m" })).toBe("days=30");
+    expect(rangeQuery({ kind: "quick", id: "all" })).toBe("");
+    expect(rangeQuery({ kind: "quick", id: "all" }, "days=36500")).toBe("days=36500");
+    expect(rangeQuery({ kind: "absolute", from: "2026-01-05", to: "2026-03-03" })).toBe(
+      "start=2026-01-05&end=2026-03-03"
+    );
+  });
+
+  it("labels and phrases a range for the button and for sentences", () => {
+    const abs = { kind: "absolute", from: "2026-01-05", to: "2026-03-03" } as const;
+    expect(rangeLabel({ kind: "quick", id: "1m" })).toBe("Last month");
+    expect(rangeLabel(abs)).toBe("5 Jan 2026 – 3 Mar 2026");
+    expect(rangeLabel({ kind: "absolute", from: "2026-01-05", to: "2026-01-05" })).toBe("5 Jan 2026");
+    expect(rangePhrase({ kind: "quick", id: "2w" })).toBe("in the last 2 weeks");
+    expect(rangePhrase({ kind: "quick", id: "all" })).toBe("in all recorded history");
+    expect(rangePhrase(abs)).toBe("between 5 Jan 2026 and 3 Mar 2026");
+  });
+
+  it("only ends on today's live numbers when the range reaches today", () => {
+    expect(rangeIncludesToday({ kind: "quick", id: "2w" }, NOW)).toBe(true);
+    expect(rangeIncludesToday({ kind: "absolute", from: "2026-01-01", to: "2026-10-07" }, NOW)).toBe(true);
+    expect(rangeIncludesToday({ kind: "absolute", from: "2026-01-01", to: "2026-10-06" }, NOW)).toBe(false);
   });
 });

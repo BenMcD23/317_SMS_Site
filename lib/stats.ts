@@ -1,6 +1,6 @@
 import { type BadgeBreakdown, type BadgeHistoryPoint, withLivePoint } from "@/lib/badge-history";
 import { FLIGHT_ORDER } from "@/lib/cadet-format";
-import { todayLocal } from "@/lib/format";
+import { formatDate, todayLocal } from "@/lib/format";
 
 /**
  * Shapes and helpers for the squadron stats views (the /stats page and the
@@ -119,30 +119,78 @@ export function orderedFlights(flights: Iterable<string>): string[] {
   ];
 }
 
-export const RANGES = [
-  { id: "3m", label: "3M", days: 91 },
-  { id: "6m", label: "6M", days: 182 },
-  { id: "1y", label: "1Y", days: 365 },
-  { id: "all", label: "All", days: null },
+/** Preset look-back windows, shortest first: the toggles and the picker's list. */
+export const QUICK_RANGES = [
+  { id: "2w", short: "2W", label: "Last 2 weeks", days: 14 },
+  { id: "1m", short: "1M", label: "Last month", days: 30 },
+  { id: "3m", short: "3M", label: "Last 3 months", days: 91 },
+  { id: "6m", short: "6M", label: "Last 6 months", days: 182 },
+  { id: "1y", short: "1Y", label: "Last year", days: 365 },
+  { id: "all", short: "All", label: "All time", days: null },
 ] as const;
 
-export type RangeId = (typeof RANGES)[number]["id"];
+export type QuickRangeId = (typeof QUICK_RANGES)[number]["id"];
+export const DEFAULT_RANGE: QuickRangeId = "6m";
 
-export function parseRange(value: string | null | undefined): RangeId {
-  return RANGES.find((r) => r.id === value)?.id ?? "6m";
+/** A preset ending today, or a custom pair of days (both inclusive, YYYY-MM-DD). */
+export type TimeRange = { kind: "quick"; id: QuickRangeId } | { kind: "absolute"; from: string; to: string };
+
+/** True for a real calendar day written YYYY-MM-DD ("2026-02-30" is not). */
+export function isIsoDay(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
-export function rangeDays(id: RangeId): number | null {
-  return RANGES.find((r) => r.id === id)!.days;
+/**
+ * The range a URL asks for: ?from=&to= when both are valid days in order,
+ * else ?range=, else the default. A hand-edited or half-typed URL falls back
+ * rather than breaking the page.
+ */
+export function parseTimeRange(params: { get(key: string): string | null }): TimeRange {
+  const from = params.get("from");
+  const to = params.get("to");
+  if (isIsoDay(from) && isIsoDay(to) && from <= to) return { kind: "absolute", from, to };
+  const id = QUICK_RANGES.find((r) => r.id === params.get("range"))?.id ?? DEFAULT_RANGE;
+  return { kind: "quick", id };
 }
 
-/** Whether a dated item falls inside the range ending today. */
-export function withinRange(iso: string, id: RangeId, now: Date = new Date()): boolean {
-  const days = rangeDays(id);
-  if (days === null) return true;
-  const start = new Date(now);
-  start.setDate(start.getDate() - days);
-  return iso.slice(0, 10) >= todayLocal(start);
+function quick(id: QuickRangeId) {
+  return QUICK_RANGES.find((r) => r.id === id)!;
+}
+
+/**
+ * The API query for a range. `unbounded` is what "All time" sends where the
+ * endpoint has its own default for no window (the awards feed means 30 days).
+ */
+export function rangeQuery(range: TimeRange, unbounded = ""): string {
+  if (range.kind === "absolute") return `start=${range.from}&end=${range.to}`;
+  const days = quick(range.id).days;
+  return days === null ? unbounded : `days=${days}`;
+}
+
+/** "Last 6 months", "All time" or "5 Jan 2026 – 3 Mar 2026": the picker's button. */
+export function rangeLabel(range: TimeRange): string {
+  if (range.kind === "quick") return quick(range.id).label;
+  return range.from === range.to
+    ? formatDate(range.from)
+    : `${formatDate(range.from)} – ${formatDate(range.to)}`;
+}
+
+/** The range as it reads in a sentence: "in the last month", "between 5 Jan 2026 and 3 Mar 2026". */
+export function rangePhrase(range: TimeRange): string {
+  if (range.kind === "absolute") {
+    return range.from === range.to
+      ? `on ${formatDate(range.from)}`
+      : `between ${formatDate(range.from)} and ${formatDate(range.to)}`;
+  }
+  return range.id === "all" ? "in all recorded history" : `in the ${quick(range.id).label.toLowerCase()}`;
+}
+
+/** Whether today's live numbers belong at the end of this range's trend. */
+export function rangeIncludesToday(range: TimeRange, now: Date = new Date()): boolean {
+  return range.kind === "quick" || range.to >= todayLocal(now);
 }
 
 /**
