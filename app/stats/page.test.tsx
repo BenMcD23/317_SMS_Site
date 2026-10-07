@@ -241,7 +241,11 @@ describe("badge trend", () => {
     });
     await renderStats();
     // Heartstart went from 15 to 19.
-    expect(screen.getByLabelText("+4 in this range")).toBeTruthy();
+    expect(screen.getByLabelText("+4 cadets at Heartstart since 1 Aug")).toBeTruthy();
+    // And the section says what those figures mean.
+    expect(
+      screen.getByText(/\+\/− beside a level is the change in cadets holding it since 1 Aug/)
+    ).toBeTruthy();
   });
 
   it("puts the strength change since the range started on the headline tile", async () => {

@@ -119,11 +119,13 @@ describe("levelShares", () => {
       "None",
       "Blue",
     ]);
-    expect(rows).toEqual([{ date: "d", None: 66.7, Blue: 33.3 }]);
+    expect(rows).toEqual([{ date: "d", None: 66.7, Blue: 33.3, "n:None": 2, "n:Blue": 1 }]);
   });
 
   it("is all zeros for an empty cohort rather than dividing by zero", () => {
-    expect(levelShares([point("d", {}, 0)], "first_aid", ["None"])).toEqual([{ date: "d", None: 0 }]);
+    expect(levelShares([point("d", {}, 0)], "first_aid", ["None"])).toEqual([
+      { date: "d", None: 0, "n:None": 0 },
+    ]);
   });
 });
 
