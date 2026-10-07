@@ -232,17 +232,24 @@ export function sortBadges(sort: BadgeSort, cohort: BadgeBreakdown, history: Bad
     .map(({ k }) => k);
 }
 
+/** Key under which levelShares keeps a level's cadet count beside its share. */
+export const countKey = (level: string) => `n:${level}`;
+
 /**
  * One row per point for a 100%-stacked chart: each level's share of the cohort
  * in percent. Shares rather than counts so cadets joining or leaving don't read
- * as badges being gained or lost.
+ * as badges being gained or lost. The counts ride along under `countKey` for
+ * the tooltip, which shows both.
  */
 export function levelShares(history: BadgeHistoryPoint[], badgeKey: string, levels: string[]) {
   return history.map((h) => {
     const counts = h.data.badges[badgeKey] ?? {};
     const total = h.data.total_cadets;
     const row: Record<string, string | number> = { date: h.date };
-    for (const l of levels) row[l] = total > 0 ? Math.round(((counts[l] ?? 0) / total) * 1000) / 10 : 0;
+    for (const l of levels) {
+      row[l] = total > 0 ? Math.round(((counts[l] ?? 0) / total) * 1000) / 10 : 0;
+      row[countKey(l)] = counts[l] ?? 0;
+    }
     return row;
   });
 }

@@ -254,7 +254,11 @@ function Stats() {
             <section className="flex flex-col gap-3">
               <SectionHeading
                 title="Badge progression"
-                description={sliceLabel}
+                description={
+                  badgeHistory.length >= 2
+                    ? `${sliceLabel} · +/− beside a level is the change in cadets holding it since ${formatShortDate(badgeHistory[0].date)}`
+                    : sliceLabel
+                }
                 actions={
                   <Select value={sort} onValueChange={(v) => set("sort", v === "catalogue" ? null : v)}>
                     <SelectTrigger size="sm" aria-label="Sort badges" className="no-print w-40">

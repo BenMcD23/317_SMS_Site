@@ -18,6 +18,7 @@ import type { BadgeHistoryPoint } from "@/lib/badge-history";
 import { formatShortDate } from "@/lib/format";
 import {
   BADGE_LABELS,
+  countKey,
   flightColor,
   flightLabel,
   heldCount,
@@ -41,6 +42,57 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
 };
 const AXIS = { tickLine: false, axisLine: false } as const;
+
+type TooltipEntry = { name?: unknown; dataKey?: unknown; value?: unknown; payload?: Record<string, unknown> };
+
+/**
+ * Tooltip for the stacked charts. Recharts' default colours each row with the
+ * series stroke, which here is the card colour that separates the bands, so its
+ * rows came out invisible. Text stays in text colours; a dot carries identity.
+ * Rows run top to bottom in the order the bands are stacked on screen.
+ */
+export function StackTooltip({
+  active,
+  payload,
+  label,
+  colorFor,
+  nameFor = (key) => key,
+  valueFor = (entry) => String(entry.value),
+}: {
+  active?: boolean;
+  payload?: readonly TooltipEntry[];
+  label?: unknown;
+  colorFor: (key: string) => string;
+  nameFor?: (key: string) => string;
+  valueFor?: (entry: TooltipEntry, key: string) => string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="bg-popover text-popover-foreground rounded-md border px-3 py-2 text-xs shadow-md"
+      role="tooltip"
+    >
+      <p className="mb-1 font-medium">{formatShortDate(String(label))}</p>
+      <ul className="flex flex-col gap-0.5">
+        {[...payload].reverse().map((entry) => {
+          const key = String(entry.dataKey);
+          return (
+            <li key={key} className="flex items-center gap-2">
+              <span className="inline-block size-2 rounded-full" style={{ background: colorFor(key) }} />
+              <span className="flex-1">{nameFor(key)}</span>
+              <span className="text-muted-foreground pl-3 tabular-nums">{valueFor(entry, key)}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** "12% (6)" — a level's share and the cadets behind it. */
+export function shareValue(entry: TooltipEntry, key: string): string {
+  return `${entry.value}% (${entry.payload?.[countKey(key)] ?? 0})`;
+}
 
 function EmptyChart({ height, children }: { height: number; children: React.ReactNode }) {
   // Same height as the chart it replaces, so cards don't jump.
@@ -82,9 +134,8 @@ export function StrengthChart({
               />
               <YAxis tick={{ fontSize: 12 }} allowDecimals={false} width={28} {...AXIS} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelFormatter={(d) => formatShortDate(String(d))}
                 cursor={{ stroke: "var(--border)" }}
+                content={<StackTooltip colorFor={flightColor} nameFor={flightLabel} />}
               />
               {flights.map((f) => (
                 <Area
@@ -251,7 +302,10 @@ export function BadgeTrendCard({
                       ? "text-success text-xs tabular-nums"
                       : "text-muted-foreground text-xs tabular-nums"
                   }
-                  aria-label={`${signed(deltas[level])} in this range`}
+                  // Spelled out for hover and screen readers; the key under the
+                  // section heading explains it once for everyone else.
+                  title={`${signed(deltas[level])} cadets at ${level} since ${formatShortDate(history[0].date)}`}
+                  aria-label={`${signed(deltas[level])} cadets at ${level} since ${formatShortDate(history[0].date)}`}
                 >
                   {signed(deltas[level])}
                 </span>
@@ -276,10 +330,10 @@ export function BadgeTrendCard({
               />
               <YAxis hide />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelFormatter={(d) => formatShortDate(String(d))}
-                formatter={(v) => `${v}%`}
                 cursor={{ stroke: "var(--border)" }}
+                // Above the neighbouring cards, which it overhangs on a small chart.
+                wrapperStyle={{ zIndex: 20 }}
+                content={<StackTooltip colorFor={levelColor} valueFor={shareValue} />}
               />
               {stack.map((l) => (
                 <Area
