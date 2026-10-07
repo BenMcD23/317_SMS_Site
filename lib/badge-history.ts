@@ -22,11 +22,11 @@ export interface BadgeHistoryPoint {
  * two points on one date would draw a vertical jump, and the live numbers are
  * at least as fresh as anything captured earlier today.
  */
-export function withLivePoint(
-  history: BadgeHistoryPoint[],
-  live: BadgeBreakdown | null | undefined,
+export function withLivePoint<D = BadgeBreakdown>(
+  history: { date: string; data: D }[],
+  live: D | null | undefined,
   now: Date = new Date()
-): BadgeHistoryPoint[] {
+): { date: string; data: D }[] {
   if (!live) return history;
   const today = todayLocal(now);
   return [...history.filter((h) => h.date.slice(0, 10) !== today), { date: today, data: live }];

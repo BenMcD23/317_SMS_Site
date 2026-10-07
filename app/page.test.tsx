@@ -16,28 +16,32 @@ vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
 }));
 
-const breakdown = (n: number) => ({ total_cadets: n, badges: { first_aid: { None: 1, Heartstart: n - 1 } } });
 const current = {
   total_cadets: 20,
-  by_flight: {},
+  by_flight: { A: 12, B: 8 },
   by_age: {},
-  by_rank: {},
+  by_rank: { Cadet: 17, Cpl: 3 },
   by_classification: {},
-  badges: breakdown(20).badges,
-  non_junior: breakdown(9),
+  badges: { first_aid: { None: 15, Blue: 5 } },
+};
+const award = {
+  cin: 1,
+  name: "Zoë Ó Briain",
+  flight: "A",
+  junior: false,
+  badge: "first_aid",
+  level: "Blue",
+  date: "2026-10-01",
 };
 
-function stubApi(history: unknown, stats: unknown = current, statsStatus = 200) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) =>
-      Promise.resolve(
-        String(url).includes("/stats/history")
-          ? new Response(JSON.stringify(history), { status: 200 })
-          : new Response(JSON.stringify(stats), { status: statsStatus })
-      )
-    )
-  );
+function stubApi(routes: Record<string, [unknown, number?]>) {
+  const fetch = vi.fn((url: string) => {
+    const hit = Object.entries(routes).find(([path]) => String(url).includes(path));
+    const [body, status] = hit?.[1] ?? [{ detail: "not stubbed" }, 404];
+    return Promise.resolve(new Response(JSON.stringify(body), { status: status ?? 200 }));
+  });
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
 }
 
 async function renderDashboard() {
@@ -52,55 +56,54 @@ async function renderDashboard() {
   for (let i = 0; i < 5; i++) await act(async () => void (await new Promise((r) => setTimeout(r, 0))));
 }
 
-async function excludeJuniors() {
-  await act(async () => screen.getByRole("checkbox", { name: "Exclude junior cadets" }).click());
-}
-
 beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 9, 2, 20, 0) });
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 9, 7, 20, 0) });
 });
 afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("dashboard badge trend", () => {
-  // The bug: the scraper's first snapshot with a non-junior breakdown was the
-  // only filtered point, and one point wasn't enough to draw anything.
-  it("excluding juniors with only today's snapshot still charts instead of saying there isn't enough history", async () => {
-    stubApi([
-      { date: "2026-09-01T19:00:00", data: { ...current, non_junior: undefined } },
-      { date: "2026-10-02T19:00:00", data: current },
-    ]);
+describe("dashboard", () => {
+  it("links to the stats page from the header and the badge summary", async () => {
+    stubApi({ "/stats/current": [current], "/stats/awards": [[]] });
     await renderDashboard();
-    await excludeJuniors();
-    expect(screen.queryByText("Not enough history to chart a trend yet")).toBeNull();
-    // Card counts come from the non-junior cohort.
-    expect(screen.getByText("8/9")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Squadron stats" }).getAttribute("href")).toBe("/stats");
+    expect(screen.getByRole("link", { name: "Trends and filters" }).getAttribute("href")).toBe("/stats");
   });
 
-  it("excluding juniors with no filtered snapshots at all still charts today's live numbers", async () => {
-    stubApi([{ date: "2026-09-01T19:00:00", data: { ...current, non_junior: undefined } }]);
+  it("summarises badges without fetching the history the stats page charts", async () => {
+    const fetch = stubApi({ "/stats/current": [current], "/stats/awards": [[]] });
     await renderDashboard();
-    await excludeJuniors();
-    expect(screen.queryByText("Not enough history to chart a trend yet")).toBeNull();
+    expect(
+      screen.getByRole("listitem", { name: /First Aid: 5 of 20 cadets hold it \(5 Blue\)/ })
+    ).toBeTruthy();
+    expect(fetch.mock.calls.some(([url]) => String(url).includes("/stats/history"))).toBe(false);
   });
 
-  it("an empty history still charts today's live numbers", async () => {
-    stubApi([]);
+  it("shows the last month's awards", async () => {
+    const fetch = stubApi({ "/stats/current": [current], "/stats/awards": [[award]] });
     await renderDashboard();
-    expect(screen.queryByText("Not enough history to chart a trend yet")).toBeNull();
+    expect(screen.getByText("Zoë Ó Briain")).toBeTruthy();
+    expect(screen.getByText("Blue First Aid")).toBeTruthy();
+    expect(fetch.mock.calls.some(([url]) => String(url).includes("/stats/awards?days=30"))).toBe(true);
   });
 
-  it("an error body where the history list was expected doesn't crash the page", async () => {
-    stubApi({ detail: "boom" });
+  it("says so when nobody gained a badge this month", async () => {
+    stubApi({ "/stats/current": [current], "/stats/awards": [[]] });
     await renderDashboard();
-    expect(screen.getByRole("checkbox", { name: "Exclude junior cadets" })).toBeTruthy();
+    expect(screen.getByText("No badges gained this month.")).toBeTruthy();
   });
 
-  it("stats from before the non-junior breakdown existed show the empty-trend message when filtered", async () => {
-    stubApi([], { ...current, non_junior: undefined });
+  it("an error body where the awards list was expected doesn't crash the page", async () => {
+    stubApi({ "/stats/current": [current], "/stats/awards": [{ detail: "boom" }, 500] });
     await renderDashboard();
-    await excludeJuniors();
-    expect(screen.getAllByText("Not enough history to chart a trend yet").length).toBeGreaterThan(0);
+    expect(screen.getByText("Cadets on strength")).toBeTruthy();
+    expect(screen.getByText("No badges gained this month.")).toBeTruthy();
+  });
+
+  it("hides staff tools from NCOs", async () => {
+    stubApi({ "/stats/current": [current], "/stats/awards": [[]] });
+    await renderDashboard();
+    expect(screen.queryByText("Bader Scrapers")).toBeNull();
   });
 });

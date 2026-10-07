@@ -25,6 +25,17 @@ describe("middleware authorized()", () => {
     expect(visit("/unauthorized", user())).toBe(true);
   });
 
+  it.each([
+    ["signed out", null, "redirect:/login"],
+    ["no role", user(), "redirect:/unauthorized"],
+    ["nco", user("nco"), true],
+    ["snco", user("snco"), true],
+    ["staff", user("staff"), true],
+  ])("the stats page for %s", (_who, auth, expected) => {
+    expect(visit("/stats", auth)).toBe(expected);
+    expect(visit("/stats?range=1y&flight=A", auth)).toBe(expected);
+  });
+
   it("applies the shared access rules", () => {
     expect(visit("/stores/uniform/stock", user("staff"))).toBe(true);
     expect(visit("/stores/uniform/stock", user("nco"))).toBe("redirect:/unauthorized");
