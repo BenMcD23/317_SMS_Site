@@ -5,6 +5,7 @@ import {
   Calendar,
   CalendarCheck,
   CalendarOff,
+  ChartLine,
   ChartNoAxesColumn,
   ClipboardCheck,
   ClipboardList,
@@ -78,6 +79,12 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard },
+      {
+        label: "Squadron Stats",
+        href: "/stats",
+        icon: ChartLine,
+        keywords: ["badge progression", "trends", "strength", "expiring"],
+      },
       { label: "OC Dashboard", href: "/oc", icon: ShieldUser, ocOnly: true },
     ],
   },

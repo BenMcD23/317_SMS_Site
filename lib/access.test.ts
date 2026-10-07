@@ -19,6 +19,7 @@ describe("canAccess", () => {
     "/nco-holidays",
     "/nco-comments",
     "/settings",
+    "/stats",
   ])("lets NCOs and SNCOs reach %s", (path) => {
     expect(canAccess("nco", path)).toBe(true);
     expect(canAccess("snco", path)).toBe(true);
