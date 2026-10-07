@@ -60,6 +60,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { StockHistory } from "@/components/stock-history";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/format";
+import { completeOrderBlockers } from "@/lib/badge-orders";
 import { cn } from "@/lib/utils";
 
 type StockMatch = { item: BadgeItem; cell: BadgeCell };
@@ -639,23 +640,6 @@ export default function BadgeOrdersPage() {
     if (entry.receivedAt) return "received";
     if (entry.orderedAt) return "ordered";
     return "toOrder";
-  }
-
-  /** Reasons Complete Order is disabled for this order, empty when it's ready.
-   * Every badge must be given, and every non-replacement badge must also have
-   * been marked received — replacements skip that requirement, same as they
-   * skip stock. */
-  function completeOrderBlockers(order: BadgeOrder): string[] {
-    const notGiven = order.items.filter((i) => !i.givenAt);
-    const notReceived = order.items.filter((i) => !i.replacement && !orderListEntryFor(i.id)?.receivedAt);
-    const blockers: string[] = [];
-    if (notGiven.length > 0) {
-      blockers.push(`${notGiven.length} badge${notGiven.length !== 1 ? "s" : ""} not yet given`);
-    }
-    if (notReceived.length > 0) {
-      blockers.push(`${notReceived.length} badge${notReceived.length !== 1 ? "s" : ""} not yet received`);
-    }
-    return blockers;
   }
 
   async function refreshOrderListEntries() {
