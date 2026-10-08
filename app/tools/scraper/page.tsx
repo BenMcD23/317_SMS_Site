@@ -31,6 +31,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { VpSyncCard } from "@/components/vp-sync-card";
 
 const SCRAPER_TOOLS = [
   {
@@ -985,6 +986,16 @@ export default function ScraperPage() {
                   );
                 })}
               </div>
+
+              <VpSyncCard
+                lastRan={formatLastRan(lastRuns["vp-sync"]?.ran_at ?? null)}
+                failed={lastRuns["vp-sync"]?.success === false}
+                onLogs={
+                  lastRuns["vp-sync"]?.id != null
+                    ? () => setLogsFor({ id: lastRuns["vp-sync"].id!, label: "Volunteer Portal Sync" })
+                    : undefined
+                }
+              />
             </>
           )}
 
