@@ -6,6 +6,8 @@ import { useSession } from "next-auth/react";
 import {
   ChevronDown,
   ChevronUp,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Plus,
   Trash2,
   X,
@@ -57,10 +59,12 @@ import {
 } from "@/lib/reference";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
+import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
 import { StockHistory } from "@/components/stock-history";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/format";
 import { completeOrderBlockers } from "@/lib/badge-orders";
+import { searchOrders } from "@/lib/order-search";
 import { cn } from "@/lib/utils";
 
 type StockMatch = { item: BadgeItem; cell: BadgeCell };
@@ -317,9 +321,8 @@ export default function BadgeOrdersPage() {
   // Generic confirm dialog
   const { confirm: openConfirm, confirmDialog } = useConfirm();
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  // Orders leaving the current tab (deleted, completed, reopened) collapse out
+  const { isLeaving, exit } = useExitCollapse();
 
   // Runs once the target order has been switched to and expanded, so the row is in the DOM.
   useEffect(() => {
@@ -356,6 +359,10 @@ export default function BadgeOrdersPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -414,6 +421,18 @@ export default function BadgeOrdersPage() {
     );
   }
 
+  function replaceOrder(updated: BadgeOrder) {
+    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+  }
+
+  // An order that has moved to another tab collapses out of this one first,
+  // rather than vanishing and jerking the list up under you.
+  function applyOrderUpdate(updated: BadgeOrder) {
+    const tab = updated.completed ? "completed" : "active";
+    if (tab === activeTab) replaceOrder(updated);
+    else exit(updated.id, () => replaceOrder(updated));
+  }
+
   async function patchOrder(orderId: string, patch: Partial<BadgeOrder>) {
     try {
       const res = await fetch(`/api/stores/badges/orders/${orderId}`, {
@@ -422,8 +441,7 @@ export default function BadgeOrdersPage() {
         body: JSON.stringify(patch),
       });
       if (!res.ok) throw new Error("Failed to update order");
-      const updated = await res.json();
-      setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+      applyOrderUpdate(await res.json());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     }
@@ -433,11 +451,13 @@ export default function BadgeOrdersPage() {
     try {
       const res = await fetch(`/api/stores/badges/orders/${orderId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete order");
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-      setExpandedIds((prev) => {
-        const n = new Set(prev);
-        n.delete(orderId);
-        return n;
+      exit(orderId, () => {
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        setExpandedIds((prev) => {
+          const n = new Set(prev);
+          n.delete(orderId);
+          return n;
+        });
       });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
@@ -535,7 +555,9 @@ export default function BadgeOrdersPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to mark as ready to collect");
-      await fetchAll();
+      // The API answers with the updated order — reloading everything instead
+      // flashed the whole page to skeletons and lost your scroll position.
+      replaceOrder(await res.json());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -969,14 +991,25 @@ export default function BadgeOrdersPage() {
   const activeOrders = orders.filter((o) => !o.completed);
   const completedOrders = orders.filter((o) => !!o.completed);
 
-  const filteredOrders = (activeTab === "active" ? activeOrders : completedOrders)
-    .filter(
-      (o) => searchQuery.trim() === "" || o.cadetName.toLowerCase().includes(searchQuery.trim().toLowerCase())
-    )
-    .sort((a, b) => {
-      const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-      return sortOrder === "oldest" ? diff : -diff;
+  const sortedOrders = [...(activeTab === "active" ? activeOrders : completedOrders)].sort((a, b) => {
+    const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    return sortOrder === "oldest" ? diff : -diff;
+  });
+  const filteredOrders = searchOrders(sortedOrders, searchQuery, (i) => i.badgeName);
+  const allExpanded =
+    filteredOrders.length > 0 && filteredOrders.every(({ order }) => expandedIds.has(order.id));
+
+  function toggleExpandAll() {
+    const ids = filteredOrders.map(({ order }) => order.id);
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (allExpanded) next.delete(id);
+        else next.add(id);
+      }
+      return next;
     });
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
@@ -1033,13 +1066,29 @@ export default function BadgeOrdersPage() {
 
       {/* Search + Sort */}
       {activeTab !== "orderlist" && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Input
-            placeholder="Search by cadet name..."
+            placeholder="Search by cadet or badge..."
+            aria-label="Search by cadet or badge"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9"
+            // Full width on a phone so the buttons drop to their own row.
+            className="h-9 basis-full sm:flex-1 sm:basis-0"
           />
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            disabled={filteredOrders.length === 0}
+            onClick={toggleExpandAll}
+          >
+            {allExpanded ? (
+              <ChevronsDownUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronsUpDown className="h-3.5 w-3.5" />
+            )}
+            {allExpanded ? "Collapse all" : "Expand all"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -1103,465 +1152,478 @@ export default function BadgeOrdersPage() {
       {/* Orders list */}
       {!loading && activeTab !== "orderlist" && filteredOrders.length > 0 && (
         <div className="space-y-3">
-          {filteredOrders.map((order) => {
+          {filteredOrders.map(({ order, items: visibleItems, itemFiltered }) => {
             const expanded = expandedIds.has(order.id);
             const isCompleted = !!order.completed;
             const isAddingHere = addingToOrderId === order.id;
             const completeBlockers = completeOrderBlockers(order);
 
             return (
-              <Card key={order.id} className={isCompleted ? "opacity-80" : undefined}>
-                <CardHeader className="pb-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <Link href={`/cadets/${order.cadetCin}?tab=qualifications`} className="font-semibold hover:underline">
-                        {order.cadetName}
-                      </Link>
-                      <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
+              <ExitCollapse key={order.id} id={order.id} leaving={isLeaving(order.id)}>
+                <Card className={isCompleted ? "opacity-80" : undefined}>
+                  <CardHeader className="pb-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <Link
+                          href={`/cadets/${order.cadetCin}?tab=qualifications`}
+                          className="font-semibold hover:underline"
+                        >
+                          {order.cadetName}
+                        </Link>
+                        <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {itemFiltered && `${visibleItems.length} of `}
+                          {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                        </Badge>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => toggleExpand(order.id)}
+                          aria-label={`${expanded ? "Collapse" : "Expand"} order for ${order.cadetName}`}
+                          aria-expanded={expanded}
+                        >
+                          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {order.items.length} item{order.items.length !== 1 ? "s" : ""}
-                      </Badge>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={() => toggleExpand(order.id)}
-                      >
-                        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
 
-                {expanded && (
-                  <CardContent className="space-y-3 pt-4">
-                    <ul className="space-y-2">
-                      {order.items.map((orderItem) => {
-                        const stockMatch = findBadgeStockMatch(orderItem.badgeName);
-                        const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
-                        const isAddingNoteHere = addingNoteItemId === orderItem.id;
-                        const orderListEntry = orderListEntryFor(orderItem.id);
-                        const orderListStage = orderListStageFor(orderItem.id);
+                  {expanded && (
+                    <CardContent className="space-y-3 pt-4">
+                      {itemFiltered && (
+                        <p className="text-muted-foreground text-xs">
+                          Showing {visibleItems.length} of {order.items.length} badges matching your search.
+                        </p>
+                      )}
+                      <ul className="space-y-2">
+                        {visibleItems.map((orderItem) => {
+                          const stockMatch = findBadgeStockMatch(orderItem.badgeName);
+                          const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
+                          const isAddingNoteHere = addingNoteItemId === orderItem.id;
+                          const orderListEntry = orderListEntryFor(orderItem.id);
+                          const orderListStage = orderListStageFor(orderItem.id);
 
-                        return (
-                          <li
-                            key={orderItem.id}
-                            id={`badge-order-item-${orderItem.id}`}
-                            className={cn(
-                              "bg-muted/30 space-y-2 rounded-md border p-3 transition-colors",
-                              highlightItemId === orderItem.id &&
-                                "border-primary bg-primary/10 ring-primary/40 ring-2"
-                            )}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1 space-y-1.5">
-                                <p className="text-sm font-medium">
-                                  {orderItem.badgeName}
-                                  {orderItem.replacement && (
-                                    <Badge
-                                      variant="outline"
-                                      className="border-warning/40 bg-warning/10 text-warning ml-2"
-                                    >
-                                      Replacement (£2)
-                                    </Badge>
-                                  )}
-                                </p>
-                                {orderItem.qualHeld != null &&
-                                  (orderItem.qualHeld ? (
-                                    <p className="text-success flex items-center gap-1 text-xs font-medium">
-                                      <Check className="h-3 w-3" />
-                                      Qualification is held
-                                    </p>
-                                  ) : (
-                                    <p className="text-destructive flex items-center gap-1 text-xs font-medium">
-                                      <X className="h-3 w-3" />
-                                      Qualification not held
-                                    </p>
-                                  ))}
-                                {gainedWhereSummary(gainedWhereOptions, orderItem) && (
-                                  <p className="text-muted-foreground text-xs">
-                                    {gainedWhereSummary(gainedWhereOptions, orderItem)}
+                          return (
+                            <li
+                              key={orderItem.id}
+                              id={`badge-order-item-${orderItem.id}`}
+                              className={cn(
+                                "bg-muted/30 space-y-2 rounded-md border p-3 transition-colors",
+                                highlightItemId === orderItem.id &&
+                                  "border-primary bg-primary/10 ring-primary/40 ring-2"
+                              )}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1 space-y-1.5">
+                                  <p className="text-sm font-medium">
+                                    {orderItem.badgeName}
+                                    {orderItem.replacement && (
+                                      <Badge
+                                        variant="outline"
+                                        className="border-warning/40 bg-warning/10 text-warning ml-2"
+                                      >
+                                        Replacement (£2)
+                                      </Badge>
+                                    )}
                                   </p>
+                                  {orderItem.qualHeld != null &&
+                                    (orderItem.qualHeld ? (
+                                      <p className="text-success flex items-center gap-1 text-xs font-medium">
+                                        <Check className="h-3 w-3" />
+                                        Qualification is held
+                                      </p>
+                                    ) : (
+                                      <p className="text-destructive flex items-center gap-1 text-xs font-medium">
+                                        <X className="h-3 w-3" />
+                                        Qualification not held
+                                      </p>
+                                    ))}
+                                  {gainedWhereSummary(gainedWhereOptions, orderItem) && (
+                                    <p className="text-muted-foreground text-xs">
+                                      {gainedWhereSummary(gainedWhereOptions, orderItem)}
+                                    </p>
+                                  )}
+
+                                  {!isCompleted &&
+                                    (stockMatch ? (
+                                      <p className="text-success text-xs font-medium">
+                                        In Stock:{" "}
+                                        {stockMatch.cell.label ??
+                                          `Row ${stockMatch.cell.row + 1} Col ${stockMatch.cell.col + 1}`}{" "}
+                                        (×{stockMatch.item.quantity})
+                                      </p>
+                                    ) : (
+                                      <p className="text-muted-foreground text-xs">Out of Stock</p>
+                                    ))}
+                                </div>
+
+                                {!isCompleted && (
+                                  <div className="flex w-36 shrink-0 flex-col items-end gap-1.5">
+                                    {removedFromStock ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 w-full text-xs disabled:opacity-40"
+                                        disabled={removingStock === orderItem.id}
+                                        onClick={() => handleReturnToStock(order, orderItem)}
+                                      >
+                                        <PackagePlus className="mr-1 h-3 w-3" />
+                                        Add Back to Stock
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-7 w-full text-xs disabled:opacity-40"
+                                        disabled={removingStock === orderItem.id || !stockMatch}
+                                        onClick={() =>
+                                          stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
+                                        }
+                                      >
+                                        <PackageMinus className="mr-1 h-3 w-3" />
+                                        Remove from Stock
+                                      </Button>
+                                    )}
+                                    {orderListStage === "none" && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 w-full text-xs disabled:opacity-40"
+                                        disabled={addingToListId === orderItem.id}
+                                        onClick={() => handleAddToOrderList(orderItem)}
+                                      >
+                                        <ClipboardList className="mr-1 h-3 w-3" />
+                                        Add to Order List
+                                      </Button>
+                                    )}
+                                    {(orderListStage === "none" || orderListStage === "toOrder") && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 w-full text-xs disabled:opacity-40"
+                                        disabled={sendingToOrderedId === orderItem.id}
+                                        onClick={() => handleSendToOrdered(orderItem)}
+                                      >
+                                        <Truck className="mr-1 h-3 w-3" />
+                                        {sendingToOrderedId === orderItem.id
+                                          ? "Sending..."
+                                          : orderListStage === "toOrder"
+                                            ? "Mark as Ordered"
+                                            : "Send to Ordered"}
+                                      </Button>
+                                    )}
+                                    {orderListStage !== "received" && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 w-full text-xs disabled:opacity-40"
+                                        disabled={markingReceivedQuickId === orderItem.id}
+                                        onClick={() => handleMarkReceivedQuick(orderItem)}
+                                      >
+                                        <Inbox className="mr-1 h-3 w-3" />
+                                        {markingReceivedQuickId === orderItem.id
+                                          ? "Marking..."
+                                          : "Mark as Received"}
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={
+                                        markingAsReady === orderItem.id ||
+                                        !!orderItem.readyToCollect ||
+                                        !!orderItem.givenAt
+                                      }
+                                      onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}
+                                    >
+                                      <Bell className="mr-1 h-3 w-3" />
+                                      {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-success/40 text-success hover:bg-success/10 hover:text-success h-7 w-full text-xs disabled:opacity-40"
+                                      disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt}
+                                      onClick={() => handleMarkItemAsGiven(order, orderItem)}
+                                    >
+                                      <PackageCheck className="mr-1 h-3 w-3" />
+                                      Mark as Given
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-7 w-full text-xs"
+                                      onClick={() =>
+                                        handleDeleteOrderItem(order.id, orderItem.id, orderItem.badgeName)
+                                      }
+                                    >
+                                      <Trash2 className="mr-1 h-3 w-3" />
+                                      Delete
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Ready to collect stamp */}
+                              {orderItem.readyToCollect && !orderItem.givenAt && (
+                                <div className="bg-primary/10 border-primary/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                                  <Bell className="text-primary h-3 w-3 shrink-0" />
+                                  <p className="text-primary text-xs">
+                                    Cadet notified {formatTimestamp(orderItem.readyToCollect)}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Given stamp */}
+                              {orderItem.givenAt && (
+                                <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                                  <PackageCheck className="text-success h-3 w-3 shrink-0" />
+                                  <p className="text-success text-xs">
+                                    Given {formatTimestamp(orderItem.givenAt)}
+                                    {orderItem.givenBy && <> · {orderItem.givenBy}</>}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Order list stamps — added/ordered/received, each its own line so
+                                the audit trail reads the same as it does on the Order List tab */}
+                              {orderListEntry && (
+                                <div className="space-y-1">
+                                  <div className="bg-muted/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                                    <ClipboardList className="text-muted-foreground h-3 w-3 shrink-0" />
+                                    <p className="text-muted-foreground text-xs">
+                                      Added to order list {formatTimestamp(orderListEntry.addedAt)}
+                                      {orderListEntry.addedBy && <> · {orderListEntry.addedBy}</>}
+                                    </p>
+                                  </div>
+                                  {orderListEntry.orderedAt && (
+                                    <div className="bg-muted/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                                      <Truck className="text-muted-foreground h-3 w-3 shrink-0" />
+                                      <p className="text-muted-foreground text-xs">
+                                        Marked ordered {formatTimestamp(orderListEntry.orderedAt)}
+                                        {orderListEntry.orderedBy && <> · {orderListEntry.orderedBy}</>}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {orderListEntry.receivedAt && (
+                                    <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
+                                      <Inbox className="text-success h-3 w-3 shrink-0" />
+                                      <p className="text-success text-xs">
+                                        Marked received {formatTimestamp(orderListEntry.receivedAt)}
+                                        {orderListEntry.receivedBy && <> · {orderListEntry.receivedBy}</>}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Stock history */}
+                              <StockHistory events={orderItem.stockEvents} />
+
+                              <div className="space-y-1.5 border-t pt-2">
+                                {(orderItem.qmNotes ?? []).length > 0 && (
+                                  <div className="space-y-1">
+                                    {(orderItem.qmNotes ?? []).map((note) => (
+                                      <div
+                                        key={note.id}
+                                        className="bg-background space-y-0.5 rounded border px-2.5 py-1.5"
+                                      >
+                                        <p className="text-xs whitespace-pre-wrap">{note.content}</p>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="text-muted-foreground text-[10px]">
+                                            {note.addedBy} · {formatTimestamp(note.timestamp)}
+                                          </p>
+                                          {!isCompleted && (
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="text-muted-foreground hover:text-destructive h-5 w-5"
+                                              onClick={() => handleDeleteQmNote(order.id, orderItem, note.id)}
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
 
                                 {!isCompleted &&
-                                  (stockMatch ? (
-                                    <p className="text-success text-xs font-medium">
-                                      In Stock:{" "}
-                                      {stockMatch.cell.label ??
-                                        `Row ${stockMatch.cell.row + 1} Col ${stockMatch.cell.col + 1}`}{" "}
-                                      (×{stockMatch.item.quantity})
-                                    </p>
-                                  ) : (
-                                    <p className="text-muted-foreground text-xs">Out of Stock</p>
-                                  ))}
-                              </div>
-
-                              {!isCompleted && (
-                                <div className="flex w-36 shrink-0 flex-col items-end gap-1.5">
-                                  {removedFromStock ? (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 w-full text-xs disabled:opacity-40"
-                                      disabled={removingStock === orderItem.id}
-                                      onClick={() => handleReturnToStock(order, orderItem)}
-                                    >
-                                      <PackagePlus className="mr-1 h-3 w-3" />
-                                      Add Back to Stock
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-7 w-full text-xs disabled:opacity-40"
-                                      disabled={removingStock === orderItem.id || !stockMatch}
-                                      onClick={() =>
-                                        stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
-                                      }
-                                    >
-                                      <PackageMinus className="mr-1 h-3 w-3" />
-                                      Remove from Stock
-                                    </Button>
-                                  )}
-                                  {orderListStage === "none" && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 w-full text-xs disabled:opacity-40"
-                                      disabled={addingToListId === orderItem.id}
-                                      onClick={() => handleAddToOrderList(orderItem)}
-                                    >
-                                      <ClipboardList className="mr-1 h-3 w-3" />
-                                      Add to Order List
-                                    </Button>
-                                  )}
-                                  {(orderListStage === "none" || orderListStage === "toOrder") && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 w-full text-xs disabled:opacity-40"
-                                      disabled={sendingToOrderedId === orderItem.id}
-                                      onClick={() => handleSendToOrdered(orderItem)}
-                                    >
-                                      <Truck className="mr-1 h-3 w-3" />
-                                      {sendingToOrderedId === orderItem.id
-                                        ? "Sending..."
-                                        : orderListStage === "toOrder"
-                                          ? "Mark as Ordered"
-                                          : "Send to Ordered"}
-                                    </Button>
-                                  )}
-                                  {orderListStage !== "received" && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-7 w-full text-xs disabled:opacity-40"
-                                      disabled={markingReceivedQuickId === orderItem.id}
-                                      onClick={() => handleMarkReceivedQuick(orderItem)}
-                                    >
-                                      <Inbox className="mr-1 h-3 w-3" />
-                                      {markingReceivedQuickId === orderItem.id
-                                        ? "Marking..."
-                                        : "Mark as Received"}
-                                    </Button>
-                                  )}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary h-7 w-full text-xs disabled:opacity-40"
-                                    disabled={
-                                      markingAsReady === orderItem.id ||
-                                      !!orderItem.readyToCollect ||
-                                      !!orderItem.givenAt
-                                    }
-                                    onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}
-                                  >
-                                    <Bell className="mr-1 h-3 w-3" />
-                                    {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-success/40 text-success hover:bg-success/10 hover:text-success h-7 w-full text-xs disabled:opacity-40"
-                                    disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt}
-                                    onClick={() => handleMarkItemAsGiven(order, orderItem)}
-                                  >
-                                    <PackageCheck className="mr-1 h-3 w-3" />
-                                    Mark as Given
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-7 w-full text-xs"
-                                    onClick={() =>
-                                      handleDeleteOrderItem(order.id, orderItem.id, orderItem.badgeName)
-                                    }
-                                  >
-                                    <Trash2 className="mr-1 h-3 w-3" />
-                                    Delete
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Ready to collect stamp */}
-                            {orderItem.readyToCollect && !orderItem.givenAt && (
-                              <div className="bg-primary/10 border-primary/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                <Bell className="text-primary h-3 w-3 shrink-0" />
-                                <p className="text-primary text-xs">
-                                  Cadet notified {formatTimestamp(orderItem.readyToCollect)}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Given stamp */}
-                            {orderItem.givenAt && (
-                              <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                <PackageCheck className="text-success h-3 w-3 shrink-0" />
-                                <p className="text-success text-xs">
-                                  Given {formatTimestamp(orderItem.givenAt)}
-                                  {orderItem.givenBy && <> · {orderItem.givenBy}</>}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Order list stamps — added/ordered/received, each its own line so
-                                the audit trail reads the same as it does on the Order List tab */}
-                            {orderListEntry && (
-                              <div className="space-y-1">
-                                <div className="bg-muted/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                  <ClipboardList className="text-muted-foreground h-3 w-3 shrink-0" />
-                                  <p className="text-muted-foreground text-xs">
-                                    Added to order list {formatTimestamp(orderListEntry.addedAt)}
-                                    {orderListEntry.addedBy && <> · {orderListEntry.addedBy}</>}
-                                  </p>
-                                </div>
-                                {orderListEntry.orderedAt && (
-                                  <div className="bg-muted/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                    <Truck className="text-muted-foreground h-3 w-3 shrink-0" />
-                                    <p className="text-muted-foreground text-xs">
-                                      Marked ordered {formatTimestamp(orderListEntry.orderedAt)}
-                                      {orderListEntry.orderedBy && <> · {orderListEntry.orderedBy}</>}
-                                    </p>
-                                  </div>
-                                )}
-                                {orderListEntry.receivedAt && (
-                                  <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                    <Inbox className="text-success h-3 w-3 shrink-0" />
-                                    <p className="text-success text-xs">
-                                      Marked received {formatTimestamp(orderListEntry.receivedAt)}
-                                      {orderListEntry.receivedBy && <> · {orderListEntry.receivedBy}</>}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Stock history */}
-                            <StockHistory events={orderItem.stockEvents} />
-
-                            <div className="space-y-1.5 border-t pt-2">
-                              {(orderItem.qmNotes ?? []).length > 0 && (
-                                <div className="space-y-1">
-                                  {(orderItem.qmNotes ?? []).map((note) => (
-                                    <div
-                                      key={note.id}
-                                      className="bg-background space-y-0.5 rounded border px-2.5 py-1.5"
-                                    >
-                                      <p className="text-xs whitespace-pre-wrap">{note.content}</p>
-                                      <div className="flex items-center justify-between gap-2">
-                                        <p className="text-muted-foreground text-[10px]">
-                                          {note.addedBy} · {formatTimestamp(note.timestamp)}
-                                        </p>
-                                        {!isCompleted && (
-                                          <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="text-muted-foreground hover:text-destructive h-5 w-5"
-                                            onClick={() => handleDeleteQmNote(order.id, orderItem, note.id)}
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        )}
+                                  (isAddingNoteHere ? (
+                                    <div className="space-y-1.5">
+                                      <textarea
+                                        className="bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-1.5 text-xs focus:ring-1 focus:outline-none"
+                                        rows={3}
+                                        placeholder="Type your note..."
+                                        value={noteText}
+                                        onChange={(e) => setNoteText(e.target.value)}
+                                        autoFocus
+                                      />
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          className="h-7 px-3 text-xs"
+                                          disabled={!noteText.trim() || savingNote}
+                                          onClick={() => handleAddQmNote(order.id, orderItem)}
+                                        >
+                                          {savingNote ? "Saving..." : "Save Note"}
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 px-2 text-xs"
+                                          onClick={() => {
+                                            setAddingNoteItemId(null);
+                                            setNoteText("");
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
                                       </div>
                                     </div>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 w-full px-2 text-xs"
+                                      onClick={() => {
+                                        setAddingNoteItemId(orderItem.id);
+                                        setNoteText("");
+                                      }}
+                                    >
+                                      <StickyNote className="mr-1.5 h-3 w-3" />
+                                      Add QM Note
+                                    </Button>
                                   ))}
-                                </div>
-                              )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
 
-                              {!isCompleted &&
-                                (isAddingNoteHere ? (
-                                  <div className="space-y-1.5">
-                                    <textarea
-                                      className="bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-1.5 text-xs focus:ring-1 focus:outline-none"
-                                      rows={3}
-                                      placeholder="Type your note..."
-                                      value={noteText}
-                                      onChange={(e) => setNoteText(e.target.value)}
-                                      autoFocus
-                                    />
-                                    <div className="flex gap-2">
-                                      <Button
-                                        size="sm"
-                                        className="h-7 px-3 text-xs"
-                                        disabled={!noteText.trim() || savingNote}
-                                        onClick={() => handleAddQmNote(order.id, orderItem)}
-                                      >
-                                        {savingNote ? "Saving..." : "Save Note"}
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 px-2 text-xs"
-                                        onClick={() => {
-                                          setAddingNoteItemId(null);
-                                          setNoteText("");
-                                        }}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 w-full px-2 text-xs"
-                                    onClick={() => {
-                                      setAddingNoteItemId(orderItem.id);
-                                      setNoteText("");
-                                    }}
-                                  >
-                                    <StickyNote className="mr-1.5 h-3 w-3" />
-                                    Add QM Note
-                                  </Button>
-                                ))}
+                      {/* Add badge to existing order */}
+                      {!isCompleted &&
+                        (isAddingHere ? (
+                          <div className="space-y-2 rounded-md border border-dashed p-3">
+                            <p className="text-muted-foreground text-xs font-medium">Add badge to order</p>
+                            <BadgePicker
+                              category={addCategory}
+                              subType={addSubType}
+                              level={addLevel}
+                              onCategory={(c) => {
+                                setAddCategory(c);
+                                setAddSubType(null);
+                                setAddLevel(null);
+                              }}
+                              onSubType={(s) => {
+                                setAddSubType(s);
+                                setAddLevel(null);
+                              }}
+                              onLevel={setAddLevel}
+                            />
+                            {addBadgeName && (
+                              <p className="bg-muted rounded-md px-3 py-1.5 text-xs font-medium">
+                                {addBadgeName}
+                              </p>
+                            )}
+                            {addBadgeName && (
+                              <GainedWhereFields value={addGainedWhere} onChange={setAddGainedWhere} />
+                            )}
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="h-7 px-3 text-xs"
+                                disabled={!addBadgeName || !isGainedWhereComplete(addGainedWhere)}
+                                onClick={() => handleAddToOrder(order.id)}
+                              >
+                                Add
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => setAddingToOrderId(null)}
+                              >
+                                Cancel
+                              </Button>
                             </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-
-                    {/* Add badge to existing order */}
-                    {!isCompleted &&
-                      (isAddingHere ? (
-                        <div className="space-y-2 rounded-md border border-dashed p-3">
-                          <p className="text-muted-foreground text-xs font-medium">Add badge to order</p>
-                          <BadgePicker
-                            category={addCategory}
-                            subType={addSubType}
-                            level={addLevel}
-                            onCategory={(c) => {
-                              setAddCategory(c);
-                              setAddSubType(null);
-                              setAddLevel(null);
-                            }}
-                            onSubType={(s) => {
-                              setAddSubType(s);
-                              setAddLevel(null);
-                            }}
-                            onLevel={setAddLevel}
-                          />
-                          {addBadgeName && (
-                            <p className="bg-muted rounded-md px-3 py-1.5 text-xs font-medium">
-                              {addBadgeName}
-                            </p>
-                          )}
-                          {addBadgeName && (
-                            <GainedWhereFields value={addGainedWhere} onChange={setAddGainedWhere} />
-                          )}
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              className="h-7 px-3 text-xs"
-                              disabled={!addBadgeName || !isGainedWhereComplete(addGainedWhere)}
-                              onClick={() => handleAddToOrder(order.id)}
-                            >
-                              Add
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs"
-                              onClick={() => setAddingToOrderId(null)}
-                            >
-                              Cancel
-                            </Button>
                           </div>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-full text-xs"
-                          onClick={() => startAddToOrder(order.id)}
-                        >
-                          <Plus className="mr-1.5 h-3.5 w-3.5" />
-                          Add Badge to Order
-                        </Button>
-                      ))}
-
-                    {/* Footer actions */}
-                    <div className="flex justify-end gap-2 pt-1">
-                      {isCompleted ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
-                          onClick={() => handleReopenOrder(order.id, order.cadetName)}
-                        >
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Reopen Order
-                        </Button>
-                      ) : (
-                        <>
+                        ) : (
                           <Button
                             size="sm"
-                            variant="destructive"
-                            onClick={() => handleDeleteOrder(order.id, order.cadetName)}
+                            variant="outline"
+                            className="h-8 w-full text-xs"
+                            onClick={() => startAddToOrder(order.id)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Order
+                            <Plus className="mr-1.5 h-3.5 w-3.5" />
+                            Add Badge to Order
                           </Button>
-                          {completeBlockers.length > 0 ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                {/* Complete Order is disabled below, which stops it from receiving
-                                    hover/focus — this span is what the tooltip actually anchors to. */}
-                                <span tabIndex={0} className="inline-flex">
-                                  <Button
-                                    size="sm"
-                                    className="bg-success hover:bg-success/90 text-white disabled:pointer-events-none disabled:opacity-40"
-                                    disabled
-                                  >
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                    Complete Order
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Can&apos;t complete — {completeBlockers.join(", ")}
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
+                        ))}
+
+                      {/* Footer actions */}
+                      <div className="flex justify-end gap-2 pt-1">
+                        {isCompleted ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+                            onClick={() => handleReopenOrder(order.id, order.cadetName)}
+                          >
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Reopen Order
+                          </Button>
+                        ) : (
+                          <>
                             <Button
                               size="sm"
-                              className="bg-success hover:bg-success/90 text-white"
-                              onClick={() => handleCompleteOrder(order.id, order.cadetName)}
+                              variant="destructive"
+                              onClick={() => handleDeleteOrder(order.id, order.cadetName)}
                             >
-                              <CheckCircle2 className="mr-2 h-4 w-4" />
-                              Complete Order
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Order
                             </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
+                            {completeBlockers.length > 0 ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  {/* Complete Order is disabled below, which stops it from receiving
+                                    hover/focus — this span is what the tooltip actually anchors to. */}
+                                  <span tabIndex={0} className="inline-flex">
+                                    <Button
+                                      size="sm"
+                                      className="bg-success hover:bg-success/90 text-white disabled:pointer-events-none disabled:opacity-40"
+                                      disabled
+                                    >
+                                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                                      Complete Order
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Can&apos;t complete — {completeBlockers.join(", ")}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className="bg-success hover:bg-success/90 text-white"
+                                onClick={() => handleCompleteOrder(order.id, order.cadetName)}
+                              >
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                Complete Order
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              </ExitCollapse>
             );
           })}
         </div>
