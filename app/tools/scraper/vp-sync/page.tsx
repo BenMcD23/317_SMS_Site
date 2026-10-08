@@ -2,26 +2,36 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { AlertTriangle, CheckCircle2, Copy, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, Bookmark, CheckCircle2, Copy, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { API_BASE } from "@/lib/config";
 import { apiRequest } from "@/lib/api-fetch";
-import { VP_ORIGIN } from "@/lib/vp-sync";
+import {
+  BOOKMARKLET_VERSION,
+  collectPortalData,
+  VP_ORIGIN,
+  type PortalError,
+  type PortalFetch,
+} from "@/lib/vp-sync";
 
 const NO_OPENER = "Open this from the 317 Sync bookmark on the Volunteer Portal — see Bader Scrapers.";
 
-type SyncCounts = { matched: number; unmatched: number; saved: number; failed: number; kept: number; theory: number };
-/** One failed portal call, as the bookmarklet logged it. */
-type PortalError = { what: string; path: string; status: number; detail: string };
+type SyncCounts = {
+  matched: number;
+  unmatched: number;
+  saved: number;
+  failed: number;
+  kept: number;
+  theory: number;
+};
 type Status =
-  | { kind: "waiting"; text: string }
-  | { kind: "done"; counts: SyncCounts }
-  | { kind: "error"; text: string };
+  { kind: "waiting"; text: string } | { kind: "done"; counts: SyncCounts } | { kind: "error"; text: string };
 
 /** What a status code most likely means, for someone who isn't a developer. */
 function explain(status: number): string {
@@ -36,9 +46,9 @@ function explain(status: number): string {
 /**
  * Target of the 317 Sync bookmarklet (public/vp-sync-bookmarklet.js).
  *
- * The bookmarklet opens this page from the Volunteer Portal; we tell it which
- * CINs we hold (so it only reads our cadets), then import what it sends back
- * with the signed-in user's token. Messages are accepted only from the portal
+ * The bookmarklet opens this page from the Volunteer Portal and relays portal
+ * GETs for us; this page decides what to read (collectPortalData), reads only
+ * the cadets we hold, then imports them with the signed-in user's token. Messages are accepted only from the portal
  * origin *and* the window that opened us, so no other site can feed data in.
  * Every portal call that failed is listed in full, so whoever runs a sync can
  * copy the problems and send them on.
@@ -46,31 +56,90 @@ function explain(status: number): string {
 export default function VpSyncPage() {
   const { data: session } = useSession();
   const token = session?.id_token;
-  const [status, setStatus] = useState<Status>({ kind: "waiting", text: "Connecting to the Volunteer Portal…" });
+  const [status, setStatus] = useState<Status>({
+    kind: "waiting",
+    text: "Connecting to the Volunteer Portal…",
+  });
   const [errors, setErrors] = useState<PortalError[]>([]);
+
+  const [outdated, setOutdated] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     const portal = window.opener as Window | null;
+    let cins = new Set<string>();
+    let started = false;
 
-    const onMessage = async (e: MessageEvent) => {
-      if (e.origin !== VP_ORIGIN || e.source !== portal) return;
-      if (Array.isArray(e.data?.errors)) setErrors(e.data.errors);
-      if (e.data?.type === "sms-vp-error") {
-        setStatus({ kind: "error", text: `Reading the Volunteer Portal failed: ${e.data.message}` });
-        return;
-      }
-      if (e.data?.type !== "sms-vp-data") return;
-      window.removeEventListener("message", onMessage);
-      setStatus({ kind: "waiting", text: `Importing ${e.data.cadets?.length ?? 0} cadets…` });
+    // Each relayed portal GET is a numbered request the bookmarklet answers.
+    const pending = new Map<number, (reply: { status: number; body: string }) => void>();
+    let nextId = 0;
+    const fetchPortal: PortalFetch = (path) =>
+      new Promise((resolve) => {
+        const id = ++nextId;
+        pending.set(id, resolve);
+        portal!.postMessage({ type: "sms-vp-get", id, path }, VP_ORIGIN);
+      });
+
+    const importCadets = async (cadets: unknown, found: PortalError[]) => {
+      setErrors(found);
+      setStatus({ kind: "waiting", text: `Importing ${Array.isArray(cadets) ? cadets.length : 0} cadets…` });
       try {
         const counts = await apiRequest<SyncCounts>(token, `${API_BASE}/vp-sync`, {
           method: "POST",
-          body: { cadets: e.data.cadets },
+          body: { cadets },
         });
         setStatus({ kind: "done", counts });
       } catch (err) {
-        setStatus({ kind: "error", text: `Saving to 317 SMS failed: ${err instanceof Error ? err.message : err}` });
+        setStatus({
+          kind: "error",
+          text: `Saving to 317 SMS failed: ${err instanceof Error ? err.message : err}`,
+        });
+      }
+    };
+
+    const run = async () => {
+      const found: PortalError[] = [];
+      try {
+        const cadets = await collectPortalData(fetchPortal, cins, found, (done, total) => {
+          setStatus({ kind: "waiting", text: `Read ${done} of ${total} cadets from the Volunteer Portal…` });
+          portal!.postMessage(
+            { type: "sms-vp-progress", text: `read ${done} of ${total} cadets…` },
+            VP_ORIGIN
+          );
+        });
+        await importCadets(cadets, found);
+      } catch (err) {
+        setErrors(found);
+        setStatus({
+          kind: "error",
+          text: `Reading the Volunteer Portal failed: ${err instanceof Error ? err.message : err}`,
+        });
+      } finally {
+        // Tells the bookmarklet to stop relaying.
+        portal!.postMessage({ type: "sms-vp-done", text: "done — check the 317 SMS tab." }, VP_ORIGIN);
+      }
+    };
+
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== VP_ORIGIN || e.source !== portal) return;
+      const m = e.data;
+      if (m?.type === "sms-vp-result") {
+        pending.get(m.id)?.({ status: Number(m.status) || 0, body: String(m.body ?? "") });
+        pending.delete(m.id);
+      } else if (m?.type === "sms-vp-hello" && !started) {
+        started = true;
+        if (!(Number(m.version) >= BOOKMARKLET_VERSION)) setOutdated(true);
+        void run();
+      } else if (m?.type === "sms-vp-data" && !started) {
+        // A bookmark from before the relay reads the portal itself and sends
+        // everything at once. Still import it, but ask for a re-drag.
+        started = true;
+        setOutdated(true);
+        void importCadets(m.cadets, Array.isArray(m.errors) ? m.errors : []);
+      } else if (m?.type === "sms-vp-error" && !started) {
+        setOutdated(true);
+        if (Array.isArray(m.errors)) setErrors(m.errors);
+        setStatus({ kind: "error", text: `Reading the Volunteer Portal failed: ${m.message}` });
       }
     };
     window.addEventListener("message", onMessage);
@@ -79,6 +148,8 @@ export default function VpSyncPage() {
       try {
         if (!portal) throw new Error(NO_OPENER);
         const roster = await apiRequest<{ cin: number }[]>(token, `${API_BASE}/cadets`, { method: "GET" });
+        cins = new Set(roster.map((c) => String(c.cin)));
+        // `cins` is only for bookmarks from before the relay, which filter themselves.
         portal.postMessage({ type: "sms-vp-ready", cins: roster.map((c) => c.cin) }, VP_ORIGIN);
         setStatus({ kind: "waiting", text: "Reading from the Volunteer Portal — keep that tab open…" });
       } catch (err) {
@@ -91,7 +162,26 @@ export default function VpSyncPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pb-16">
-      <PageHeader title="Volunteer Portal Sync" description="Importing cadet data from the Volunteer Portal" />
+      <PageHeader
+        title="Volunteer Portal Sync"
+        description="Importing cadet data from the Volunteer Portal"
+      />
+
+      {outdated && (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <Bookmark />
+          <AlertTitle>Your 317 Sync bookmark is out of date</AlertTitle>
+          <AlertDescription className="text-amber-900/90 dark:text-amber-200/90">
+            <p>
+              Delete it and drag a fresh one from{" "}
+              <Link href="/tools/scraper" className="underline">
+                Bader Scrapers
+              </Link>
+              . This one still works, but may miss data newer versions read.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardContent className="flex items-start gap-3 text-sm">
@@ -135,10 +225,14 @@ function SyncResult({ counts, problems }: { counts: SyncCounts; problems: number
         )}
         <div className="pt-0.5">
           <p className="font-medium">
-            {problems ? "Sync finished with problems — see below." : "Sync complete — you can close this tab."}
+            {problems
+              ? "Sync finished with problems — see below."
+              : "Sync complete — you can close this tab."}
           </p>
           {counts.unmatched > 0 && (
-            <p className="text-muted-foreground">{counts.unmatched} people weren&apos;t in 317 SMS and were skipped.</p>
+            <p className="text-muted-foreground">
+              {counts.unmatched} people weren&apos;t in 317 SMS and were skipped.
+            </p>
           )}
         </div>
       </div>
