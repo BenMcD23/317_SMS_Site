@@ -682,6 +682,36 @@ describe("targets", () => {
     });
   });
 
+  it("Add without a due date says to pick one instead of sitting greyed out", async () => {
+    SESSION.data.role = "staff";
+    const fetch = stubApi();
+    await renderStats();
+    await act(async () => screen.getByRole("button", { name: "Add target" }).click());
+    const dialog = screen.getByRole("dialog");
+    // Nothing nags before the user has tried to save.
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    const add = within(dialog).getByRole("button", { name: "Add target" });
+    expect(add.hasAttribute("disabled")).toBe(false);
+    await act(async () => add.click());
+    expect(within(dialog).getByRole("alert").textContent).toBe("Pick a due date");
+    expect(fetch.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === "POST")).toBe(
+      false
+    );
+  });
+
+  it("a target the API rejects keeps the dialog open", async () => {
+    SESSION.data.role = "staff";
+    stubApi({ "POST /stats/targets": [{ detail: "Unknown badge 'first_aid'" }, 400] });
+    await renderStats();
+    await act(async () => screen.getByRole("button", { name: "Add target" }).click());
+    fireEvent.change(screen.getByLabelText("By"), { target: { value: "2027-07-01" } });
+    await act(async () =>
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add target" }).click()
+    );
+    const add = within(screen.getByRole("dialog")).getByRole("button", { name: "Add target" });
+    expect(add.hasAttribute("disabled")).toBe(false);
+  });
+
   it("won't submit a target outside 1–100%", async () => {
     SESSION.data.role = "staff";
     stubApi();
