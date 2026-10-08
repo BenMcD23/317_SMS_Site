@@ -760,7 +760,7 @@ export default function TextMessagesPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Parade Night Texts"
         description="Generate, review and approve the weekly SMS — texts go out automatically at 4pm the day before each parade night"

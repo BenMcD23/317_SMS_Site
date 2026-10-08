@@ -81,7 +81,7 @@ export default function ProgrammeUpdaterPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <PageHeader
         title="Programme"
         description="Publish a month's programme from Google Drive to the squadron website"

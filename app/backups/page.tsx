@@ -208,7 +208,7 @@ export default function BackupsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Database Backups"
         description={`Daily PostgreSQL backups stored in Google Drive. The newest ${retention} are kept; older ones are deleted automatically.`}

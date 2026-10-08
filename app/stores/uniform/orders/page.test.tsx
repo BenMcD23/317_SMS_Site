@@ -250,7 +250,8 @@ describe("orders leaving the list", () => {
     expect(card("Alex Smith")).toHaveClass("grid-rows-[0fr]");
     await waitFor(() => expect(screen.queryByText("Alex Smith")).not.toBeInTheDocument());
 
-    await act(async () => screen.getByRole("button", { name: /^Completed/ }).click());
+    // Radix tabs switch on mousedown (and keyboard), not a synthetic click.
+    await act(async () => fireEvent.mouseDown(screen.getByRole("tab", { name: /^Completed/ })));
     expect(screen.getByText("Alex Smith")).toBeInTheDocument();
   });
 
@@ -259,7 +260,8 @@ describe("orders leaving the list", () => {
       "PATCH /api/stores/orders/3": () => json({ ...orders()[2], completed: true }),
     });
     await renderPage();
-    await act(async () => screen.getByRole("button", { name: /^C Flight Kitting/ }).click());
+    // Radix tabs switch on mousedown (and keyboard), not a synthetic click.
+    await act(async () => fireEvent.mouseDown(screen.getByRole("tab", { name: /^C Flight Kitting/ })));
     await expand("Kit Cadet");
 
     await act(async () => screen.getByRole("button", { name: "Complete Order" }).click());

@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { CountTabs } from "@/components/count-tabs";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,10 +52,10 @@ import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
 import { StockHistory } from "@/components/stock-history";
+import { PreviousSizesPopover } from "@/components/previous-sizes-popover";
 import Link from "next/link";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import { searchOrders } from "@/lib/order-search";
-import { cn } from "@/lib/utils";
 
 type DraftItem = {
   itemType: string;
@@ -131,6 +132,15 @@ function SizingDetailsDisplay({ raw }: { raw: string }) {
       ))}
     </div>
   );
+}
+
+/** Where an order's subject's issued sizes live — staff orders are keyed by
+ *  user, cadet orders by CIN. Marking an item given and the Sizes popover both
+ *  read it, so they can't disagree about whose record they're looking at. */
+function issuancesUrlFor(order: Order): string {
+  return (order as { subjectType?: string }).subjectType === "user"
+    ? `/api/stores/issuances/user/${(order as { userId?: number }).userId}`
+    : `/api/stores/issuances/${order.cadetCin}`;
 }
 
 export default function OrdersPage() {
@@ -516,9 +526,7 @@ export default function OrdersPage() {
     setMarkingAsGiven(item.id);
     try {
       const isUserOrder = (order as { subjectType?: string }).subjectType === "user";
-      const issuanceUrl = isUserOrder
-        ? `/api/stores/issuances/user/${(order as { userId?: number }).userId}`
-        : `/api/stores/issuances/${order.cadetCin}`;
+      const issuanceUrl = issuancesUrlFor(order);
       const issuanceBody = isUserOrder
         ? {
             givenBy: currentUser,
@@ -690,7 +698,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Uniform Orders"
         description={
@@ -704,53 +712,17 @@ export default function OrdersPage() {
         }
       />
 
-      {/* Tab nav */}
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-1 border-b">
-          {(["active", "completed", "kitting", "logsform"] as const).map((tab) => {
-            const count =
-              tab === "active"
-                ? activeOrders.length
-                : tab === "completed"
-                  ? completedOrders.length
-                  : tab === "kitting"
-                    ? kittingOrders.length
-                    : (openLogsForm?.entries.length ?? 0);
-            const label =
-              tab === "active"
-                ? "Active"
-                : tab === "completed"
-                  ? "Completed"
-                  : tab === "kitting"
-                    ? "C Flight Kitting"
-                    : "Logs Form";
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors sm:px-4",
-                  activeTab === tab
-                    ? "border-primary text-primary"
-                    : "text-muted-foreground hover:text-foreground border-transparent"
-                )}
-              >
-                {label}
-                {!loading && (
-                  <span
-                    className={cn(
-                      "inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                      activeTab === tab ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <CountTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        loading={loading}
+        tabs={[
+          { value: "active", label: "Active", count: activeOrders.length },
+          { value: "completed", label: "Completed", count: completedOrders.length },
+          { value: "kitting", label: "C Flight Kitting", count: kittingOrders.length },
+          { value: "logsform", label: "Logs Form", count: openLogsForm?.entries.length ?? 0 },
+        ]}
+      />
 
       {/* Search + Sort controls */}
       {activeTab !== "logsform" && (
@@ -866,8 +838,10 @@ export default function OrdersPage() {
               <ExitCollapse key={order.id} id={order.id} leaving={isLeaving(order.id)}>
                 <Card className={isCompleted ? "opacity-80" : undefined}>
                   <CardHeader className="pb-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    {/* Wraps on a phone: the buttons drop under the name rather
+                        than squeezing it onto three lines. */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-40 flex-1 flex-col gap-1">
                         <div className="flex items-center gap-2">
                           {(order as { subjectType?: string }).subjectType === "cadet" ? (
                             <Link
@@ -888,6 +862,16 @@ export default function OrdersPage() {
                         <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
+                        <PreviousSizesPopover
+                          issuancesUrl={issuancesUrlFor(order)}
+                          recordHref={
+                            (order as { subjectType?: string }).subjectType === "cadet"
+                              ? `/cadets/${order.cadetCin}?tab=uniform`
+                              : undefined
+                          }
+                          name={order.cadetName}
+                          itemTypes={order.items.map((i) => i.itemType)}
+                        />
                         {!isCompleted && needSizingCount > 0 && (
                           <Badge className="border-warning/40 bg-warning/15 text-warning text-xs">
                             {needSizingCount} need sizing

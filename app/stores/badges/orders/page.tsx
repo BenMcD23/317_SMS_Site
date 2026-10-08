@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
+import { CountTabs } from "@/components/count-tabs";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1012,7 +1013,7 @@ export default function BadgeOrdersPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Badge Orders"
         description={
@@ -1026,43 +1027,16 @@ export default function BadgeOrdersPage() {
         }
       />
 
-      {/* Tabs */}
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-1 border-b">
-          {(["active", "orderlist", "completed"] as const).map((tab) => {
-            const count =
-              tab === "active"
-                ? activeOrders.length
-                : tab === "completed"
-                  ? completedOrders.length
-                  : toOrderEntries.length;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors sm:px-4",
-                  activeTab === tab
-                    ? "border-primary text-primary"
-                    : "text-muted-foreground hover:text-foreground border-transparent"
-                )}
-              >
-                {tab === "active" ? "Active" : tab === "completed" ? "Completed" : "Order List"}
-                {!loading && (
-                  <span
-                    className={cn(
-                      "inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                      activeTab === tab ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <CountTabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        loading={loading}
+        tabs={[
+          { value: "active", label: "Active", count: activeOrders.length },
+          { value: "orderlist", label: "Order List", count: toOrderEntries.length },
+          { value: "completed", label: "Completed", count: completedOrders.length },
+        ]}
+      />
 
       {/* Search + Sort */}
       {activeTab !== "orderlist" && (
@@ -1162,8 +1136,10 @@ export default function BadgeOrdersPage() {
               <ExitCollapse key={order.id} id={order.id} leaving={isLeaving(order.id)}>
                 <Card className={isCompleted ? "opacity-80" : undefined}>
                   <CardHeader className="pb-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    {/* Wraps on a phone: the buttons drop under the name rather
+                        than squeezing it onto three lines. */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-40 flex-1 flex-col gap-1">
                         <Link
                           href={`/cadets/${order.cadetCin}?tab=qualifications`}
                           className="font-semibold hover:underline"
@@ -1173,6 +1149,18 @@ export default function BadgeOrdersPage() {
                         <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
+                        {/* The name links here too, but only looks like a link on
+                            hover; checking what they already hold is the usual
+                            first step, so it gets a visible button. */}
+                        <Button size="sm" variant="outline" className="h-8" asChild>
+                          <Link
+                            href={`/cadets/${order.cadetCin}?tab=qualifications`}
+                            aria-label={`Qualifications held by ${order.cadetName}`}
+                          >
+                            <Award data-icon="inline-start" />
+                            Held
+                          </Link>
+                        </Button>
                         <Badge variant="secondary" className="text-xs">
                           {itemFiltered && `${visibleItems.length} of `}
                           {order.items.length} item{order.items.length !== 1 ? "s" : ""}

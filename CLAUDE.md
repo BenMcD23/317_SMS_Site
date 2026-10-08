@@ -40,6 +40,19 @@ block, stop and extract it instead.
 - **"Today" for a date input** is `todayLocal()` from `lib/format.ts`;
   `toISOString()` is UTC and gives yesterday after midnight in summer.
 
+## Page layout
+
+- **Width**: every page wraps its content in `mx-auto flex w-full max-w-… flex-col gap-6 pb-16`,
+  using one of three widths (`tests/page-widths.test.ts` enforces this):
+  `max-w-3xl` for one form or document read top to bottom (marking sheets,
+  session plans, settings); `max-w-5xl`, the default, for lists, tables,
+  records and multi-column forms; `max-w-6xl` for dashboards and charts.
+- **Tabs** are the shadcn `Tabs`. With counts ("Active 4"), use `CountTabs`
+  (`components/count-tabs.tsx`). A tab row scrolls sideways on a phone by
+  itself, so don't add overflow classes. Don't hand-build tab bars from buttons.
+  Filters that narrow one list (All / A / B / C) are a `ToggleGroup`
+  (`components/flight-filter.tsx`), not tabs.
+
 ## Comments explain _why_, not _what_
 
 Every shared helper opens with a short doc comment saying what it is and why it

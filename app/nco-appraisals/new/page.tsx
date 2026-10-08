@@ -79,7 +79,7 @@ function NewAppraisal() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <PageHeader
         title="New NCO Appraisal"
         description="Everything saves to the squadron record and can be issued as a Word document or PDF."

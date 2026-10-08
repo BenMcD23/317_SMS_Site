@@ -136,7 +136,7 @@ export default function AppraisalDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -145,7 +145,7 @@ export default function AppraisalDetailPage() {
 
   if (error || !data) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <ErrorAlert message={error?.message ?? "Appraisal not found"} />
         <Button asChild variant="outline" className="self-start">
           <Link href="/nco-appraisals">
@@ -158,7 +158,7 @@ export default function AppraisalDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <PageHeader
         title={data.nco_name || "NCO Appraisal"}
         description={`Appraised ${formatDate(data.appraisal_date)} by ${data.author_name}`}

@@ -71,7 +71,7 @@ export default function StaffDetailPage() {
       <PageHeader title={name} description={description} />
 
       <Tabs defaultValue="overview">
-        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
+        <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="uniform">Uniform</TabsTrigger>

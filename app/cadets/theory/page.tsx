@@ -540,7 +540,7 @@ export default function TheoryProgressPage() {
         description="Record when cadets have completed a lesson's theory before the assessment, and see who has done what"
       />
       <Tabs defaultValue="record">
-        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
+        <TabsList>
           <TabsTrigger value="record">Record Progress</TabsTrigger>
           <TabsTrigger value="view">View Progress</TabsTrigger>
         </TabsList>

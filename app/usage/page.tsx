@@ -131,7 +131,7 @@ export default function UsagePage() {
   const endpointCount = (usage?.routes.length ?? 0) + (usage?.unused.length ?? 0);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-16">
       <PageHeader
         title="Usage"
         description="Which API endpoints people actually call, and which nobody does. Counts successful calls from this site and the cadet portal."

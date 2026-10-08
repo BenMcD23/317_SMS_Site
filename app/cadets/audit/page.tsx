@@ -921,7 +921,7 @@ export default function AuditPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader title="Audit" description="Check cadet qualifications, medical, and dietary requirements" />
       <Tabs defaultValue="cadet-check">
-        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
+        <TabsList>
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>
           <TabsTrigger value="event-check">Event Audit</TabsTrigger>
         </TabsList>
