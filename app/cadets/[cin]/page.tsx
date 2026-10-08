@@ -35,6 +35,7 @@ import {
   Ban,
 } from "lucide-react";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
+import { CadetPortalTab } from "@/components/cadet-portal-tab";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -394,7 +395,12 @@ export default function CadetOverviewPage() {
           <TabsTrigger value="assessments">Assessments</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="uniform">Uniform</TabsTrigger>
+          <TabsTrigger value="portal">Portal</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="portal" className="mt-4">
+          <CadetPortalTab cin={String(cin)} />
+        </TabsContent>
 
         <TabsContent value="overview" className="mt-4">
           {/* Personal details */}

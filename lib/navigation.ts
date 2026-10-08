@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Crosshair,
   Award,
   BookOpen,
   Calendar,
@@ -238,6 +239,12 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Data",
     items: [
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap, keywords: ["sync", "import"] },
+      {
+        label: "Volunteer Portal",
+        href: "/volunteer-portal",
+        icon: Crosshair,
+        keywords: ["vp", "wht", "shooting", "fieldcraft", "flying", "exams", "e-learning"],
+      },
       { label: "Backups", href: "/backups", icon: DatabaseBackup, ownerOnly: true },
       {
         label: "Usage",
