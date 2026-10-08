@@ -125,8 +125,12 @@ export default function NcoHolidaysPage() {
           <TriangleAlert />
           <AlertTitle>Calendar not connected</AlertTitle>
           <AlertDescription>
-            Holidays are being recorded here but aren&apos;t reaching Google Calendar —
-            <code className="mx-1">NCO_HOLIDAY_CALENDAR_ID</code> isn&apos;t set on the API.
+            {/* One <p>: the description is a grid, so bare text and <code> would
+                each get a row of their own. */}
+            <p>
+              Holidays are being recorded here but aren&apos;t reaching Google Calendar —{" "}
+              <code>NCO_HOLIDAY_CALENDAR_ID</code> isn&apos;t set on the API.
+            </p>
           </AlertDescription>
         </Alert>
       )}

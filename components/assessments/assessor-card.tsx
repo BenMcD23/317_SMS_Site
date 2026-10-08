@@ -162,7 +162,9 @@ function SignatureSection({
           <RotateCcw className="h-3 w-3" /> Clear
         </button>
       )}
-      {!savedSignatureUrl && (
+      {/* Only once they've drawn one — before that the "No signature" warning
+          below already points at Settings, and saying it twice is noise. */}
+      {!savedSignatureUrl && overrideSignature && (
         <p className="text-muted-foreground text-xs">
           Save a signature in{" "}
           <Link href="/settings" className="hover:text-foreground underline">
@@ -401,11 +403,13 @@ export function AssessorCard({
         {!sigLoading && !savedSignatureUrl && !overrideSignature && (
           <div className="border-warning/30 bg-warning/10 text-warning flex items-start gap-2 rounded-md border px-3 py-2 text-xs">
             <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            No signature - You can draw above or save one in{" "}
-            <Link href="/settings" className="underline">
-              Settings
-            </Link>
-            .
+            <span>
+              No signature yet — draw one above, or save one in{" "}
+              <Link href="/settings" className="underline">
+                Settings
+              </Link>{" "}
+              so it fills in automatically.
+            </span>
           </div>
         )}
 

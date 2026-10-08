@@ -8,9 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +28,8 @@ import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { Search, Check, X } from "lucide-react";
+import { CadetMultiPicker } from "@/components/cadet-multi-picker";
+import { Check, X } from "lucide-react";
 
 type Cadet = {
   cin: number;
@@ -149,118 +148,6 @@ function LessonSelector({
   );
 }
 
-function CadetPicker({
-  cadets,
-  loading,
-  selected,
-  onChange,
-}: {
-  cadets: Cadet[];
-  loading: boolean;
-  selected: Set<number>;
-  onChange: (next: Set<number>) => void;
-}) {
-  const [search, setSearch] = useState("");
-
-  const filtered = cadets.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      !q ||
-      c.first_name.toLowerCase().includes(q) ||
-      c.last_name.toLowerCase().includes(q) ||
-      String(c.cin).includes(q)
-    );
-  });
-
-  function toggle(cin: number) {
-    const next = new Set(selected);
-    if (next.has(cin)) next.delete(cin);
-    else next.add(cin);
-    onChange(next);
-  }
-
-  return (
-    <Card className="flex flex-col gap-0 overflow-hidden py-0">
-      <CardHeader className="px-4 py-3">
-        <CardTitle className="text-sm">
-          Select cadets
-          <span className="text-muted-foreground ml-2 text-xs font-normal">{selected.size} selected</span>
-        </CardTitle>
-      </CardHeader>
-      <div className="border-t px-3 py-2">
-        <InputGroup>
-          <InputGroupAddon>
-            <Search className="size-4" />
-          </InputGroupAddon>
-          <InputGroupInput
-            placeholder="Search cadets…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </InputGroup>
-      </div>
-      <div className="h-72 overflow-y-auto border-t">
-        {loading ? (
-          <div className="flex flex-col gap-1.5 p-3">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-8" />
-            ))}
-          </div>
-        ) : (
-          <div className="divide-y">
-            {filtered.map((c) => (
-              <div
-                key={c.cin}
-                role="button"
-                tabIndex={0}
-                onClick={() => toggle(c.cin)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    toggle(c.cin);
-                  }
-                }}
-                className={cn(
-                  "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
-                  selected.has(c.cin) && "bg-muted/30"
-                )}
-              >
-                <Checkbox
-                  checked={selected.has(c.cin)}
-                  onCheckedChange={() => toggle(c.cin)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <span className="min-w-0 truncate font-medium">
-                  {c.last_name}, {c.first_name}
-                </span>
-                <span className="text-muted-foreground ml-auto shrink-0 text-xs">{c.cin}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-4 border-t px-4 py-2">
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground text-xs"
-          onClick={() => onChange(new Set([...selected, ...filtered.map((c) => c.cin)]))}
-        >
-          Select all{search ? " (filtered)" : ""}
-        </button>
-        {selected.size > 0 && (
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground text-xs"
-            onClick={() => onChange(new Set())}
-          >
-            Clear selection
-          </button>
-        )}
-      </div>
-    </Card>
-  );
-}
-
 function RecordTab({ lessons }: { lessons: Lesson[] }) {
   const { data: session } = useSession();
   const { data: cadets = [], isLoading: loadingCadets } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
@@ -316,7 +203,7 @@ function RecordTab({ lessons }: { lessons: Lesson[] }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <CadetPicker
+        <CadetMultiPicker
           cadets={cadets}
           loading={loadingCadets}
           selected={selectedCins}
