@@ -282,6 +282,42 @@ describe("orders leaving the list", () => {
   });
 });
 
+describe("C Flight kitting tab", () => {
+  const kitOrders = () => [
+    { ...orders()[2], id: "k1", cadetName: "Zoe Adams", timestamp: "2026-09-05T10:00:00Z" },
+    { ...orders()[2], id: "k2", cadetName: "Ann Marie Young", timestamp: "2026-09-01T10:00:00Z" },
+    { ...orders()[2], id: "k3", cadetName: "Bob Baker", timestamp: "2026-09-03T10:00:00Z" },
+    { ...orders()[2], id: "k4", cadetName: "Amy Baker", timestamp: "2026-09-04T10:00:00Z" },
+  ];
+
+  async function openKitting() {
+    stubApi({ "GET /api/stores/orders": () => json([...orders(), ...kitOrders()]) });
+    await renderPage();
+    await act(async () => screen.getByRole("button", { name: /^C Flight Kitting/ }).click());
+  }
+
+  it("lists cadets alphabetically by last name, then first name, regardless of when they were added", async () => {
+    await openKitting();
+    const names = screen
+      .getAllByRole("button", { name: /^Expand order for / })
+      .map((b) => b.getAttribute("aria-label")?.replace("Expand order for ", ""));
+    expect(names).toEqual(["Zoe Adams", "Amy Baker", "Bob Baker", "Kit Cadet", "Ann Marie Young"]);
+  });
+
+  it("does not show the order-added timestamp on the cards or the oldest/newest toggle", async () => {
+    await openKitting();
+    expect(within(card("Zoe Adams")).queryByText(/2026/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /(Oldest|Newest) first/ })).not.toBeInTheDocument();
+  });
+
+  it("other tabs still show the timestamp and sort toggle", async () => {
+    await openKitting();
+    await act(async () => screen.getByRole("button", { name: /^Active/ }).click());
+    expect(within(card("Alex Smith")).getByText(/2026/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /(Oldest|Newest) first/ })).toBeInTheDocument();
+  });
+});
+
 describe("search", () => {
   const search = (q: string) =>
     act(async () => {

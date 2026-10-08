@@ -47,3 +47,18 @@ export function classificationBadgeClass(classification: string | null | undefin
 export function cadetInitials(firstName?: string | null, lastName?: string | null): string {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "?";
 }
+
+/**
+ * Compares two "First Last" display names by surname, then first name. The API
+ * only sends the joined name, so the surname is the last word; multi-word
+ * first names still sort correctly because the remainder breaks ties.
+ */
+export function compareByLastName(a: string, b: string): number {
+  const split = (name: string) => {
+    const words = name.trim().split(/\s+/);
+    return { last: words.pop() ?? "", first: words.join(" ") };
+  };
+  const x = split(a);
+  const y = split(b);
+  return x.last.localeCompare(y.last) || x.first.localeCompare(y.first);
+}
