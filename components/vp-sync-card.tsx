@@ -7,14 +7,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { bookmarkletHref, VP_ORIGIN } from "@/lib/vp-sync";
 
-const IMPORTS = ["WHTs", "Shooting log", "Fieldcraft", "Classification exams", "Flying", "E-learning", "Unit history"];
+const IMPORTS = [
+  "WHTs",
+  "Shooting log",
+  "Fieldcraft",
+  "Classification exams",
+  "Flying",
+  "E-learning",
+  "Unit history",
+];
 
 /**
  * Bader Scrapers card for the Volunteer Portal sync. The portal sits behind
  * the RAFAC Microsoft login, so the server can't scrape it; instead the user
  * drags the 317 Sync bookmark to their bar once and clicks it on the portal.
  */
-export function VpSyncCard({ lastRan, failed, onLogs }: { lastRan: string; failed?: boolean; onLogs?: () => void }) {
+export function VpSyncCard({
+  lastRan,
+  failed,
+  onLogs,
+}: {
+  lastRan: string;
+  failed?: boolean;
+  onLogs?: () => void;
+}) {
   const link = useRef<HTMLAnchorElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -30,7 +46,10 @@ export function VpSyncCard({ lastRan, failed, onLogs }: { lastRan: string; faile
   }, []);
 
   return (
-    <section aria-labelledby="vp-sync-title" className="bg-card flex flex-col gap-4 rounded-lg border p-4 sm:p-5">
+    <section
+      aria-labelledby="vp-sync-title"
+      className="bg-card flex flex-col gap-4 rounded-lg border p-4 sm:p-5"
+    >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 items-center gap-3">
           <div className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-md">
@@ -86,8 +105,9 @@ export function VpSyncCard({ lastRan, failed, onLogs }: { lastRan: string; faile
             <GripVertical className="size-4 opacity-70" />
             <Bookmark className="size-4" /> 317 Sync
           </a>
-          <p className="text-muted-foreground text-xs">
-            On a phone, sync from a computer — mobile browsers can&apos;t run bookmarks like this.
+          {/* Touch screens only: on a computer this read as "you're on a phone". */}
+          <p className="text-muted-foreground hidden text-xs pointer-coarse:block">
+            Sync from a computer — phone browsers can&apos;t run bookmarks like this.
           </p>
         </li>
         <li className="flex flex-col gap-3 rounded-md border border-dashed p-3">
