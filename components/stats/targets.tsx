@@ -182,19 +182,16 @@ function AddTargetDialog({
   const [pct, setPct] = useState("80");
   const [due, setDue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [triedSave, setTriedSave] = useState(false);
 
   const levels = badgeLevels[badge] ?? [];
   const pctNum = Number(pct);
   const badPct = !Number.isInteger(pctNum) || pctNum < 1 || pctNum > 100;
-  const invalid = badPct || !due;
-    !Number.isInteger(pctNum) || pctNum < 1 || pctNum > 100
-      ? "Target must be 1–100%"
-      : !due
-        ? "Pick a due date"
-        : null;
+  const problem = badPct ? "Target must be 1–100%" : !due ? "Pick a due date" : null;
 
   const save = async () => {
-    if (invalid || !session?.id_token) return;
+    setTriedSave(true);
+    if (problem || !session?.id_token) return;
     setSaving(true);
     try {
       await apiRequest(session.id_token, `${API_BASE}/stats/targets`, {
@@ -319,17 +316,18 @@ function AddTargetDialog({
               />
             </div>
           </div>
-          {/* A missing date just keeps Add disabled; nagging before it's picked helps nobody. */}
-          {badPct && (
+          {/* The date starts empty, so it's only flagged once Add is pressed: nagging before
+              it's picked helps nobody, but a greyed-out Add with no reason read as broken. */}
+          {(badPct || triedSave) && problem && (
             <p className="text-destructive text-xs" role="alert">
-              Target must be 1–100%
+              {problem}
             </p>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={invalid || saving}>
+            <Button type="submit" disabled={badPct || saving}>
               {saving ? "Saving…" : "Add target"}
             </Button>
           </DialogFooter>
