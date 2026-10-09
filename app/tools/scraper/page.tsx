@@ -23,6 +23,7 @@ import {
   Square,
   X,
   CalendarClock,
+  CloudAlert,
   FileText,
   Paperclip,
   Plus,
@@ -31,6 +32,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useApiQuery } from "@/lib/use-api-query";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { VpSyncCard } from "@/components/vp-sync-card";
 
 const SCRAPER_TOOLS = [
   {
@@ -728,6 +732,10 @@ export default function ScraperPage() {
       .catch(() => {});
   }, [token]);
 
+  // Which node the API is on: when home is down it fails over to Oracle, and
+  // the Bader scrapers don't work from there.
+  const { data: host } = useApiQuery<{ node: string | null; on_oracle: boolean }>(["scraper-host"], "/scraper-host");
+
   // Initial load
   useEffect(() => {
     fetchLastRuns();
@@ -861,6 +869,17 @@ export default function ScraperPage() {
         }
       />
 
+      {host?.on_oracle && (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+          <CloudAlert />
+          <AlertTitle>Scrapers may not work right now</AlertTitle>
+          <AlertDescription className="text-amber-900/90 dark:text-amber-200/90">
+            The home server is down, so 317 SMS is running on the backup Oracle server ({host.node}). The Bader
+            scrapers usually fail from there — try again once home is back.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="run" className="flex flex-col gap-6">
         <TabsList>
           <TabsTrigger value="run">Run</TabsTrigger>
@@ -985,6 +1004,16 @@ export default function ScraperPage() {
                   );
                 })}
               </div>
+
+              <VpSyncCard
+                lastRan={formatLastRan(lastRuns["vp-sync"]?.ran_at ?? null)}
+                failed={lastRuns["vp-sync"]?.success === false}
+                onLogs={
+                  lastRuns["vp-sync"]?.id != null
+                    ? () => setLogsFor({ id: lastRuns["vp-sync"].id!, label: "Volunteer Portal Sync" })
+                    : undefined
+                }
+              />
             </>
           )}
 

@@ -284,3 +284,43 @@ describe("expand all", () => {
     expect(screen.getByRole("button", { name: "Expand all" })).toBeDisabled();
   });
 });
+
+describe("Blue Flying stages", () => {
+  const STAGES = [
+    { stage: 1, name: "Blue aviation (ATP ground school)", done: true },
+    { stage: 2, name: "Blue PTT (simulator)", done: false },
+    { stage: 3, name: "Flight in a Grob Tutor or Viking", done: true },
+  ];
+  const flyingOrder = (qualHeld: boolean, qualStages = STAGES) => [
+    {
+      id: "1",
+      cadetName: "Alex Smith",
+      cadetCin: 101,
+      timestamp: "2026-09-01T10:00:00Z",
+      items: [item("11", "Flying – Blue", { qualHeld, qualStages })],
+    },
+  ];
+
+  it("says which stage is missing when Blue Flying isn't held", async () => {
+    stubApi({ "GET /api/stores/badges/orders": () => json(flyingOrder(false)) });
+    await renderPage();
+    await expand("Alex Smith");
+    expect(within(card("Alex Smith")).getByText("Missing stage 2: Blue PTT (simulator)")).toBeTruthy();
+  });
+
+  it("says nothing about stages once it's held", async () => {
+    stubApi({
+      "GET /api/stores/badges/orders": () =>
+        json(
+          flyingOrder(
+            true,
+            STAGES.map((s) => ({ ...s, done: true }))
+          )
+        ),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    expect(within(card("Alex Smith")).getByText("Qualification is held")).toBeTruthy();
+    expect(within(card("Alex Smith")).queryByText(/Missing stage/)).toBeNull();
+  });
+});

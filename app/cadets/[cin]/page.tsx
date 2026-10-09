@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { AttendanceCard } from "@/components/attendance-card";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/format";
+import { formatDate, timeSince } from "@/lib/format";
 import {
   Loader2,
   CheckCircle2,
@@ -35,6 +35,7 @@ import {
   Ban,
 } from "lucide-react";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
+import { FlyingCard, type Flight, type FlyingStage } from "@/components/flying-card";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -73,6 +74,11 @@ type CadetDetail = {
   rank: string | null;
   flight: string | null;
   classification: string | null;
+  // From the Volunteer Portal sync; absent until a cadet has been synced.
+  joined_on?: string | null;
+  classification_dates?: Record<string, string>;
+  flights?: Flight[];
+  flying_blue_stages?: FlyingStage[];
   banned: boolean;
   qualifications: Qualification[];
   events: CadetEvent[];
@@ -478,6 +484,26 @@ export default function CadetOverviewPage() {
                   <Award className="h-3 w-3" /> Classification
                 </p>
                 <span className="text-sm font-medium">{cadet.classification || "Junior Cadet"}</span>
+                {cadet.classification && cadet.classification_dates?.[cadet.classification] && (
+                  <span className="text-muted-foreground text-sm">
+                    {" "}
+                    since {formatDate(cadet.classification_dates[cadet.classification])}
+                  </span>
+                )}
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                  <Calendar className="h-3 w-3" /> Joined 317
+                </p>
+                <span className="text-sm font-medium">
+                  {cadet.joined_on ? formatDate(cadet.joined_on) : "—"}
+                </span>
+                {timeSince(cadet.joined_on ?? null) && (
+                  <span className="text-muted-foreground text-sm">
+                    {" "}
+                    ({timeSince(cadet.joined_on ?? null)})
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -562,6 +588,9 @@ export default function CadetOverviewPage() {
               )}
             </CardContent>
           </Card>
+          <div className="mt-4">
+            <FlyingCard flights={cadet.flights ?? []} stages={cadet.flying_blue_stages ?? []} />
+          </div>
         </TabsContent>
 
         <TabsContent value="attendance" className="mt-4">

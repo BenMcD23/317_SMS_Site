@@ -60,3 +60,18 @@ export function flightsIn(cadets: Array<{ flight: string | null }>): string[] {
 export function flightLabel(flight: string): string {
   return /flight$/i.test(flight.trim()) ? flight.trim() : `${flight.trim()} Flight`;
 }
+
+/**
+ * Compares two "First Last" display names by surname, then first name. The API
+ * only sends the joined name, so the surname is the last word; multi-word
+ * first names still sort correctly because the remainder breaks ties.
+ */
+export function compareByLastName(a: string, b: string): number {
+  const split = (name: string) => {
+    const words = name.trim().split(/\s+/);
+    return { last: words.pop() ?? "", first: words.join(" ") };
+  };
+  const x = split(a);
+  const y = split(b);
+  return x.last.localeCompare(y.last) || x.first.localeCompare(y.first);
+}

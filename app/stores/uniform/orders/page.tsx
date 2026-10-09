@@ -55,6 +55,7 @@ import { StockHistory } from "@/components/stock-history";
 import { PreviousSizesPopover } from "@/components/previous-sizes-popover";
 import Link from "next/link";
 import { formatDate, formatTimestamp } from "@/lib/format";
+import { compareByLastName } from "@/lib/cadet-format";
 import { searchOrders } from "@/lib/order-search";
 
 type DraftItem = {
@@ -677,7 +678,9 @@ export default function OrdersPage() {
   const tabOrders =
     activeTab === "active" ? activeOrders : activeTab === "kitting" ? kittingOrders : completedOrders;
 
+  // Kitting is a roll of cadets, so it reads A–Z by surname rather than by age.
   const sortedOrders = [...tabOrders].sort((a, b) => {
+    if (activeTab === "kitting") return compareByLastName(a.cadetName, b.cadetName);
     const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
     return sortOrder === "oldest" ? diff : -diff;
   });
@@ -749,15 +752,17 @@ export default function OrdersPage() {
             )}
             {allExpanded ? "Collapse all" : "Expand all"}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 gap-1.5"
-            onClick={() => setSortOrder((s) => (s === "oldest" ? "newest" : "oldest"))}
-          >
-            <ArrowUpDown className="h-3.5 w-3.5" />
-            {sortOrder === "oldest" ? "Oldest first" : "Newest first"}
-          </Button>
+          {activeTab !== "kitting" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={() => setSortOrder((s) => (s === "oldest" ? "newest" : "oldest"))}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              {sortOrder === "oldest" ? "Oldest first" : "Newest first"}
+            </Button>
+          )}
         </div>
       )}
 
@@ -859,7 +864,9 @@ export default function OrdersPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
+                        {activeTab !== "kitting" && (
+                          <p className="text-muted-foreground text-xs">{formatTimestamp(order.timestamp)}</p>
+                        )}
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
                         <PreviousSizesPopover
