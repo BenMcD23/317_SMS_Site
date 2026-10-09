@@ -367,7 +367,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 pb-16">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-16">
       <PageHeader
         title="Settings"
         description="Your assessor identity, signature, text number and Bader credentials"

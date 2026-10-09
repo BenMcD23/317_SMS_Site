@@ -250,7 +250,8 @@ describe("orders leaving the list", () => {
     expect(card("Alex Smith")).toHaveClass("grid-rows-[0fr]");
     await waitFor(() => expect(screen.queryByText("Alex Smith")).not.toBeInTheDocument());
 
-    await act(async () => screen.getByRole("button", { name: /^Completed/ }).click());
+    // Radix tabs switch on mousedown (and keyboard), not a synthetic click.
+    await act(async () => fireEvent.mouseDown(screen.getByRole("tab", { name: /^Completed/ })));
     expect(screen.getByText("Alex Smith")).toBeInTheDocument();
   });
 
@@ -259,7 +260,8 @@ describe("orders leaving the list", () => {
       "PATCH /api/stores/orders/3": () => json({ ...orders()[2], completed: true }),
     });
     await renderPage();
-    await act(async () => screen.getByRole("button", { name: /^C Flight Kitting/ }).click());
+    // Radix tabs switch on mousedown (and keyboard), not a synthetic click.
+    await act(async () => fireEvent.mouseDown(screen.getByRole("tab", { name: /^C Flight Kitting/ })));
     await expand("Kit Cadet");
 
     await act(async () => screen.getByRole("button", { name: "Complete Order" }).click());
@@ -293,7 +295,8 @@ describe("C Flight kitting tab", () => {
   async function openKitting() {
     stubApi({ "GET /api/stores/orders": () => json([...orders(), ...kitOrders()]) });
     await renderPage();
-    await act(async () => screen.getByRole("button", { name: /^C Flight Kitting/ }).click());
+    // Radix tabs switch on mousedown, the way a user's press does.
+    await act(async () => fireEvent.mouseDown(screen.getByRole("tab", { name: /^C Flight Kitting/ })));
   }
 
   it("lists cadets alphabetically by last name, then first name, regardless of when they were added", async () => {
@@ -312,7 +315,7 @@ describe("C Flight kitting tab", () => {
 
   it("other tabs still show the timestamp and sort toggle", async () => {
     await openKitting();
-    await act(async () => screen.getByRole("button", { name: /^Active/ }).click());
+    await act(async () => fireEvent.mouseDown(screen.getByRole("tab", { name: /^Active/ })));
     expect(within(card("Alex Smith")).getByText(/2026/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /(Oldest|Newest) first/ })).toBeInTheDocument();
   });

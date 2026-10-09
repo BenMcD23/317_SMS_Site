@@ -109,6 +109,19 @@ describe("breadcrumbsFor", () => {
     expect(crumbs[crumbs.length - 1]).toEqual({ label: "Stock", href: "/stores/uniform/stock" });
   });
 
+  it("trails a cadet or staff record back to its list, with the list linked", () => {
+    expect(breadcrumbsFor("/cadets/2100003")).toEqual([
+      { label: "Cadets" },
+      { label: "Overview", href: "/cadets/overview" },
+    ]);
+    expect(breadcrumbsFor("/staff/12")).toEqual([
+      { label: "Squadron" },
+      { label: "Staff", href: "/staff/overview" },
+    ]);
+    // Real pages under /cadets keep their own trail, not the record fallback.
+    expect(breadcrumbsFor("/cadets/audit").map((c) => c.label)).toEqual(["Cadets", "Audit"]);
+  });
+
   it("knows unlisted pages and gives up on unknown ones", () => {
     expect(breadcrumbsFor("/settings")).toEqual([{ label: "Settings" }]);
     expect(breadcrumbsFor("/definitely/not/a/page")).toEqual([]);

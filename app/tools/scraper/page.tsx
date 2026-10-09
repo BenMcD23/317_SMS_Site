@@ -881,7 +881,7 @@ export default function ScraperPage() {
       )}
 
       <Tabs defaultValue="run" className="flex flex-col gap-6">
-        <TabsList className="w-fit">
+        <TabsList>
           <TabsTrigger value="run">Run</TabsTrigger>
           <TabsTrigger value="schedule">Schedule</TabsTrigger>
           <TabsTrigger value="attachments">Attachment Checks</TabsTrigger>

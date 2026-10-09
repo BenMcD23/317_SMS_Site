@@ -304,6 +304,15 @@ const UNLISTED_PAGES: Record<string, string> = {
 };
 
 /**
+ * Record pages that live beside their list rather than under it (/cadets/1234
+ * next to /cadets/overview), so prefix matching alone finds no trail for them.
+ */
+const DETAIL_PARENTS: Array<[prefix: string, listHref: string]> = [
+  ["/cadets/", "/cadets/overview"],
+  ["/staff/", "/staff/overview"],
+];
+
+/**
  * Breadcrumb trail for the header, from the deepest nav link that matches the
  * current path. Pages deeper than any nav link (e.g. /cadets/1234) get the
  * nearest ancestor and a trailing "…" the page itself replaces with a title.
@@ -320,7 +329,10 @@ export function breadcrumbsFor(pathname: string): Crumb[] {
   }
   if (!best) {
     const label = UNLISTED_PAGES[pathname];
-    return label ? [{ label }] : [];
+    if (label) return [{ label }];
+    const parent = DETAIL_PARENTS.find(([prefix]) => pathname.startsWith(prefix));
+    // Recurse on the list page; with a trailing segment it comes back linked.
+    return parent ? breadcrumbsFor(`${parent[1]}/_`) : [];
   }
   const exact = best.crumbs[best.crumbs.length - 1].href === pathname;
   return exact ? best.crumbs.map((c, i, a) => (i === a.length - 1 ? { label: c.label } : c)) : best.crumbs;

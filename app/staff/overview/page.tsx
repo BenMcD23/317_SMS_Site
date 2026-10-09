@@ -46,7 +46,7 @@ export default function StaffOverviewPage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Staff"
         description={loading ? "Loading…" : `${users.length} staff member${users.length !== 1 ? "s" : ""}`}

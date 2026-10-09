@@ -161,7 +161,7 @@ export default function VpSyncPage() {
   }, [token]);
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <PageHeader
         title="Volunteer Portal Sync"
         description="Importing cadet data from the Volunteer Portal"

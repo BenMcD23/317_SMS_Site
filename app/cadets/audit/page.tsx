@@ -9,18 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
+import { CadetMultiPicker } from "@/components/cadet-multi-picker";
 import { cn } from "@/lib/utils";
 import { classificationBadgeClass } from "@/lib/cadet-format";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
-import { Search, ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { todayLocal } from "@/lib/format";
 
 const LEVEL_STYLES: Record<string, string> = {
@@ -614,7 +613,6 @@ function CadetCheckTab() {
     "/cadets/audit/badge-types"
   );
 
-  const [search, setSearch] = useState("");
   const [selectedCins, setSelectedCins] = useState<Set<number>>(new Set());
   const [quals, setQuals] = useState<LevelSelection>({});
   const [includeMedical, setIncludeMedical] = useState(false);
@@ -623,33 +621,6 @@ function CadetCheckTab() {
   const [results, setResults] = useState<AuditResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const filtered = allCadets.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      !q ||
-      c.first_name.toLowerCase().includes(q) ||
-      c.last_name.toLowerCase().includes(q) ||
-      String(c.cin).includes(q)
-    );
-  });
-
-  function toggleCadet(cin: number) {
-    setSelectedCins((prev) => {
-      const next = new Set(prev);
-      if (next.has(cin)) next.delete(cin);
-      else next.add(cin);
-      return next;
-    });
-  }
-
-  function selectAllFiltered() {
-    setSelectedCins((prev) => {
-      const next = new Set(prev);
-      filtered.forEach((c) => next.add(c.cin));
-      return next;
-    });
-  }
 
   async function runCheck() {
     if (!session?.id_token) return;
@@ -699,86 +670,12 @@ function CadetCheckTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="flex flex-col gap-0 overflow-hidden py-0">
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm">
-              Select cadets
-              <span className="text-muted-foreground ml-2 text-xs font-normal">
-                {selectedCins.size} selected
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <div className="border-t px-3 py-2">
-            <InputGroup>
-              <InputGroupAddon>
-                <Search className="size-4" />
-              </InputGroupAddon>
-              <InputGroupInput
-                placeholder="Search cadets…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </InputGroup>
-          </div>
-          <div className="h-72 overflow-y-auto border-t">
-            {loadingCadets ? (
-              <div className="flex flex-col gap-1.5 p-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-8" />
-                ))}
-              </div>
-            ) : (
-              <div className="divide-y">
-                {filtered.map((c) => (
-                  <div
-                    key={c.cin}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => toggleCadet(c.cin)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggleCadet(c.cin);
-                      }
-                    }}
-                    className={cn(
-                      "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
-                      selectedCins.has(c.cin) && "bg-muted/30"
-                    )}
-                  >
-                    <Checkbox
-                      checked={selectedCins.has(c.cin)}
-                      onCheckedChange={() => toggleCadet(c.cin)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <span className="font-medium">
-                      {c.last_name}, {c.first_name}
-                    </span>
-                    <span className="text-muted-foreground ml-auto text-xs">{c.cin}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-4 border-t px-4 py-2">
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground text-xs"
-              onClick={selectAllFiltered}
-            >
-              Select all{search ? " (filtered)" : ""}
-            </button>
-            {selectedCins.size > 0 && (
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground text-xs"
-                onClick={() => setSelectedCins(new Set())}
-              >
-                Clear selection
-              </button>
-            )}
-          </div>
-        </Card>
+        <CadetMultiPicker
+          cadets={allCadets}
+          loading={loadingCadets}
+          selected={selectedCins}
+          onChange={setSelectedCins}
+        />
 
         <Card className="py-0">
           <CardHeader className="px-4 py-3">
@@ -1024,7 +921,7 @@ export default function AuditPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader title="Audit" description="Check cadet qualifications, medical, and dietary requirements" />
       <Tabs defaultValue="cadet-check">
-        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
+        <TabsList>
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>
           <TabsTrigger value="event-check">Event Audit</TabsTrigger>
         </TabsList>

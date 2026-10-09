@@ -43,6 +43,7 @@ vi.mock("@/lib/reference", async (importOriginal) => {
       sizes: { Beret: ["55", "56"] },
       sizingFields: {},
       issuanceCategories: ["Beret", "Tie"],
+      issuanceCategoryByItem: { Beret: "Beret", Tie: "Tie" },
       badgeCategories: [{ id: "core", name: "Core", items: ["Squadron"] }],
       categoriesWithoutGainedWhere: new Set(["core"]),
       gainedWhereOptions: [{ value: "camp", label: "Camp" }],

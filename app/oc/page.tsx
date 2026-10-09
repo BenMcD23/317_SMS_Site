@@ -234,7 +234,7 @@ export default function OcDashboardPage() {
 
   if (!allowed) {
     return (
-      <div className="mx-auto w-full max-w-lg pt-16">
+      <div className="mx-auto w-full max-w-3xl pt-16">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">

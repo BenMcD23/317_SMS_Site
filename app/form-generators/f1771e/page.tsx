@@ -452,7 +452,7 @@ export default function F1771ePage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader
         title="F1771e Travel Claim"
         description="Add journey entries below, then generate the Word document"
