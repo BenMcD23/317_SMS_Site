@@ -784,3 +784,72 @@ describe("CSV downloads", () => {
     expect(text).not.toContain("Ann Alpha");
   });
 });
+
+describe("training progress", () => {
+  const progress = {
+    total: 10,
+    flown_last_year: 4,
+    blue_flying: { done: 3, needs_ptt: 2, needs_flight: 0, needs_ptt_and_flight: 1, not_started: 4 },
+    exams: [
+      { key: "acp_34_2", name: "Airmanship", category: "Leading", cadets: 4, passed: 3 },
+      { key: "acp_33_2", name: "Principles of Flight", category: "Leading", cadets: 4, passed: 0 },
+      { key: "rocketry", name: "Rocketry", category: "Senior/Master", cadets: 2, passed: 2 },
+    ],
+    service: {
+      "Under 6 months": 2,
+      "6–12 months": 0,
+      "1–2 years": 5,
+      "2–3 years": 0,
+      "3+ years": 1,
+      "Not synced": 2,
+    },
+  };
+
+  it("shows the Blue Flying pipeline and who has flown this year", async () => {
+    stubApi({ "/stats/progress": [progress] });
+    await renderStats();
+    expect(screen.getByText(/4 of 10 cadets have flown in the last year/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Needs PTT: 2 — show these cadets" })).toBeTruthy();
+    // Nobody to list for an empty state.
+    expect(
+      screen.getByRole("button", { name: "Needs a flight: 0 — show these cadets" }).hasAttribute("disabled")
+    ).toBe(true);
+  });
+
+  it("a Blue Flying bar lists those cadets under the page's filters", async () => {
+    const fetch = stubApi({ "/stats/progress": [progress], "/stats/cadets": [drillBody] });
+    await renderStats("flight=B&juniors=0");
+    expect(requested(fetch, "/stats/progress?flight=B&exclude_juniors=true")).toBe(true);
+    await act(async () => screen.getByRole("button", { name: "Needs PTT: 2 — show these cadets" }).click());
+    expect(requested(fetch, "/stats/cadets?blue_flying=needs_ptt&flight=B&exclude_juniors=true")).toBe(true);
+  });
+
+  it("an exam bar lists who still has to pass it — even when nobody has yet", async () => {
+    const fetch = stubApi({ "/stats/progress": [progress], "/stats/cadets": [drillBody] });
+    await renderStats();
+    // Everyone's passed Rocketry: nothing to open. (Checked before the dialog
+    // opens, which hides the rest of the page from queries.)
+    expect(
+      screen.getByRole("button", { name: "Rocketry: 2/2 — show these cadets" }).hasAttribute("disabled")
+    ).toBe(true);
+    const leading = screen.getByRole("region", { name: "Leading exams" });
+    expect(leading.textContent).toContain("4 First Class cadets");
+    await act(async () =>
+      within(leading).getByRole("button", { name: "Principles of Flight: 0/4 — show these cadets" }).click()
+    );
+    expect(requested(fetch, "/stats/cadets?exam=acp_33_2&exam_passed=false")).toBe(true);
+  });
+
+  it("charts time at 317, leaving out cadets not yet synced", async () => {
+    stubApi({ "/stats/progress": [progress] });
+    await renderStats();
+    expect(screen.getByText("Time at 317")).toBeTruthy();
+  });
+
+  it("an error body hides the training cards instead of crashing the page", async () => {
+    stubApi({ "/stats/progress": [{ detail: "boom" }, 500] });
+    await renderStats();
+    expect(screen.getByText("Classification funnel")).toBeTruthy();
+    expect(screen.queryByText("Blue Flying")).toBeNull();
+  });
+});
