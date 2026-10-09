@@ -1236,10 +1236,21 @@ export default function BadgeOrdersPage() {
                                         Qualification is held
                                       </p>
                                     ) : (
-                                      <p className="text-destructive flex items-center gap-1 text-xs font-medium">
-                                        <X className="h-3 w-3" />
-                                        Qualification not held
-                                      </p>
+                                      <>
+                                        <p className="text-destructive flex items-center gap-1 text-xs font-medium">
+                                          <X className="h-3 w-3" />
+                                          Qualification not held
+                                        </p>
+                                        {orderItem.qualStages && (
+                                          <p className="text-muted-foreground text-xs">
+                                            Missing{" "}
+                                            {orderItem.qualStages
+                                              .filter((s) => !s.done)
+                                              .map((s) => `stage ${s.stage}: ${s.name}`)
+                                              .join("; ")}
+                                          </p>
+                                        )}
+                                      </>
                                     ))}
                                   {gainedWhereSummary(gainedWhereOptions, orderItem) && (
                                     <p className="text-muted-foreground text-xs">

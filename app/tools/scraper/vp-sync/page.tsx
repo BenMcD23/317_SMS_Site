@@ -244,9 +244,6 @@ function SyncResult({ counts, problems }: { counts: SyncCounts; problems: number
           </div>
         ))}
       </dl>
-      <Link href="/volunteer-portal" className="text-primary text-sm font-medium hover:underline">
-        Open the Volunteer Portal dashboard →
-      </Link>
     </div>
   );
 }
