@@ -40,6 +40,19 @@ block, stop and extract it instead.
 - **"Today" for a date input** is `todayLocal()` from `lib/format.ts`;
   `toISOString()` is UTC and gives yesterday after midnight in summer.
 
+## Page layout
+
+- **Width**: every page wraps its content in `mx-auto flex w-full max-w-… flex-col gap-6 pb-16`,
+  using one of three widths (`tests/page-widths.test.ts` enforces this):
+  `max-w-3xl` for one form or document read top to bottom (marking sheets,
+  session plans, settings); `max-w-5xl`, the default, for lists, tables,
+  records and multi-column forms; `max-w-6xl` for dashboards and charts.
+- **Tabs** are the shadcn `Tabs`. With counts ("Active 4"), use `CountTabs`
+  (`components/count-tabs.tsx`). A tab row scrolls sideways on a phone by
+  itself, so don't add overflow classes. Don't hand-build tab bars from buttons.
+  Filters that narrow one list (All / A / B / C) are a `ToggleGroup`
+  (`components/flight-filter.tsx`), not tabs.
+
 ## Comments explain _why_, not _what_
 
 Every shared helper opens with a short doc comment saying what it is and why it
@@ -112,6 +125,40 @@ suites live in `tests/` (auth, middleware, every API route, every page).
 - `lib/navigation.test.ts` fails if a sidebar link has no page.
 - `lib/assessment-fields.test.ts` pins the pass rules and limits the API also
   enforces — change both repos together.
+
+## Looking at the UI (works in a cloud session too)
+
+Tests prove behaviour; for anything visual, also look at it. One command
+starts the API on a seeded SQLite database (no Postgres, Google or cluster)
+and the site with fake sign-in:
+
+```bash
+scripts/preview.sh                 # API :8000 + site :3000; installs what's missing
+scripts/preview.sh --reset         # re-seed the API database from scratch
+scripts/preview.sh status | stop
+node scripts/screenshot.mjs /cadets/overview /stats          # → .preview/shots/*.png
+node scripts/screenshot.mjs --mobile --role nco /session-plans
+node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
+```
+
+- It needs the API checked out beside this repo (`../SMS_Scrapers_API`) or at
+  `$SMS_API_DIR`. In a cloud session, add the repo first (`add_repo`
+  BenMcD23/SMS_Scrapers_API) and clone it there.
+- First run creates the API's `venv/`, `node_modules` and a fake-auth
+  `.env.local` (an existing `.env.local` is never touched; it just needs
+  `AUTH_DEV_BYPASS=1`). Logs are in `.preview/api.log` / `.preview/site.log`.
+- Screenshots sign in through the login page's STAFF / SNCO / NCO buttons;
+  `--role` picks one, so check each role a page treats differently. Staff is
+  the owner account, so owner-only pages show too.
+- Open the PNGs with the Read tool to see them. Look at phone width
+  (`--mobile`) as well as desktop; most layout bugs only show there.
+- The seed (the API's `app/scripts/dev_server.py`) is deterministic: about 60
+  cadets in flights A–C, NCO ranks, attendance, qualifications with first aid
+  expiries, staff, stores stock and open orders. It stores ranks, flights and
+  qualification names the way the scrapers do, so what you see is what
+  production shows. Data you add through the UI persists until `--reset`.
+- Stats trends need weeks of snapshots, so those charts show "not enough
+  history" in the preview. That is expected.
 
 ## Before committing
 

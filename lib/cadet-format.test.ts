@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { cadetInitials, classificationBadgeClass, flightBadgeClass } from "@/lib/cadet-format";
+import {
+  cadetInitials,
+  classificationBadgeClass,
+  flightBadgeClass,
+  flightLabel,
+  flightsIn,
+} from "@/lib/cadet-format";
 
 describe("flightBadgeClass", () => {
   it("colours each flight, whether stored as a letter or a name", () => {
@@ -37,5 +43,28 @@ describe("cadetInitials", () => {
     ["", "", "?"],
   ])("%s %s -> %s", (first, last, expected) => {
     expect(cadetInitials(first, last)).toBe(expected);
+  });
+});
+
+describe("flightsIn", () => {
+  it("lists each flight once, in squadron order, ignoring cadets with none", () => {
+    const roster = [{ flight: "C" }, { flight: "A" }, { flight: null }, { flight: "NCO" }, { flight: " A " }];
+    expect(flightsIn(roster)).toEqual(["NCO", "A", "C"]);
+  });
+
+  it("keeps a flight it doesn't know about, after the known ones", () => {
+    expect(flightsIn([{ flight: "Zulu" }, { flight: "B" }])).toEqual(["B", "Zulu"]);
+  });
+
+  it("is empty for an empty roster", () => {
+    expect(flightsIn([])).toEqual([]);
+  });
+});
+
+describe("flightLabel", () => {
+  it("spells out a stored letter but leaves a full name alone", () => {
+    expect(flightLabel("A")).toBe("A Flight");
+    expect(flightLabel("NCO")).toBe("NCO Flight");
+    expect(flightLabel("B Flight")).toBe("B Flight");
   });
 });

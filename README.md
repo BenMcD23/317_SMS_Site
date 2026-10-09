@@ -20,6 +20,10 @@ The API must be running too (see its README). With `AUTH_DEV_BYPASS=1` in
 `.env.local` and `DEV_FAKE_AUTH=1` on the API, the login page shows
 Staff / SNCO / NCO buttons that skip Google entirely.
 
+Just want to click around? `scripts/preview.sh` runs both against a seeded
+local database with no Google or cluster access; see "Looking at the UI" in
+[`CLAUDE.md`](CLAUDE.md).
+
 ## Checks
 
 ```bash

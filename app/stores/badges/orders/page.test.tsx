@@ -180,7 +180,8 @@ describe("orders leaving the list", () => {
     expect(card("Bella Jones")).toHaveClass("grid-rows-[0fr]");
     await waitFor(() => expect(screen.queryByText("Bella Jones")).not.toBeInTheDocument());
 
-    await act(async () => screen.getByRole("button", { name: /^Completed/ }).click());
+    // Radix tabs switch on mousedown (and keyboard), not a synthetic click.
+    await act(async () => fireEvent.mouseDown(screen.getByRole("tab", { name: /^Completed/ })));
     expect(screen.getByText("Bella Jones")).toBeInTheDocument();
   });
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CalendarCheck, ShieldUser, Users, UserCog } from "lucide-react";
+import { CalendarCheck, ChevronRight, ShieldUser, Users, UserCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -396,6 +396,7 @@ export default function AttendancePage() {
                           <TableHead>{group === "ncos" ? "NCOs" : "Cadets"}</TableHead>
                           <TableHead>Staff</TableHead>
                           <TableHead className="text-right">Turnout</TableHead>
+                          <TableHead className="w-8" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -411,7 +412,11 @@ export default function AttendancePage() {
                               className="cursor-pointer"
                             >
                               <TableCell className="pl-6 font-medium whitespace-nowrap">
-                                {formatDate(night.date)}
+                                {/* The row's click handler opens it; the button is
+                                    what makes that reachable by keyboard. */}
+                                <button type="button" className="hover:underline">
+                                  {formatDate(night.date)}
+                                </button>
                               </TableCell>
                               <TableCell className="text-muted-foreground">
                                 {night.registerType ?? "—"}
@@ -424,6 +429,9 @@ export default function AttendancePage() {
                               </TableCell>
                               <TableCell className="text-right font-medium tabular-nums">
                                 {nightRate === null ? "—" : `${nightRate}%`}
+                              </TableCell>
+                              <TableCell className="pr-4">
+                                <ChevronRight className="text-muted-foreground/50 size-4" />
                               </TableCell>
                             </TableRow>
                           );

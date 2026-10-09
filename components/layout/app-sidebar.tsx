@@ -4,7 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
 import {
   isGroup,
@@ -13,7 +13,9 @@ import {
   visibleSections,
   type NavGroup,
   type NavLink,
+  type NavSection,
 } from "@/lib/navigation";
+import { useOpenSections } from "@/lib/sidebar-sections";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -128,10 +130,33 @@ function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate: () =
   );
 }
 
+function SectionItems({ section, onNavigate }: { section: NavSection; onNavigate: () => void }) {
+  return (
+    <SidebarGroupContent>
+      <SidebarMenu>
+        {section.items.map((item) =>
+          isGroup(item) ? (
+            <NavGroupItem key={item.label} group={item} onNavigate={onNavigate} />
+          ) : (
+            <NavLinkItem key={item.href} link={item} onNavigate={onNavigate} />
+          )
+        )}
+      </SidebarMenu>
+    </SidebarGroupContent>
+  );
+}
+
 export function AppSidebar() {
   const { data: session } = useSession();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const pathname = usePathname();
+  const { isMobile, setOpenMobile, state } = useSidebar();
   const sections = visibleSections(session?.role, session?.user?.email ?? undefined);
+  const { isOpen, setOpen } = useOpenSections(
+    pathname,
+    sections.flatMap((s) => (s.label ? [s.label] : []))
+  );
+  // Icon-only mode has no headings to click, so every icon stays reachable.
+  const iconOnly = state === "collapsed" && !isMobile;
 
   // On mobile the sidebar is an overlay sheet — collapse it after navigating.
   const closeOnMobile = () => {
@@ -159,22 +184,40 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {sections.map((section, i) => (
-          <SidebarGroup key={section.label ?? i}>
-            {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item) =>
-                  isGroup(item) ? (
-                    <NavGroupItem key={item.label} group={item} onNavigate={closeOnMobile} />
-                  ) : (
-                    <NavLinkItem key={item.href} link={item} onNavigate={closeOnMobile} />
-                  )
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {sections.map((section, i) =>
+          !section.label || iconOnly ? (
+            <SidebarGroup key={section.label ?? i}>
+              {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
+              <SectionItems section={section} onNavigate={closeOnMobile} />
+            </SidebarGroup>
+          ) : (
+            // The menu is taller than a laptop screen, so each section folds
+            // away; useOpenSections remembers which and keeps the current one open.
+            <Collapsible
+              key={section.label}
+              open={isOpen(section.label)}
+              onOpenChange={(open) => setOpen(section.label!, open)}
+              className="group/section"
+            >
+              {/* Less padding than a plain group: folded, the headings stack
+                  as a compact list instead of a column of gaps. */}
+              <SidebarGroup className="py-0.5">
+                <SidebarGroupLabel
+                  asChild
+                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer"
+                >
+                  <CollapsibleTrigger>
+                    {section.label}
+                    <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=closed]/section:-rotate-90" />
+                  </CollapsibleTrigger>
+                </SidebarGroupLabel>
+                <CollapsibleContent>
+                  <SectionItems section={section} onNavigate={closeOnMobile} />
+                </CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>
+          )
+        )}
       </SidebarContent>
 
       <SidebarFooter>

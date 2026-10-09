@@ -332,6 +332,35 @@ export function AgeChart({ byAge }: { byAge: Record<string, number> }) {
   );
 }
 
+const SERVICE_SHORT: Record<string, string> = {
+  "Under 6 months": "<6m",
+  "6–12 months": "6–12m",
+  "1–2 years": "1–2y",
+  "2–3 years": "2–3y",
+  "3+ years": "3y+",
+};
+
+/** Time served at 317, from the join date the Volunteer Portal sync records. */
+export function ServiceChart({ service, onDrill }: { service: Record<string, number>; onDrill?: DrillDown }) {
+  // The API sends the bands in order; cadets not yet synced aren't a length of service.
+  const data = Object.entries(service)
+    .filter(([band, n]) => band !== "Not synced" && n > 0)
+    // Short x-axis labels, or the chart drops every other one.
+    .map(([band, count]) => ({ name: SERVICE_SHORT[band] ?? band, full: band, count }));
+  return (
+    <CountBarChart
+      title="Time at 317"
+      data={data}
+      fill="var(--chart-3)"
+      barSize={30}
+      csvName="time-at-317.csv"
+      onBarClick={
+        onDrill ? (band) => onDrill({ service: band }, `At 317 for ${band.toLowerCase()}`) : undefined
+      }
+    />
+  );
+}
+
 const CLASSIFICATION_ORDER = [
   "Junior Cadet",
   "First Class Cadet",

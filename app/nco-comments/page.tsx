@@ -83,7 +83,7 @@ export default function NcoCommentsPage() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader
         title="NCO Comments"
         description="Quick notes about a cadet or the squadron — every NCO and staff member can read them and reply"

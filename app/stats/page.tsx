@@ -9,12 +9,19 @@ import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section-heading";
 import { BadgeGlance } from "@/components/stats/badge-glance";
 import { CadetDrilldown, type Drill } from "@/components/stats/cadet-drilldown";
-import { AgeChart, BadgeTrendCard, ClassificationChart, StrengthChart } from "@/components/stats/charts";
+import {
+  AgeChart,
+  BadgeTrendCard,
+  ClassificationChart,
+  ServiceChart,
+  StrengthChart,
+} from "@/components/stats/charts";
 import { CsvButton } from "@/components/stats/csv-button";
 import { SquadronKpis } from "@/components/stats/kpis";
 import { ClassificationFunnel, IntakeRetention } from "@/components/stats/progression";
 import { ExpiringQuals, RecentAwards } from "@/components/stats/qual-lists";
 import { TargetsSection } from "@/components/stats/targets";
+import { BlueFlyingCard, ClassificationExamsCard } from "@/components/stats/training";
 import { TimeRangePicker } from "@/components/stats/time-range-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +45,7 @@ import {
   shiftRange,
   type StatsTarget,
   type TimeRange,
+  type TrainingProgress,
   zoomOutRange,
   orderedFlights,
   DEFAULT_RANGE,
@@ -145,6 +153,18 @@ function Stats() {
     flight ? `/stats/funnel?flight=${encodeURIComponent(flight)}` : "/stats/funnel"
   );
 
+  // Training progress is live and follows the flight and junior filters.
+  const progressQuery = new URLSearchParams({
+    ...(flight ? { flight } : {}),
+    ...(excludeJuniors ? { exclude_juniors: "true" } : {}),
+  }).toString();
+  const { data: progressData } = useApiQuery<TrainingProgress>(
+    ["stats", "progress", progressQuery],
+    progressQuery ? `/stats/progress?${progressQuery}` : "/stats/progress"
+  );
+  // An error body in place of the object would otherwise crash the cards.
+  const progress = progressData && Array.isArray(progressData.exams) ? progressData : null;
+
   const inSlice = (row: { flight: string; junior: boolean }) =>
     (!flight || row.flight === flight) && (!excludeJuniors || !row.junior);
   const awards = (Array.isArray(awardsData) ? awardsData : []).filter(inSlice);
@@ -190,6 +210,16 @@ function Stats() {
     });
   // The classification chart and funnel are squadron-wide, today.
   const drillNow = (query: Record<string, string>, title: string) => setDrill({ query, title });
+  // Training progress: today, under the page's flight and junior filters.
+  const drillProgress = (query: Record<string, string>, title: string) =>
+    setDrill({
+      query: {
+        ...query,
+        ...(flight ? { flight } : {}),
+        ...(excludeJuniors ? { exclude_juniors: "true" } : {}),
+      },
+      title,
+    });
 
   const sliceLabel = [
     flight ? flightLabel(flight) : "Whole squadron",
@@ -321,15 +351,23 @@ function Stats() {
 
             <StrengthChart data={strength} flights={strengthFlights} onZoom={applyRange} />
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
               <AgeChart byAge={stats.by_age} />
               <ClassificationChart byClassification={stats.by_classification ?? {}} onDrill={drillNow} />
+              {progress && <ServiceChart service={progress.service} onDrill={drillProgress} />}
             </div>
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <ClassificationFunnel funnel={funnelData} flight={flight} onDrill={drillNow} />
               <IntakeRetention rows={Array.isArray(retentionData) ? retentionData : []} />
             </div>
+
+            {progress && (
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <BlueFlyingCard progress={progress} onDrill={drillProgress} />
+                <ClassificationExamsCard progress={progress} onDrill={drillProgress} />
+              </div>
+            )}
 
             <TargetsSection
               targets={Array.isArray(targetsData) ? targetsData : []}

@@ -48,6 +48,19 @@ export function cadetInitials(firstName?: string | null, lastName?: string | nul
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
+/** The flights present in a roster, in squadron order (NCO, A, B, C, then anything unexpected). */
+export function flightsIn(cadets: Array<{ flight: string | null }>): string[] {
+  const present = new Set(cadets.map((c) => c.flight?.trim()).filter((f): f is string => !!f));
+  const known = FLIGHT_ORDER.filter((f) => present.has(f));
+  const extra = [...present].filter((f) => !FLIGHT_ORDER.includes(f)).sort();
+  return [...known, ...extra];
+}
+
+/** "A Flight" for the letter the API stores; anything already spelled out is left alone. */
+export function flightLabel(flight: string): string {
+  return /flight$/i.test(flight.trim()) ? flight.trim() : `${flight.trim()} Flight`;
+}
+
 /**
  * Compares two "First Last" display names by surname, then first name. The API
  * only sends the joined name, so the surname is the last word; multi-word

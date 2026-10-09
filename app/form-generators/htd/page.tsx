@@ -231,7 +231,7 @@ export default function HTDPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader
         title="HTD Travel Claim"
         description="Select a staff member, check the details, then generate the ACCTS 7101 Word document"

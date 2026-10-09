@@ -500,3 +500,21 @@ export interface RetentionRow {
   "6m": number | null;
   "12m": number | null;
 }
+
+/** GET /stats/progress — live training progress from the Volunteer Portal data. */
+export interface TrainingProgress {
+  total: number;
+  flown_last_year: number;
+  blue_flying: Record<string, number>;
+  exams: { key: string; name: string; category: string; cadets: number; passed: number }[];
+  service: Record<string, number>;
+}
+
+/** Blue Flying states in pipeline order, as the API names them (stats.BLUE_FLYING_STATES). */
+export const BLUE_FLYING_STATES: { key: string; label: string }[] = [
+  { key: "done", label: "Done" },
+  { key: "needs_ptt", label: "Needs PTT" },
+  { key: "needs_flight", label: "Needs a flight" },
+  { key: "needs_ptt_and_flight", label: "Needs PTT and a flight" },
+  { key: "not_started", label: "Not started" },
+];
