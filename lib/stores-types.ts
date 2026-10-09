@@ -90,6 +90,8 @@ export interface BadgeOrderItem {
   badgeName: string;
   replacement?: boolean; // replacement badges carry a £2 fee
   qualHeld?: boolean | null; // null: no qualification behind this badge (Core badges)
+  // Flying – Blue only: its three stages, so staff can see which is missing.
+  qualStages?: { stage: number; name: string; done: boolean }[] | null;
   qmNotes: QmNote[];
   givenAt: string | null;
   givenBy: string | null;

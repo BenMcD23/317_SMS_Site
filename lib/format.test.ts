@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatMonth, formatShortDate, formatTimestamp } from "@/lib/format";
+import {
+  formatDate,
+  formatMinutes,
+  formatMonth,
+  formatShortDate,
+  formatTimestamp,
+  timeSince,
+} from "@/lib/format";
 
 describe("formatDate", () => {
   it("formats an ISO date the British way", () => {
@@ -53,5 +60,20 @@ describe("formatMonth", () => {
   it("names an intake month", () => {
     expect(formatMonth("2026-09")).toBe("Sept 2026");
     expect(formatMonth("2027-01")).toBe("Jan 2027");
+  });
+});
+
+describe("formatMinutes and timeSince", () => {
+  it("formats flying minutes", () => {
+    expect(formatMinutes(45)).toBe("45m");
+    expect(formatMinutes(200)).toBe("3h 20m");
+  });
+
+  it("measures time since a date in years and months", () => {
+    const now = new Date("2026-10-08");
+    expect(timeSince("2024-03-27", now)).toBe("2y 6m");
+    expect(timeSince("2026-09-10", now)).toBe("0m");
+    expect(timeSince(null, now)).toBeNull();
+    expect(timeSince("2027-01-01", now)).toBeNull(); // a future date isn't "time since"
   });
 });

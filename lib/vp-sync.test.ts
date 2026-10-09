@@ -10,8 +10,6 @@ import {
   BOOKMARKLET_VERSION,
   bookmarkletHref,
   collectPortalData,
-  formatMinutes,
-  timeSince,
   VP_ORIGIN,
   type PortalError,
 } from "@/lib/vp-sync";
@@ -263,20 +261,5 @@ describe("collectPortalData", () => {
     const onProgress = vi.fn();
     await collectPortalData(fakePortal(), new Set(["111"]), [], onProgress);
     expect(onProgress).toHaveBeenCalledWith(1, 1);
-  });
-});
-
-describe("portal display helpers", () => {
-  it("formats flying minutes", () => {
-    expect(formatMinutes(45)).toBe("45m");
-    expect(formatMinutes(200)).toBe("3h 20m");
-  });
-
-  it("measures time since a date in years and months", () => {
-    const now = new Date("2026-10-08");
-    expect(timeSince("2024-03-27", now)).toBe("2y 6m");
-    expect(timeSince("2026-09-10", now)).toBe("0m");
-    expect(timeSince(null, now)).toBeNull();
-    expect(timeSince("2027-01-01", now)).toBeNull(); // a future date isn't "time since"
   });
 });

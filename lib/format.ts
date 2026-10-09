@@ -42,3 +42,21 @@ export function todayLocal(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
+
+/** "3h 20m" from minutes — flight durations. */
+export function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** Whole years and months between an ISO date and today, e.g. "2y 4m" — time
+ *  at the squadron. Null for a missing or future date. */
+export function timeSince(iso: string | null, now: Date = new Date()): string | null {
+  if (!iso) return null;
+  const from = new Date(iso);
+  let months = (now.getFullYear() - from.getFullYear()) * 12 + now.getMonth() - from.getMonth();
+  if (now.getDate() < from.getDate()) months -= 1;
+  if (months < 0) return null;
+  return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}m` : `${months}m`;
+}

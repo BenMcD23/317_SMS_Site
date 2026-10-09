@@ -1,20 +1,17 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Bookmark, Clock, ExternalLink, FileText, GripVertical, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { bookmarkletHref, VP_ORIGIN } from "@/lib/vp-sync";
 
+// What the sync fills in, and where it shows up in 317 SMS.
 const IMPORTS = [
-  "WHTs",
-  "Shooting log",
-  "Fieldcraft",
-  "Classification exams",
-  "Flying",
-  "E-learning",
-  "Unit history",
+  "Flights → Blue Flying badge",
+  "Classification exams → Theory Progress",
+  "Classification dates",
+  "Join date",
 ];
 
 /**
@@ -120,9 +117,6 @@ export function VpSyncCard({
               <a href={VP_ORIGIN} target="_blank" rel="noopener noreferrer">
                 Open Volunteer Portal <ExternalLink className="size-3.5" />
               </a>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/volunteer-portal">View dashboard</Link>
             </Button>
           </div>
         </li>
