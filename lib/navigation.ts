@@ -30,7 +30,6 @@ import {
   Star,
   UserCheck,
   UserCog,
-  UserMinus,
   Users,
 } from "lucide-react";
 
@@ -102,7 +101,6 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ShieldCheck,
         keywords: ["qualifications", "medical", "dietary"],
       },
-      { label: "Leaving Process", href: "/cadets/leaving", icon: UserMinus },
     ],
   },
   {

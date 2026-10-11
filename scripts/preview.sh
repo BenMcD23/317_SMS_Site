@@ -90,6 +90,8 @@ GOOGLE_CLIENT_ID=preview
 GOOGLE_CLIENT_SECRET=preview
 NEXTAUTH_URL=http://localhost:$SITE_PORT
 NEXT_PUBLIC_API_BASE=http://localhost:$API_PORT
+# The dev API treats the STAFF (owner) login as the OC, so /oc opens.
+NEXT_PUBLIC_OC_EMAIL=ci.mcdonald@317atc.co.uk
 AUTH_DEV_BYPASS=1
 EOF
 elif ! grep -q '^AUTH_DEV_BYPASS=1' "$SITE/.env.local"; then

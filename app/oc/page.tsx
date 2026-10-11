@@ -28,6 +28,8 @@ import { rateOf, totalOf, type StateCounts } from "@/lib/attendance";
 import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/section-heading";
 import { Stat } from "@/components/stat";
+import { LeavingProcessCard } from "@/components/oc/leaving-process-card";
+import { ParentEmailsCard } from "@/components/oc/parent-emails-card";
 
 interface StaffAttendance {
   cin: number;
@@ -566,6 +568,17 @@ export default function OcDashboardPage() {
             )}
           </CardContent>
         </Card>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHeading
+          title="Leavers & Parents"
+          description="Cadets who haven't paraded for eight weeks, and parent emails to BCC from your own account."
+        />
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <LeavingProcessCard />
+          <ParentEmailsCard />
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">
