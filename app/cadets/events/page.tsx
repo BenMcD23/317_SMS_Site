@@ -36,6 +36,8 @@ type SubAppEvent = {
 type CadetEvent = {
   id: number;
   title: string;
+  /** Bader's category, e.g. "Road Marching"; null when the scrape couldn't read it. */
+  category: string | null;
   cadet_count: number;
   cadets: EventCadet[];
   sub_apps: SubAppEvent[];
@@ -189,6 +191,7 @@ function EventCard({ event }: { event: CadetEvent }) {
           <CalendarDays className="text-muted-foreground size-4 shrink-0" />
           <div className="min-w-0 flex-1">
             <CardTitle className="truncate text-sm font-medium">{event.title}</CardTitle>
+            {event.category && <p className="text-muted-foreground truncate text-xs">{event.category}</p>}
           </div>
           <Badge variant="secondary" className="shrink-0 gap-1">
             <Users className="size-3" />
@@ -265,6 +268,7 @@ export default function CadetEventListPage() {
     const q = search.toLowerCase();
     if (!q) return true;
     if (e.title.toLowerCase().includes(q)) return true;
+    if (e.category?.toLowerCase().includes(q)) return true;
     if (
       e.cadets.some(
         (c) =>
@@ -330,7 +334,7 @@ export default function CadetEventListPage() {
           <Search />
         </InputGroupAddon>
         <InputGroupInput
-          placeholder="Search by event name or cadet…"
+          placeholder="Search by event, category or cadet…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
