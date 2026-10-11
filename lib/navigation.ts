@@ -57,6 +57,9 @@ export type NavLink = {
   ocOnly?: boolean;
   /** Extra words the palette should match, e.g. old names people still use. */
   keywords?: string[];
+  /** Highlight only on this exact path — for a group's landing page (/oc)
+   *  whose siblings (/oc/leaving) live underneath it. */
+  exact?: boolean;
 };
 
 /** A collapsible parent with its own children (Stores › Uniform › Stock). */
@@ -86,7 +89,35 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ChartLine,
         keywords: ["badge progression", "trends", "strength", "expiring"],
       },
-      { label: "OC Dashboard", href: "/oc", icon: ShieldUser, ocOnly: true },
+      {
+        kind: "group",
+        label: "OC",
+        icon: ShieldUser,
+        links: [
+          {
+            label: "Dashboard",
+            href: "/oc",
+            icon: ShieldUser,
+            ocOnly: true,
+            exact: true,
+            keywords: ["oc dashboard"],
+          },
+          {
+            label: "Leaving Process",
+            href: "/oc/leaving",
+            icon: UserMinus,
+            ocOnly: true,
+            keywords: ["leavers", "lapsed cadets", "parent emails"],
+          },
+          {
+            label: "Staff",
+            href: "/staff/overview",
+            icon: UserCog,
+            ocOnly: true,
+            keywords: ["cfav", "adults"],
+          },
+        ],
+      },
     ],
   },
   {
@@ -109,7 +140,6 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ShieldCheck,
         keywords: ["qualifications", "medical", "dietary"],
       },
-      { label: "Leaving Process", href: "/cadets/leaving", icon: UserMinus },
     ],
   },
   {
@@ -194,7 +224,6 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Squadron",
     items: [
-      { label: "Staff", href: "/staff/overview", icon: UserCog },
       {
         label: "Attendance",
         href: "/attendance",
@@ -261,8 +290,8 @@ export function isGroup(item: NavItem): item is NavGroup {
   return item.kind === "group";
 }
 
-export function isLinkActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+export function isLinkActive(pathname: string, href: string, exact = false): boolean {
+  if (href === "/" || exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
 

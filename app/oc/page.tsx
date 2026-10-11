@@ -28,6 +28,7 @@ import { rateOf, totalOf, type StateCounts } from "@/lib/attendance";
 import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/section-heading";
 import { Stat } from "@/components/stat";
+import { OcAccessRequired } from "@/components/oc/oc-access-required";
 
 interface StaffAttendance {
   cin: number;
@@ -232,21 +233,7 @@ export default function OcDashboardPage() {
     enabled: allowed,
   });
 
-  if (!allowed) {
-    return (
-      <div className="mx-auto w-full max-w-3xl pt-16">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="text-destructive size-5" />
-              <CardTitle>OC access required</CardTitle>
-            </div>
-            <CardDescription>This dashboard is only available to the Officer Commanding.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  if (!allowed) return <OcAccessRequired />;
 
   // Committee request status counts + the ones needing OC action.
   const requests = committee?.requests ?? [];

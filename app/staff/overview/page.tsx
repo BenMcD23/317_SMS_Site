@@ -12,6 +12,7 @@ import { ErrorAlert } from "@/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Search, ChevronRight, UserCog } from "lucide-react";
+import { OcOnly } from "@/components/oc/oc-access-required";
 
 type StaffMember = {
   cin: number;
@@ -23,6 +24,14 @@ type StaffMember = {
 };
 
 export default function StaffOverviewPage() {
+  return (
+    <OcOnly>
+      <StaffOverview />
+    </OcOnly>
+  );
+}
+
+function StaffOverview() {
   const router = useRouter();
   const [search, setSearch] = useState("");
 

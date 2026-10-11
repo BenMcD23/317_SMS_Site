@@ -10,6 +10,7 @@ import { ErrorAlert } from "@/components/error-alert";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 import { AttendanceCard } from "@/components/attendance-card";
 import { Home, CalendarRange } from "lucide-react";
+import { OcOnly } from "@/components/oc/oc-access-required";
 
 type StaffMember = {
   cin: number;
@@ -32,6 +33,14 @@ function formatMonth(key: string): string {
 }
 
 export default function StaffDetailPage() {
+  return (
+    <OcOnly>
+      <StaffDetail />
+    </OcOnly>
+  );
+}
+
+function StaffDetail() {
   const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);

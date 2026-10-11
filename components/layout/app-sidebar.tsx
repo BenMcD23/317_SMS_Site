@@ -55,7 +55,11 @@ function NavLinkItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
   const pathname = usePathname();
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={link.label} isActive={isLinkActive(pathname, link.href)}>
+      <SidebarMenuButton
+        asChild
+        tooltip={link.label}
+        isActive={isLinkActive(pathname, link.href, link.exact)}
+      >
         <Link href={link.href} onClick={onNavigate}>
           <NavIcon icon={link.icon} />
           <span>{link.label}</span>
@@ -115,7 +119,7 @@ function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate: () =
           <SidebarMenuSub>
             {group.links.map((link) => (
               <SidebarMenuSubItem key={link.href}>
-                <SidebarMenuSubButton asChild isActive={isLinkActive(pathname, link.href)}>
+                <SidebarMenuSubButton asChild isActive={isLinkActive(pathname, link.href, link.exact)}>
                   <Link href={link.href} onClick={onNavigate}>
                     <NavIcon icon={link.icon} />
                     <span>{link.label}</span>

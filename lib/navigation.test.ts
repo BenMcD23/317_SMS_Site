@@ -71,6 +71,26 @@ describe("visibleSections", () => {
     const nav = await import("@/lib/navigation");
     const ocLinks = nav.flattenLinks(nav.visibleSections("staff", "OC@317atc.co.uk")).map((l) => l.href);
     expect(ocLinks).toContain("/oc");
+    expect(ocLinks).toContain("/oc/leaving");
+  });
+
+  it("puts the OC dashboard and leaving process together under an OC group", async () => {
+    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
+    vi.resetModules();
+    const nav = await import("@/lib/navigation");
+    const groups = nav
+      .visibleSections("staff", "oc@317atc.co.uk")
+      .flatMap((s) => s.items.filter(nav.isGroup));
+    const oc = groups.find((g) => g.label === "OC");
+    expect(oc?.links.map((l) => l.href)).toEqual(["/oc", "/oc/leaving", "/staff/overview"]);
+    // Nobody else gets an empty OC group.
+    const others = visibleSections("staff", "other@317atc.co.uk").flatMap((s) => s.items.filter(isGroup));
+    expect(others.some((g) => g.label === "OC")).toBe(false);
+  });
+
+  it("the old leaving page is gone, and staff is the OC's alone", () => {
+    expect(hrefs("staff", OWNER_EMAIL)).not.toContain("/cadets/leaving");
+    expect(hrefs("staff", "other@317atc.co.uk")).not.toContain("/staff/overview");
   });
 
   it("drops empty sections and groups entirely", () => {
@@ -85,6 +105,10 @@ describe("active state", () => {
   it("matches whole segments and treats / as exact", () => {
     expect(isLinkActive("/", "/")).toBe(true);
     expect(isLinkActive("/cadets", "/")).toBe(false);
+    // The OC dashboard link shouldn't light up on the leaving page beneath it.
+    expect(isLinkActive("/oc", "/oc", true)).toBe(true);
+    expect(isLinkActive("/oc/leaving", "/oc", true)).toBe(false);
+    expect(isLinkActive("/oc/leaving", "/oc")).toBe(true);
     expect(isLinkActive("/cadets/audit", "/cadets/audit")).toBe(true);
     expect(isLinkActive("/cadets/audit/x", "/cadets/audit")).toBe(true);
     expect(isLinkActive("/cadets/auditing", "/cadets/audit")).toBe(false);
@@ -115,7 +139,7 @@ describe("breadcrumbsFor", () => {
       { label: "Overview", href: "/cadets/overview" },
     ]);
     expect(breadcrumbsFor("/staff/12")).toEqual([
-      { label: "Squadron" },
+      { label: "OC" },
       { label: "Staff", href: "/staff/overview" },
     ]);
     // Real pages under /cadets keep their own trail, not the record fallback.

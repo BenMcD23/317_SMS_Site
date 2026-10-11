@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { API_BASE } from "@/lib/config";
+import { API_BASE, isOc } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { saveResponseAsFile } from "@/lib/download";
 import { todayLocal } from "@/lib/format";
@@ -82,6 +82,10 @@ function monthsForHalf(halfId: string, attendance: Record<string, number> | null
 
 export default function HTDPage() {
   const { data: session } = useSession();
+  const token = session?.id_token;
+  // The OC can raise a claim for anyone; everyone else only ever gets their
+  // own record back from the API, so there's nothing to pick.
+  const oc = isOc(session?.user?.email);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
   const [selectedCin, setSelectedCin] = useState<string>("");
@@ -104,14 +108,6 @@ export default function HTDPage() {
   const [calculating, setCalculating] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/staff/users")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: StaffMember[]) => setStaff(data))
-      .catch(() => toast.error("Could not load staff list."))
-      .finally(() => setStaffLoading(false));
-  }, []);
-
   const selected = useMemo(
     () => staff.find((s) => String(s.cin) === selectedCin) ?? null,
     [staff, selectedCin]
@@ -119,9 +115,12 @@ export default function HTDPage() {
   const halves = useMemo(() => availableHalves(selected?.attendance ?? null), [selected]);
 
   const onSelectStaff = (cin: string) => {
-    setSelectedCin(cin);
     const s = staff.find((m) => String(m.cin) === cin);
-    if (!s) return;
+    if (s) selectStaff(s);
+  };
+
+  function selectStaff(s: StaffMember) {
+    setSelectedCin(String(s.cin));
     setRank(s.rank ?? "");
     setInitials(((s.firstName ?? "").charAt(0) + (s.lastName ?? "").charAt(0)).toUpperCase());
     setSurname((s.lastName ?? "").toUpperCase());
@@ -136,7 +135,21 @@ export default function HTDPage() {
     const firstHalf = hs[0]?.id ?? "";
     setHalfId(firstHalf);
     setMonths(monthsForHalf(firstHalf, s.attendance));
-  };
+  }
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch(`${API_BASE}/form-generators/htd/staff`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data: StaffMember[]) => {
+        setStaff(data);
+        if (!oc && data.length === 1) selectStaff(data[0]);
+      })
+      .catch(() => toast.error("Could not load your staff record."))
+      .finally(() => setStaffLoading(false));
+    // selectStaff only sets state; re-running on its identity would refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, oc]);
 
   const onSelectHalf = (id: string) => {
     setHalfId(id);
@@ -203,6 +216,7 @@ export default function HTDPage() {
         method: "POST",
         headers: { Authorization: `Bearer ${session.id_token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
+          cin: Number(selectedCin),
           rank,
           initials,
           surname,
@@ -234,34 +248,49 @@ export default function HTDPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <PageHeader
         title="HTD Travel Claim"
-        description="Select a staff member, check the details, then generate the ACCTS 7101 Word document"
+        description={
+          oc
+            ? "Select a staff member, check the details, then generate the ACCTS 7101 Word document"
+            : "Check your details, then generate your ACCTS 7101 Word document"
+        }
       />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Staff member</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {staffLoading ? (
-            <Skeleton className="h-9 w-full" />
-          ) : (
-            <Select value={selectedCin} onValueChange={onSelectStaff}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a staff member" />
-              </SelectTrigger>
-              <SelectContent>
-                {[...staff]
-                  .sort((a, b) => (a.lastName ?? "").localeCompare(b.lastName ?? ""))
-                  .map((s) => (
-                    <SelectItem key={s.cin} value={String(s.cin)}>
-                      {[s.rank, s.firstName, s.lastName].filter(Boolean).join(" ")}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          )}
-        </CardContent>
-      </Card>
+      {!staffLoading && !oc && staff.length === 0 && (
+        <Card>
+          <CardContent className="text-muted-foreground py-6 text-sm">
+            Your account isn&apos;t linked to a staff record on the roster, so there&apos;s no claim to fill
+            in. It matches on your email address once the staff scraper has run.
+          </CardContent>
+        </Card>
+      )}
+
+      {oc && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Staff member</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {staffLoading ? (
+              <Skeleton className="h-9 w-full" />
+            ) : (
+              <Select value={selectedCin} onValueChange={onSelectStaff}>
+                <SelectTrigger aria-label="Staff member">
+                  <SelectValue placeholder="Select a staff member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...staff]
+                    .sort((a, b) => (a.lastName ?? "").localeCompare(b.lastName ?? ""))
+                    .map((s) => (
+                      <SelectItem key={s.cin} value={String(s.cin)}>
+                        {[s.rank, s.firstName, s.lastName].filter(Boolean).join(" ")}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {selected && (
         <>
