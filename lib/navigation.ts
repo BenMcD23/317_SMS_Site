@@ -21,6 +21,7 @@ import {
   Newspaper,
   Orbit,
   Package,
+  Plane,
   Radio,
   ReceiptText,
   Shirt,
@@ -96,6 +97,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
       { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap },
       { label: "Events", href: "/cadets/events", icon: Calendar },
+      {
+        label: "Flying Paperwork",
+        href: "/cadets/flying",
+        icon: Plane,
+        keywords: ["aef", "gliding", "tg21", "tg23", "av med"],
+      },
       {
         label: "Audit",
         href: "/cadets/audit",
