@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ShieldAlert, GraduationCap, Clock } from "lucide-react";
+import { GraduationCap, Clock } from "lucide-react";
 import {
   type CommitteeRequestSummary,
   type CommitteeRequestStatus,
@@ -28,8 +28,7 @@ import { rateOf, totalOf, type StateCounts } from "@/lib/attendance";
 import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/section-heading";
 import { Stat } from "@/components/stat";
-import { LeavingProcessCard } from "@/components/oc/leaving-process-card";
-import { ParentEmailsCard } from "@/components/oc/parent-emails-card";
+import { OcAccessRequired } from "@/components/oc/oc-access-required";
 
 interface StaffAttendance {
   cin: number;
@@ -234,21 +233,7 @@ export default function OcDashboardPage() {
     enabled: allowed,
   });
 
-  if (!allowed) {
-    return (
-      <div className="mx-auto w-full max-w-3xl pt-16">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="text-destructive size-5" />
-              <CardTitle>OC access required</CardTitle>
-            </div>
-            <CardDescription>This dashboard is only available to the Officer Commanding.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  if (!allowed) return <OcAccessRequired />;
 
   // Committee request status counts + the ones needing OC action.
   const requests = committee?.requests ?? [];
@@ -568,17 +553,6 @@ export default function OcDashboardPage() {
             )}
           </CardContent>
         </Card>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <SectionHeading
-          title="Leavers & Parents"
-          description="Cadets who haven't paraded for eight weeks, and parent emails to BCC from your own account."
-        />
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          <LeavingProcessCard />
-          <ParentEmailsCard />
-        </div>
       </section>
 
       <section className="flex flex-col gap-3">
