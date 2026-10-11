@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { GraduationCap, Clock } from "lucide-react";
+import { ShieldAlert, GraduationCap, Clock } from "lucide-react";
 import {
   type CommitteeRequestSummary,
   type CommitteeRequestStatus,
