@@ -16,6 +16,7 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  ListChecks,
   MessageSquare,
   MessageSquareText,
   Newspaper,
@@ -127,6 +128,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["results"] },
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
       { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap },
+      {
+        label: "Classification Day",
+        href: "/cadets/classification-day",
+        icon: ListChecks,
+        keywords: ["exams", "lesson plan", "who does what", "classification"],
+      },
       { label: "Events", href: "/cadets/events", icon: Calendar },
       {
         label: "Flying Paperwork",
