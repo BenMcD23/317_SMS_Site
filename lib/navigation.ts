@@ -191,6 +191,12 @@ export const NAV_SECTIONS: NavSection[] = [
             icon: ShoppingCart,
             keywords: ["uniform orders", "kitting"],
           },
+          {
+            label: "Stats",
+            href: "/stores/uniform/stats",
+            icon: ChartLine,
+            keywords: ["uniform stats", "most ordered", "common sizes"],
+          },
         ],
       },
       {
@@ -205,6 +211,12 @@ export const NAV_SECTIONS: NavSection[] = [
             keywords: ["badge stock", "badge grid"],
           },
           { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart, keywords: ["badge orders"] },
+          {
+            label: "Stats",
+            href: "/stores/badges/stats",
+            icon: ChartLine,
+            keywords: ["badge stats", "most ordered"],
+          },
         ],
       },
     ],
