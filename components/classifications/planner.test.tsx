@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import ClassificationDayPage from "@/app/cadets/classification-day/page";
+import { ClassificationPlanner } from "@/components/classifications/planner";
 import { canAccess } from "@/lib/access";
 import type { PlannedCadet } from "@/lib/classification-day";
 
@@ -41,6 +41,8 @@ function cadet(cin: number, last: string, over: Partial<PlannedCadet>): PlannedC
     kind: "lesson",
     lesson_key: "jet_engine_propulsion",
     lesson_name: "Jet Engine Propulsion",
+    lesson_part: 1,
+    lesson_parts: 3,
     ready_exams: [],
     awaiting: null,
     attendance: ATT,
@@ -52,11 +54,12 @@ const PLAN = {
   date: "2026-10-14",
   weekday: "Wednesday",
   cadets: [
-    cadet(1, "Adenekan", {}),
+    cadet(1, "Adenekan", { lesson_part: 2 }),
     cadet(2, "Do", {
       kind: "exam",
       lesson_key: "acp_32_2",
       lesson_name: "Basic Navigation",
+      lesson_part: null,
       ready_exams: ["acp_32_2"],
       classification: "First Class Cadet",
       flight: "B",
@@ -68,7 +71,14 @@ const PLAN = {
         flags: [{ code: "weekday", message: "Rarely in on Wednesdays: 1 of 10 (10%)" }],
       },
     }),
-    cadet(4, "Junior", { kind: "first_class", lesson_key: null, lesson_name: null, classification: null }),
+    cadet(4, "Junior", {
+      kind: "first_class",
+      lesson_key: null,
+      lesson_name: null,
+      lesson_part: null,
+      lesson_parts: null,
+      classification: null,
+    }),
   ],
 };
 
@@ -89,7 +99,7 @@ function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <ClassificationDayPage />
+      <ClassificationPlanner />
     </QueryClientProvider>
   );
 }
@@ -104,7 +114,7 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
 });
 
-describe("Classification day page", () => {
+describe("Classification night planner", () => {
   it("groups cadets into exams and lessons and flags the ones unlikely to be in", async () => {
     api();
     renderPage();
@@ -123,6 +133,30 @@ describe("Classification day page", () => {
     expect(within(jep).getByText("10% likely in")).toBeInTheDocument();
 
     expect(within(group("Working towards First Class")).getByText("Junior, Sam")).toBeInTheDocument();
+  });
+
+  it("says which of the subject's lessons each cadet is on, and nothing for an exam", async () => {
+    api();
+    renderPage();
+    await screen.findByRole("heading", { name: "Exams" });
+
+    const adenekan = within(group("Jet Engine Propulsion")).getByText("Adenekan, Sam").closest("li")!;
+    expect(within(adenekan).getByText("Lesson 2 of 3")).toBeInTheDocument();
+    const north = within(group("Jet Engine Propulsion")).getByText("North, Sam").closest("li")!;
+    expect(within(north).getByText("Lesson 1 of 3")).toBeInTheDocument();
+    expect(within(group("Exams")).queryByText(/lesson \d of/i)).toBeNull();
+  });
+
+  it("drops the lesson number once a cadet is moved onto another subject", async () => {
+    api();
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("heading", { name: "Exams" });
+
+    await user.click(screen.getByRole("combobox", { name: "Move Sam Adenekan" }));
+    await user.click(await screen.findByRole("option", { name: "Basic Navigation" }));
+    const moved = within(group("Basic Navigation")).getByText("Adenekan, Sam").closest("li")!;
+    expect(within(moved).queryByText(/lesson \d of/i)).toBeNull();
   });
 
   it("asks for the chosen night, and only the lessons picked as running", async () => {
@@ -193,7 +227,10 @@ describe("Classification day page", () => {
     await user.click(screen.getByRole("button", { name: "Copy for Sheets" }));
     const text = (writeText.mock.calls[0] as unknown as [string])[0];
     expect(text.split("\n").slice(0, 2)).toEqual(["Exams", "Do, Sam\tBasic Navigation exam\t"]);
-    expect(text).toContain("North, Sam\tJet Engine Propulsion\tRarely in on Wednesdays: 1 of 10 (10%)");
+    expect(text).toContain(
+      "North, Sam\tJet Engine Propulsion lesson 1 of 3\tRarely in on Wednesdays: 1 of 10 (10%)"
+    );
+    expect(text).toContain("Adenekan, Sam\tJet Engine Propulsion lesson 2 of 3\t");
   });
 
   it("a 500 shows an error instead of crashing", async () => {
@@ -218,6 +255,6 @@ describe("who can open it", () => {
     ["nco", false],
     [undefined, false],
   ])("%s → %s", (role, allowed) => {
-    expect(canAccess(role, "/cadets/classification-day")).toBe(allowed);
+    expect(canAccess(role, "/cadets/classifications")).toBe(allowed);
   });
 });

@@ -33,6 +33,9 @@ export type PlannedCadet = {
   kind: PlanKind;
   lesson_key: string | null;
   lesson_name: string | null;
+  /** Which of the subject's lessons is next (1–3); null for an exam or nothing to teach. */
+  lesson_part: number | null;
+  lesson_parts: number | null;
   ready_exams: string[];
   /** A classification whose subjects are all passed but isn't on record yet. */
   awaiting: string | null;
@@ -134,6 +137,16 @@ export function slotLabel(slot: Slot, subjects: Subject[]): string {
 }
 
 /**
+ * "lesson 2 of 3" when the cadet is on the subject the API suggested, which is
+ * the only one whose lesson count we know; moved elsewhere, nothing.
+ */
+export function nextLesson(cadet: PlannedCadet, slot: Slot): string | null {
+  const { lesson_part: part, lesson_parts: parts } = cadet;
+  if (slot.kind !== "lesson" || slot.key !== cadet.lesson_key || !part || !parts || parts < 2) return null;
+  return `lesson ${part} of ${parts}`;
+}
+
+/**
  * The plan as tab-separated text, which pastes into Google Sheets as cells —
  * the squadron's classification day sheet is kept there. One block per group:
  * its title, then one row per cadet with what they're doing and any flags.
@@ -148,7 +161,7 @@ export function planToTsv(groups: PlanGroup[], subjects: Subject[]): string {
         ...g.cadets.map(({ cadet, slot }) =>
           [
             `${cadet.last_name}, ${cadet.first_name}`,
-            slotLabel(slot, subjects),
+            [slotLabel(slot, subjects), nextLesson(cadet, slot)].filter(Boolean).join(" "),
             cadet.attendance.flags.map((f) => f.message).join("; "),
           ]
             .map(clean)

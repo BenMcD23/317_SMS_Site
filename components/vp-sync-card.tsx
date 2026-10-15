@@ -9,7 +9,7 @@ import { bookmarkletHref, VP_ORIGIN } from "@/lib/vp-sync";
 // What the sync fills in, and where it shows up in 317 SMS.
 const IMPORTS = [
   "Flights → Blue Flying badge",
-  "Classification exams → Theory Progress",
+  "Classification exams → Classifications",
   "Classification dates",
   "Join date",
 ];
