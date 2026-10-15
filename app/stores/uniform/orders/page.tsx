@@ -1,6 +1,6 @@
 "use client";
 
-import { loadError } from "@/lib/api-fetch";
+import { errorDetail, loadError } from "@/lib/api-fetch";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -51,6 +51,7 @@ import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
+import { GivenStamp } from "@/components/given-stamp";
 import { StockHistory } from "@/components/stock-history";
 import { PreviousSizesPopover } from "@/components/previous-sizes-popover";
 import Link from "next/link";
@@ -202,6 +203,7 @@ export default function OrdersPage() {
 
   // Mark as given
   const [markingAsGiven, setMarkingAsGiven] = useState<string | null>(null);
+  const [undoingGiven, setUndoingGiven] = useState<string | null>(null);
   const [markGivenOpen, setMarkGivenOpen] = useState(false);
   const [markGivenOrder, setMarkGivenOrder] = useState<Order | null>(null);
   const [markGivenItem, setMarkGivenItem] = useState<OrderItem | null>(null);
@@ -551,6 +553,32 @@ export default function OrdersPage() {
     } finally {
       setMarkingAsGiven(null);
     }
+  }
+
+  async function doUndoGiven(order: Order, item: OrderItem) {
+    setUndoingGiven(item.id);
+    try {
+      const res = await fetch(`/api/stores/orders/${order.id}/items/${item.id}/undo-given`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ by: currentUser }),
+      });
+      if (!res.ok) throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Failed to undo");
+      // Undoing puts the cadet's "last received" back, which shows on their
+      // other orders too, so reload them all — quietly, so the page stays put.
+      await fetchAll({ quiet: true });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setUndoingGiven(null);
+    }
+  }
+
+  function handleUndoGiven(order: Order, item: OrderItem) {
+    openConfirm(
+      `Undo giving ${item.itemType} to ${order.cadetName}? It goes back to waiting and their last received size is put back as it was. The history keeps both.`,
+      () => doUndoGiven(order, item)
+    );
   }
 
   function handleMarkItemAsGiven(order: Order, item: OrderItem) {
@@ -1038,16 +1066,19 @@ export default function OrdersPage() {
                             </div>
                           )}
 
-                          {/* Given stamp */}
-                          {orderItem.givenAt && (
-                            <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                              <PackageCheck className="text-success h-3 w-3 shrink-0" />
-                              <p className="text-success text-xs">
-                                Given {formatTimestamp(orderItem.givenAt)}
-                                {orderItem.givenBy && <> · {orderItem.givenBy}</>}
-                              </p>
-                            </div>
-                          )}
+                          {/* Given stamp: the hand-over, an Undo while the order is open, and the history */}
+                          <GivenStamp
+                            givenAt={orderItem.givenAt}
+                            givenBy={orderItem.givenBy}
+                            events={orderItem.givenEvents}
+                            itemLabel={orderItem.itemType}
+                            undoing={undoingGiven === orderItem.id}
+                            onUndo={
+                              !isCompleted && orderItem.givenAt
+                                ? () => handleUndoGiven(order, orderItem)
+                                : undefined
+                            }
+                          />
 
                           {/* Stock history */}
                           <StockHistory events={orderItem.stockEvents} />

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BadgeOrdersPage from "@/app/stores/badges/orders/page";
@@ -185,11 +186,16 @@ describe("orders leaving the list", () => {
     expect(screen.getByText("Bella Jones")).toBeInTheDocument();
   });
 
-  it("marking a badge given updates the order where it is", async () => {
-    stubApi({
-      "PATCH /api/stores/badges/orders/1": (_url, init) => {
-        const sent = JSON.parse(String(init?.body)) as Partial<BadgeOrder>;
-        return json({ ...orders()[0], items: sent.items });
+  it("marking a badge given records it on the server and updates the order where it is", async () => {
+    const fetch = stubApi({
+      "POST /api/stores/badges/orders/1/items/11/mark-given": () => {
+        const updated = orders()[0];
+        updated.items[0] = item("11", "First Aid – Blue", {
+          givenAt: "2026-10-09T18:00:00Z",
+          givenBy: "Sam Staff",
+          givenEvents: [{ id: "e1", action: "given", timestamp: "2026-10-09T18:00:00Z", by: "Sam Staff" }],
+        });
+        return json(updated);
       },
     });
     await renderPage();
@@ -202,8 +208,94 @@ describe("orders leaving the list", () => {
     );
 
     expect(await screen.findByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/mark-given"))!;
+    expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
+    expect(calls(fetch, "GET /api/stores/badges/orders")).toBe(1);
     expect(card("Alex Smith")).toBe(before);
     expect(card("Alex Smith")).toHaveClass("grid-rows-[1fr]");
+  });
+});
+
+describe("undoing a given badge", () => {
+  const undoneBella = () => {
+    const updated = orders()[1];
+    updated.items[0] = item("21", "First Aid – Bronze", {
+      givenEvents: [
+        { id: "a", action: "given", timestamp: "2026-10-01T18:00:00Z", by: "Sam Staff" },
+        { id: "b", action: "undone", timestamp: "2026-10-02T09:00:00Z", by: "Sam Staff" },
+      ],
+    });
+    return updated;
+  };
+
+  it("takes the badge back to waiting after a confirm, and keeps the history on screen", async () => {
+    const fetch = stubApi({
+      "POST /api/stores/badges/orders/2/items/21/undo-given": () => json(undoneBella()),
+    });
+    await renderPage();
+    await expand("Bella Jones");
+    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+
+    await act(async () => screen.getByRole("button", { name: "Undo given: First Aid – Bronze" }).click());
+    // Asked first: nothing is sent until it's confirmed.
+    expect(calls(fetch, "POST /api/stores/badges/orders/2/items/21/undo-given")).toBe(0);
+    await confirmDialog();
+
+    const history = await screen.findByRole("list", { name: "Given history" });
+    expect(
+      within(history)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent?.split(" ")[0])
+    ).toEqual(["Given", "Undone"]);
+    const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/undo-given"))!;
+    expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
+    // Back to waiting: it can be given again, and the Undo is gone.
+    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
+    expect(within(card("Bella Jones")).getByRole("button", { name: "Mark as Given" })).toBeEnabled();
+  });
+
+  it("changes nothing when the confirm is cancelled", async () => {
+    const fetch = stubApi();
+    await renderPage();
+    await expand("Bella Jones");
+    await act(async () => screen.getByRole("button", { name: "Undo given: First Aid – Bronze" }).click());
+    await act(async () => within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }).click());
+    expect(fetch.mock.calls.some(([u]) => String(u).endsWith("/undo-given"))).toBe(false);
+    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+  });
+
+  it("shows the API's reason and leaves the badge given when the undo is refused", async () => {
+    stubApi({
+      "POST /api/stores/badges/orders/2/items/21/undo-given": () =>
+        json({ detail: "Reopen the order before undoing a badge" }, 409),
+    });
+    await renderPage();
+    await expand("Bella Jones");
+    await act(async () => screen.getByRole("button", { name: "Undo given: First Aid – Bronze" }).click());
+    await confirmDialog();
+
+    expect(await screen.findByText("Reopen the order before undoing a badge")).toBeInTheDocument();
+    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+  });
+
+  // A closed order is a record of what was handed over; reopen it to change it.
+  it("offers no Undo on a completed order", async () => {
+    stubApi({
+      "GET /api/stores/badges/orders": () => json([{ ...orders()[1], completed: true }]),
+    });
+    await act(async () => {
+      render(
+        <TooltipProvider>
+          <BadgeOrdersPage />
+        </TooltipProvider>
+      );
+    });
+    // Radix tabs switch on mouse-down, which a bare .click() doesn't send.
+    await userEvent.click(screen.getByRole("tab", { name: /Completed/ }));
+    await screen.findByText("Bella Jones");
+    await expand("Bella Jones");
+    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
   });
 });
 

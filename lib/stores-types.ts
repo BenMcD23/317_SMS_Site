@@ -44,6 +44,14 @@ export interface StockEvent {
 }
 
 /** The item is off the shelf when its most recent stock event is a removal. */
+/** One step in an item's given/undone history. The current state is `givenAt`; this is what led to it. */
+export interface GivenEvent {
+  id: string;
+  action: "given" | "undone";
+  timestamp: string;
+  by: string | null;
+}
+
 export function isRemovedFromStock(events: StockEvent[] | undefined): boolean {
   return events !== undefined && events.length > 0 && events[events.length - 1].action === "removed";
 }
@@ -59,6 +67,7 @@ export interface OrderItem {
   givenBy: string | null;
   readyToCollect: string | null;
   stockEvents?: StockEvent[];
+  givenEvents?: GivenEvent[];
   lastIssued?: { date: string; size: string | null } | null; // from the cadet's Uniform tab
 }
 
@@ -97,6 +106,7 @@ export interface BadgeOrderItem {
   givenBy: string | null;
   readyToCollect: string | null;
   stockEvents?: StockEvent[];
+  givenEvents?: GivenEvent[];
   gainedWhere?: string | null;
   gainedWhereDetail?: string | null;
   gainedDateFrom?: string | null;

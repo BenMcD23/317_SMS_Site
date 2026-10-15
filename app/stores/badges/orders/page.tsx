@@ -1,6 +1,6 @@
 "use client";
 
-import { loadError } from "@/lib/api-fetch";
+import { errorDetail, loadError } from "@/lib/api-fetch";
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -61,6 +61,7 @@ import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
+import { GivenStamp } from "@/components/given-stamp";
 import { StockHistory } from "@/components/stock-history";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/format";
@@ -303,6 +304,7 @@ export default function BadgeOrdersPage() {
 
   // Mark as given
   const [markingAsGiven, setMarkingAsGiven] = useState<string | null>(null);
+  const [undoingGiven, setUndoingGiven] = useState<string | null>(null);
   const [markGivenOpen, setMarkGivenOpen] = useState(false);
   const [markGivenOrder, setMarkGivenOrder] = useState<BadgeOrder | null>(null);
   const [markGivenItem, setMarkGivenItem] = useState<BadgeOrderItem | null>(null);
@@ -538,15 +540,45 @@ export default function BadgeOrdersPage() {
     setMarkGivenOpen(false);
     setMarkingAsGiven(markGivenItem.id);
     try {
-      const now = new Date().toISOString();
-      await patchOrder(markGivenOrder.id, {
-        items: markGivenOrder.items.map((i) =>
-          i.id === markGivenItem!.id ? { ...i, givenAt: now, givenBy: currentUser } : i
-        ),
-      });
+      await giveCall(markGivenOrder.id, markGivenItem.id, "mark-given", "Failed to mark as given");
     } finally {
       setMarkingAsGiven(null);
     }
+  }
+
+  // mark-given / undo-given answer with the updated order and record the step in
+  // the item's history, which a plain PATCH of `givenAt` would not.
+  async function giveCall(
+    orderId: string,
+    itemId: string,
+    verb: "mark-given" | "undo-given",
+    failure: string
+  ) {
+    try {
+      const res = await fetch(`/api/stores/badges/orders/${orderId}/items/${itemId}/${verb}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ by: currentUser }),
+      });
+      if (!res.ok) throw new Error(errorDetail(await res.json().catch(() => null)) ?? failure);
+      replaceOrder(await res.json());
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    }
+  }
+
+  function handleUndoGiven(order: BadgeOrder, item: BadgeOrderItem) {
+    openConfirm(
+      `Undo giving ${item.badgeName} to ${order.cadetName}? It goes back to waiting. The history keeps both.`,
+      async () => {
+        setUndoingGiven(item.id);
+        try {
+          await giveCall(order.id, item.id, "undo-given", "Failed to undo");
+        } finally {
+          setUndoingGiven(null);
+        }
+      }
+    );
   }
 
   async function handleMarkItemAsReady(orderId: string, itemId: string) {
@@ -1344,16 +1376,19 @@ export default function BadgeOrdersPage() {
                             </div>
                           )}
 
-                          {/* Given stamp */}
-                          {orderItem.givenAt && (
-                            <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                              <PackageCheck className="text-success h-3 w-3 shrink-0" />
-                              <p className="text-success text-xs">
-                                Given {formatTimestamp(orderItem.givenAt)}
-                                {orderItem.givenBy && <> · {orderItem.givenBy}</>}
-                              </p>
-                            </div>
-                          )}
+                          {/* Given stamp: the hand-over, an Undo while the order is open, and the history */}
+                          <GivenStamp
+                            givenAt={orderItem.givenAt}
+                            givenBy={orderItem.givenBy}
+                            events={orderItem.givenEvents}
+                            itemLabel={orderItem.badgeName}
+                            undoing={undoingGiven === orderItem.id}
+                            onUndo={
+                              !isCompleted && orderItem.givenAt
+                                ? () => handleUndoGiven(order, orderItem)
+                                : undefined
+                            }
+                          />
 
                           {/* Order list stamps — added/ordered/received, each its own line so
                                 the audit trail reads the same as it does on the Order List tab */}
