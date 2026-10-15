@@ -20,6 +20,7 @@ import {
   type InsightItem,
   type InsightLine,
   type InsightStatus,
+  listPhrase,
   monthsLabel,
   orderCsvRows,
   sizeLabel,
@@ -174,6 +175,9 @@ function OrderList({ data }: { data: StoresInsights }) {
           Enough for {monthsLabel(data.coverMonths)} at the rate they went out over the last{" "}
           {monthsLabel(data.months)}, plus every cadet still waiting, less what&apos;s on the shelf. Cadets
           already waiting come first.
+          {data.notOnOrderList && data.notOnOrderList.length > 0 && (
+            <> Not listed, as they&apos;re topped up as needed: {listPhrase(data.notOnOrderList)}.</>
+          )}
         </CardDescription>
         {lines.length > 0 && (
           <CardAction>
