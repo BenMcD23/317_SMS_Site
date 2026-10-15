@@ -35,6 +35,9 @@ export interface StoresInsights {
   since: string;
   months: number;
   coverMonths: number;
+  /** Item types the order list leaves out (kept topped up without a forecast).
+   *  Optional so the page still renders against an API that predates it. */
+  notOnOrderList?: string[];
   summary: {
     requested: number;
     given: number;
@@ -94,4 +97,10 @@ export function orderCsvRows(lines: InsightLine[]): Record<string, unknown>[] {
     "Asked for": l.requested,
     Why: STATUS_LABELS[l.status],
   }));
+}
+
+/** Names joined for a sentence: "A", "A and B", "A, B and C". */
+export function listPhrase(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }

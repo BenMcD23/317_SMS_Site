@@ -250,6 +250,23 @@ describe("Uniform insights page", () => {
     expect(screen.getByText("No uniform orders yet")).toBeInTheDocument();
   });
 
+  it("says which items the order list leaves out", async () => {
+    api(() => json(insights({ notOnOrderList: ["Beret", "Belt", "Brassard", "Tie"] })));
+    renderPage();
+
+    expect(
+      await screen.findByText(/Not listed, as they're topped up as needed: Beret, Belt, Brassard and Tie\./)
+    ).toBeInTheDocument();
+  });
+
+  it("an API without the left-out list says nothing about it", async () => {
+    api();
+    renderPage();
+    await screen.findAllByRole("row");
+
+    expect(screen.queryByText(/Not listed/)).toBeNull();
+  });
+
   it("a 500 shows the API's error instead of crashing", async () => {
     api(() => json({ detail: "Database unavailable" }, 500));
     renderPage();

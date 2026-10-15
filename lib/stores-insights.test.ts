@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { type InsightLine, monthsLabel, orderCsvRows, sizeLabel, STATUS_LABELS } from "@/lib/stores-insights";
+import {
+  type InsightLine,
+  listPhrase,
+  monthsLabel,
+  orderCsvRows,
+  sizeLabel,
+  STATUS_LABELS,
+} from "@/lib/stores-insights";
 
 function line(over: Partial<InsightLine> = {}): InsightLine {
   return {
@@ -58,5 +65,12 @@ describe("stores insights wording", () => {
 
   it("an empty order list is an empty CSV, not an error", () => {
     expect(orderCsvRows([])).toEqual([]);
+  });
+
+  it("joins names the way a sentence would", () => {
+    expect(listPhrase([])).toBe("");
+    expect(listPhrase(["Beret"])).toBe("Beret");
+    expect(listPhrase(["Beret", "Tie"])).toBe("Beret and Tie");
+    expect(listPhrase(["Beret", "Belt", "Brassard", "Tie"])).toBe("Beret, Belt, Brassard and Tie");
   });
 });
