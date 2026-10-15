@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { Download, Link2, QrCode, TriangleAlert } from "lucide-react";
+import { Download, Link2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { ErrorAlert } from "@/components/error-alert";
@@ -64,32 +64,41 @@ function LessonQr({ lesson, url }: { lesson: LessonCode; url: string }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <QrImage url={url} alt={alt} />
-      <p className="text-sm font-medium">{label}</p>
-      <div className="flex gap-1">
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-8"
-          onClick={download}
-          aria-label={`Download ${alt}`}
-        >
+    <div className="flex flex-col items-center gap-1.5">
+      {/* The code itself is the download button: the one thing anyone does here. */}
+      <button
+        type="button"
+        onClick={download}
+        aria-label={`Download ${alt}`}
+        title="Download for your slides"
+        className="group focus-visible:ring-ring/50 relative w-full rounded-md outline-none focus-visible:ring-[3px]"
+      >
+        <QrImage url={url} alt={alt} />
+        <span className="bg-background/85 text-foreground absolute inset-0 flex items-center justify-center gap-1.5 rounded-md text-xs font-medium opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
           <Download className="size-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-8"
-          onClick={copy}
-          aria-label={`Copy link for ${lesson.name} ${label}`}
-        >
-          <Link2 className="size-4" />
-        </Button>
-      </div>
+          Download
+        </span>
+      </button>
+      <p className="text-sm font-medium">{label}</p>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-muted-foreground h-7 px-2 text-xs"
+        onClick={copy}
+        aria-label={`Copy link for ${lesson.name} ${label}`}
+      >
+        <Link2 className="size-3.5" />
+        Copy link
+      </Button>
     </div>
   );
 }
+
+const STEPS = [
+  "Click a code to download it, and put it on that lesson's slides.",
+  "At the lesson, cadets scan it with their phone camera and sign in.",
+  "It's ticked off on the Progress tab. Codes never change, so do this once.",
+];
 
 /**
  * Every lesson's check-in QR, to put on its slides. A cadet scans it, signs in
@@ -138,11 +147,18 @@ export function LessonQrCodes() {
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          <QrCode className="size-3.5" />
-          Put each on its lesson&apos;s slides. They never change.
-        </p>
       </div>
+
+      <ol className="bg-muted/40 grid gap-3 rounded-lg border p-4 sm:grid-cols-3" aria-label="How it works">
+        {STEPS.map((step, i) => (
+          <li key={i} className="flex gap-3 text-sm">
+            <span className="bg-primary text-primary-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              {i + 1}
+            </span>
+            <span className="text-muted-foreground">{step}</span>
+          </li>
+        ))}
+      </ol>
 
       <ErrorAlert message={error?.message} title="Couldn't load the codes" />
 

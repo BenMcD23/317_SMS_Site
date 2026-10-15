@@ -25,6 +25,11 @@ export function LessonPips({ progress, parts }: { progress: SubjectProgress; par
   }
   return (
     <span className="flex items-center gap-1" aria-hidden>
+      {parts > 1 && (
+        <span className="text-muted-foreground mr-0.5 w-6 text-right text-[11px] tabular-nums">
+          {progress.lessons.length}/{parts}
+        </span>
+      )}
       {Array.from({ length: parts }, (_, i) => (
         <span
           key={i}

@@ -11,6 +11,7 @@ import { ErrorAlert } from "@/components/error-alert";
 import { FlightFilter, type FlightChoice } from "@/components/flight-filter";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { LessonCell, LessonPips } from "@/components/classifications/lesson-cell";
+import { RecordLessonDialog } from "@/components/classifications/record-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -128,7 +129,7 @@ export function TheoryProgress({ subjects }: { subjects: TheorySubject[] }) {
             Everyone
           </ToggleGroupItem>
         </ToggleGroup>
-        <InputGroup className="h-8 w-full sm:ml-auto sm:w-56">
+        <InputGroup className="h-8 w-full sm:w-48">
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
@@ -141,7 +142,10 @@ export function TheoryProgress({ subjects }: { subjects: TheorySubject[] }) {
         </InputGroup>
       </div>
 
-      <Legend />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Legend />
+        <RecordLessonDialog subjects={subjects} roster={roster} />
+      </div>
 
       <ErrorAlert message={error?.message} title="Couldn't load progress" />
 

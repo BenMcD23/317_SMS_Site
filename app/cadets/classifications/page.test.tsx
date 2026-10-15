@@ -57,6 +57,12 @@ describe("Classifications page", () => {
     expect(await screen.findByRole("tab", { name: "Progress", selected: true })).toBeVisible();
   });
 
+  it("the old Record tab's link opens Progress, where recording now lives", async () => {
+    renderAt("?tab=record");
+    expect(await screen.findByRole("tab", { name: "Progress", selected: true })).toBeVisible();
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Tonight", "Progress", "QR codes"]);
+  });
+
   it("an unknown tab falls back to tonight", async () => {
     renderAt("?tab=nonsense");
     expect(await screen.findByRole("tab", { name: "Tonight", selected: true })).toBeVisible();
