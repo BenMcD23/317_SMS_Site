@@ -7,9 +7,14 @@ const nextConfig: NextConfig = {
   // `radix-ui` (the single consolidated package shadcn/ui imports from) has
   // hundreds of named exports; without this every page bundles the whole
   // package. lucide-react is already in Next's built-in default list.
-  // The leaving process moved under the OC section; keep old bookmarks working.
+  // Keep old bookmarks working: the leaving process moved under the OC section,
+  // and Theory Progress and Classification Day became one Classifications page.
   async redirects() {
-    return [{ source: "/cadets/leaving", destination: "/oc/leaving", permanent: false }];
+    return [
+      { source: "/cadets/leaving", destination: "/oc/leaving", permanent: false },
+      { source: "/cadets/classification-day", destination: "/cadets/classifications", permanent: false },
+      { source: "/cadets/theory", destination: "/cadets/classifications?tab=progress", permanent: false },
+    ];
   },
   experimental: {
     optimizePackageImports: ["radix-ui"],

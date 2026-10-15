@@ -15,3 +15,7 @@ export function isOc(email?: string | null): boolean {
   const e = (email ?? "").toLowerCase();
   return !!e && !!OC_EMAIL && e === OC_EMAIL.toLowerCase();
 }
+
+// The cadet portal's address, which the lesson QR codes open. No default: a QR
+// printed on slides with the wrong address would send every cadet nowhere.
+export const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "";

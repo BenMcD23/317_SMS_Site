@@ -4,11 +4,11 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCopy, GraduationCap, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { FlightFilter, type FlightChoice } from "@/components/flight-filter";
+import { Stat } from "@/components/stat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import { flightBadgeClass, flightsIn } from "@/lib/cadet-format";
 import {
   buildGroups,
   countFlagged,
+  nextLesson,
   parseSlotId,
   planToTsv,
   slotId,
@@ -165,6 +166,7 @@ function CadetRow({
   // The move menu already shows the lesson or exam; only a cadet left off
   // tonight's lessons needs telling what they'd be on.
   const nextName = slot.kind === "not_offered" ? cadet.lesson_name : null;
+  const lesson = nextLesson(cadet, slot);
 
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -179,6 +181,11 @@ function CadetRow({
               {cadet.flight}
             </Badge>
           )}
+          {lesson && (
+            <Badge variant="secondary" className="text-[11px] font-medium">
+              {lesson.charAt(0).toUpperCase() + lesson.slice(1)}
+            </Badge>
+          )}
           {likelihood !== null && (
             <span
               className={cn(
@@ -191,7 +198,14 @@ function CadetRow({
             </span>
           )}
         </div>
-        {nextName && <p className="text-muted-foreground text-xs">Next subject: {nextName}</p>}
+        {nextName && (
+          <p className="text-muted-foreground text-xs">
+            Next subject: {nextName}
+            {cadet.lesson_part && cadet.lesson_parts && cadet.lesson_parts > 1
+              ? `, lesson ${cadet.lesson_part} of ${cadet.lesson_parts}`
+              : ""}
+          </p>
+        )}
         {cadet.awaiting && (
           <p className="text-xs text-blue-700 dark:text-blue-400">
             All exams for {cadet.awaiting} passed — classification not on record yet
@@ -230,7 +244,17 @@ function CadetRow({
 
 type Show = "all" | "flagged";
 
-export default function ClassificationDayPage() {
+/** Cadets across the groups whose id matches — the summary tiles over the plan. */
+function count(groups: { id: string; cadets: unknown[] }[], match: (id: string) => boolean): number {
+  return groups.filter((g) => match(g.id)).reduce((n, g) => n + g.cadets.length, 0);
+}
+
+/**
+ * Who sits which exam and who has which lesson on a classification night, from
+ * the Volunteer Portal exams and the lessons recorded on the Progress tab, with
+ * anyone unlikely to be in flagged.
+ */
+export function ClassificationPlanner() {
   const [date, setDate] = useState(todayLocal);
   const [offered, setOffered] = useState<string[]>([]);
   const [flight, setFlight] = useState<FlightChoice>("");
@@ -283,18 +307,7 @@ export default function ClassificationDayPage() {
   const movedCount = Object.keys(overrides).length;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
-      <PageHeader
-        title="Classification Day"
-        description="Who sits which exam and who has which lesson, from the Volunteer Portal exams and Theory Progress — with anyone unlikely to be in flagged"
-        actions={
-          <Button variant="outline" onClick={copy} disabled={!groups.length}>
-            <ClipboardCopy className="size-4" />
-            Copy for Sheets
-          </Button>
-        }
-      />
-
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid gap-1.5">
           <Label htmlFor="cd-date" className="text-muted-foreground text-xs">
@@ -336,9 +349,26 @@ export default function ClassificationDayPage() {
             Undo {movedCount} move{movedCount === 1 ? "" : "s"}
           </Button>
         )}
+        <Button variant="outline" size="sm" className="ml-auto" onClick={copy} disabled={!groups.length}>
+          <ClipboardCopy className="size-4" />
+          Copy for Sheets
+        </Button>
       </div>
 
       <ErrorAlert message={(error ?? subjectsError)?.message} title="Couldn't load the plan" />
+
+      {plan && cadets.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="Sitting an exam" value={count(groups, (id) => id === "exam")} tone="primary" />
+          <Stat label="On a lesson" value={count(groups, (id) => id.startsWith("lesson:"))} />
+          <Stat label="Next subject not running" value={count(groups, (id) => id === "not_offered")} />
+          <Stat
+            label="Flagged"
+            value={countFlagged(visible)}
+            tone={countFlagged(visible) ? "warning" : undefined}
+          />
+        </div>
+      )}
 
       {plan && (
         <p className="text-muted-foreground text-sm">

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGroups,
   countFlagged,
+  nextLesson,
   parseSlotId,
   planToTsv,
   slotId,
@@ -28,6 +29,8 @@ function cadet(cin: number, over: Partial<PlannedCadet> = {}): PlannedCadet {
     kind: "lesson",
     lesson_key: "nav",
     lesson_name: "Basic Navigation",
+    lesson_part: 1,
+    lesson_parts: 3,
     ready_exams: [],
     awaiting: null,
     attendance: {
@@ -129,7 +132,7 @@ describe("planToTsv", () => {
         "Last2, First2\tPrinciples of Flight exam\tRarely in on Wednesdays: 1 of 8 (13%); Absence booked",
         "",
         "Basic Navigation",
-        "Last1, First1\tBasic Navigation\t",
+        "Last1, First1\tBasic Navigation lesson 1 of 3\t",
       ].join("\n")
     );
   });
@@ -140,4 +143,24 @@ it("countFlagged counts cadets with any attendance flag", () => {
   expect(countFlagged([cadet(1), cadet(2, { attendance: { ...cadet(2).attendance, flags: [flag] } })])).toBe(
     1
   );
+});
+
+describe("nextLesson", () => {
+  it("names the lesson on the subject the API suggested", () => {
+    expect(nextLesson(cadet(1, { lesson_part: 2 }), { kind: "lesson", key: "nav" })).toBe("lesson 2 of 3");
+  });
+
+  it("says nothing once moved to another subject, onto an exam or off the list", () => {
+    const c = cadet(1, { lesson_part: 2 });
+    expect(nextLesson(c, { kind: "lesson", key: "pof" })).toBeNull();
+    expect(nextLesson(c, { kind: "exam", key: "nav" })).toBeNull();
+    expect(nextLesson(c, { kind: "float" })).toBeNull();
+  });
+
+  it("says nothing for a one-lesson subject or when the API sent no lesson number", () => {
+    expect(
+      nextLesson(cadet(1, { lesson_part: 1, lesson_parts: 1 }), { kind: "lesson", key: "nav" })
+    ).toBeNull();
+    expect(nextLesson(cadet(1, { lesson_part: null }), { kind: "lesson", key: "nav" })).toBeNull();
+  });
 });
