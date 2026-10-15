@@ -71,6 +71,25 @@ describe("cadet list", () => {
     expect(await screen.findByRole("link", { name: "Able, Amy" })).toHaveAttribute("href", "/cadets/1");
   });
 
+  it("lists cadets by surname and sorts rank as a ladder, not alphabetically", async () => {
+    respond([
+      { cin: 1, first_name: "Ash", last_name: "Ames", rank: "Sgt", flight: "A" },
+      { cin: 2, first_name: "Bo", last_name: "Zane", rank: "Cadet", flight: "A" },
+      { cin: 3, first_name: "Cy", last_name: "Moss", rank: null, flight: "A" },
+      { cin: 4, first_name: "Di", last_name: "Bell", rank: "FS", flight: "A" },
+      { cin: 5, first_name: "Ed", last_name: "Cole", rank: "Cpl", flight: "A" },
+    ]);
+    renderPage();
+    await screen.findByText("5 cadets on strength");
+    expect(names()).toEqual(["Ames, Ash", "Bell, Di", "Cole, Ed", "Moss, Cy", "Zane, Bo"]);
+
+    const rank = () => within(screen.getByRole("columnheader", { name: /Rank/ })).getByRole("button");
+    await userEvent.click(rank());
+    // Cadet < Cpl < Sgt < FS (alphabetical would put FS before Sgt), and a
+    // cadet with no rank on record goes last.
+    expect(names()).toEqual(["Zane, Bo", "Cole, Ed", "Ames, Ash", "Bell, Di", "Moss, Cy"]);
+  });
+
   it("offers no flight filter when everyone is in the same flight", async () => {
     respond([ROSTER[0]]);
     renderPage();

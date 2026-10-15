@@ -27,7 +27,7 @@ import {
 import { rateOf, totalOf, type StateCounts } from "@/lib/attendance";
 import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/section-heading";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { OcAccessRequired } from "@/components/oc/oc-access-required";
 
 interface StaffAttendance {
@@ -303,7 +303,7 @@ export default function OcDashboardPage() {
             </Button>
           }
         />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatGroup className="lg:grid-cols-4">
           <Stat
             size="lg"
             label="Awaiting you"
@@ -313,7 +313,7 @@ export default function OcDashboardPage() {
           <Stat size="lg" label="Approved" value={counts.approved ?? 0} hint="Awaiting receipts" />
           <Stat size="lg" label="To pay" value={counts.sent_for_payment ?? 0} hint="Awaiting payment" />
           <Stat size="lg" label="Paid" value={counts.paid ?? 0} />
-        </div>
+        </StatGroup>
 
         {actionable.length > 0 && (
           <div className="overflow-x-auto rounded-lg border">
@@ -364,7 +364,7 @@ export default function OcDashboardPage() {
           <Skeleton className="h-40 w-full" />
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatGroup className="lg:grid-cols-4">
               <Stat size="lg" label="Total cadets" value={dash?.strength.total_cadets ?? 0} />
               <Stat size="lg" label="Total staff" value={dash?.strength.total_staff ?? 0} />
               <Stat
@@ -379,15 +379,15 @@ export default function OcDashboardPage() {
                 value={staffAvg === null ? "—" : `${staffAvg}%`}
                 hint={`Last ${trend.length} parade night${trend.length !== 1 ? "s" : ""}`}
               />
-            </div>
+            </StatGroup>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatGroup className="lg:grid-cols-4">
               {Object.entries(dash?.strength.by_flight ?? {})
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([flight, n]) => (
                   <Stat size="lg" key={flight} label={`${flight} Flight`} value={n} />
                 ))}
-            </div>
+            </StatGroup>
 
             {/* Two single-series charts rather than one with two series: the
                 theme's chart ramp is three near-adjacent blues, and no pair of
@@ -432,12 +432,12 @@ export default function OcDashboardPage() {
           }
         />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatGroup className="lg:grid-cols-4">
           <Stat size="lg" label="Total held" value={dash?.qual_summary.total ?? 0} />
           <Stat size="lg" label="Expired" value={dash?.qual_summary.expired ?? 0} hint="Already lapsed" />
           <Stat size="lg" label="Expiring in 30 days" value={dash?.qual_summary.expiring_30 ?? 0} />
           <Stat size="lg" label="Expiring in 3 months" value={dash?.qual_summary.expiring_90 ?? 0} />
-        </div>
+        </StatGroup>
 
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Coverage — a bar per badge is a lot of near-identical rows; a

@@ -14,7 +14,7 @@ import { AiMarkdown } from "@/components/ai-markdown";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -168,7 +168,7 @@ function AuditFigures({ audit }: { audit: Audit }) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <StatGroup className="sm:grid-cols-3 lg:grid-cols-6">
         <Stat
           label="Inspections"
           value={s.sheets}
@@ -198,7 +198,7 @@ function AuditFigures({ audit }: { audit: Audit }) {
           value={s.faults_per_cadet.toFixed(2)}
           hint={base ? `Squadron ${base.faults_per_cadet.toFixed(2)}` : undefined}
         />
-      </div>
+      </StatGroup>
 
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-medium">Fault areas, most entrenched first</h3>

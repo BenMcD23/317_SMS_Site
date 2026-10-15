@@ -39,6 +39,20 @@ block, stop and extract it instead.
   the RFC 5987 `filename*` the API sends for non-ASCII names.
 - **"Today" for a date input** is `todayLocal()` from `lib/format.ts`;
   `toISOString()` is UTC and gives yesterday after midnight in summer.
+- **Lists of records** are `DataTable` (`components/data-table.tsx`, TanStack
+  Table): sortable headings with `aria-sort`, `rowHref` for click-through.
+  Build columns with `dataTableColumns<Row>()`; give odd orders (ranks) a
+  `sortFn`.
+- **Forms in a dialog** use `ResponsiveDialog` (`components/responsive-dialog.tsx`):
+  a dialog on a laptop, a bottom sheet on a phone, same parts as `Dialog`.
+  Validation is react-hook-form + a zod schema (see `lib/stock-form.ts`).
+- **Expandable orders** are `OrderDisclosure` rows in an `OrderList`
+  (`components/order-disclosure.tsx`): the whole header toggles, the body
+  animates open with motion.
+- **Figures** go in a `StatGroup` of `Stat`s (one strip, hairline dividers),
+  not a grid of boxed tiles; `DividedGrid` is the same frame for link lists.
+- **Badge names** come from `badgeLabel(key)` (`lib/stats.ts`), never a raw
+  key. **Flight colours** are the chart hues, never the status colours.
 
 ## Page layout
 

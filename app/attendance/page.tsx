@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -310,7 +310,7 @@ export default function AttendancePage() {
           </div>
 
           {/* Totals */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatGroup className="sm:grid-cols-3 lg:grid-cols-6">
             <Stat
               label="Average turnout"
               value={rate === null ? "—" : `${rate}%`}
@@ -326,7 +326,7 @@ export default function AttendancePage() {
             <Stat label="Attended" value={totals.present} tone="success" />
             <Stat label="Authorised absence" value={totals.authorised} tone="warning" />
             <Stat label="Absent" value={totals.absent} tone="destructive" />
-          </div>
+          </StatGroup>
 
           {filtered.length === 0 ? (
             <p className="text-muted-foreground text-sm">No nights match these filters.</p>

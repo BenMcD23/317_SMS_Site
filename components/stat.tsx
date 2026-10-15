@@ -1,9 +1,12 @@
 import { cn } from "@/lib/utils";
+import { DividedGrid } from "@/components/divided-grid";
 
 /**
- * One figure with a label. `size="lg"` is the dashboard KPI tile; the default
- * is the compact reading used in rows of attendance figures. `tone` colours the
- * tile, and the label always says what it is — colour is never the only signal.
+ * One figure with a label. Stats sit in a `StatGroup` — one bordered strip
+ * split by hairlines — rather than each drawing its own tile: a row of
+ * identical boxes made every dashboard look the same and buried the numbers.
+ * `size="lg"` is the headline figure; `tone` colours the figure only, and the
+ * label always says what it is, so colour is never the only signal.
  */
 export function Stat({
   label,
@@ -24,21 +27,16 @@ export function Stat({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-lg border",
-        large ? "bg-card gap-1 px-5 py-4 shadow-xs" : "px-3 py-2",
-        tone === "primary" && "border-primary/30 bg-primary/5",
-        tone === "success" && "border-success/30 bg-success/10",
-        tone === "warning" && "border-warning/30 bg-warning/10",
-        tone === "destructive" && "border-destructive/30 bg-destructive/10",
-        !tone && !large && "bg-card",
+        "bg-card flex min-w-0 flex-col gap-1",
+        large ? "px-3 py-3 sm:px-5 sm:py-4" : "px-4 py-3",
         className
       )}
     >
-      {large && <p className="text-muted-foreground text-sm">{label}</p>}
+      <p className="text-muted-foreground text-sm text-pretty">{label}</p>
       <p
         className={cn(
-          "font-semibold tabular-nums",
-          large ? "text-3xl tracking-tight" : tone === "primary" ? "text-2xl" : "text-xl",
+          "leading-none font-semibold tracking-tight tabular-nums",
+          large ? "text-2xl sm:text-3xl" : "text-xl",
           tone === "primary" && "text-primary",
           tone === "success" && "text-success",
           tone === "warning" && "text-warning",
@@ -47,10 +45,12 @@ export function Stat({
       >
         {value}
       </p>
-      {!large && <p className="text-muted-foreground mt-0.5 text-[11px]">{label}</p>}
-      {hint && (
-        <p className={cn("text-muted-foreground", large ? "text-xs" : "text-[11px] opacity-70")}>{hint}</p>
-      )}
+      {hint && <p className="text-muted-foreground mt-0.5 text-xs text-pretty">{hint}</p>}
     </div>
   );
+}
+
+/** The strip a set of `Stat`s sits in. Pass column counts in `className`. */
+export function StatGroup({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <DividedGrid className={className}>{children}</DividedGrid>;
 }

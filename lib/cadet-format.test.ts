@@ -12,9 +12,14 @@ describe("flightBadgeClass", () => {
   it("colours each flight, whether stored as a letter or a name", () => {
     expect(flightBadgeClass("A")).toContain("chart-1");
     expect(flightBadgeClass("Alpha")).toBe(flightBadgeClass("A"));
-    expect(flightBadgeClass("B")).toContain("destructive");
-    expect(flightBadgeClass("C")).toContain("success");
+    expect(flightBadgeClass("B")).toContain("chart-5");
+    expect(flightBadgeClass("C")).toContain("chart-3");
     expect(flightBadgeClass(" C ")).toBe(flightBadgeClass("C"));
+  });
+
+  // A flight is a team, not a state: red B Flight read as an error.
+  it.each(["A", "B", "C", "D"])("never paints %s Flight in a status colour", (flight) => {
+    expect(flightBadgeClass(flight)).not.toMatch(/destructive|success|warning/);
   });
 
   it("falls back to muted for no or unknown flight", () => {
@@ -29,8 +34,15 @@ describe("flightBadgeClass", () => {
 describe("classificationBadgeClass", () => {
   it("treats a missing classification as Junior", () => {
     expect(classificationBadgeClass(null)).toBe(classificationBadgeClass("Junior Cadet"));
-    expect(classificationBadgeClass("Leading Cadet")).toContain("success");
+    expect(classificationBadgeClass("Leading Cadet")).toContain("primary");
     expect(classificationBadgeClass("Something new")).toContain("muted");
+  });
+
+  it("deepens towards Master Air Cadet without ever using the error red", () => {
+    expect(classificationBadgeClass("Master Air Cadet")).toContain("bg-primary ");
+    for (const c of ["First Class Cadet", "Leading Cadet", "Senior Cadet", "Master Air Cadet"]) {
+      expect(classificationBadgeClass(c)).not.toMatch(/destructive|success|warning/);
+    }
   });
 });
 

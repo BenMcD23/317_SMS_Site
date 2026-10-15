@@ -20,7 +20,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import type { BadgeHistoryPoint } from "@/lib/badge-history";
 import { formatShortDate } from "@/lib/format";
 import {
-  BADGE_LABELS,
+  badgeLabel,
   countKey,
   dragRange,
   flightColor,
@@ -424,7 +424,7 @@ export function BadgeTrendCard({
   onZoom?: (range: TimeRange) => void;
 }) {
   const zoom = useDragZoom(onZoom);
-  const label = BADGE_LABELS[badgeKey] ?? badgeKey;
+  const label = badgeLabel(badgeKey);
   const held = heldCount(levels);
   const pct = total > 0 ? Math.round((held / total) * 100) : 0;
   const deltas = levelDeltas(history, badgeKey);

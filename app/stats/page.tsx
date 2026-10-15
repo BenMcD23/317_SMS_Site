@@ -33,7 +33,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate, formatShortDate } from "@/lib/format";
 import {
   type Award,
-  BADGE_LABELS,
+  badgeLabel,
   BADGE_SORTS,
   type BadgeSort,
   badgeHistoryFor,
@@ -389,7 +389,7 @@ function Stats() {
                       label="Download badges at a glance as CSV"
                       rows={() =>
                         order.map((k) => ({
-                          badge: BADGE_LABELS[k] ?? k,
+                          badge: badgeLabel(k),
                           cadets: cohort.total_cadets,
                           ...cohort.badges[k],
                         }))
@@ -418,7 +418,7 @@ function Stats() {
                             date: a.date,
                             name: a.name,
                             flight: flightLabel(a.flight),
-                            badge: BADGE_LABELS[a.badge] ?? a.badge,
+                            badge: badgeLabel(a.badge),
                             level: a.level,
                           }))
                         }
@@ -474,7 +474,7 @@ function Stats() {
                           order.flatMap((k) =>
                             Object.entries(p.data.badges[k] ?? {}).map(([level, n]) => ({
                               date: p.date.slice(0, 10),
-                              badge: BADGE_LABELS[k] ?? k,
+                              badge: badgeLabel(k),
                               level,
                               cadets: n,
                               of: p.data.total_cadets,

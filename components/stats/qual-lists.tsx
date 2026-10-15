@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { flightBadgeClass } from "@/lib/cadet-format";
 import { formatDate } from "@/lib/format";
-import { type Award, BADGE_LABELS, type ExpiringQual, levelColor } from "@/lib/stats";
+import { type Award, badgeLabel, type ExpiringQual, levelColor } from "@/lib/stats";
 import { cn } from "@/lib/utils";
 
 /**
@@ -62,7 +62,7 @@ export function RecentAwards({
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate font-medium">{a.name}</span>
         <span className="text-muted-foreground truncate text-xs">
-          {a.level} {BADGE_LABELS[a.badge] ?? a.badge}
+          {a.level} {badgeLabel(a.badge)}
         </span>
       </span>
       <FlightChip flight={a.flight} />

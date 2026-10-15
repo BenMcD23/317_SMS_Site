@@ -1,4 +1,4 @@
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
 import type { SquadronStats } from "@/lib/stats";
 
@@ -17,7 +17,7 @@ export function SquadronKpis({ stats, strengthHint }: { stats: SquadronStats; st
   );
   const ncoCount = Object.values(ncoRanks).reduce((sum, n) => sum + n, 0);
   return (
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <StatGroup className="grid-cols-3">
       <Stat size="lg" label="Cadets on strength" value={stats.total_cadets} hint={strengthHint} />
       <Stat
         size="lg"
@@ -26,6 +26,6 @@ export function SquadronKpis({ stats, strengthHint }: { stats: SquadronStats; st
         hint={breakdownLine(stats.by_flight, FLIGHT_ORDER)}
       />
       <Stat size="lg" label="NCOs" value={ncoCount} hint={breakdownLine(ncoRanks, RANK_ORDER)} />
-    </section>
+    </StatGroup>
   );
 }

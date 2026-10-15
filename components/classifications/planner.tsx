@@ -8,7 +8,7 @@ import { ErrorAlert } from "@/components/error-alert";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { FlightFilter, type FlightChoice } from "@/components/flight-filter";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -358,7 +358,7 @@ export function ClassificationPlanner() {
       <ErrorAlert message={(error ?? subjectsError)?.message} title="Couldn't load the plan" />
 
       {plan && cadets.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatGroup className="sm:grid-cols-4">
           <Stat label="Sitting an exam" value={count(groups, (id) => id === "exam")} tone="primary" />
           <Stat label="On a lesson" value={count(groups, (id) => id.startsWith("lesson:"))} />
           <Stat label="Next subject not running" value={count(groups, (id) => id === "not_offered")} />
@@ -367,7 +367,7 @@ export function ClassificationPlanner() {
             value={countFlagged(visible)}
             tone={countFlagged(visible) ? "warning" : undefined}
           />
-        </div>
+        </StatGroup>
       )}
 
       {plan && (
