@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import OrdersPage from "@/app/stores/uniform/orders/page";
@@ -208,6 +209,94 @@ describe("acting on an item doesn't reload the page", () => {
 
     expect(await screen.findByText(/Failed to load: \/api\/stores\/orders → /)).toBeInTheDocument();
     expect(screen.getByText("Alex Smith")).toBeInTheDocument();
+  });
+});
+
+describe("undoing a given item", () => {
+  const GIVEN_BERET = {
+    givenAt: "2026-10-01T18:00:00Z",
+    givenBy: "Sam Staff",
+    givenEvents: [{ id: "a", action: "given" as const, timestamp: "2026-10-01T18:00:00Z", by: "Sam Staff" }],
+  };
+  const withGivenBeret = () => {
+    const list = orders();
+    list[0].items[0] = item("11", "Beret", GIVEN_BERET);
+    return list;
+  };
+  const afterUndo = () => {
+    const list = orders();
+    list[0].items[0] = item("11", "Beret", {
+      givenEvents: [
+        ...GIVEN_BERET.givenEvents,
+        { id: "b", action: "undone", timestamp: "2026-10-02T09:00:00Z", by: "Sam Staff" },
+      ],
+    });
+    return list;
+  };
+
+  it("asks first, then undoes it, reloads the orders quietly and keeps the history", async () => {
+    let loads = 0;
+    const fetch = stubApi({
+      "GET /api/stores/orders": () => json(++loads === 1 ? withGivenBeret() : afterUndo()),
+      "POST /api/stores/orders/1/items/11/undo-given": () => json(afterUndo()[0]),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    const before = card("Alex Smith");
+
+    await act(async () => screen.getByRole("button", { name: "Undo given: Beret" }).click());
+    expect(calls(fetch, "POST /api/stores/orders/1/items/11/undo-given")).toBe(0);
+    await confirmDialog();
+
+    const history = await screen.findByRole("list", { name: "Given history" });
+    expect(within(history).getAllByRole("listitem")).toHaveLength(2);
+    const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/undo-given"))!;
+    expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
+    // Undoing restores the cadet's "last received", which shows on their other orders.
+    expect(calls(fetch, "GET /api/stores/orders")).toBe(2);
+    expect(card("Alex Smith")).toBe(before);
+    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
+    expect(within(card("Alex Smith")).getAllByRole("button", { name: "Mark as Given" })).not.toHaveLength(0);
+  });
+
+  it("changes nothing when the confirm is cancelled", async () => {
+    const fetch = stubApi({ "GET /api/stores/orders": () => json(withGivenBeret()) });
+    await renderPage();
+    await expand("Alex Smith");
+    await act(async () => screen.getByRole("button", { name: "Undo given: Beret" }).click());
+    await act(async () => within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }).click());
+    expect(fetch.mock.calls.some(([u]) => String(u).endsWith("/undo-given"))).toBe(false);
+    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+  });
+
+  it("shows the API's reason and leaves the item given when the undo is refused", async () => {
+    stubApi({
+      "GET /api/stores/orders": () => json(withGivenBeret()),
+      "POST /api/stores/orders/1/items/11/undo-given": () =>
+        json({ detail: "Reopen the order before undoing an item" }, 409),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await act(async () => screen.getByRole("button", { name: "Undo given: Beret" }).click());
+    await confirmDialog();
+    expect(await screen.findByText("Reopen the order before undoing an item")).toBeInTheDocument();
+    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+  });
+
+  // A closed order is a record of what was handed over; reopen it to change it.
+  it("offers no Undo on a completed order", async () => {
+    stubApi({
+      "GET /api/stores/orders": () => json([{ ...withGivenBeret()[0], completed: true }]),
+    });
+    // renderPage waits for an Active order; this one is already completed.
+    await act(async () => {
+      render(<OrdersPage />);
+    });
+    await userEvent.click(await screen.findByRole("tab", { name: /Completed/ }));
+    await screen.findByText("Alex Smith");
+    await expand("Alex Smith");
+    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
   });
 });
 
