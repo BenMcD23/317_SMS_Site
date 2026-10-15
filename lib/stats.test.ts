@@ -4,6 +4,7 @@ import type { BadgeHistoryPoint } from "@/lib/badge-history";
 import {
   addDays,
   badgeHistoryFor,
+  badgeLabel,
   describeTarget,
   dragRange,
   rangeBounds,
@@ -59,6 +60,19 @@ const point = (
 ): BadgeHistoryPoint => ({
   date,
   data: { total_cadets: total, badges },
+});
+
+describe("badgeLabel", () => {
+  it("names the charted badges and the ones only the awards feed reports", () => {
+    expect(badgeLabel("first_aid")).toBe("First Aid");
+    // The dashboard used to print "Blue atp_ground_school".
+    expect(badgeLabel("atp_ground_school")).toBe("ATP Ground School");
+    expect(badgeLabel("moi")).toBe("MOI");
+  });
+
+  it("humanises a key it has never seen rather than showing it raw", () => {
+    expect(badgeLabel("night_navigation")).toBe("Night navigation");
+  });
 });
 
 describe("cohortOf", () => {

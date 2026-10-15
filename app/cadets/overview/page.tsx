@@ -2,18 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { FlightFilter } from "@/components/flight-filter";
+import { DataTable, dataTableColumns } from "@/components/data-table";
 import { cn } from "@/lib/utils";
-import { flightBadgeClass, cadetInitials, flightsIn, flightLabel } from "@/lib/cadet-format";
-import { Search, ChevronRight, Users } from "lucide-react";
+import { flightBadgeClass, flightsIn, flightLabel, RANK_ORDER } from "@/lib/cadet-format";
+import { Search, Users } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -27,9 +24,61 @@ type Cadet = {
   flight: string | null;
 };
 
-export default function CadetsPage() {
-  const router = useRouter();
+const col = dataTableColumns<Cadet>();
 
+/** Cadet first, CWO last; anything the scraper hasn't seen before goes after. */
+function rankIndex(rank: string | null): number {
+  const i = rank ? RANK_ORDER.indexOf(rank) : -1;
+  return i === -1 ? RANK_ORDER.length : i;
+}
+
+const columns = col.columns([
+  col.accessor((c) => `${c.last_name}, ${c.first_name}`, {
+    id: "name",
+    header: "Name",
+    sortFn: "text",
+    cell: ({ row }) => {
+      const c = row.original;
+      return (
+        <div className="flex min-w-0 flex-col">
+          {/* A real link, so the row works from the keyboard and opens in a
+              new tab with a middle-click. */}
+          <Link href={`/cadets/${c.cin}`} className="font-medium hover:underline">
+            {c.last_name}, {c.first_name}
+          </Link>
+          <span className="text-muted-foreground text-xs tabular-nums sm:hidden">{c.cin}</span>
+        </div>
+      );
+    },
+  }),
+  col.accessor("cin", {
+    header: "CIN",
+    sortFn: "basic",
+    cell: ({ getValue }) => <span className="text-muted-foreground tabular-nums">{getValue()}</span>,
+  }),
+  col.accessor("rank", {
+    header: "Rank",
+    sortFn: (a, b) => rankIndex(a.original.rank) - rankIndex(b.original.rank),
+    cell: ({ getValue }) => <span className="text-muted-foreground">{getValue() ?? "—"}</span>,
+  }),
+  col.accessor((c) => c.flight?.trim() ?? "", {
+    id: "flight",
+    header: "Flight",
+    sortFn: "text",
+    cell: ({ getValue }) => {
+      const flight = getValue();
+      return flight ? (
+        <Badge variant="outline" className={cn("min-w-6", flightBadgeClass(flight))}>
+          {flight}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      );
+    },
+  }),
+]);
+
+export default function CadetsPage() {
   const { data: cadets = [], isLoading: loading, error } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
   const [search, setSearch] = useState("");
   const [flight, setFlight] = useState("");
@@ -94,66 +143,15 @@ export default function CadetsPage() {
       )}
 
       {!loading && filtered.length > 0 && (
-        <Card className="overflow-hidden py-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-4">Name</TableHead>
-                <TableHead className="hidden sm:table-cell">CIN</TableHead>
-                <TableHead>Rank</TableHead>
-                <TableHead>Flight</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((c) => (
-                <TableRow
-                  key={c.cin}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/cadets/${c.cin}`)}
-                >
-                  <TableCell className="pl-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="size-7">
-                        <AvatarFallback className="text-xs">
-                          {cadetInitials(c.first_name, c.last_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex min-w-0 flex-col">
-                        {/* A real link, so the row works from the keyboard and
-                            opens in a new tab with a middle-click. */}
-                        <Link
-                          href={`/cadets/${c.cin}`}
-                          className="font-medium"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {c.last_name}, {c.first_name}
-                        </Link>
-                        <span className="text-muted-foreground text-xs tabular-nums sm:hidden">{c.cin}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground hidden tabular-nums sm:table-cell">
-                    {c.cin}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{c.rank ?? "—"}</TableCell>
-                  <TableCell>
-                    {c.flight ? (
-                      <Badge variant="outline" className={cn(flightBadgeClass(c.flight))}>
-                        {c.flight}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="w-8 pr-4">
-                    <ChevronRight className="text-muted-foreground/50 size-4" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <DataTable
+          label="Cadets"
+          data={filtered}
+          columns={columns}
+          rowKey={(c) => c.cin}
+          rowHref={(c) => `/cadets/${c.cin}`}
+          initialSort={{ id: "name" }}
+          columnClassName={{ cin: "hidden sm:table-cell", flight: "w-20" }}
+        />
       )}
     </div>
   );

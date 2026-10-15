@@ -65,6 +65,30 @@ export const BADGE_LABELS: Record<string, string> = {
   swimming_proficiency: "Swimming",
 };
 
+// Badges the API reports in awards and targets (its `BadgeType` keys in
+// core/qualifications.py) that the cohort breakdown above doesn't chart.
+// Kept apart so the glance and trend charts don't sprout empty rows.
+const OTHER_BADGE_LABELS: Record<string, string> = {
+  atp_ground_school: "ATP Ground School",
+  flying: "Flying Badge",
+  swimming: "Swimming",
+  presentation_skills: "Presentation Skills",
+  moi: "MOI",
+  climatic_injuries: "Climatic Injuries",
+};
+
+/**
+ * The display name for a badge key. A key the site has never seen is
+ * humanised ("new_thing" → "New thing") rather than shown raw — the awards
+ * feed used to print "Blue atp_ground_school".
+ */
+export function badgeLabel(key: string): string {
+  const known = BADGE_LABELS[key] ?? OTHER_BADGE_LABELS[key];
+  if (known) return known;
+  const words = key.replace(/_/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 // Badge level colours are domain colours (bronze/silver/gold), not theme colours.
 const LEVEL_COLOURS: Record<string, string> = {
   None: "var(--muted-foreground)",
@@ -465,7 +489,7 @@ export function describeTarget(t: StatsTarget): string {
   const who = [t.exclude_juniors ? "non-juniors" : "cadets", t.flight ? `in ${flightLabel(t.flight)}` : null]
     .filter(Boolean)
     .join(" ");
-  const what = `${t.min_level ? `${t.min_level} or better ` : ""}${BADGE_LABELS[t.badge] ?? t.badge}`;
+  const what = `${t.min_level ? `${t.min_level} or better ` : ""}${badgeLabel(t.badge)}`;
   return `${t.target_pct}% of ${who} with ${what} by ${formatDate(t.due)}`;
 }
 

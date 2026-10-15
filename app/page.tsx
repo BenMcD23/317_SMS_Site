@@ -12,6 +12,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section-heading";
+import { DividedGrid } from "@/components/divided-grid";
 import { BadgeGlance } from "@/components/stats/badge-glance";
 import { SquadronKpis } from "@/components/stats/kpis";
 import { RecentAwards } from "@/components/stats/qual-lists";
@@ -48,41 +49,35 @@ const QUICK_TOOLS = [
 
 function QuickTools() {
   return (
-    <section className="no-print flex flex-col gap-3">
-      <SectionHeading title="Tools" />
-      <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+    <section className="no-print flex flex-col gap-3" aria-labelledby="tools-heading">
+      <SectionHeading title={<span id="tools-heading">Tools</span>} />
+      <DividedGrid as="ul" className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         {QUICK_TOOLS.map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className="group bg-card hover:border-primary/40 flex min-w-0 items-center gap-3 rounded-lg border px-4 py-3 shadow-xs transition-colors"
-          >
-            <span className="bg-muted text-muted-foreground group-hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-md transition-colors">
-              <t.icon className="size-4" />
-            </span>
-            <span className="flex min-w-0 flex-col">
-              <span className="text-sm font-medium">{t.title}</span>
-              <span className="text-muted-foreground truncate text-xs">{t.desc}</span>
-            </span>
-            <ArrowRight className="text-muted-foreground/0 group-hover:text-muted-foreground ml-auto size-4 shrink-0 transition-all group-hover:translate-x-0.5" />
-          </Link>
+          <li key={t.href} className="flex">
+            <Link
+              href={t.href}
+              className="hover:bg-muted/50 focus-visible:ring-ring/50 flex min-w-0 flex-1 items-start gap-3 px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-inset"
+            >
+              <t.icon className="text-muted-foreground mt-0.5 size-4 shrink-0" aria-hidden />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-sm font-medium">{t.title}</span>
+                <span className="text-muted-foreground text-xs text-pretty">{t.desc}</span>
+              </span>
+            </Link>
+          </li>
         ))}
-      </div>
+      </DividedGrid>
     </section>
   );
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-28" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Skeleton className="h-80" />
-        <Skeleton className="h-80" />
+    <div className="flex flex-col gap-8" aria-busy>
+      <Skeleton className="h-24" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <Skeleton className="h-80 lg:col-span-3" />
+        <Skeleton className="h-80 lg:col-span-2" />
       </div>
     </div>
   );
@@ -123,7 +118,6 @@ export default function HomePage() {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
       <PageHeader
         title="Dashboard"
-        description="Squadron overview"
         actions={
           <Button asChild variant="outline" size="sm">
             <Link href="/stats">
@@ -144,10 +138,10 @@ export default function HomePage() {
 
             <section className="flex flex-col gap-3">
               <SectionHeading title="Badges" />
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <Card>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+                <Card className="lg:col-span-3">
                   <CardHeader>
-                    <CardTitle className="text-base">At a glance</CardTitle>
+                    <CardTitle className="text-base">Who holds what</CardTitle>
                     <CardAction>
                       <StatsLink />
                     </CardAction>
@@ -156,7 +150,7 @@ export default function HomePage() {
                     <BadgeGlance cohort={stats} />
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="lg:col-span-2">
                   <CardHeader>
                     <CardTitle className="text-base">Gained in the last {AWARDS_DAYS} days</CardTitle>
                   </CardHeader>

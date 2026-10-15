@@ -3,10 +3,12 @@
 export const FLIGHT_ORDER = ["NCO", "A", "B", "C"];
 export const RANK_ORDER = ["Cadet", "Cpl", "Sgt", "FS", "CWO"];
 
+// Flights use the chart hues, never the status colours: B Flight in the
+// destructive red read as "something's wrong with these cadets".
 const ALPHA = "border-chart-1/40 bg-chart-1/10 text-chart-1";
-const BRAVO = "border-destructive/40 bg-destructive/10 text-destructive";
-const CHARLIE = "border-success/40 bg-success/10 text-success";
-const DELTA = "border-warning/40 bg-warning/15 text-warning";
+const BRAVO = "border-chart-5/40 bg-chart-5/10 text-chart-5";
+const CHARLIE = "border-chart-3/40 bg-chart-3/10 text-chart-3";
+const DELTA = "border-chart-4/40 bg-chart-4/15 text-chart-4";
 const NO_FLIGHT = "border-border bg-muted text-muted-foreground";
 
 // Flights are stored as the letter ("A", "C" — see FLIGHT_ORDER and the API's
@@ -28,13 +30,15 @@ export function flightBadgeClass(flight: string | null | undefined): string {
 }
 
 // Classification steps up in the same order as the dashboard chart, so the
-// colour progression reads as progression rather than arbitrary tags.
+// colour progression reads as progression rather than arbitrary tags. It
+// deepens in the squadron navy up to a solid badge for Master Air Cadet — the
+// top award was red before, the same colour as an error.
 const CLASSIFICATION_BADGE_CLASSES: Record<string, string> = {
   "Junior Cadet": "border-border bg-muted text-muted-foreground",
-  "First Class Cadet": "border-chart-1/40 bg-chart-1/10 text-chart-1",
-  "Leading Cadet": "border-success/40 bg-success/10 text-success",
-  "Senior Cadet": "border-warning/40 bg-warning/15 text-warning",
-  "Master Air Cadet": "border-destructive/40 bg-destructive/10 text-destructive",
+  "First Class Cadet": "border-primary/25 bg-primary/5 text-primary",
+  "Leading Cadet": "border-primary/40 bg-primary/10 text-primary",
+  "Senior Cadet": "border-primary/60 bg-primary/20 text-primary",
+  "Master Air Cadet": "border-primary bg-primary text-primary-foreground",
 };
 
 export function classificationBadgeClass(classification: string | null | undefined): string {

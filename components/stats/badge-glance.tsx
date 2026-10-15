@@ -1,5 +1,5 @@
 import type { BadgeBreakdown } from "@/lib/badge-history";
-import { BADGE_LABELS, heldCount, LEVEL_ORDER, levelColor } from "@/lib/stats";
+import { BADGE_LABELS, badgeLabel, heldCount, LEVEL_ORDER, levelColor } from "@/lib/stats";
 
 /**
  * Every badge on one screen: a row per badge, its bar split by the share of the
@@ -18,7 +18,7 @@ export function BadgeGlance({ cohort, order }: { cohort: BadgeBreakdown; order?:
       <ul className="flex flex-col gap-1.5">
         {keys.map((key) => {
           const levels = cohort.badges[key] ?? {};
-          const label = BADGE_LABELS[key] ?? key;
+          const label = badgeLabel(key);
           const held = heldCount(levels);
           // Unknown levels still count as held, so they get a segment too.
           const segments = [

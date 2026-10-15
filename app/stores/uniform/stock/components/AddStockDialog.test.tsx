@@ -46,7 +46,9 @@ describe("AddStockDialog", () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it("a stock count can record a size the catalogue doesn't list", async () => {
+  // Types a long size key by key (~2s on its own), which can pass the 5s
+  // default when the whole suite runs in parallel.
+  it("a stock count can record a size the catalogue doesn't list", { timeout: 15_000 }, async () => {
     const fetchMock = vi.fn(async () => new Response("{}", { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
@@ -122,7 +124,7 @@ describe("AddStockDialog", () => {
     expect(JSON.parse(init.body as string)).toMatchObject({ itemType: "Lanyard", size: "N/A" });
   });
 
-  it("a failed save shows an error and keeps the dialog open", async () => {
+  it("a failed save shows the API's reason and keeps the dialog open", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response(JSON.stringify({ detail: "Box not found" }), { status: 404 }))
@@ -136,9 +138,29 @@ describe("AddStockDialog", () => {
     await pick(user, "Section", "1");
     await user.click(screen.getByRole("button", { name: "Add Stock" }));
 
-    expect(await screen.findByText("Failed to add stock")).toBeInTheDocument();
+    // The API's own reason, not a generic "Failed to add stock".
+    expect(await screen.findByText("Box not found")).toBeInTheDocument();
     expect(onSuccess).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Add Stock" })).toBeEnabled();
+  });
+
+  it("a quantity below one is flagged at the field and can't be submitted", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await pick(user, "Item Type", "Lanyard");
+    await pick(user, "Box", "A");
+    await pick(user, "Section", "1");
+    expect(screen.getByRole("button", { name: "Add Stock" })).toBeEnabled();
+
+    const qty = screen.getByLabelText("Quantity");
+    await user.clear(qty);
+    await user.type(qty, "0");
+    await user.tab();
+
+    expect(await screen.findByText("At least 1")).toBeInTheDocument();
+    expect(qty).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Add Stock" })).toBeDisabled();
   });
 });
