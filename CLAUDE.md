@@ -67,6 +67,85 @@ block, stop and extract it instead.
   Filters that narrow one list (All / A / B / C) are a `ToggleGroup`
   (`components/flight-filter.tsx`), not tabs.
 
+## UI: how it should look and feel
+
+Read `PRODUCT.md` first: the users are volunteers doing a task, often one-handed
+on a phone on parade night, so the task beats the chrome. The look is the 317
+identity (navy primary, cool neutrals, dark sidebar in both themes, Atkinson
+Hyperlegible) refined, not restyled per page. These rules exist to stop pages
+drifting back to the generic-template look.
+
+**Look**
+
+- **Flat and quiet.** Cards have a border and no shadow. Don't wrap every
+  section in a `Card`, never nest cards, and don't build pages from rows of
+  identical icon + heading + text tiles. A list of records is a framed list
+  (`OrderList`, `DividedGrid`, `DataTable`), not a stack of cards.
+- **Colour is a token, never a literal.** `text-warning`, `bg-primary/10`,
+  `border-success/40` — not `orange-500`, `violet-100` or `amber-800`. The
+  status colours (`success`, `warning`, `destructive`) mean a state and
+  nothing else: a flight or a classification is never red. Badge metals
+  (bronze, silver, gold) are the one domain exception, in `lib/stats.ts`.
+- **No decoration.** No gradient text, no eyebrow labels above headings, no
+  emoji or Unicode glyphs as icons (lucide only, one stroke weight), no
+  hover-only affordances (a phone has no hover; show the chevron).
+- **Type.** One family. Headings carry weight, not size jumps; tabular figures
+  are already on for the whole app. Copy is plain British English, and a
+  control names its action ("Add stock", not "Submit").
+
+**Phone first**
+
+- Design at 390px, then widen. Check every change at 390 and 1440, light and
+  dark, with real-length names.
+- Tap targets: icon buttons are at least `size-8` (32px), buttons that
+  matter are `h-9` or more, and a whole row that opens something is
+  clickable, not only its chevron. Item actions wrap under the
+  item (`flex-wrap`), they don't sit in a fixed side column.
+- A dialog with a form is a `ResponsiveDialog` (sheet on a phone), so its
+  buttons stay in thumb reach. A plain yes/no confirm stays `useConfirm`.
+- Tabs scroll sideways by themselves; filters that narrow one list are a
+  `ToggleGroup`, never tabs.
+
+**Components: reuse before you build**
+
+| Need | Use |
+| --- | --- |
+| Sortable list of records | `DataTable` (TanStack Table), columns from `dataTableColumns<Row>()` |
+| Expandable orders | `OrderDisclosure` in an `OrderList`, `OrderListSkeleton` while loading |
+| Headline figures | `StatGroup` of `Stat`s |
+| Framed list of links | `DividedGrid as="ul"` |
+| Form in a dialog | `ResponsiveDialog` + react-hook-form + zod (`lib/stock-form.ts` is the pattern) |
+| Empty, error, loading | `EmptyState`, `ErrorAlert`, `ListSkeleton` / `OrderListSkeleton` |
+
+If the same markup appears on a second page, extract it into `components/`
+with a doc comment saying why it exists, and give it a test. New shadcn parts:
+`npx shadcn@latest add <name>`, then check the generated file's imports (the
+`drawer` came with `import { cn } from "cn"`, a different npm package; it must
+be `@/lib/utils`).
+
+**Libraries.** TanStack Table for in-memory sortable lists; react-hook-form +
+zod for any form with validation (inline error under the field once it's been
+touched, the API's own message from `errorDetail` on a failed save); `motion`
+for open/close and reorder; `vaul` only through `ResponsiveDialog`. Don't add a
+UI library for something these or shadcn already do.
+
+**Forms.** Every control has a visible `<Label htmlFor>` (or `FieldLabel`) tied
+to its `id`. Keep Radix `Select` out of a `<form>` element: inside one it adds
+a hidden native select that echoes programmatic values back through
+`onValueChange` (see `StockItemFields`). Validation errors say what to do
+("At least 1"), not what's wrong with the code.
+
+**Motion.** 150–250ms, to show a state change (open, close, reorder) and
+nothing else; no entrance choreography on page load. Use `motion/react`; the
+app sets `MotionConfig reducedMotion="user"`, and tests skip animations
+(`vitest.setup.ts`), so a closed panel is gone when a test looks.
+
+**Before calling UI work done:** run `scripts/preview.sh`, screenshot the
+pages you touched at `--mobile` and desktop in both themes, run `npm run check`,
+and run `/impeccable detect` over the changed files. Every new page gets a
+`PageHeader`, one of the three widths, a loading skeleton, an empty state and
+an error state.
+
 ## Comments explain _why_, not _what_
 
 Every shared helper opens with a short doc comment saying what it is and why it
@@ -143,12 +222,14 @@ suites live in `tests/` (auth, middleware, every API route, every page).
 ## Looking at the UI (works in a cloud session too)
 
 Tests prove behaviour; for anything visual, also look at it. One command
-starts the API on a seeded SQLite database (no Postgres, Google or cluster)
-and the site with fake sign-in:
+starts the API on a seeded SQLite database (no Postgres, Google or cluster),
+this site and, if `../317_cadet_portal` exists, the cadet portal, all with
+fake sign-in:
 
 ```bash
-scripts/preview.sh                 # API :8000 + site :3000; installs what's missing
+scripts/preview.sh                 # API :8000 + site :3000 + portal :3001; installs what's missing
 scripts/preview.sh --reset         # re-seed the API database from scratch
+scripts/preview.sh --no-portal     # API and this site only
 scripts/preview.sh status | stop
 node scripts/screenshot.mjs /cadets/overview /stats          # → .preview/shots/*.png
 node scripts/screenshot.mjs --mobile --role nco /session-plans
@@ -159,8 +240,10 @@ node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
   `$SMS_API_DIR`. In a cloud session, add the repo first (`add_repo`
   BenMcD23/SMS_Scrapers_API) and clone it there.
 - First run creates the API's `venv/`, `node_modules` and a fake-auth
-  `.env.local` (an existing `.env.local` is never touched; it just needs
-  `AUTH_DEV_BYPASS=1`). Logs are in `.preview/api.log` / `.preview/site.log`.
+  `.env.local` in each site (an existing `.env.local` is never touched; it just
+  needs `AUTH_DEV_BYPASS=1`). Logs and the dev database are in `.preview/`.
+- On the portal, SNCO and NCO sign in as cadets with a record (orders, issued
+  kit, details); STAFF is an adult with none, which is the other code path.
 - Screenshots sign in through the login page's STAFF / SNCO / NCO buttons;
   `--role` picks one, so check each role a page treats differently. Staff is
   the owner account, so owner-only pages show too.
