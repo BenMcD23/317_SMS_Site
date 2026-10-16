@@ -33,6 +33,7 @@ import {
   UserCheck,
   UserCog,
   UserMinus,
+  UserPlus,
   Users,
 } from "lucide-react";
 
@@ -125,6 +126,13 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Cadets",
     items: [
       { label: "Overview", href: "/cadets/overview", icon: Users, keywords: ["cadet list", "roll"] },
+      // Staff-only (see lib/access.ts): parents' and medical details.
+      {
+        label: "Recruits",
+        href: "/recruits",
+        icon: UserPlus,
+        keywords: ["joining form", "new cadets", "3822a", "3822h", "consent", "health declaration", "enrol"],
+      },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["results"] },
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
       {
