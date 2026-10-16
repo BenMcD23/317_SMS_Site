@@ -84,6 +84,8 @@ export type RecruitFormData = {
     ehcPlan: boolean | null;
     ehcCopy: boolean | null;
     details: {
+      /** The ticked condition this describes; null when the parent added it by hand. */
+      condition: string | null;
       name: string;
       severity: Severity | null;
       soughtAdvice: boolean | null;
