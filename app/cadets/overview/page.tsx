@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { PageHeader } from "@/components/page-header";
@@ -10,11 +16,14 @@ import { FlightFilter } from "@/components/flight-filter";
 import { DataTable, dataTableColumns } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import { flightBadgeClass, flightsIn, flightLabel, RANK_ORDER } from "@/lib/cadet-format";
-import { Search, Users } from "lucide-react";
+import { Search, UserX, Users } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { API_BASE } from "@/lib/config";
+import { apiRequest } from "@/lib/api-fetch";
+import { formatDate } from "@/lib/format";
 
 type Cadet = {
   cin: number;
@@ -22,6 +31,8 @@ type Cadet = {
   last_name: string;
   rank: string | null;
   flight: string | null;
+  /** When the scraper first stopped finding them on SMS; null while they're on it. */
+  missing_since?: string | null;
 };
 
 const col = dataTableColumns<Cadet>();
@@ -78,11 +89,75 @@ const columns = col.columns([
   }),
 ]);
 
+function daysSince(iso: string, now: Date = new Date()): number {
+  return Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000));
+}
+
+/** Cadets the scraper no longer finds on SMS. Nothing is deleted automatically
+ *  (a misread page mustn't cost anyone their records), so staff remove them here. */
+function NotOnSms({ cadets }: { cadets: Cadet[] }) {
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const { confirm, confirmDialog } = useConfirm();
+  const isStaff = session?.role === "staff";
+
+  function remove(c: Cadet) {
+    const name = `${c.first_name} ${c.last_name}`;
+    confirm(
+      `Remove ${name} and all their records? Their stores orders are kept for the stock insights. They won't be added back by the scraper.`,
+      async () => {
+        if (!session?.id_token) return;
+        try {
+          await apiRequest(session.id_token, `${API_BASE}/cadets/${c.cin}`, { method: "DELETE" }, `Couldn't remove ${name}.`);
+          toast.success(`${name} removed.`);
+          queryClient.invalidateQueries({ queryKey: ["cadets"] });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : `Couldn't remove ${name}.`);
+        }
+      }
+    );
+  }
+
+  return (
+    <Alert>
+      <UserX />
+      <AlertTitle>
+        {cadets.length === 1 ? "1 cadet isn't" : `${cadets.length} cadets aren't`} on SMS any more
+      </AlertTitle>
+      <AlertDescription>
+        <ul className="flex w-full flex-col gap-2">
+          {cadets.map((c) => {
+            const days = daysSince(c.missing_since!);
+            return (
+              <li key={c.cin} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <Link href={`/cadets/${c.cin}`} className="text-foreground font-medium hover:underline">
+                    {c.first_name} {c.last_name}
+                  </Link>{" "}
+                  hasn&apos;t been seen on SMS for {days} day{days === 1 ? "" : "s"} (since{" "}
+                  {formatDate(c.missing_since)})
+                </span>
+                {isStaff && (
+                  <Button size="sm" variant="outline" onClick={() => remove(c)}>
+                    Remove
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </AlertDescription>
+      {confirmDialog}
+    </Alert>
+  );
+}
+
 export default function CadetsPage() {
   const { data: cadets = [], isLoading: loading, error } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
   const [search, setSearch] = useState("");
   const [flight, setFlight] = useState("");
 
+  const notOnSms = cadets.filter((c) => c.missing_since);
   const filtered = cadets.filter((c) => {
     if (flight && c.flight?.trim() !== flight) return false;
     const q = search.toLowerCase();
@@ -108,6 +183,8 @@ export default function CadetsPage() {
               : `Showing ${filtered.length} of ${cadets.length} cadets`
         }
       />
+
+      {notOnSms.length > 0 && <NotOnSms cadets={notOnSms} />}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <InputGroup className="sm:flex-1">
