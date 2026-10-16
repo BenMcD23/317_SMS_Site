@@ -313,6 +313,27 @@ describe("A recruit's page", () => {
     expect(await screen.findByText("The form hasn't been submitted yet.")).toBeTruthy();
   });
 
+  it("reopens a submitted form for the parent to correct, after confirming", async () => {
+    const fetch = stubApi({
+      "GET /recruits/7/pdf": [PDF],
+      "GET /recruits/7": [detail({ status: "submitted", submittedAt: "2026-10-12T20:00:00" })],
+      "POST /recruits/7/reopen": [recruit()],
+    });
+    await show(<RecruitPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Reopen for changes" }));
+    expect(calls(fetch, "POST", "/recruits/7/reopen")).toHaveLength(0);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Confirm" })));
+    await waitFor(() => expect(calls(fetch, "POST", "/recruits/7/reopen")).toHaveLength(1));
+    expect(toast.success).toHaveBeenCalledWith("Form reopened. Let the parent know what to change.");
+  });
+
+  it("only offers to reopen a form that has been submitted", async () => {
+    stubApi({ "GET /recruits/7": [detail()] });
+    await show(<RecruitPage />);
+    await screen.findByRole("button", { name: "Delete" });
+    expect(screen.queryByRole("button", { name: "Reopen for changes" })).toBeNull();
+  });
+
   it("deletes only after confirming, then goes back to the list", async () => {
     const fetch = stubApi({ "GET /recruits/7": [detail()], "DELETE /recruits/7": [null, 204] });
     await show(<RecruitPage />);

@@ -155,6 +155,16 @@ export function extendRecruitLink(token: string, id: number) {
   );
 }
 
+/** Send a submitted form back to the parent to correct: answers kept, signatures cleared, link live for 14 days. */
+export function reopenRecruit(token: string, id: number) {
+  return apiRequest<Recruit>(
+    token,
+    `${API_BASE}/recruits/${id}/reopen`,
+    { method: "POST" },
+    "Couldn't reopen the form."
+  );
+}
+
 export async function deleteRecruit(token: string, id: number) {
   // 204: no body, so apiRequest's JSON parse just yields null.
   await apiRequest<null>(token, `${API_BASE}/recruits/${id}`, { method: "DELETE" }, "Couldn't delete the recruit.");

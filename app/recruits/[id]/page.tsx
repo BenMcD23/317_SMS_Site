@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarPlus, Copy, Trash2 } from "lucide-react";
+import { CalendarPlus, Copy, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -25,6 +25,7 @@ import {
   deleteRecruit,
   extendRecruitLink,
   recruitName,
+  reopenRecruit,
   type RecruitDetail,
 } from "@/lib/recruits";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -70,6 +71,23 @@ export default function RecruitPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function reopen() {
+    if (!recruit) return;
+    confirm(
+      `Send ${recruitName(recruit)}'s form back to ${recruit.parentName}? Their answers are kept, but they'll need to sign again, and the same link works for another 14 days.`,
+      async () => {
+        try {
+          await reopenRecruit(token, recruit.id);
+          toast.success("Form reopened. Let the parent know what to change.");
+          await refetch();
+          void queryClient.invalidateQueries({ queryKey: ["recruits"], exact: true });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Couldn't reopen the form.");
+        }
+      }
+    );
   }
 
   function remove() {
@@ -127,10 +145,18 @@ export default function RecruitPage() {
         }
         description={`Parent: ${recruit.parentName} · ${recruit.parentEmail}`}
         actions={
-          <Button variant="outline" onClick={remove}>
-            <Trash2 />
-            Delete
-          </Button>
+          <>
+            {submitted && (
+              <Button variant="outline" onClick={reopen}>
+                <RotateCcw />
+                Reopen for changes
+              </Button>
+            )}
+            <Button variant="outline" onClick={remove}>
+              <Trash2 />
+              Delete
+            </Button>
+          </>
         }
       />
 
