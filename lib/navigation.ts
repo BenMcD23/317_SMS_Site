@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   MessageSquareText,
+  Images,
   Newspaper,
   Orbit,
   Package,
@@ -231,6 +232,7 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ["website", "publish"],
       },
       { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper, keywords: ["website"] },
+      { label: "Gallery", href: "/tools/gallery-updater", icon: Images, keywords: ["website", "photos"] },
     ],
   },
   {
