@@ -15,6 +15,7 @@ import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw, External
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { SectionHeading } from "@/components/section-heading";
+import { PersonalDataSetting } from "@/components/private";
 import { usePersonalDataHidden } from "@/lib/privacy";
 
 export default function SettingsPage() {
@@ -460,6 +461,19 @@ export default function SettingsPage() {
         </>
       ) : (
         <>
+          {/* Staff are the only ones sent other people's personal data, so the
+              switch to mask it is theirs alone. */}
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <SectionHeading title="Privacy" />
+              <Card>
+                <CardContent>
+                  <PersonalDataSetting />
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
           {/* Assessor identity */}
           <section className="flex flex-col gap-3">
             <SectionHeading title="Assessor identity" />

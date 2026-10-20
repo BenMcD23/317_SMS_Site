@@ -3,12 +3,26 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Private, PrivacyToggle, usePrivateText } from "@/components/private";
+// One stable object per role; pages key effects on the session.
+const SESSIONS = {
+  staff: { data: { role: "staff" }, status: "authenticated" },
+  snco: { data: { role: "snco" }, status: "authenticated" },
+  nco: { data: { role: "nco" }, status: "authenticated" },
+} as const;
+let session: (typeof SESSIONS)[keyof typeof SESSIONS] = SESSIONS.staff;
+vi.mock("next-auth/react", () => ({ useSession: () => session }));
+
+import { PersonalDataSetting, Private, usePrivateText } from "@/components/private";
 import { setPersonalDataHidden } from "@/lib/privacy";
 
 // localStorage isn't one of the globals the config restores, so each test
 // starts from "shown" itself.
-afterEach(() => window.localStorage.clear());
+afterEach(() => {
+  window.localStorage.clear();
+  session = SESSIONS.staff;
+});
+
+const toggle = () => screen.getByRole("switch", { name: /^Hide personal data/ });
 
 function Subtitle({ email }: { email: string | null }) {
   const privateText = usePrivateText();
@@ -18,7 +32,7 @@ function Subtitle({ email }: { email: string | null }) {
 function Page() {
   return (
     <>
-      <PrivacyToggle />
+      <PersonalDataSetting />
       <p>Amy Able</p>
       <Private>amy@example.com</Private>
       <Subtitle email="amy@example.com" />
@@ -29,31 +43,33 @@ function Page() {
 describe("hide personal data", () => {
   it("shows personal data until the toggle is pressed, and names throughout", async () => {
     render(<Page />);
-    const toggle = screen.getByRole("button", { name: "Hide personal data" });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle()).not.toBeChecked();
     expect(screen.getByText("amy@example.com")).toBeInTheDocument();
 
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(toggle());
+    expect(toggle()).toBeChecked();
     expect(screen.queryByText(/amy@example\.com/)).not.toBeInTheDocument();
     expect(screen.getByText("Hidden")).toBeInTheDocument();
     expect(screen.getByText("Cpl · Hidden")).toBeInTheDocument();
     expect(screen.getByText("Amy Able")).toBeInTheDocument();
 
-    await userEvent.click(toggle);
+    await userEvent.click(toggle());
     expect(screen.getByText("amy@example.com")).toBeInTheDocument();
+  });
+
+  it("can be switched by tapping anywhere on its row, not just the switch", async () => {
+    render(<Page />);
+    await userEvent.click(screen.getByText("Hide personal data"));
+    expect(toggle()).toBeChecked();
   });
 
   it("is remembered after a reload", async () => {
     const { unmount } = render(<Page />);
-    await userEvent.click(screen.getByRole("button", { name: "Hide personal data" }));
+    await userEvent.click(toggle());
     unmount();
 
     render(<Page />);
-    expect(screen.getByRole("button", { name: "Hide personal data" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    expect(toggle()).toBeChecked();
     expect(screen.queryByText(/amy@example\.com/)).not.toBeInTheDocument();
   });
 
@@ -81,8 +97,25 @@ describe("hide personal data", () => {
     });
     render(<Page />);
     expect(screen.getByText("amy@example.com")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Hide personal data" }));
+    await userEvent.click(toggle());
     // Nowhere to keep the choice, so it can't take effect — but nothing broke.
     expect(screen.getByText("amy@example.com")).toBeInTheDocument();
+  });
+
+  it.each(["snco", "nco"] as const)(
+    "is ignored for an %s, so a choice left by staff in a shared browser doesn't mask their own details",
+    (role) => {
+      act(() => setPersonalDataHidden(true));
+      session = SESSIONS[role];
+      render(<Subtitle email="nina@317atc.co.uk" />);
+      expect(screen.getByText("Cpl · nina@317atc.co.uk")).toBeInTheDocument();
+    }
+  );
+
+  it("is ignored while signed out", () => {
+    act(() => setPersonalDataHidden(true));
+    session = { data: null, status: "unauthenticated" } as never;
+    render(<Subtitle email="amy@example.com" />);
+    expect(screen.getByText("Cpl · amy@example.com")).toBeInTheDocument();
   });
 });

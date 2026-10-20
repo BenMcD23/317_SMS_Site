@@ -8,7 +8,6 @@ import { HeaderBreadcrumbs } from "@/components/layout/breadcrumbs";
 import { CommandPaletteTrigger } from "@/components/layout/command-palette";
 import { ApiStatusBadge, useApiStatus } from "@/components/layout/api-status";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { PrivacyToggle } from "@/components/private";
 
 /** Auth pages render bare — no sidebar or header. */
 const NO_SHELL_ROUTES = ["/login", "/unauthorized"];
@@ -31,7 +30,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-2">
             <ApiStatusBadge status={apiStatus} />
             <CommandPaletteTrigger />
-            <PrivacyToggle />
             <ThemeToggle />
           </div>
         </header>

@@ -1,10 +1,9 @@
 "use client";
 
-import { EyeOff } from "lucide-react";
-
 import { usePersonalDataHidden } from "@/lib/privacy";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 /**
  * Wraps a piece of personal data (email, phone, date of birth, address,
@@ -24,19 +23,24 @@ export function usePrivateText() {
   return (value: string | null | undefined) => (hidden && value ? "Hidden" : value);
 }
 
-/** Header switch for the mode; pressed state is what screen readers announce. */
-export function PrivacyToggle() {
+/** The Settings row for the mode. Staff only; Settings decides whether to show it. */
+export function PersonalDataSetting() {
   const [hidden, setHidden] = usePersonalDataHidden();
   return (
-    <Button
-      variant={hidden ? "secondary" : "ghost"}
-      size="icon"
-      onClick={() => setHidden(!hidden)}
-      aria-pressed={hidden}
-      aria-label="Hide personal data"
-      title={hidden ? "Personal data hidden — click to show" : "Hide personal data"}
+    // The whole row is the label, so it's a full-width tap target on a phone.
+    <Label
+      htmlFor="hide-personal-data"
+      className="flex min-h-9 cursor-pointer items-center justify-between gap-4 font-normal"
     >
-      <EyeOff />
-    </Button>
+      <span className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Hide personal data</span>
+        <span className="text-muted-foreground text-xs">
+          Shows &ldquo;Hidden&rdquo; in place of emails, phone numbers, dates of birth, addresses, medical and
+          bank details, for when your screen is shared or projected. Names stay. Only this browser remembers
+          it.
+        </span>
+      </span>
+      <Switch id="hide-personal-data" checked={hidden} onCheckedChange={setHidden} />
+    </Label>
   );
 }
