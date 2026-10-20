@@ -15,6 +15,8 @@ import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw, External
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { SectionHeading } from "@/components/section-heading";
+import { PersonalDataSetting } from "@/components/private";
+import { usePersonalDataHidden } from "@/lib/privacy";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -68,6 +70,9 @@ export default function SettingsPage() {
   const [bankLoading, setBankLoading] = useState(false);
   const [bankDirty, setBankDirty] = useState(false);
   const [showBankNumber, setShowBankNumber] = useState(false);
+  // Your own details stay editable while hidden; they are typed as password
+  // fields so a screen share shows dots instead.
+  const [personalHidden] = usePersonalDataHidden();
 
   useEffect(() => {
     if (!session?.id_token) return;
@@ -456,6 +461,19 @@ export default function SettingsPage() {
         </>
       ) : (
         <>
+          {/* Staff are the only ones sent other people's personal data, so the
+              switch to mask it is theirs alone. */}
+          {session?.role === "staff" && (
+            <section className="flex flex-col gap-3">
+              <SectionHeading title="Privacy" />
+              <Card>
+                <CardContent>
+                  <PersonalDataSetting />
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
           {/* Assessor identity */}
           <section className="flex flex-col gap-3">
             <SectionHeading title="Assessor identity" />
@@ -633,7 +651,7 @@ export default function SettingsPage() {
                     <div className="flex gap-2">
                       <Input
                         id="phone_number"
-                        type="tel"
+                        type={personalHidden ? "password" : "tel"}
                         inputMode="tel"
                         autoComplete="tel"
                         value={phone}
@@ -796,6 +814,8 @@ export default function SettingsPage() {
                     </Label>
                     <Input
                       id="bank_account_name"
+                      type={personalHidden ? "password" : "text"}
+                      autoComplete="off"
                       value={bank.bank_account_name}
                       onChange={(e) => {
                         setBank({ ...bank, bank_account_name: e.target.value });
@@ -811,6 +831,8 @@ export default function SettingsPage() {
                       </Label>
                       <Input
                         id="bank_sort_code"
+                        type={personalHidden ? "password" : "text"}
+                        autoComplete="off"
                         value={bank.bank_sort_code}
                         onChange={(e) => {
                           setBank({ ...bank, bank_sort_code: e.target.value });
@@ -826,7 +848,7 @@ export default function SettingsPage() {
                       <div className="relative">
                         <Input
                           id="bank_account_number"
-                          type={showBankNumber ? "text" : "password"}
+                          type={showBankNumber && !personalHidden ? "text" : "password"}
                           value={bank.bank_account_number}
                           onChange={(e) => {
                             setBank({ ...bank, bank_account_number: e.target.value });

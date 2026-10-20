@@ -1,3 +1,6 @@
+"use client";
+
+import { Private } from "@/components/private";
 import { SectionHeading } from "@/components/section-heading";
 import { formatDate } from "@/lib/format";
 import type { Option, Person, RecruitDetail } from "@/lib/recruits";
@@ -8,7 +11,8 @@ import type { Option, Person, RecruitDetail } from "@/lib/recruits";
  * and after, beside the PDFs. Labels come from the API's option lists.
  */
 
-type Row = [label: string, value: React.ReactNode];
+// `personal` rows are masked by "Hide personal data"; names stay visible.
+type Row = [label: string, value: React.ReactNode, personal?: boolean];
 
 const yesNo = (v: unknown) => (v === true ? "Yes" : v === false ? "No" : null);
 const label = (options: Option[], key: string | null | undefined) =>
@@ -19,7 +23,14 @@ const GENDER = { male: "Male", female: "Female", pnts: "Prefer not to say", othe
 const PRONOUN = { he: "He/Him", she: "She/Her", they: "They/Them" };
 
 function address(p: Partial<Person>): string {
-  return [p.property && p.street ? `${p.property} ${p.street}` : p.property || p.street, p.area, p.town, p.county, p.postcode, p.country]
+  return [
+    p.property && p.street ? `${p.property} ${p.street}` : p.property || p.street,
+    p.area,
+    p.town,
+    p.county,
+    p.postcode,
+    p.country,
+  ]
     .filter(Boolean)
     .join(", ");
 }
@@ -28,25 +39,26 @@ function personRows(p: Person): Row[] {
   return [
     ["Name", [p.title, p.fullName].filter(Boolean).join(" ")],
     ["Relationship", p.relationship],
-    ["Address", address(p)],
-    ["Mobile", p.mobile],
-    ["Home phone", p.homePhone],
-    ["Email", p.email],
-    ["Second email", p.email2],
+    ["Address", address(p), true],
+    ["Mobile", p.mobile, true],
+    ["Home phone", p.homePhone, true],
+    ["Email", p.email, true],
+    ["Second email", p.email2, true],
   ];
 }
 
-function Section({ title, rows }: { title: string; rows: Row[] }) {
+/** `personal` masks every row, for sections that are personal throughout (medical). */
+function Section({ title, rows, personal = false }: { title: string; rows: Row[]; personal?: boolean }) {
   const shown = rows.filter(([, v]) => v !== null && v !== undefined && v !== "");
   return (
     <section className="flex flex-col gap-2">
       <SectionHeading title={title} />
       {shown.length ? (
         <dl className="divide-y rounded-lg border text-sm">
-          {shown.map(([k, v]) => (
+          {shown.map(([k, v, rowPersonal]) => (
             <div key={k} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[14rem_1fr] sm:gap-4">
               <dt className="text-muted-foreground">{k}</dt>
-              <dd className="min-w-0 break-words">{v}</dd>
+              <dd className="min-w-0 break-words">{personal || rowPersonal ? <Private>{v}</Private> : v}</dd>
             </div>
           ))}
         </dl>
@@ -86,9 +98,7 @@ export function RecruitAnswers({ recruit }: { recruit: RecruitDetail }) {
           {c.strenuous && <span>Strenuous activity: {c.strenuous}</span>}
           {c.control && <span>Can control it: {c.control}</span>}
           {c.medication && (
-            <span>
-              Medication: {[c.medication, c.dosage, c.storage].filter(Boolean).join(" · ")}
-            </span>
+            <span>Medication: {[c.medication, c.dosage, c.storage].filter(Boolean).join(" · ")}</span>
           )}
         </div>,
       ]),
@@ -96,7 +106,9 @@ export function RecruitAnswers({ recruit }: { recruit: RecruitDetail }) {
         "Allergies",
         Object.entries(m.allergies)
           .map(([k, a]) =>
-            [label(o.allergies, k), a.severity, a.autoInjector ? "auto-injector" : null].filter(Boolean).join(", ")
+            [label(o.allergies, k), a.severity, a.autoInjector ? "auto-injector" : null]
+              .filter(Boolean)
+              .join(", ")
           )
           .join("; "),
       ],
@@ -112,26 +124,27 @@ export function RecruitAnswers({ recruit }: { recruit: RecruitDetail }) {
         title="Cadet"
         rows={[
           ["Full name", d.cadet.fullName],
-          ["Date of birth", d.cadet.dob ? formatDate(d.cadet.dob) : null],
-          ["Religion", d.cadet.religion],
+          ["Date of birth", d.cadet.dob ? formatDate(d.cadet.dob) : null, true],
+          ["Religion", d.cadet.religion, true],
           [
             "Gender",
             d.cadet.gender &&
               (d.cadet.gender === "other" ? `Other: ${d.cadet.genderOther}` : GENDER[d.cadet.gender]),
+            true,
           ],
           ["Pronoun", d.cadet.pronoun && PRONOUN[d.cadet.pronoun]],
-          ["Ethnicity", label(o.ethnicities, d.cadet.ethnicity)],
-          ["Local authority involvement", yesNo(d.cadet.externalAgency)],
+          ["Ethnicity", label(o.ethnicities, d.cadet.ethnicity), true],
+          ["Local authority involvement", yesNo(d.cadet.externalAgency), true],
         ]}
       />
       <Section
         title="Cadet's contact details"
         rows={[
-          ["Address", address(d.contact)],
-          ["Mobile", d.contact.mobile],
-          ["Home phone", d.contact.homePhone],
-          ["Email", d.contact.email],
-          ["Second email", d.contact.email2],
+          ["Address", address(d.contact), true],
+          ["Mobile", d.contact.mobile, true],
+          ["Home phone", d.contact.homePhone, true],
+          ["Email", d.contact.email, true],
+          ["Second email", d.contact.email2, true],
         ]}
       />
       <Section
@@ -147,7 +160,7 @@ export function RecruitAnswers({ recruit }: { recruit: RecruitDetail }) {
       />
       {d.extra.fullName && <Section title="Additional contact" rows={personRows(d.extra)} />}
       <Section title="Consent" rows={consentRows} />
-      <Section title="Medical, allergies and diet" rows={medicalRows} />
+      <Section title="Medical, allergies and diet" rows={medicalRows} personal />
       <Section
         title="About joining"
         rows={[
@@ -165,15 +178,25 @@ export function RecruitAnswers({ recruit }: { recruit: RecruitDetail }) {
               "Parent's signature",
               recruit.parentSignature && (
                 // eslint-disable-next-line @next/next/no-img-element -- a data URL, nothing to optimise
-                <img src={recruit.parentSignature} alt="Parent's signature" className="h-14 rounded border bg-white p-1" />
+                <img
+                  src={recruit.parentSignature}
+                  alt="Parent's signature"
+                  className="h-14 rounded border bg-white p-1"
+                />
               ),
+              true,
             ],
             [
               "Cadet's signature (health declaration)",
               recruit.cadetSignature && (
                 // eslint-disable-next-line @next/next/no-img-element -- a data URL, nothing to optimise
-                <img src={recruit.cadetSignature} alt="Cadet's signature" className="h-14 rounded border bg-white p-1" />
+                <img
+                  src={recruit.cadetSignature}
+                  alt="Cadet's signature"
+                  className="h-14 rounded border bg-white p-1"
+                />
               ),
+              true,
             ],
             ["Signed on", formatDate(recruit.submittedAt)],
           ]}

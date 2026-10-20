@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { Private } from "@/components/private";
 
 function initials(name: string | null | undefined): string {
   if (!name) return "?";
@@ -61,7 +62,9 @@ export function UserMenu() {
           >
             <DropdownMenuLabel className="font-normal">
               <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-muted-foreground text-xs">{user?.email}</p>
+              <p className="text-muted-foreground text-xs">
+                <Private>{user?.email}</Private>
+              </p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

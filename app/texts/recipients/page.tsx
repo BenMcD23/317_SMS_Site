@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { Private, usePrivateText } from "@/components/private";
 
 type Source = "cadet" | "staff" | "extra";
 
@@ -103,6 +104,7 @@ const SOURCE_LABEL: Record<Source, string> = {
 
 export default function TextRecipientsPage() {
   const { data: session } = useSession();
+  const privateText = usePrivateText();
 
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -527,13 +529,17 @@ export default function TextRecipientsPage() {
                     <TableCell className="text-muted-foreground">
                       {`${r.rank} ${r.surname}`.trim() || "—"}
                     </TableCell>
-                    <TableCell className="font-mono text-sm">{r.phone_number}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      <Private className="font-sans">{r.phone_number}</Private>
+                    </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Edit ${r.name || r.surname || "recipient"}`}
+                          // The edit form shows the number, so it waits until data is shown.
+                          disabled={privateText(r.phone_number) !== r.phone_number}
                           onClick={() => openEdit(r)}
                         >
                           <Pencil />
@@ -753,8 +759,8 @@ export default function TextRecipientsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Take this number off the list?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting && `${deleting.name || deleting.surname} (${deleting.phone_number})`} will no longer
-              receive parade night texts.
+              {deleting && `${deleting.name || deleting.surname} (${privateText(deleting.phone_number)})`}{" "}
+              will no longer receive parade night texts.
               {deleting && deleting.source !== "extra"
                 ? " Their record stays — only the number is cleared, and they can save a new one themselves."
                 : ""}

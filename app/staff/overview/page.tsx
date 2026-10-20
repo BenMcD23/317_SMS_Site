@@ -13,6 +13,7 @@ import { cadetInitials } from "@/lib/cadet-format";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Search, ChevronRight, UserCog } from "lucide-react";
 import { OcOnly } from "@/components/oc/oc-access-required";
+import { usePrivateText } from "@/components/private";
 
 type StaffMember = {
   cin: number;
@@ -33,6 +34,7 @@ export default function StaffOverviewPage() {
 
 function StaffOverview() {
   const router = useRouter();
+  const privateText = usePrivateText();
   const [search, setSearch] = useState("");
 
   const {
@@ -86,8 +88,9 @@ function StaffOverview() {
         <Card className="overflow-hidden py-0">
           <div className="divide-y">
             {filtered.map((u) => {
-              const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || `CIN ${u.cin}`;
-              const subtitle = [u.rank, u.email].filter(Boolean).join(" · ");
+              const name =
+                [u.firstName, u.lastName].filter(Boolean).join(" ") || privateText(u.email) || `CIN ${u.cin}`;
+              const subtitle = [u.rank, privateText(u.email)].filter(Boolean).join(" · ");
               return (
                 <button
                   key={u.cin}

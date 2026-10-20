@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
+import { Private } from "@/components/private";
 import {
   APPRAISAL_SECTIONS,
   deleteAppraisal,
@@ -228,7 +229,7 @@ export default function AppraisalDetailPage() {
         <>
           <Card>
             <CardContent className="grid gap-4 sm:grid-cols-3">
-              <Field label="Age" value={data.age} />
+              <Field label="Age" value={data.age} personal />
               <Field label="Attendance" value={data.attendance} />
               <Field
                 label="Next NCO review"
@@ -257,7 +258,7 @@ export default function AppraisalDetailPage() {
             {data.emailed_at && (
               <Badge variant="outline" className="text-muted-foreground gap-1">
                 <Mail className="size-3" />
-                Sent to {data.emailed_to} on {formatTimestamp(data.emailed_at)}
+                Sent to <Private>{data.emailed_to}</Private> on {formatTimestamp(data.emailed_at)}
               </Badge>
             )}
           </div>
@@ -326,11 +327,11 @@ export default function AppraisalDetailPage() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, personal }: { label: string; value: string; personal?: boolean }) {
   return (
     <div>
       <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="text-sm font-medium">{value || "—"}</p>
+      <p className="text-sm font-medium">{value && personal ? <Private>{value}</Private> : value || "—"}</p>
     </div>
   );
 }

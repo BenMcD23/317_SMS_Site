@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const SESSION = { data: { id_token: "tok", role: "staff" }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
@@ -11,6 +11,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 import CadetRecordPage from "@/app/cadets/[cin]/page";
+import { setPersonalDataHidden } from "@/lib/privacy";
+
+afterEach(() => window.localStorage.clear());
 
 const DAY = 86_400_000;
 const isoIn = (days: number) => new Date(Date.now() + days * DAY).toISOString();
@@ -74,6 +77,29 @@ describe("cadet record", () => {
       "mailto:amy@example.com"
     );
     expect(screen.getByRole("link", { name: "07700 900123" })).toHaveAttribute("href", "tel:07700900123");
+  });
+
+  it("hides email, mobile and date of birth when personal data is hidden, but not the name", async () => {
+    act(() => setPersonalDataHidden(true));
+    respond(CADET);
+    render(<CadetRecordPage />);
+    expect(await screen.findByRole("heading", { name: "Amy Able" })).toBeInTheDocument();
+    expect(screen.queryByText(/amy@example\.com/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/07700/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/2012/)).not.toBeInTheDocument();
+    // Email, mobile, date of birth, and the age tile (it gives the DOB away too).
+    expect(screen.getAllByText("Hidden")).toHaveLength(4);
+    // Editing would show the value again, so the pencils go too.
+    expect(screen.queryByRole("button", { name: "Edit email" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit mobile" })).not.toBeInTheDocument();
+  });
+
+  it("still offers to add a missing email while personal data is hidden", async () => {
+    act(() => setPersonalDataHidden(true));
+    respond({ ...CADET, email: null });
+    render(<CadetRecordPage />);
+    expect(await screen.findByText("No email set")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit email" })).toBeInTheDocument();
   });
 
   it("gives the edit pencils a name, so they can be found without hovering", async () => {

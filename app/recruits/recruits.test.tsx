@@ -4,11 +4,12 @@
 // parent has submitted.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RecruitsPage from "@/app/recruits/page";
 import RecruitPage from "@/app/recruits/[id]/page";
 import type { Recruit, RecruitDetail } from "@/lib/recruits";
+import { setPersonalDataHidden } from "@/lib/privacy";
 
 const SESSION = {
   data: { id_token: "tok", role: "staff", user: { email: "staff@317atc.co.uk" } },
@@ -58,21 +59,55 @@ const OPTIONS = {
   cadetSignsFromAge: 16,
 };
 
-const address = { property: "", street: "", area: "", town: "", county: "", country: "", postcode: "",
-  mobile: "", homePhone: "", email: "", email2: "" };
+const address = {
+  property: "",
+  street: "",
+  area: "",
+  town: "",
+  county: "",
+  country: "",
+  postcode: "",
+  mobile: "",
+  homePhone: "",
+  email: "",
+  email2: "",
+};
 
 const detail = (over: Partial<RecruitDetail> = {}): RecruitDetail => ({
   ...recruit(),
   data: {
-    cadet: { fullName: "Erin Walsh", dob: "2013-04-12", religion: "", gender: "female", genderOther: "",
-      pronoun: "she", ethnicity: "white_irish", externalAgency: false },
+    cadet: {
+      fullName: "Erin Walsh",
+      dob: "2013-04-12",
+      religion: "",
+      gender: "female",
+      genderOther: "",
+      pronoun: "she",
+      ethnicity: "white_irish",
+      externalAgency: false,
+    },
     contact: { ...address, town: "Failsworth", postcode: "M35 0AA" },
     history: { scouts: true, other: "" },
-    nok: { ...address, title: "Mrs", fullName: "Siobhán Walsh", relationship: "Mother", hasParentalResponsibility: true },
+    nok: {
+      ...address,
+      title: "Mrs",
+      fullName: "Siobhán Walsh",
+      relationship: "Mother",
+      hasParentalResponsibility: true,
+    },
     extra: { ...address, title: "", fullName: "", relationship: "" },
     consent: { photo: false, accommodationTypes: [] },
-    medical: { has: true, conditions: ["asthma"], ehcPlan: false, ehcCopy: null, details: [],
-      allergies: { nut: { autoInjector: true, severity: "severe" } }, allergyOther: "", diet: [], dietOther: "" },
+    medical: {
+      has: true,
+      conditions: ["asthma"],
+      ehcPlan: false,
+      ehcCopy: null,
+      details: [],
+      allergies: { nut: { autoInjector: true, severity: "severe" } },
+      allergyOther: "",
+      diet: [],
+      dietOther: "",
+    },
     about: { school: "Failsworth School", heardFrom: "", reason: "" },
     signer: { forename: "Siobhán", surname: "Walsh" },
   },
@@ -97,8 +132,11 @@ function stubApi(routes: Routes) {
     });
     const [body, status] = hit?.[1] ?? [{ detail: "not stubbed" }, 404];
     // A PDF stands in as raw text: jsdom's Blob isn't one Node's Response accepts.
-    if (body === PDF) return Promise.resolve(new Response(PDF, { headers: { "Content-Type": "application/pdf" } }));
-    return Promise.resolve(new Response(status === 204 ? null : JSON.stringify(body), { status: status ?? 200 }));
+    if (body === PDF)
+      return Promise.resolve(new Response(PDF, { headers: { "Content-Type": "application/pdf" } }));
+    return Promise.resolve(
+      new Response(status === 204 ? null : JSON.stringify(body), { status: status ?? 200 })
+    );
   });
   vi.stubGlobal("fetch", fetch);
   return fetch;
@@ -120,8 +158,20 @@ beforeEach(() => {
     configurable: true,
     value: { writeText: (t: string) => (clipboard.push(t), Promise.resolve()) },
   });
-  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
-  window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as never;
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
+  window.matchMedia ??= ((q: string) => ({
+    matches: false,
+    media: q,
+    addEventListener() {},
+    removeEventListener() {},
+  })) as never;
   URL.createObjectURL = vi.fn(() => "blob:pdf");
   URL.revokeObjectURL = vi.fn();
   toast.success.mockReset();
@@ -132,7 +182,9 @@ beforeEach(() => {
 describe("Recruits list", () => {
   it("lists recruits with their progress and status", async () => {
     stubApi({
-      "GET /recruits": [[recruit(), recruit({ id: 8, cadetFirstName: "Oscar", cadetLastName: "Lee", expired: true })]],
+      "GET /recruits": [
+        [recruit(), recruit({ id: 8, cadetFirstName: "Oscar", cadetLastName: "Lee", expired: true })],
+      ],
     });
     await show(<RecruitsPage />);
     expect(await screen.findByRole("link", { name: "Erin Walsh" })).toBeTruthy();
@@ -161,8 +213,12 @@ describe("Recruits list", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add recruit" }));
     fireEvent.change(screen.getByLabelText("Cadet's first name"), { target: { value: "Erin" } });
     fireEvent.change(screen.getByLabelText("Cadet's last name"), { target: { value: "Walsh" } });
-    fireEvent.change(screen.getByLabelText("Parent or guardian's name"), { target: { value: "Siobhán Walsh" } });
-    fireEvent.change(screen.getByLabelText("Parent or guardian's email"), { target: { value: "siobhan@example.com" } });
+    fireEvent.change(screen.getByLabelText("Parent or guardian's name"), {
+      target: { value: "Siobhán Walsh" },
+    });
+    fireEvent.change(screen.getByLabelText("Parent or guardian's email"), {
+      target: { value: "siobhan@example.com" },
+    });
     const dialogButtons = screen.getAllByRole("button", { name: "Add recruit" });
     await act(async () => fireEvent.click(dialogButtons[dialogButtons.length - 1]));
 
@@ -196,7 +252,10 @@ describe("Recruits list", () => {
   });
 
   it("keeps the dialog open with the API's message when adding fails", async () => {
-    stubApi({ "GET /recruits": [[]], "POST /recruits": [{ detail: "Enter the parent's email address." }, 422] });
+    stubApi({
+      "GET /recruits": [[]],
+      "POST /recruits": [{ detail: "Enter the parent's email address." }, 422],
+    });
     await show(<RecruitsPage />);
     fireEvent.click(screen.getByRole("button", { name: "Add recruit" }));
     for (const [label, value] of [
@@ -215,6 +274,32 @@ describe("Recruits list", () => {
 });
 
 describe("A recruit's page", () => {
+  afterEach(() => window.localStorage.clear());
+
+  it("hides contact, date of birth, ethnicity and medical answers when personal data is hidden", async () => {
+    act(() => setPersonalDataHidden(true));
+    stubApi({ "GET /recruits/7": [detail()] });
+    await show(<RecruitPage />);
+    expect(await screen.findByRole("heading", { name: /Erin Walsh/ })).toBeTruthy();
+    expect(screen.getByText("Mrs Siobhán Walsh")).toBeTruthy();
+    expect(screen.getByText("Failsworth School")).toBeTruthy();
+    for (const text of [/M35 0AA/, /12 Apr 2013/, "Irish", "Asthma", /Nut, severe/, /siobhan@example\.com/]) {
+      expect(screen.queryByText(text)).toBeNull();
+    }
+  });
+
+  it("doesn't preview the PDF while personal data is hidden, but still downloads it", async () => {
+    act(() => setPersonalDataHidden(true));
+    stubApi({
+      "GET /recruits/7/pdf": [PDF],
+      "GET /recruits/7": [detail({ status: "submitted", submittedAt: "2026-10-12T20:00:00", missing: {} })],
+    });
+    await show(<RecruitPage />);
+    expect(await screen.findByText(/The form is hidden while personal data is hidden/)).toBeTruthy();
+    expect(screen.queryByTitle("3822A Erin Walsh")).toBeNull();
+    expect(screen.getByRole("button", { name: "Download PDF" })).toBeTruthy();
+  });
+
   it("shows the link to send, its expiry and what's still missing", async () => {
     stubApi({ "GET /recruits/7": [detail()] });
     await show(<RecruitPage />);
@@ -297,7 +382,9 @@ describe("A recruit's page", () => {
   it("has no 3822H tab when the parent answered no to medical", async () => {
     stubApi({
       "GET /recruits/7/pdf": [PDF],
-      "GET /recruits/7": [detail({ status: "submitted", submittedAt: "2026-10-12T20:00:00", hasHealthDeclaration: false })],
+      "GET /recruits/7": [
+        detail({ status: "submitted", submittedAt: "2026-10-12T20:00:00", hasHealthDeclaration: false }),
+      ],
     });
     await show(<RecruitPage />);
     expect(await screen.findByRole("tab", { name: "3822A consent" })).toBeTruthy();

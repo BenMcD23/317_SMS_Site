@@ -19,6 +19,7 @@ import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { API_BASE, OWNER_EMAIL } from "@/lib/config";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Private } from "@/components/private";
 
 type RouteUsage = {
   method: string;
@@ -251,7 +252,9 @@ export default function UsagePage() {
                   <TableBody>
                     {users.map((u) => (
                       <TableRow key={u.email}>
-                        <TableCell>{u.email}</TableCell>
+                        <TableCell>
+                          <Private>{u.email}</Private>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">{u.role}</Badge>
                         </TableCell>

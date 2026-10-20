@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorAlert } from "@/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
+import { Private } from "@/components/private";
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
 import { copyText } from "@/lib/clipboard";
@@ -252,7 +253,7 @@ function LeavingDialogBody({
           </p>
         ) : (
           <p className="text-muted-foreground bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
-            {bcc}
+            <Private>{bcc}</Private>
           </p>
         )}
         <div className="flex flex-wrap gap-2">
