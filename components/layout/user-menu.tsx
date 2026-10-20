@@ -62,9 +62,9 @@ export function UserMenu() {
           >
             <DropdownMenuLabel className="font-normal">
               <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-muted-foreground text-xs">
-                <Private>{user?.email}</Private>
-              </p>
+              <Private>
+                <p className="text-muted-foreground text-xs">{user?.email}</p>
+              </Private>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

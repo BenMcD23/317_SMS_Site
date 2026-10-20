@@ -50,7 +50,7 @@ const FIELD_LABELS: { key: keyof UserProfile; label: string }[] = [
   { key: "car_reg", label: "Car Registration" },
 ];
 
-// Identifying beyond a name: masked by "Hide personal data".
+// Identifying beyond a name: removed by "Hide personal data".
 const PERSONAL_FIELDS: (keyof UserProfile)[] = ["jpa_number", "home_address", "car_reg"];
 
 function ReadOnlyField({
@@ -64,13 +64,11 @@ function ReadOnlyField({
   multiline?: boolean;
   personal?: boolean;
 }) {
-  return (
+  const field = (
     <div className="min-w-0">
       <p className="text-muted-foreground text-xs">{label}</p>
       {value ? (
-        <p className={`text-sm font-medium ${multiline ? "whitespace-pre-wrap" : "truncate"}`}>
-          {personal ? <Private>{value}</Private> : value}
-        </p>
+        <p className={`text-sm font-medium ${multiline ? "whitespace-pre-wrap" : "truncate"}`}>{value}</p>
       ) : (
         <p className="text-sm font-medium">
           <span className="text-muted-foreground/50">—</span>
@@ -78,6 +76,7 @@ function ReadOnlyField({
       )}
     </div>
   );
+  return personal ? <Private>{field}</Private> : field;
 }
 
 export function UserProfileCard({

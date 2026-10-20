@@ -44,17 +44,23 @@ function respond() {
 const privacySwitch = () => screen.queryByRole("switch", { name: /^Hide personal data/ });
 
 describe("settings: hide personal data", () => {
-  it("staff get the switch, and turning it on masks their own number", async () => {
+  it("staff get the switch, and turning it on takes their number and bank details off the page", async () => {
     respond();
     render(<SettingsPage />);
     await screen.findByRole("heading", { name: "Privacy" });
-    const phone = screen.getByDisplayValue("07700 900123");
-    expect(phone).toHaveAttribute("type", "tel");
+    expect(screen.getByDisplayValue("07700 900123")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Bank details" })).toBeInTheDocument();
 
     await userEvent.click(privacySwitch()!);
     expect(privacySwitch()).toBeChecked();
-    // Still editable, but dots on a shared screen.
-    expect(phone).toHaveAttribute("type", "password");
+    expect(screen.queryByDisplayValue("07700 900123")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Parade night texts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Bank details" })).not.toBeInTheDocument();
+    // The rest of Settings is untouched.
+    expect(screen.getByRole("heading", { name: "Assessor identity" })).toBeInTheDocument();
+
+    await userEvent.click(privacySwitch()!);
+    expect(screen.getByDisplayValue("07700 900123")).toBeInTheDocument();
   });
 
   it.each(["snco", "nco"] as const)("an %s gets no switch, and sees their own number", async (role) => {

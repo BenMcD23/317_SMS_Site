@@ -276,7 +276,7 @@ describe("Recruits list", () => {
 describe("A recruit's page", () => {
   afterEach(() => window.localStorage.clear());
 
-  it("hides contact, date of birth, ethnicity and medical answers when personal data is hidden", async () => {
+  it("drops contact, date of birth, ethnicity and medical answers when personal data is hidden", async () => {
     act(() => setPersonalDataHidden(true));
     stubApi({ "GET /recruits/7": [detail()] });
     await show(<RecruitPage />);
@@ -286,18 +286,28 @@ describe("A recruit's page", () => {
     for (const text of [/M35 0AA/, /12 Apr 2013/, "Irish", "Asthma", /Nut, severe/, /siobhan@example\.com/]) {
       expect(screen.queryByText(text)).toBeNull();
     }
+    // The rows go with their labels, and the header loses the address cleanly.
+    for (const label of ["Date of birth", "Ethnicity", "Address", "Gender"]) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
+    expect(screen.getByText("Parent: Siobhán Walsh")).toBeTruthy();
   });
 
-  it("doesn't preview the PDF while personal data is hidden, but still downloads it", async () => {
+  it("drops the filled-in PDFs while personal data is hidden, and opens on the answers", async () => {
     act(() => setPersonalDataHidden(true));
     stubApi({
       "GET /recruits/7/pdf": [PDF],
       "GET /recruits/7": [detail({ status: "submitted", submittedAt: "2026-10-12T20:00:00", missing: {} })],
     });
     await show(<RecruitPage />);
-    expect(await screen.findByText(/The form is hidden while personal data is hidden/)).toBeTruthy();
-    expect(screen.queryByTitle("3822A Erin Walsh")).toBeNull();
-    expect(screen.getByRole("button", { name: "Download PDF" })).toBeTruthy();
+    expect(await screen.findByRole("tab", { name: "Answers", selected: true })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "3822A consent" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "3822H health" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Download PDF" })).toBeNull();
+    // Whole sections that are personal throughout go with their headings.
+    expect(screen.queryByRole("heading", { name: "Medical, allergies and diet" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Cadet's contact details" })).toBeNull();
+    expect(screen.queryByText(/Hidden|Nothing filled in yet/)).toBeNull();
   });
 
   it("shows the link to send, its expiry and what's still missing", async () => {

@@ -265,9 +265,10 @@ export default function TextRecipientsPage() {
       (r) =>
         r.name.toLowerCase().includes(q) ||
         `${r.rank} ${r.surname}`.toLowerCase().includes(q) ||
-        (/^\+?\d+$/.test(digits) && r.phone_number.replace(/\s+/g, "").includes(digits))
+        // A hidden number mustn't still match, or the search gives it away.
+        (/^\+?\d+$/.test(digits) && (privateText(r.phone_number) ?? "").replace(/\s+/g, "").includes(digits))
     );
-  }, [recipients, filter]);
+  }, [recipients, filter, privateText]);
 
   const counts = useMemo(
     () => ({
@@ -417,9 +418,11 @@ export default function TextRecipientsPage() {
         description="Everyone with a mobile saved against their record, plus anyone without one"
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button variant="outline" onClick={handleExport} disabled={recipients.length === 0}>
-              <Download /> Export CSV
-            </Button>
+            <Private>
+              <Button variant="outline" onClick={handleExport} disabled={recipients.length === 0}>
+                <Download /> Export CSV
+              </Button>
+            </Private>
             <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!session}>
               <Upload /> Import
             </Button>
@@ -495,7 +498,9 @@ export default function TextRecipientsPage() {
               <Search />
             </InputGroupAddon>
             <InputGroupInput
-              placeholder="Search by name, greeting or number…"
+              placeholder={
+                privateText("number") ? "Search by name, greeting or number…" : "Search by name or greeting…"
+              }
               aria-label="Search recipients"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -511,7 +516,9 @@ export default function TextRecipientsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Greeted as</TableHead>
-                  <TableHead>Phone number</TableHead>
+                  <Private>
+                    <TableHead>Phone number</TableHead>
+                  </Private>
                   <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
@@ -529,21 +536,22 @@ export default function TextRecipientsPage() {
                     <TableCell className="text-muted-foreground">
                       {`${r.rank} ${r.surname}`.trim() || "—"}
                     </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      <Private className="font-sans">{r.phone_number}</Private>
-                    </TableCell>
+                    <Private>
+                      <TableCell className="font-mono text-sm">{r.phone_number}</TableCell>
+                    </Private>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Edit ${r.name || r.surname || "recipient"}`}
-                          // The edit form shows the number, so it waits until data is shown.
-                          disabled={privateText(r.phone_number) !== r.phone_number}
-                          onClick={() => openEdit(r)}
-                        >
-                          <Pencil />
-                        </Button>
+                        {/* The edit form shows the number, so it goes too. */}
+                        <Private>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Edit ${r.name || r.surname || "recipient"}`}
+                            onClick={() => openEdit(r)}
+                          >
+                            <Pencil />
+                          </Button>
+                        </Private>
                         <Button
                           variant="ghost"
                           size="icon-sm"
@@ -759,7 +767,8 @@ export default function TextRecipientsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Take this number off the list?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting && `${deleting.name || deleting.surname} (${privateText(deleting.phone_number)})`}{" "}
+              {deleting &&
+                `${deleting.name || deleting.surname}${privateText(deleting.phone_number) ? ` (${deleting.phone_number})` : ""}`}{" "}
               will no longer receive parade night texts.
               {deleting && deleting.source !== "extra"
                 ? " Their record stays — only the number is cleared, and they can save a new one themselves."

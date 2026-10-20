@@ -90,19 +90,21 @@ function StaffDetail() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Home className="text-muted-foreground h-4 w-4" />
-                Address
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className={user.address ? "text-sm" : "text-muted-foreground text-sm italic"}>
-                {user.address ? <Private>{user.address}</Private> : "No address recorded."}
-              </p>
-            </CardContent>
-          </Card>
+          <Private>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Home className="text-muted-foreground h-4 w-4" />
+                  Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={user.address ? "text-sm" : "text-muted-foreground text-sm italic"}>
+                  {user.address ?? "No address recorded."}
+                </p>
+              </CardContent>
+            </Card>
+          </Private>
 
           {/* The monthly counts that prefill the HTD claim — distinct from the
               full register on the Attendance tab, which is unbounded. */}

@@ -53,7 +53,8 @@ function StaffOverview() {
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
     const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
-    return !q || name.includes(q) || (u.email ?? "").toLowerCase().includes(q);
+    // A hidden email mustn't still match, or the search gives it away.
+    return !q || name.includes(q) || (privateText(u.email) ?? "").toLowerCase().includes(q);
   });
 
   return (
@@ -68,7 +69,7 @@ function StaffOverview() {
           <Search />
         </InputGroupAddon>
         <InputGroupInput
-          placeholder="Search by name or email…"
+          placeholder={privateText("email") ? "Search by name or email…" : "Search by name…"}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

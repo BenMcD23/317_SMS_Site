@@ -92,15 +92,28 @@ describe("text recipients", () => {
     expect(screen.getByRole("button", { name: "Remove Jones" })).toBeInTheDocument();
   });
 
-  it("hides every number when personal data is hidden, and holds edits until it's shown", async () => {
+  it("drops the number column, export and edit when personal data is hidden", async () => {
     act(() => setPersonalDataHidden(true));
     respond(RECIPIENTS);
     render(<TextRecipientsPage />);
     expect(await screen.findByText("Jack Brown")).toBeInTheDocument();
     expect(screen.queryByText(/0\d{10}/)).not.toBeInTheDocument();
-    expect(screen.getAllByText("Hidden")).toHaveLength(3);
-    expect(screen.getByRole("button", { name: "Edit Jack Brown" })).toBeDisabled();
+    expect(screen.queryByRole("columnheader", { name: "Phone number" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader")).toHaveLength(3);
+    // The edit form and the CSV both carry the numbers.
+    expect(screen.queryByRole("button", { name: "Edit Jack Brown" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Export CSV/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove Jones" })).toBeEnabled();
+  });
+
+  it("won't find anyone by a hidden number, which would give it away", async () => {
+    act(() => setPersonalDataHidden(true));
+    respond(RECIPIENTS);
+    render(<TextRecipientsPage />);
+    const search = await screen.findByRole("textbox", { name: "Search recipients" });
+    expect(search).toHaveAttribute("placeholder", "Search by name or greeting…");
+    await userEvent.type(search, "07700 900019");
+    expect(screen.queryByText("Jack Brown")).not.toBeInTheDocument();
   });
 
   it("shows the empty state, not a search box, when the list fails to load", async () => {
