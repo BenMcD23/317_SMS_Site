@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const SESSION = { data: { id_token: "tok", role: "staff" }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import TextRecipientsPage from "@/app/texts/recipients/page";
+import { setPersonalDataHidden } from "@/lib/privacy";
+
+afterEach(() => window.localStorage.clear());
 
 const RECIPIENTS = [
   {
@@ -87,6 +90,17 @@ describe("text recipients", () => {
     expect(await screen.findByRole("button", { name: "Edit Jack Brown" })).toBeInTheDocument();
     // No account, so no full name — the surname still tells the rows apart.
     expect(screen.getByRole("button", { name: "Remove Jones" })).toBeInTheDocument();
+  });
+
+  it("hides every number when personal data is hidden, and holds edits until it's shown", async () => {
+    act(() => setPersonalDataHidden(true));
+    respond(RECIPIENTS);
+    render(<TextRecipientsPage />);
+    expect(await screen.findByText("Jack Brown")).toBeInTheDocument();
+    expect(screen.queryByText(/0\d{10}/)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Hidden")).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Edit Jack Brown" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove Jones" })).toBeEnabled();
   });
 
   it("shows the empty state, not a search box, when the list fails to load", async () => {

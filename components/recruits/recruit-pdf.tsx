@@ -6,6 +6,7 @@ import { Download, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorAlert } from "@/components/error-alert";
+import { usePersonalDataHidden } from "@/lib/privacy";
 import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { saveResponseAsFile } from "@/lib/download";
 import { recruitPdfPath, type PdfForm } from "@/lib/recruits";
@@ -21,6 +22,7 @@ export function RecruitPdf({ id, form, fileLabel }: { id: number; form: PdfForm;
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [personalHidden] = usePersonalDataHidden();
 
   useEffect(() => {
     if (!token) return;
@@ -28,8 +30,11 @@ export function RecruitPdf({ id, form, fileLabel }: { id: number; form: PdfForm;
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch(recruitPdfPath(id, form), { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't load the PDF.");
+        const res = await apiFetch(recruitPdfPath(id, form), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok)
+          throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't load the PDF.");
         objectUrl = URL.createObjectURL(await res.blob());
         if (!cancelled) setUrl(objectUrl);
       } catch (e) {
@@ -46,7 +51,8 @@ export function RecruitPdf({ id, form, fileLabel }: { id: number; form: PdfForm;
     setSaving(true);
     try {
       const res = await apiFetch(recruitPdfPath(id, form), { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't download the PDF.");
+      if (!res.ok)
+        throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't download the PDF.");
       await saveResponseAsFile(res, `${fileLabel}.pdf`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't download the PDF.");
@@ -65,8 +71,18 @@ export function RecruitPdf({ id, form, fileLabel }: { id: number; form: PdfForm;
           {saving ? "Downloading…" : "Download PDF"}
         </Button>
       </div>
-      {url ? (
-        <iframe src={url} className="w-full rounded-lg border" style={{ height: "min(900px, 75vh)" }} title={fileLabel} />
+      {/* A drawn PDF can't be masked field by field, so it isn't shown at all. */}
+      {personalHidden ? (
+        <p className="text-muted-foreground py-8 text-sm italic">
+          The form is hidden while personal data is hidden. Download it, or show personal data to preview it.
+        </p>
+      ) : url ? (
+        <iframe
+          src={url}
+          className="w-full rounded-lg border"
+          style={{ height: "min(900px, 75vh)" }}
+          title={fileLabel}
+        />
       ) : (
         <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
           <Loader2 className="size-4 animate-spin" /> Drawing the form…

@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { CadetMultiPicker } from "@/components/cadet-multi-picker";
+import { Private } from "@/components/private";
 import { cn } from "@/lib/utils";
 import { classificationBadgeClass } from "@/lib/cadet-format";
 import { API_BASE } from "@/lib/config";
@@ -552,33 +553,37 @@ function AuditResultsTable({
                 })}
                 {includeMedical && (
                   <TableCell>
-                    {r.allergies && r.allergies.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {r.allergies.map((a, i) => (
-                          <Badge key={i} variant="destructive" className="text-xs">
-                            {a.allergy_name}
-                            {a.auto_injector === "Yes" ? " (EpiPen)" : ""}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">None</span>
-                    )}
+                    <Private>
+                      {r.allergies && r.allergies.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {r.allergies.map((a, i) => (
+                            <Badge key={i} variant="destructive" className="text-xs">
+                              {a.allergy_name}
+                              {a.auto_injector === "Yes" ? " (EpiPen)" : ""}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">None</span>
+                      )}
+                    </Private>
                   </TableCell>
                 )}
                 {includeDietary && (
                   <TableCell>
-                    {r.dietary && r.dietary.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {r.dietary.map((d, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {d.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">None</span>
-                    )}
+                    <Private>
+                      {r.dietary && r.dietary.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {r.dietary.map((d, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {d.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">None</span>
+                      )}
+                    </Private>
                   </TableCell>
                 )}
                 {includeMissingAttachments && (

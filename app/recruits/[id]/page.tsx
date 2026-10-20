@@ -12,6 +12,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
+import { usePrivateText } from "@/components/private";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,7 +32,8 @@ import {
 import { useApiQuery } from "@/lib/use-api-query";
 
 function expiryText(r: RecruitDetail): string {
-  if (r.expired) return `The link expired on ${formatDate(r.expiresAt)}. Extend it to let the parent carry on.`;
+  if (r.expired)
+    return `The link expired on ${formatDate(r.expiresAt)}. Extend it to let the parent carry on.`;
   const days = daysLeft(r.expiresAt);
   const when = days < 1 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
   return `The link expires ${when} (${formatDate(r.expiresAt)}). Their answers so far are kept either way.`;
@@ -40,6 +42,7 @@ function expiryText(r: RecruitDetail): string {
 export default function RecruitPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const privateText = usePrivateText();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const token = session?.id_token ?? "";
@@ -47,11 +50,14 @@ export default function RecruitPage() {
   const [busy, setBusy] = useState(false);
 
   // The parent may be filling it in right now; a light poll keeps progress current.
-  const { data: recruit, isLoading, error, refetch } = useApiQuery<RecruitDetail>(
-    ["recruits", id],
-    `/recruits/${id}`,
-    { refetchInterval: (q) => (q.state.data?.submittedAt ? false : 30_000) }
-  );
+  const {
+    data: recruit,
+    isLoading,
+    error,
+    refetch,
+  } = useApiQuery<RecruitDetail>(["recruits", id], `/recruits/${id}`, {
+    refetchInterval: (q) => (q.state.data?.submittedAt ? false : 30_000),
+  });
 
   async function copyLink() {
     if (!recruit) return;
@@ -143,7 +149,7 @@ export default function RecruitPage() {
             <RecruitStatusBadge recruit={recruit} />
           </span>
         }
-        description={`Parent: ${recruit.parentName} · ${recruit.parentEmail}`}
+        description={`Parent: ${recruit.parentName} · ${privateText(recruit.parentEmail)}`}
         actions={
           <>
             {submitted && (

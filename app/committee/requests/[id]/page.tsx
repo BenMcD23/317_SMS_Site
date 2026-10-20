@@ -46,6 +46,7 @@ import {
   formatDateTime,
 } from "@/lib/committee";
 import { ErrorAlert } from "@/components/error-alert";
+import { usePrivateText } from "@/components/private";
 
 const RECEIPT_ACCEPT = "image/png,image/jpeg,application/pdf";
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -546,6 +547,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
 }
 
 function TimelineRow({ label, who, when }: { label: string; who: string | null; when: string | null }) {
+  const privateText = usePrivateText();
   const done = !!when;
   return (
     <div className="flex items-baseline justify-between gap-3">
@@ -554,7 +556,7 @@ function TimelineRow({ label, who, when }: { label: string; who: string | null; 
         {done ? (
           <>
             {formatDateTime(when)}
-            {who ? ` · ${who}` : ""}
+            {who ? ` · ${privateText(who)}` : ""}
           </>
         ) : (
           "—"

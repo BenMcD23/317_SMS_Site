@@ -15,6 +15,8 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { AttendanceCard } from "@/components/attendance-card";
 import { cn } from "@/lib/utils";
+import { usePersonalDataHidden } from "@/lib/privacy";
+import { Private } from "@/components/private";
 import { formatDate, timeSince } from "@/lib/format";
 import {
   Loader2,
@@ -122,6 +124,7 @@ function EditableField({
   const [draft, setDraft] = useState(value ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [personalHidden] = usePersonalDataHidden();
 
   const handleSave = async () => {
     setSaving(true);
@@ -148,7 +151,11 @@ function EditableField({
         {Icon && <Icon className="h-3 w-3" />}
         {label}
       </p>
-      {editing ? (
+      {/* Editing would put the value back on screen, so it waits until the
+          data is shown again. */}
+      {personalHidden && value ? (
+        <Private className="text-sm">{value}</Private>
+      ) : editing ? (
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <Input
@@ -221,7 +228,7 @@ function StatPill({
   variant = "default",
 }: {
   label: string;
-  value: string | number;
+  value: React.ReactNode;
   variant?: "default" | "success" | "muted";
 }) {
   return (
@@ -416,7 +423,7 @@ export default function CadetOverviewPage() {
           value={passedAssessments}
           variant={passedAssessments > 0 ? "success" : "muted"}
         />
-        {cadetAge !== null && <StatPill label="Age" value={cadetAge} />}
+        {cadetAge !== null && <StatPill label="Age" value={<Private>{cadetAge}</Private>} />}
       </div>
 
       <Tabs defaultValue={initialTab}>
@@ -462,9 +469,13 @@ export default function CadetOverviewPage() {
                   <Calendar className="h-3 w-3" /> Date of Birth
                 </p>
                 <span className="text-sm font-medium">
-                  {cadet.date_of_birth
-                    ? `${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`
-                    : "—"}
+                  {cadet.date_of_birth ? (
+                    <Private>
+                      {`${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`}
+                    </Private>
+                  ) : (
+                    "—"
+                  )}
                 </span>
               </div>
               <div>

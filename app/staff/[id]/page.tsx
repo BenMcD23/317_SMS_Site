@@ -11,6 +11,7 @@ import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 import { AttendanceCard } from "@/components/attendance-card";
 import { Home, CalendarRange } from "lucide-react";
 import { OcOnly } from "@/components/oc/oc-access-required";
+import { Private, usePrivateText } from "@/components/private";
 
 type StaffMember = {
   cin: number;
@@ -42,6 +43,7 @@ export default function StaffDetailPage() {
 
 function StaffDetail() {
   const { id } = useParams<{ id: string }>();
+  const privateText = usePrivateText();
   const [user, setUser] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +71,9 @@ function StaffDetail() {
   if (error) return <ErrorAlert message={error} title="Could not load staff member" />;
   if (!user) return <p className="text-muted-foreground text-sm">Staff member not found.</p>;
 
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || `CIN ${user.cin}`;
-  const description = [user.rank, user.email, user.phoneNumber, `CIN ${user.cin}`]
+  const name =
+    [user.firstName, user.lastName].filter(Boolean).join(" ") || privateText(user.email) || `CIN ${user.cin}`;
+  const description = [user.rank, privateText(user.email), privateText(user.phoneNumber), `CIN ${user.cin}`]
     .filter(Boolean)
     .join(" · ");
   const htdMonths = Object.entries(user.attendance ?? {}).sort(([a], [b]) => a.localeCompare(b));
@@ -96,7 +99,7 @@ function StaffDetail() {
             </CardHeader>
             <CardContent>
               <p className={user.address ? "text-sm" : "text-muted-foreground text-sm italic"}>
-                {user.address ?? "No address recorded."}
+                {user.address ? <Private>{user.address}</Private> : "No address recorded."}
               </p>
             </CardContent>
           </Card>

@@ -12,6 +12,7 @@
 //   --size WxH              any other viewport
 //   --full                  whole scrolling page, not just the first screen
 //   --theme light|dark      force a theme (default: the app's own, dark)
+//   --hide-personal         turn on "Hide personal data" first
 //   --out DIR               where the PNGs go (default .preview/shots)
 //   --base URL              site URL (default http://localhost:3000)
 //
@@ -34,7 +35,15 @@ function loadPlaywright() {
 }
 
 function parseArgs(argv) {
-  const opts = { role: "staff", width: 1440, height: 900, full: false, theme: null, paths: [] };
+  const opts = {
+    role: "staff",
+    width: 1440,
+    height: 900,
+    full: false,
+    theme: null,
+    hidePersonal: false,
+    paths: [],
+  };
   opts.out = path.join(process.cwd(), ".preview", "shots");
   opts.base = "http://localhost:3000";
   for (let i = 0; i < argv.length; i++) {
@@ -44,6 +53,7 @@ function parseArgs(argv) {
     else if (arg === "--size") [opts.width, opts.height] = argv[++i].split("x").map(Number);
     else if (arg === "--full") opts.full = true;
     else if (arg === "--theme") opts.theme = argv[++i];
+    else if (arg === "--hide-personal") opts.hidePersonal = true;
     else if (arg === "--out") opts.out = path.resolve(argv[++i]);
     else if (arg === "--base") opts.base = argv[++i].replace(/\/$/, "");
     else if (arg.startsWith("--")) throw new Error(`unknown option ${arg}`);
@@ -65,6 +75,8 @@ const context = await browser.newContext({
 });
 // next-themes reads its choice from localStorage before first paint.
 if (opts.theme) await context.addInitScript((t) => localStorage.setItem("theme", t), opts.theme);
+// Same key lib/privacy.ts reads.
+if (opts.hidePersonal) await context.addInitScript(() => localStorage.setItem("sms.privacy.hide", "1"));
 const page = await context.newPage();
 
 // The dev sign-in buttons only exist with AUTH_DEV_BYPASS=1 in .env.local.

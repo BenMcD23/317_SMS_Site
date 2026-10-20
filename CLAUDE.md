@@ -51,6 +51,10 @@ block, stop and extract it instead.
   animates open with motion.
 - **Figures** go in a `StatGroup` of `Stat`s (one strip, hairline dividers),
   not a grid of boxed tiles; `DividedGrid` is the same frame for link lists.
+- **Personal data** (email, phone, date of birth or age, address, medical,
+  bank details, JPA number) is wrapped in `<Private>` or passed through
+  `usePrivateText()` (`components/private.tsx`), so the header's "Hide personal
+  data" switch masks it. Names, ranks and CINs stay visible.
 - **Badge names** come from `badgeLabel(key)` (`lib/stats.ts`), never a raw
   key. **Flight colours** are the chart hues, never the status colours.
 
