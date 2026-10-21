@@ -247,20 +247,24 @@ function LeavingDialogBody({
 
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-medium">1. Leaver query to the parents</h3>
-        {cadet.parentEmails.length === 0 ? (
-          <p className="text-warning text-xs">
-            No parent email on file — add one under &ldquo;Parent emails&rdquo; on this dashboard.
-          </p>
-        ) : (
-          <p className="text-muted-foreground bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
-            <Private>{bcc}</Private>
-          </p>
-        )}
+        <Private>
+          {cadet.parentEmails.length === 0 ? (
+            <p className="text-warning text-xs">
+              No parent email on file — add one under &ldquo;Parent emails&rdquo; on this dashboard.
+            </p>
+          ) : (
+            <p className="text-muted-foreground bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
+              {bcc}
+            </p>
+          )}
+        </Private>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={!bcc} onClick={() => copy(bcc, "parent emails")}>
-            <Copy data-icon="inline-start" />
-            Copy parent emails
-          </Button>
+          <Private>
+            <Button size="sm" variant="outline" disabled={!bcc} onClick={() => copy(bcc, "parent emails")}>
+              <Copy data-icon="inline-start" />
+              Copy parent emails
+            </Button>
+          </Private>
           <Button
             size="sm"
             variant="outline"

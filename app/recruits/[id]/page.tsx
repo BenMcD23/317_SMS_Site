@@ -13,6 +13,7 @@ import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePrivateText } from "@/components/private";
+import { usePersonalDataHidden } from "@/lib/privacy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,6 +44,8 @@ export default function RecruitPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const privateText = usePrivateText();
+  // The filled forms are personal data from top to bottom, so they go with it.
+  const [personalHidden] = usePersonalDataHidden();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
   const token = session?.id_token ?? "";
@@ -149,7 +152,7 @@ export default function RecruitPage() {
             <RecruitStatusBadge recruit={recruit} />
           </span>
         }
-        description={`Parent: ${recruit.parentName} · ${privateText(recruit.parentEmail)}`}
+        description={`Parent: ${[recruit.parentName, privateText(recruit.parentEmail)].filter(Boolean).join(" · ")}`}
         actions={
           <>
             {submitted && (
@@ -213,21 +216,23 @@ export default function RecruitPage() {
         </dl>
       </section>
 
-      <Tabs defaultValue={submitted ? "3822A" : "answers"}>
+      <Tabs defaultValue={submitted && !personalHidden ? "3822A" : "answers"}>
         <TabsList>
           <TabsTrigger value="answers">Answers</TabsTrigger>
-          {submitted && <TabsTrigger value="3822A">3822A consent</TabsTrigger>}
-          {submitted && recruit.hasHealthDeclaration && <TabsTrigger value="3822H">3822H health</TabsTrigger>}
+          {submitted && !personalHidden && <TabsTrigger value="3822A">3822A consent</TabsTrigger>}
+          {submitted && !personalHidden && recruit.hasHealthDeclaration && (
+            <TabsTrigger value="3822H">3822H health</TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="answers" className="pt-4">
           <RecruitAnswers recruit={recruit} />
         </TabsContent>
-        {submitted && (
+        {submitted && !personalHidden && (
           <TabsContent value="3822A" className="pt-4">
             <RecruitPdf id={recruit.id} form="3822A" fileLabel={`3822A ${name}`} />
           </TabsContent>
         )}
-        {submitted && recruit.hasHealthDeclaration && (
+        {submitted && !personalHidden && recruit.hasHealthDeclaration && (
           <TabsContent value="3822H" className="pt-4">
             <RecruitPdf id={recruit.id} form="3822H" fileLabel={`3822H ${name}`} />
           </TabsContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Private } from "@/components/private";
+import { usePersonalDataHidden } from "@/lib/privacy";
 import { SectionHeading } from "@/components/section-heading";
 import { formatDate } from "@/lib/format";
 import type { Option, Person, RecruitDetail } from "@/lib/recruits";
@@ -11,7 +11,7 @@ import type { Option, Person, RecruitDetail } from "@/lib/recruits";
  * and after, beside the PDFs. Labels come from the API's option lists.
  */
 
-// `personal` rows are masked by "Hide personal data"; names stay visible.
+// `personal` rows are removed by "Hide personal data"; names stay.
 type Row = [label: string, value: React.ReactNode, personal?: boolean];
 
 const yesNo = (v: unknown) => (v === true ? "Yes" : v === false ? "No" : null);
@@ -47,18 +47,27 @@ function personRows(p: Person): Row[] {
   ];
 }
 
-/** `personal` masks every row, for sections that are personal throughout (medical). */
+/** `personal` marks a section that is personal throughout (medical), removed whole. */
 function Section({ title, rows, personal = false }: { title: string; rows: Row[]; personal?: boolean }) {
-  const shown = rows.filter(([, v]) => v !== null && v !== undefined && v !== "");
+  const [hidden] = usePersonalDataHidden();
+  const filled = rows.filter(([, v]) => v !== null && v !== undefined && v !== "");
+  const shown = hidden ? filled.filter(([, , rowPersonal]) => !rowPersonal) : filled;
+  // While hidden, a section with nothing left goes entirely: "Nothing filled in
+  // yet" under a heading would be untrue, and says something was there.
+  if (
+    hidden &&
+    (personal || rows.every(([, , rowPersonal]) => rowPersonal) || (filled.length && !shown.length))
+  )
+    return null;
   return (
     <section className="flex flex-col gap-2">
       <SectionHeading title={title} />
       {shown.length ? (
         <dl className="divide-y rounded-lg border text-sm">
-          {shown.map(([k, v, rowPersonal]) => (
+          {shown.map(([k, v]) => (
             <div key={k} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[14rem_1fr] sm:gap-4">
               <dt className="text-muted-foreground">{k}</dt>
-              <dd className="min-w-0 break-words">{personal || rowPersonal ? <Private>{v}</Private> : v}</dd>
+              <dd className="min-w-0 break-words">{v}</dd>
             </div>
           ))}
         </dl>

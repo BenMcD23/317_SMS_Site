@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorAlert } from "@/components/error-alert";
-import { usePrivateText } from "@/components/private";
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
 import { copyText } from "@/lib/clipboard";
@@ -30,7 +29,6 @@ export const PARENT_EMAILS_KEY = ["oc-parent-emails"] as const;
  */
 export function ParentEmailsCard() {
   const [editing, setEditing] = useState(false);
-  const privateText = usePrivateText();
   const { data, isLoading, error } = useApiQuery<ParentEmailsResponse>(
     PARENT_EMAILS_KEY,
     "/oc/parent-emails"
@@ -69,7 +67,7 @@ export function ParentEmailsCard() {
             <Textarea
               readOnly
               aria-label="Parent emails, separated by semicolons"
-              value={privateText(data.bcc) ?? ""}
+              value={data.bcc}
               placeholder="No parent emails on file yet — use “Edit emails” to add them."
               className="max-h-40 min-h-24 font-mono text-xs"
               onFocus={(e) => e.currentTarget.select()}
@@ -79,13 +77,7 @@ export function ParentEmailsCard() {
                 <Copy data-icon="inline-start" />
                 Copy all
               </Button>
-              {/* Copying keeps working while hidden (nothing shows on screen);
-                  the edit dialog would put every address back up, so it waits. */}
-              <Button
-                variant="outline"
-                onClick={() => setEditing(true)}
-                disabled={privateText(data.bcc) !== data.bcc}
-              >
+              <Button variant="outline" onClick={() => setEditing(true)}>
                 <Pencil data-icon="inline-start" />
                 Edit emails
               </Button>

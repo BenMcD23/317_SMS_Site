@@ -189,7 +189,10 @@ export default function UsagePage() {
           <Tabs defaultValue="endpoints">
             <TabsList>
               <TabsTrigger value="endpoints">Endpoints ({usage.routes.length})</TabsTrigger>
-              <TabsTrigger value="people">People ({usage.users.length})</TabsTrigger>
+              {/* People are listed by email alone, so the tab goes while personal data is hidden. */}
+              <Private>
+                <TabsTrigger value="people">People ({usage.users.length})</TabsTrigger>
+              </Private>
               <TabsTrigger value="unused">Unused ({usage.unused.length})</TabsTrigger>
             </TabsList>
 
@@ -233,42 +236,42 @@ export default function UsagePage() {
               )}
             </TabsContent>
 
-            <TabsContent value="people">
-              {users.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-sm">
-                  No one signed in has used the API in this window.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Person</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead className="text-right">Calls</TableHead>
-                      <TableHead className="text-right">Endpoints</TableHead>
-                      <TableHead>Last seen</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((u) => (
-                      <TableRow key={u.email}>
-                        <TableCell>
-                          <Private>{u.email}</Private>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{u.role}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{u.calls}</TableCell>
-                        <TableCell className="text-right tabular-nums">{u.routes}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {formatTimestamp(u.last_used)}
-                        </TableCell>
+            <Private>
+              <TabsContent value="people">
+                {users.length === 0 ? (
+                  <p className="text-muted-foreground py-4 text-sm">
+                    No one signed in has used the API in this window.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Person</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Calls</TableHead>
+                        <TableHead className="text-right">Endpoints</TableHead>
+                        <TableHead>Last seen</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((u) => (
+                        <TableRow key={u.email}>
+                          <TableCell>{u.email}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{u.role}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{u.calls}</TableCell>
+                          <TableCell className="text-right tabular-nums">{u.routes}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {formatTimestamp(u.last_used)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </TabsContent>
+            </Private>
 
             <TabsContent value="unused">
               {unused.length === 0 ? (

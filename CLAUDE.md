@@ -54,7 +54,8 @@ block, stop and extract it instead.
 - **Personal data** (email, phone, date of birth or age, address, medical,
   bank details, JPA number) is wrapped in `<Private>` or passed through
   `usePrivateText()` (`components/private.tsx`), so the "Hide personal data"
-  switch (Settings, staff only) masks it. Names, ranks and CINs stay visible.
+  switch (Settings, staff only) removes it. Nothing is left in its place, so
+  wrap the label, column or section with the value. Names, ranks and CINs stay.
   SNCOs and NCOs are never sent anyone else's: the API strips it.
 - **Badge names** come from `badgeLabel(key)` (`lib/stats.ts`), never a raw
   key. **Flight colours** are the chart hues, never the status colours.

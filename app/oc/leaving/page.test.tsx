@@ -24,6 +24,7 @@ async function renderPage() {
 }
 
 afterEach(() => {
+  window.localStorage.clear();
   session.current = {
     ...session.current,
     data: { ...session.current.data, user: { email: "oc@317atc.co.uk" } },
@@ -38,6 +39,19 @@ describe("OC leaving process page", () => {
     await renderPage();
     expect(screen.getByRole("heading", { name: "Leaving process" })).toBeTruthy();
     expect(screen.queryByText("OC access required")).toBeNull();
+  });
+
+  it("drops the parent emails card while personal data is hidden", async () => {
+    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
+    window.localStorage.setItem("sms.privacy.hide", "1");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify({}), { status: 200 })))
+    );
+    await renderPage();
+    expect(screen.getByRole("heading", { name: "Leaving process" })).toBeTruthy();
+    expect(screen.queryByText(/Parent emails/)).toBeNull();
+    expect(screen.queryByText(/parent emails to BCC/)).toBeNull();
   });
 
   it("turns away other staff without asking the API", async () => {
