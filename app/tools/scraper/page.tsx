@@ -36,7 +36,6 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { VpSyncCard } from "@/components/vp-sync-card";
 import { LEAVING_KEY } from "@/components/oc/leaving-process-card";
-import { PARENT_EMAILS_KEY } from "@/components/oc/parent-emails-card";
 
 const SCRAPER_TOOLS = [
   {
@@ -78,7 +77,7 @@ const SCRAPER_TOOLS = [
 // [] — add their keys here if/when those pages move to useApiQuery.
 const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
   // cadet info + qualifications → list & dashboard; NoK emails → OC parent list
-  "cadet-quali": [["cadets"], ["stats"], PARENT_EMAILS_KEY, LEAVING_KEY],
+  "cadet-quali": [["cadets"], ["stats"], LEAVING_KEY],
   "cadet-event": [], // attendance + 317 event metadata (uncached)
   medical: [], // allergies/dietary on cadet detail (uncached)
   staff: [["staff", "users"]], // staff roster → staff overview/detail
