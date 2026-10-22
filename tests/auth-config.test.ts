@@ -76,6 +76,15 @@ describe("config", () => {
     expect(devConfig.providers).toHaveLength(2);
   });
 
+  it("ignores AUTH_DEV_BYPASS on a production build", async () => {
+    vi.stubEnv("AUTH_DEV_BYPASS", "1");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+    const { authConfig: prodConfig, devBypassEnabled } = await import("@/auth.config");
+    expect(devBypassEnabled()).toBe(false);
+    expect(prodConfig.providers).toHaveLength(1);
+  });
+
   it("dev accounts match the API's _dev_fake_email", () => {
     expect(DEV_USERS.staff.email).toBe("ci.mcdonald@317atc.co.uk");
     expect(DEV_USERS.snco.email).toBe("dev.snco@317atc.co.uk");
