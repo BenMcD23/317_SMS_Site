@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { keepPreviousData } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useApiQuery } from "@/lib/use-api-query";
-import { isOc } from "@/lib/config";
+import { apiRequest } from "@/lib/api-fetch";
+import { API_BASE, isOc } from "@/lib/config";
+import { normaliseLayout, OC_SECTION_TITLES, type OcLayout, type OcSection } from "@/lib/oc-layout";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ShieldAlert, GraduationCap, Clock } from "lucide-react";
+import { ShieldAlert, GraduationCap, Clock, Check, LayoutList, Printer, RotateCcw } from "lucide-react";
 import {
   type CommitteeRequestSummary,
   type CommitteeRequestStatus,
@@ -29,6 +32,9 @@ import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/section-heading";
 import { Stat, StatGroup } from "@/components/stat";
 import { OcAccessRequired } from "@/components/oc/oc-access-required";
+import { SectionArranger } from "@/components/section-arranger";
+
+const LAYOUT_KEY = ["oc-dashboard", "layout"] as const;
 
 interface StaffAttendance {
   cin: number;
@@ -232,8 +238,47 @@ export default function OcDashboardPage() {
   const { data: committee } = useApiQuery<CommitteeList>(["committee-requests"], "/committee-requests", {
     enabled: allowed,
   });
+  const { data: layout, isLoading: layoutLoading } = useApiQuery<OcLayout>(
+    LAYOUT_KEY,
+    "/oc/dashboard/layout",
+    {
+      enabled: allowed,
+    }
+  );
+  const queryClient = useQueryClient();
+  const [arranging, setArranging] = useState(false);
+  // Counts saves so only the latest one's answer is applied: two quick moves
+  // can come back out of order, and the older reply mustn't undo the newer.
+  const saveSeq = useRef(0);
 
   if (!allowed) return <OcAccessRequired />;
+
+  // A failed layout read falls back to the default order rather than hiding
+  // the dashboard: the order is a preference, the numbers are the point.
+  const order = normaliseLayout(layout?.sections);
+
+  // Saved on every move, shown straight away, and put back if the save fails
+  // so the screen never shows an order the next visit (or the printout) won't.
+  const saveLayout = async (next: OcSection[] | null) => {
+    const token = session?.id_token;
+    if (!token) return;
+    const seq = ++saveSeq.current;
+    const previous = queryClient.getQueryData<OcLayout>(LAYOUT_KEY);
+    if (next) queryClient.setQueryData<OcLayout>(LAYOUT_KEY, { sections: next, customised: true });
+    try {
+      const saved = await apiRequest<OcLayout>(
+        token,
+        `${API_BASE}/oc/dashboard/layout`,
+        next ? { method: "PUT", body: { sections: next } } : { method: "DELETE" },
+        "Couldn't save the layout."
+      );
+      if (seq === saveSeq.current) queryClient.setQueryData<OcLayout>(LAYOUT_KEY, saved);
+      if (!next) toast.success("Layout reset");
+    } catch (e) {
+      if (seq === saveSeq.current) queryClient.setQueryData<OcLayout>(LAYOUT_KEY, previous);
+      toast.error(e instanceof Error ? e.message : "Couldn't save the layout.");
+    }
+  };
 
   // Committee request status counts + the ones needing OC action.
   const requests = committee?.requests ?? [];
@@ -290,15 +335,13 @@ export default function OcDashboardPage() {
     })
     .sort((a, b) => b.held - a.held);
 
-  return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-      <PageHeader title="OC Dashboard" description="Squadron oversight at a glance" />
-
+  const sections: Record<OcSection, React.ReactNode> = {
+    committee: (
       <section className="flex flex-col gap-3">
         <SectionHeading
           title="Committee Requests"
           actions={
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm" className="no-print">
               <Link href="/committee/requests">View all</Link>
             </Button>
           }
@@ -357,7 +400,8 @@ export default function OcDashboardPage() {
           </div>
         )}
       </section>
-
+    ),
+    strength: (
       <section className="flex flex-col gap-3">
         <SectionHeading title="Strength & Attendance" />
         {isLoading ? (
@@ -414,7 +458,8 @@ export default function OcDashboardPage() {
           </>
         )}
       </section>
-
+    ),
+    qualifications: (
       <section className="flex flex-col gap-3">
         <SectionHeading
           title="Qualifications"
@@ -554,7 +599,8 @@ export default function OcDashboardPage() {
           </CardContent>
         </Card>
       </section>
-
+    ),
+    pipeline: (
       <section className="flex flex-col gap-3">
         <SectionHeading title="In the Pipeline" />
         <div className="grid gap-4 lg:grid-cols-2">
@@ -570,6 +616,76 @@ export default function OcDashboardPage() {
           />
         </div>
       </section>
+    ),
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 pb-16">
+      <PageHeader
+        title="OC Dashboard"
+        description="Squadron oversight at a glance"
+        actions={
+          <div className="no-print flex flex-wrap items-center gap-2">
+            {arranging ? (
+              <>
+                {layout?.customised && (
+                  <Button variant="ghost" size="sm" onClick={() => saveLayout(null)}>
+                    <RotateCcw />
+                    Reset layout
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => setArranging(false)}>
+                  <Check />
+                  Done
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={layoutLoading}
+                  onClick={() => setArranging(true)}
+                >
+                  <LayoutList />
+                  Arrange sections
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => window.print()}>
+                  <Printer />
+                  Print / PDF
+                </Button>
+              </>
+            )}
+          </div>
+        }
+      />
+      {/* Only rendered on paper: gives the printout a heading and date. The
+          sections below print in the OC's saved order, as on screen. */}
+      <div className="print-only mb-2">
+        <h1 className="text-xl font-semibold">317 Squadron — OC Dashboard</h1>
+        <p className="text-muted-foreground text-sm">Printed {formatDate(new Date().toISOString())}</p>
+      </div>
+
+      {arranging ? (
+        <section className="flex flex-col gap-3">
+          <SectionHeading
+            title="Arrange sections"
+            description="Drag a section by its handle, or use the arrows. Each move is saved, and printing follows the same order."
+          />
+          <SectionArranger
+            label="OC dashboard sections"
+            items={order.map((id) => ({ id, title: OC_SECTION_TITLES[id] }))}
+            onChange={(ids) => saveLayout(normaliseLayout(ids))}
+          />
+        </section>
+      ) : layoutLoading ? (
+        <div className="flex flex-col gap-4" aria-busy>
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : (
+        order.map((id) => <Fragment key={id}>{sections[id]}</Fragment>)
+      )}
     </div>
   );
 }
