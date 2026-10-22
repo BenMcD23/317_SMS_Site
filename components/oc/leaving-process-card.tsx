@@ -250,7 +250,8 @@ function LeavingDialogBody({
         <Private>
           {cadet.parentEmails.length === 0 ? (
             <p className="text-warning text-xs">
-              No parent email on file — add one under &ldquo;Parent emails&rdquo; on this dashboard.
+              No parent email on file. Add one to their next of kin on Bader and run the Cadet Records
+              Scraper, or add it under &ldquo;Parent emails&rdquo; on this page.
             </p>
           ) : (
             <p className="text-muted-foreground bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
