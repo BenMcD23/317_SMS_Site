@@ -203,3 +203,25 @@
 .recharts-wrapper:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* The custom OC dashboard's grid (react-grid-layout). Its stylesheet ships a
+   red drop placeholder and resize handles that only appear on hover; here the
+   placeholder is the primary tint and, while editing, the handle is always
+   shown, since a phone or tablet has no hover. */
+.custom-dashboard-grid .react-grid-item.react-grid-placeholder {
+  background: var(--primary);
+  opacity: 0.12;
+  border-radius: var(--radius);
+}
+.custom-dashboard-grid .is-editing .react-grid-item > .react-resizable-handle {
+  opacity: 1;
+  width: 24px;
+  height: 24px;
+}
+.custom-dashboard-grid .react-grid-item > .react-resizable-handle::after {
+  right: 6px;
+  bottom: 6px;
+  width: 8px;
+  height: 8px;
+  border-color: var(--muted-foreground);
+}
