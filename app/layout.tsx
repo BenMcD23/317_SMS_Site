@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -21,6 +21,20 @@ const uiMono = Atkinson_Hyperlegible_Mono({
 export const metadata: Metadata = {
   title: "317 SMS",
   description: "317 Squadron management system",
+  // iOS reads these instead of the manifest: open full-screen from the Home
+  // Screen, with the status bar over the app's own (dark) header.
+  appleWebApp: { capable: true, title: "317 SMS", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  // The browser chrome and the installed app's title bar match the page.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f9fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#070c16" },
+  ],
+  // Lets the page draw under a phone's notch and home bar; the tab bar pads
+  // itself back out with env(safe-area-inset-bottom).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

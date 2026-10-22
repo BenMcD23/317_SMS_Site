@@ -30,11 +30,20 @@ describe("middleware proxy", () => {
     expect(await res.text()).toBe("body");
   });
 
-  it("runs on pages but never on API routes, Next internals or images", async () => {
+  it("runs on pages but never on API routes, Next internals, images or the app's install files", async () => {
     const { config } = await import("@/proxy");
     const matcher = new RegExp(`^${config.matcher[0]}$`);
     // "/api-keys" is no page today — it pins that only "/api/" is excluded, not every "api" prefix.
-    for (const path of ["/", "/cadets", "/usage", "/api-keys", "/stores/uniform/stock"])
+    // "/sw.js.map"-style lookalikes and pages that merely start "/offline" stay guarded.
+    for (const path of [
+      "/",
+      "/cadets",
+      "/usage",
+      "/api-keys",
+      "/stores/uniform/stock",
+      "/offline",
+      "/sw.jsx",
+    ])
       expect(matcher.test(path)).toBe(true);
     for (const path of [
       "/api/status",
@@ -42,6 +51,12 @@ describe("middleware proxy", () => {
       "/_next/static/x.js",
       "/favicon.ico",
       "/logo.png",
+      // Fetched by the browser without the session: behind the login redirect
+      // the app couldn't install, take notifications or show its offline page.
+      "/sw.js",
+      "/manifest.webmanifest",
+      "/offline.html",
+      "/icons/icon-192.png",
     ]) {
       expect(matcher.test(path)).toBe(false);
     }

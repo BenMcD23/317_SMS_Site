@@ -42,5 +42,9 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
 export const config = {
   // Note: `api/` (with slash) so real /api/* routes (NextAuth) are excluded,
   // but a page whose path merely starts with "api" (say /api-keys) is still covered by the auth middleware.
-  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)"],
+  // The service worker, manifest and offline page are fetched by the browser
+  // itself, without the session; behind the login redirect they'd never load.
+  matcher: [
+    "/((?!api/|_next/static|_next/image|favicon.ico|sw\\.js$|manifest\\.webmanifest$|offline\\.html$|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
+  ],
 };

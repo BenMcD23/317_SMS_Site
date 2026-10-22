@@ -23,7 +23,8 @@ export function HeaderBreadcrumbs() {
 
   return (
     <>
-      <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
+      {/* Divides the trail from the sidebar button, which a phone doesn't show. */}
+      <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4 max-md:hidden" />
       <Breadcrumb>
         <BreadcrumbList className="text-sm">
           {crumbs.map((crumb, i) => {

@@ -16,6 +16,7 @@ import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { SectionHeading } from "@/components/section-heading";
 import { PersonalDataSetting } from "@/components/private";
+import { NotificationSettings } from "@/components/notification-settings";
 import { usePersonalDataHidden } from "@/lib/privacy";
 
 export default function SettingsPage() {
@@ -374,7 +375,7 @@ export default function SettingsPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 pb-16">
       <PageHeader
         title="Settings"
-        description="Your assessor identity, signature, text number and Bader credentials"
+        description="Notifications, your assessor identity, signature, text number and Bader credentials"
       />
 
       {initialLoading ? (
@@ -472,6 +473,16 @@ export default function SettingsPage() {
               </Card>
             </section>
           )}
+
+          {/* Per device, so it loads on its own rather than waiting on the rest. */}
+          <section className="flex flex-col gap-3">
+            <SectionHeading title="Notifications" />
+            <Card>
+              <CardContent>
+                <NotificationSettings />
+              </CardContent>
+            </Card>
+          </section>
 
           {/* Assessor identity */}
           <section className="flex flex-col gap-3">
