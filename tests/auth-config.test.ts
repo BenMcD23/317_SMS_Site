@@ -42,6 +42,9 @@ describe("middleware authorized()", () => {
     expect(visit("/assessments/inspection", user("snco"))).toBe(true);
     expect(visit("/assessments/inspection", user("nco"))).toBe("redirect:/unauthorized");
     expect(visit("/session-plans/3", user("nco"))).toBe(true);
+    expect(visit("/assessments/moi", user("staff"))).toBe(true);
+    expect(visit("/assessments/moi", user("snco"))).toBe("redirect:/unauthorized");
+    expect(visit("/assessments/moi", user("nco"))).toBe("redirect:/unauthorized");
   });
 });
 
