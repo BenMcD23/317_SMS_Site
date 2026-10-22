@@ -70,8 +70,7 @@ export default function SettingsPage() {
   const [bankLoading, setBankLoading] = useState(false);
   const [bankDirty, setBankDirty] = useState(false);
   const [showBankNumber, setShowBankNumber] = useState(false);
-  // Your own details stay editable while hidden; they are typed as password
-  // fields so a screen share shows dots instead.
+  // Your own number and bank details go too, for a screen share of Settings.
   const [personalHidden] = usePersonalDataHidden();
 
   useEffect(() => {
@@ -462,7 +461,7 @@ export default function SettingsPage() {
       ) : (
         <>
           {/* Staff are the only ones sent other people's personal data, so the
-              switch to mask it is theirs alone. */}
+              switch to hide it is theirs alone. */}
           {session?.role === "staff" && (
             <section className="flex flex-col gap-3">
               <SectionHeading title="Privacy" />
@@ -629,71 +628,73 @@ export default function SettingsPage() {
           </section>
 
           {/* Parade night texts */}
-          <section className="flex flex-col gap-3">
-            <SectionHeading title="Parade night texts" />
+          {!personalHidden && (
+            <section className="flex flex-col gap-3">
+              <SectionHeading title="Parade night texts" />
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Your Mobile Number</CardTitle>
-                <CardDescription>
-                  The number the parade night texts go to. Saving one puts you on the recipients list;
-                  clearing it takes you off again.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {phoneLinked === false ? (
-                  <p className="text-muted-foreground text-sm">
-                    Your account isn&apos;t linked to a squadron record yet, so there&apos;s nowhere to save a
-                    number. It links itself once your email shows up on the next roster scrape.
-                  </p>
-                ) : (
-                  <>
-                    <div className="flex gap-2">
-                      <Input
-                        id="phone_number"
-                        type={personalHidden ? "password" : "tel"}
-                        inputMode="tel"
-                        autoComplete="tel"
-                        value={phone}
-                        onChange={(e) => {
-                          setPhone(e.target.value);
-                          setPhoneDirty(true);
-                        }}
-                        placeholder="07700 900000"
-                        className="max-w-sm flex-1"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={handlePhoneSave}
-                        disabled={phoneLoading || !phoneDirty || !session}
-                      >
-                        {phoneLoading ? "Saving…" : "Save"}
-                      </Button>
-                    </div>
-                    <p className="text-muted-foreground text-xs">
-                      {phoneKind === "cadet"
-                        ? "Saved against your cadet record — the same number the portal shows you."
-                        : "Saved against your staff record on the squadron roster."}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Your Mobile Number</CardTitle>
+                  <CardDescription>
+                    The number the parade night texts go to. Saving one puts you on the recipients list;
+                    clearing it takes you off again.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {phoneLinked === false ? (
+                    <p className="text-muted-foreground text-sm">
+                      Your account isn&apos;t linked to a squadron record yet, so there&apos;s nowhere to save
+                      a number. It links itself once your email shows up on the next roster scrape.
                     </p>
-
-                    {savedPhone && inviteUrl && (
-                      <div className="bg-muted/20 flex flex-col gap-2 rounded-lg border p-4">
-                        <p className="text-sm font-semibold">Join the WhatsApp community</p>
-                        <p className="text-muted-foreground text-xs">
-                          Open it on the phone your WhatsApp is on.
-                        </p>
-                        <Button asChild size="sm" variant="outline" className="w-fit">
-                          <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
-                            Open invite <ExternalLink className="size-3.5" />
-                          </a>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <Input
+                          id="phone_number"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={phone}
+                          onChange={(e) => {
+                            setPhone(e.target.value);
+                            setPhoneDirty(true);
+                          }}
+                          placeholder="07700 900000"
+                          className="max-w-sm flex-1"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handlePhoneSave}
+                          disabled={phoneLoading || !phoneDirty || !session}
+                        >
+                          {phoneLoading ? "Saving…" : "Save"}
                         </Button>
                       </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </section>
+                      <p className="text-muted-foreground text-xs">
+                        {phoneKind === "cadet"
+                          ? "Saved against your cadet record — the same number the portal shows you."
+                          : "Saved against your staff record on the squadron roster."}
+                      </p>
+
+                      {savedPhone && inviteUrl && (
+                        <div className="bg-muted/20 flex flex-col gap-2 rounded-lg border p-4">
+                          <p className="text-sm font-semibold">Join the WhatsApp community</p>
+                          <p className="text-muted-foreground text-xs">
+                            Open it on the phone your WhatsApp is on.
+                          </p>
+                          <Button asChild size="sm" variant="outline" className="w-fit">
+                            <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+                              Open invite <ExternalLink className="size-3.5" />
+                            </a>
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+          )}
 
           {/* Bader credentials — staff only */}
           {session?.role === "staff" && (
@@ -795,7 +796,7 @@ export default function SettingsPage() {
           )}
 
           {/* Bank details — staff only */}
-          {session?.role === "staff" && (
+          {session?.role === "staff" && !personalHidden && (
             <section className="flex flex-col gap-3">
               <SectionHeading title="Bank details" />
 
@@ -814,8 +815,6 @@ export default function SettingsPage() {
                     </Label>
                     <Input
                       id="bank_account_name"
-                      type={personalHidden ? "password" : "text"}
-                      autoComplete="off"
                       value={bank.bank_account_name}
                       onChange={(e) => {
                         setBank({ ...bank, bank_account_name: e.target.value });
@@ -831,8 +830,6 @@ export default function SettingsPage() {
                       </Label>
                       <Input
                         id="bank_sort_code"
-                        type={personalHidden ? "password" : "text"}
-                        autoComplete="off"
                         value={bank.bank_sort_code}
                         onChange={(e) => {
                           setBank({ ...bank, bank_sort_code: e.target.value });
@@ -848,7 +845,7 @@ export default function SettingsPage() {
                       <div className="relative">
                         <Input
                           id="bank_account_number"
-                          type={showBankNumber && !personalHidden ? "text" : "password"}
+                          type={showBankNumber ? "text" : "password"}
                           value={bank.bank_account_number}
                           onChange={(e) => {
                             setBank({ ...bank, bank_account_number: e.target.value });

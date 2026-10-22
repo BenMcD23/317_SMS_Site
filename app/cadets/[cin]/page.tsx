@@ -15,7 +15,6 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { AttendanceCard } from "@/components/attendance-card";
 import { cn } from "@/lib/utils";
-import { usePersonalDataHidden } from "@/lib/privacy";
 import { Private } from "@/components/private";
 import { formatDate, timeSince } from "@/lib/format";
 import {
@@ -124,7 +123,6 @@ function EditableField({
   const [draft, setDraft] = useState(value ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [personalHidden] = usePersonalDataHidden();
 
   const handleSave = async () => {
     setSaving(true);
@@ -151,11 +149,7 @@ function EditableField({
         {Icon && <Icon className="h-3 w-3" />}
         {label}
       </p>
-      {/* Editing would put the value back on screen, so it waits until the
-          data is shown again. */}
-      {personalHidden && value ? (
-        <Private className="text-sm">{value}</Private>
-      ) : editing ? (
+      {editing ? (
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <Input
@@ -228,7 +222,7 @@ function StatPill({
   variant = "default",
 }: {
   label: string;
-  value: React.ReactNode;
+  value: string | number;
   variant?: "default" | "success" | "muted";
 }) {
   return (
@@ -414,8 +408,9 @@ export default function CadetOverviewPage() {
         </Alert>
       )}
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Stats row. One row of equal tiles however many there are: the age
+          tile goes when personal data is hidden, and mustn't leave a gap. */}
+      <div className="grid grid-cols-2 gap-3 sm:auto-cols-fr sm:grid-flow-col">
         <StatPill label="Qualifications" value={cadet.qualifications.length} />
         <StatPill label="Events Attended" value={`${attendedEvents} / ${cadet.events.length}`} />
         <StatPill
@@ -423,7 +418,11 @@ export default function CadetOverviewPage() {
           value={passedAssessments}
           variant={passedAssessments > 0 ? "success" : "muted"}
         />
-        {cadetAge !== null && <StatPill label="Age" value={<Private>{cadetAge}</Private>} />}
+        {cadetAge !== null && (
+          <Private>
+            <StatPill label="Age" value={cadetAge} />
+          </Private>
+        )}
       </div>
 
       <Tabs defaultValue={initialTab}>
@@ -446,38 +445,36 @@ export default function CadetOverviewPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
-              <EditableField
-                label="Email"
-                value={cadet.email}
-                onSave={(v) => patchField("email", v)}
-                icon={Mail}
-                placeholder="No email set"
-                type="email"
-                href={(v) => `mailto:${v}`}
-              />
-              <EditableField
-                label="Mobile"
-                value={cadet.phone_number}
-                onSave={(v) => patchField("phone_number", v)}
-                icon={Phone}
-                placeholder="No number set"
-                type="tel"
-                href={(v) => `tel:${v.replace(/\s+/g, "")}`}
-              />
-              <div>
-                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-                  <Calendar className="h-3 w-3" /> Date of Birth
-                </p>
-                <span className="text-sm font-medium">
-                  {cadet.date_of_birth ? (
-                    <Private>
-                      {`${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`}
-                    </Private>
-                  ) : (
-                    "—"
-                  )}
-                </span>
-              </div>
+              <Private>
+                <EditableField
+                  label="Email"
+                  value={cadet.email}
+                  onSave={(v) => patchField("email", v)}
+                  icon={Mail}
+                  placeholder="No email set"
+                  type="email"
+                  href={(v) => `mailto:${v}`}
+                />
+                <EditableField
+                  label="Mobile"
+                  value={cadet.phone_number}
+                  onSave={(v) => patchField("phone_number", v)}
+                  icon={Phone}
+                  placeholder="No number set"
+                  type="tel"
+                  href={(v) => `tel:${v.replace(/\s+/g, "")}`}
+                />
+                <div>
+                  <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                    <Calendar className="h-3 w-3" /> Date of Birth
+                  </p>
+                  <span className="text-sm font-medium">
+                    {cadet.date_of_birth
+                      ? `${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`
+                      : "—"}
+                  </span>
+                </div>
+              </Private>
               <div>
                 <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
                   <Shield className="h-3 w-3" /> Rank

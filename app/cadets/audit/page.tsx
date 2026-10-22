@@ -14,7 +14,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { CadetMultiPicker } from "@/components/cadet-multi-picker";
-import { Private } from "@/components/private";
 import { cn } from "@/lib/utils";
 import { classificationBadgeClass } from "@/lib/cadet-format";
 import { API_BASE } from "@/lib/config";
@@ -22,6 +21,8 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { todayLocal } from "@/lib/format";
+import { Private } from "@/components/private";
+import { usePersonalDataHidden } from "@/lib/privacy";
 
 const LEVEL_STYLES: Record<string, string> = {
   blue: "border-blue-200 bg-blue-50 text-blue-700",
@@ -307,29 +308,31 @@ function CriteriaSelector({
         </div>
       </div>
 
-      <p className="border-t pt-3 text-sm font-semibold">Medical &amp; Dietary</p>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="include-medical"
-            checked={includeMedical}
-            onCheckedChange={(v) => onToggleMedical(!!v)}
-          />
-          <Label htmlFor="include-medical" className="cursor-pointer text-sm font-normal">
-            Include allergies / medical
-          </Label>
+      <Private>
+        <p className="border-t pt-3 text-sm font-semibold">Medical &amp; Dietary</p>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="include-medical"
+              checked={includeMedical}
+              onCheckedChange={(v) => onToggleMedical(!!v)}
+            />
+            <Label htmlFor="include-medical" className="cursor-pointer text-sm font-normal">
+              Include allergies / medical
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="include-dietary"
+              checked={includeDietary}
+              onCheckedChange={(v) => onToggleDietary(!!v)}
+            />
+            <Label htmlFor="include-dietary" className="cursor-pointer text-sm font-normal">
+              Include dietary requirements
+            </Label>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="include-dietary"
-            checked={includeDietary}
-            onCheckedChange={(v) => onToggleDietary(!!v)}
-          />
-          <Label htmlFor="include-dietary" className="cursor-pointer text-sm font-normal">
-            Include dietary requirements
-          </Label>
-        </div>
-      </div>
+      </Private>
     </div>
   );
 }
@@ -553,37 +556,33 @@ function AuditResultsTable({
                 })}
                 {includeMedical && (
                   <TableCell>
-                    <Private>
-                      {r.allergies && r.allergies.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {r.allergies.map((a, i) => (
-                            <Badge key={i} variant="destructive" className="text-xs">
-                              {a.allergy_name}
-                              {a.auto_injector === "Yes" ? " (EpiPen)" : ""}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">None</span>
-                      )}
-                    </Private>
+                    {r.allergies && r.allergies.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {r.allergies.map((a, i) => (
+                          <Badge key={i} variant="destructive" className="text-xs">
+                            {a.allergy_name}
+                            {a.auto_injector === "Yes" ? " (EpiPen)" : ""}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">None</span>
+                    )}
                   </TableCell>
                 )}
                 {includeDietary && (
                   <TableCell>
-                    <Private>
-                      {r.dietary && r.dietary.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {r.dietary.map((d, i) => (
-                            <Badge key={i} variant="secondary" className="text-xs">
-                              {d.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">None</span>
-                      )}
-                    </Private>
+                    {r.dietary && r.dietary.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {r.dietary.map((d, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {d.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">None</span>
+                    )}
                   </TableCell>
                 )}
                 {includeMissingAttachments && (
@@ -620,8 +619,13 @@ function CadetCheckTab() {
 
   const [selectedCins, setSelectedCins] = useState<Set<number>>(new Set());
   const [quals, setQuals] = useState<LevelSelection>({});
-  const [includeMedical, setIncludeMedical] = useState(false);
-  const [includeDietary, setIncludeDietary] = useState(false);
+  const [wantMedical, setIncludeMedical] = useState(false);
+  const [wantDietary, setIncludeDietary] = useState(false);
+  // Medical and dietary are personal data: while it's hidden they're neither
+  // asked for nor shown, whatever was ticked before.
+  const [personalHidden] = usePersonalDataHidden();
+  const includeMedical = wantMedical && !personalHidden;
+  const includeDietary = wantDietary && !personalHidden;
   const [includeMissingAttachments, setIncludeMissingAttachments] = useState(false);
   const [results, setResults] = useState<AuditResult[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -735,8 +739,13 @@ function EventCheckTab() {
   const [selectedEventId, setSelectedEventId] = useState("");
   const [selectedSubAppId, setSelectedSubAppId] = useState("all");
   const [quals, setQuals] = useState<LevelSelection>({});
-  const [includeMedical, setIncludeMedical] = useState(false);
-  const [includeDietary, setIncludeDietary] = useState(false);
+  const [wantMedical, setIncludeMedical] = useState(false);
+  const [wantDietary, setIncludeDietary] = useState(false);
+  // Medical and dietary are personal data: while it's hidden they're neither
+  // asked for nor shown, whatever was ticked before.
+  const [personalHidden] = usePersonalDataHidden();
+  const includeMedical = wantMedical && !personalHidden;
+  const includeDietary = wantDietary && !personalHidden;
   const [includeMissingAttachments, setIncludeMissingAttachments] = useState(false);
   const [results, setResults] = useState<AuditResult[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -922,9 +931,17 @@ function EventCheckTab() {
 }
 
 export default function AuditPage() {
+  const [personalHidden] = usePersonalDataHidden();
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
-      <PageHeader title="Audit" description="Check cadet qualifications, medical, and dietary requirements" />
+      <PageHeader
+        title="Audit"
+        description={
+          personalHidden
+            ? "Check cadet qualifications"
+            : "Check cadet qualifications, medical, and dietary requirements"
+        }
+      />
       <Tabs defaultValue="cadet-check">
         <TabsList>
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import UsagePage from "@/app/usage/page";
 import { OWNER_EMAIL } from "@/lib/config";
+import { setPersonalDataHidden } from "@/lib/privacy";
 
 // One stable object per identity, like the real hook — swapped per test.
 const OWNER = {
@@ -67,6 +68,7 @@ function stubApi(reply: () => Response | Promise<Response>) {
 
 beforeEach(() => {
   session = OWNER;
+  window.localStorage.clear();
   signIn.mockClear();
   try {
     sessionStorage.clear();
@@ -124,6 +126,16 @@ describe("Usage page", () => {
 
     await user.click(screen.getByRole("tab", { name: "Unused (1)" }));
     expect(screen.getByRole("listitem")).toHaveTextContent("GET /stats/history");
+  });
+
+  it("drops the People tab while personal data is hidden, since it lists people by email", async () => {
+    setPersonalDataHidden(true);
+    stubApi(json(USAGE));
+    render(<UsagePage />);
+    await screen.findByText("/stores/orders");
+    expect(screen.queryByRole("tab", { name: /People/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Unused (1)" })).toBeInTheDocument();
+    expect(screen.queryByText(/@317atc\.co\.uk/)).not.toBeInTheDocument();
   });
 
   it("the filter narrows endpoints by path and people by role", async () => {

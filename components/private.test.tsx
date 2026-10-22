@@ -49,8 +49,9 @@ describe("hide personal data", () => {
     await userEvent.click(toggle());
     expect(toggle()).toBeChecked();
     expect(screen.queryByText(/amy@example\.com/)).not.toBeInTheDocument();
-    expect(screen.getByText("Hidden")).toBeInTheDocument();
-    expect(screen.getByText("Cpl · Hidden")).toBeInTheDocument();
+    // Gone, not replaced: nothing on screen says there was anything there.
+    expect(screen.queryByText(/Hidden/)).not.toBeInTheDocument();
+    expect(screen.getByText("Cpl")).toBeInTheDocument();
     expect(screen.getByText("Amy Able")).toBeInTheDocument();
 
     await userEvent.click(toggle());

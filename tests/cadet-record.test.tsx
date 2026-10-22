@@ -79,27 +79,21 @@ describe("cadet record", () => {
     expect(screen.getByRole("link", { name: "07700 900123" })).toHaveAttribute("href", "tel:07700900123");
   });
 
-  it("hides email, mobile and date of birth when personal data is hidden, but not the name", async () => {
+  it("drops email, mobile, date of birth and age entirely when personal data is hidden, but not the name", async () => {
     act(() => setPersonalDataHidden(true));
     respond(CADET);
     render(<CadetRecordPage />);
     expect(await screen.findByRole("heading", { name: "Amy Able" })).toBeInTheDocument();
-    expect(screen.queryByText(/amy@example\.com/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/07700/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/2012/)).not.toBeInTheDocument();
-    // Email, mobile, date of birth, and the age tile (it gives the DOB away too).
-    expect(screen.getAllByText("Hidden")).toHaveLength(4);
-    // Editing would show the value again, so the pencils go too.
+    expect(screen.queryByText(/amy@example\.com|07700|2012/)).not.toBeInTheDocument();
+    // The fields go with their labels, and leave no placeholder behind.
+    for (const label of ["Email", "Mobile", "Date of Birth", "Age"]) {
+      expect(screen.queryByText(label)).not.toBeInTheDocument();
+    }
+    expect(screen.queryByText(/Hidden/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit email" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit mobile" })).not.toBeInTheDocument();
-  });
-
-  it("still offers to add a missing email while personal data is hidden", async () => {
-    act(() => setPersonalDataHidden(true));
-    respond({ ...CADET, email: null });
-    render(<CadetRecordPage />);
-    expect(await screen.findByText("No email set")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit email" })).toBeInTheDocument();
+    // Everything else is still there.
+    expect(screen.getByText("Rank")).toBeInTheDocument();
+    expect(screen.getByText("B Flight")).toBeInTheDocument();
   });
 
   it("gives the edit pencils a name, so they can be found without hovering", async () => {

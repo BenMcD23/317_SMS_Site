@@ -367,7 +367,10 @@ function MessageCard({
                 {failures.map((f) => (
                   <span key={f.phone} className="flex items-center gap-1.5">
                     <AlertTriangle className="size-3.5" />
-                    {f.name ? `${f.name} (${privateText(f.phone)})` : privateText(f.phone)}: {f.error}
+                    {f.name
+                      ? `${f.name}${privateText(f.phone) ? ` (${f.phone})` : ""}`
+                      : (privateText(f.phone) ?? "A recipient")}
+                    : {f.error}
                   </span>
                 ))}
               </div>
