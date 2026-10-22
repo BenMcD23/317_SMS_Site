@@ -32,9 +32,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { streamAuthed } from "@/lib/sse";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { VpSyncCard } from "@/components/vp-sync-card";
+
+/** One event on the scraper log stream. */
+type StreamMessage = { type: "status" | "error" | "log" | "info" | "warning"; value: string };
 
 const SCRAPER_TOOLS = [
   {
@@ -129,7 +133,6 @@ function ConsolePanel({
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<"running" | "done" | "error" | "stopping" | "stopped">("running");
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
   const addLog = useCallback((text: string) => {
     setLogs((prev) => [...prev, toEntry(text)]);
@@ -140,51 +143,42 @@ function ConsolePanel({
   }, [logs]);
 
   useEffect(() => {
-    const url = `${API_BASE}/scraper-stream/${scraperId}?token=${encodeURIComponent(token)}`;
-    const evtSource = new EventSource(url);
-    eventSourceRef.current = evtSource;
+    const ctrl = new AbortController();
 
-    evtSource.onmessage = (event) => {
+    (async () => {
       try {
-        const data = JSON.parse(event.data);
-
-        if (data.type === "status" && data.value === "running") {
-          addLog(`> ${label} started`);
-        }
-        if (data.type === "status" && data.value === "done") {
-          setStatus("done");
-          onDone(scraperId);
-          evtSource.close();
-        }
-        if (data.type === "status" && data.value === "stopped") {
-          setStatus("stopped");
-          onDone(scraperId);
-          evtSource.close();
-        }
-        if (data.type === "error") {
-          setStatus("error");
-          addLog(`[ERROR] ${data.value}`);
-          onDone(scraperId);
-          evtSource.close();
-        }
-        if (data.type === "log" || data.type === "info") {
-          addLog(data.value);
-        }
-        if (data.type === "warning") {
-          addLog(data.value);
+        for await (const data of streamAuthed<StreamMessage>(
+          `${API_BASE}/scraper-stream/${scraperId}`,
+          token,
+          ctrl.signal
+        )) {
+          if (data.type === "status" && data.value === "running") {
+            addLog(`> ${label} started`);
+          }
+          if (data.type === "status" && (data.value === "done" || data.value === "stopped")) {
+            setStatus(data.value);
+            onDone(scraperId);
+            break;
+          }
+          if (data.type === "error") {
+            setStatus("error");
+            addLog(`[ERROR] ${data.value}`);
+            onDone(scraperId);
+            break;
+          }
+          if (data.type === "log" || data.type === "info" || data.type === "warning") {
+            addLog(data.value);
+          }
         }
       } catch {
-        addLog(event.data);
+        // Connection lost or the page was left: the old EventSource just closed
+        // here too, and the run carries on server-side either way.
+      } finally {
+        ctrl.abort();
       }
-    };
+    })();
 
-    evtSource.onerror = () => {
-      evtSource.close();
-    };
-
-    return () => {
-      evtSource.close();
-    };
+    return () => ctrl.abort();
   }, [scraperId, token, label, addLog, onDone]);
 
   const handleStop = async () => {
@@ -734,7 +728,10 @@ export default function ScraperPage() {
 
   // Which node the API is on: when home is down it fails over to Oracle, and
   // the Bader scrapers don't work from there.
-  const { data: host } = useApiQuery<{ node: string | null; on_oracle: boolean }>(["scraper-host"], "/scraper-host");
+  const { data: host } = useApiQuery<{ node: string | null; on_oracle: boolean }>(
+    ["scraper-host"],
+    "/scraper-host"
+  );
 
   // Initial load
   useEffect(() => {
@@ -874,8 +871,8 @@ export default function ScraperPage() {
           <CloudAlert />
           <AlertTitle>Scrapers may not work right now</AlertTitle>
           <AlertDescription className="text-amber-900/90 dark:text-amber-200/90">
-            The home server is down, so 317 SMS is running on the backup Oracle server ({host.node}). The Bader
-            scrapers usually fail from there — try again once home is back.
+            The home server is down, so 317 SMS is running on the backup Oracle server ({host.node}). The
+            Bader scrapers usually fail from there — try again once home is back.
           </AlertDescription>
         </Alert>
       )}
