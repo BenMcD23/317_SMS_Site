@@ -1129,12 +1129,6 @@ export default function BadgeOrdersPage() {
         </p>
       )}
 
-      {!loading && activeTab === "completed" && completedOrders.length > 0 && (
-        <p className="text-muted-foreground text-center text-xs">
-          Completed orders are automatically removed after 6 months.
-        </p>
-      )}
-
       {/* Orders list */}
       {!loading && activeTab !== "orderlist" && filteredOrders.length > 0 && (
         <OrderList>
