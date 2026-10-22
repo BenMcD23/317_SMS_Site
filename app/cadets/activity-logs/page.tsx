@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, NotebookPen, Plus } from "lucide-react";
@@ -12,123 +11,53 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { DataTable, dataTableColumns } from "@/components/data-table";
 import { FlightFilter } from "@/components/flight-filter";
 import { Stat, StatGroup } from "@/components/stat";
 import { SwitchOnDialog } from "@/components/activity-logs/switch-on-dialog";
-import { WeekStatusBadge } from "@/components/activity-logs/week-status-badge";
-import { SECTIONS, shiftWeek, type WeeklyCadet, type WeeklyDashboard } from "@/lib/activity-logs";
+import { WeekGrid, WeekGridKey } from "@/components/activity-logs/week-grid";
+import { GRID_WEEKS, shiftWeek, type WeekGrid as Grid } from "@/lib/activity-logs";
 import { formatShortDate } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
 
 type Show = "all" | "behind" | "ok";
 
-const col = dataTableColumns<WeeklyCadet>();
-
-// Sorts "needs chasing" first: nothing logged, then under an hour, then the rest.
-const STATUS_ORDER = { none: 0, not_set_up: 1, some: 2, not_started: 3, done: 4, complete: 5 };
-
-const sectionColumns = SECTIONS.map(({ key, label }) =>
-  col.accessor((c) => STATUS_ORDER[c.sections.find((s) => s.section === key)!.status], {
-    id: key,
-    header: label,
-    sortFn: "basic",
-    cell: ({ row }) => {
-      const s = row.original.sections.find((x) => x.section === key)!;
-      return (
-        <div className="flex flex-col items-start gap-1">
-          <WeekStatusBadge status={s.status} />
-          {s.weeks_needed !== null && (
-            <span className="text-muted-foreground text-xs tabular-nums">
-              {s.minutes ? `${s.minutes} min · ` : ""}
-              {s.weeks_done}/{s.weeks_needed} wks
-              {s.missed && s.status !== "complete" ? ` · ${s.missed} missed` : ""}
-            </span>
-          )}
-        </div>
-      );
-    },
-  })
-);
-
-const columns = col.columns([
-  col.accessor((c) => c.name.split(" ").slice(-1)[0], {
-    id: "name",
-    header: "Cadet",
-    sortFn: "text",
-    cell: ({ row }) => {
-      const c = row.original;
-      return (
-        <div className="flex min-w-0 flex-col">
-          <Link href={`/cadets/activity-logs/${c.cin}`} className="font-medium hover:underline">
-            {[c.rank, c.name].filter(Boolean).join(" ")}
-          </Link>
-          <span className="text-muted-foreground text-xs">{c.level}</span>
-        </div>
-      );
-    },
-  }),
-  col.accessor((c) => c.flight ?? "", { id: "flight", header: "Flight", sortFn: "text" }),
-  // On a phone the three section columns don't fit; this one sums them up.
-  col.accessor((c) => (c.behind ? 0 : 1), {
-    id: "summary",
-    header: "This week",
-    sortFn: "basic",
-    cell: ({ row }) => {
-      const c = row.original;
-      const due = c.sections.filter((s) => !["complete", "not_started", "not_set_up"].includes(s.status));
-      const done = due.filter((s) => s.status === "done").length;
-      return (
-        <div className="flex flex-col items-start gap-1">
-          <WeekStatusBadge
-            status={c.behind ? "some" : "done"}
-            label={c.behind ? "Needs chasing" : "Up to date"}
-          />
-          <span className="text-muted-foreground text-xs">
-            {done} of {due.length} due
-          </span>
-        </div>
-      );
-    },
-  }),
-  ...sectionColumns,
-]);
-
 /**
- * The DofE weekly check: every cadet with their activity log switched on, and
- * whether they've logged an hour for each section this week. Filter to the
- * ones who haven't, to chase them on parade night.
+ * The DofE check: every cadet with their activity log switched on, against
+ * the last eight weeks, showing which sections got their hour each week.
+ * "Chase" narrows it to who still owes this week, for parade night.
  */
 export default function ActivityLogsPage() {
   const router = useRouter();
-  const [week, setWeek] = useState<string | null>(null);
+  // The last week shown; null is "ending this week".
+  const [end, setEnd] = useState<string | null>(null);
   const [show, setShow] = useState<Show>("all");
   const [flight, setFlight] = useState("");
   const [switching, setSwitching] = useState(false);
-  const { data, isLoading, error } = useApiQuery<WeeklyDashboard>(
-    ["activity-logs", "weekly", week ?? "current"],
-    `/activity-logs/weekly${week ? `?week=${week}` : ""}`,
+  const { data, isLoading, error } = useApiQuery<Grid>(
+    ["activity-logs", "grid", end ?? "current"],
+    `/activity-logs/grid?weeks=${GRID_WEEKS}${end ? `&end=${end}` : ""}`,
     { placeholderData: (prev) => prev }
   );
-  // An error body ({detail}) where the dashboard was expected must not crash the table.
-  const cadets = useMemo(() => (Array.isArray(data?.cadets) ? data.cadets : []), [data]);
+  // An error body ({detail}) where the grid was expected must not crash the table.
+  const grid = data && Array.isArray(data.cadets) && Array.isArray(data.weeks) ? data : null;
+  const cadets = useMemo(() => grid?.cadets ?? [], [grid]);
 
   const behind = cadets.filter((c) => c.behind).length;
-  const finished = cadets.flatMap((c) => c.sections).filter((s) => s.status === "complete").length;
+  const finished = cadets.flatMap((c) => c.sections).filter((s) => s.complete).length;
   const flights = [...new Set(cadets.map((c) => c.flight).filter((f): f is string => !!f))].sort();
   const shown = cadets.filter(
     (c) => (show === "all" || (show === "behind") === c.behind) && (!flight || c.flight === flight)
   );
 
-  const weekTitle = data
-    ? `${data.is_current_week ? "This week" : "Week of"} ${formatShortDate(data.week_start)}–${formatShortDate(data.week_end)}`
-    : "This week";
+  const first = grid?.weeks[0];
+  const last = grid?.weeks[grid.weeks.length - 1];
+  const atNow = !!grid && last === grid.current_week;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-16">
       <PageHeader
-        title="Activity Logs"
-        description="DofE Skills, Volunteering and Physical: who has logged an hour this week, and who hasn't."
+        title="DofE Activity Logs"
+        description="Skills, Volunteering and Physical, week by week: who's done their hour and who needs chasing."
         actions={
           <Button onClick={() => setSwitching(true)}>
             <Plus />
@@ -137,96 +66,81 @@ export default function ActivityLogsPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="Previous week"
-          disabled={!data}
-          onClick={() => data && setWeek(shiftWeek(data.week_start, -1))}
-        >
-          <ChevronLeft />
-        </Button>
-        <span className="min-w-40 text-center text-sm font-medium" aria-live="polite">
-          {weekTitle}
-        </span>
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label="Next week"
-          disabled={!data || data.is_current_week}
-          onClick={() => data && setWeek(shiftWeek(data.week_start, 1))}
-        >
-          <ChevronRight />
-        </Button>
-        {data && !data.is_current_week && (
-          <Button variant="ghost" onClick={() => setWeek(null)}>
-            Back to this week
-          </Button>
-        )}
-      </div>
-
-      <ErrorAlert message={error?.message ?? null} title="Could not load activity logs" />
+      <ErrorAlert message={error?.message ?? null} title="Could not load DofE activity logs" />
 
       {isLoading && <ListSkeleton rows={5} />}
 
-      {!isLoading && !error && cadets.length === 0 && (
+      {!isLoading && !error && grid && cadets.length === 0 && (
         <EmptyState
           icon={NotebookPen}
-          title="No activity logs switched on"
-          description="Switch on a cadet doing their DofE. They'll get an Activity Log page on the cadet portal."
+          title="No DofE activity logs switched on"
+          description="Switch on a cadet doing their DofE. They'll get a DofE Activity Log page on the cadet portal."
         />
       )}
 
-      {cadets.length > 0 && (
+      {grid && cadets.length > 0 && (
         <>
           <StatGroup className="grid-cols-2 sm:grid-cols-4">
             <Stat label="Switched on" value={cadets.length} />
-            <Stat label="Up to date" value={cadets.length - behind} tone="success" />
-            <Stat label="Need chasing" value={behind} tone={behind ? "warning" : undefined} />
+            <Stat label="Up to date this week" value={cadets.length - behind} tone="success" />
+            <Stat label="To chase this week" value={behind} tone={behind ? "warning" : undefined} />
             <Stat label="Sections finished" value={finished} />
           </StatGroup>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <ToggleGroup
-              type="single"
-              variant="outline"
-              size="sm"
-              aria-label="Show"
-              value={show}
-              onValueChange={(v) => v && setShow(v as Show)}
-            >
-              <ToggleGroupItem value="all" className="px-3">
-                All
-              </ToggleGroupItem>
-              <ToggleGroupItem value="behind" className="px-3">
-                Need chasing
-              </ToggleGroupItem>
-              <ToggleGroupItem value="ok" className="px-3">
-                Up to date
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <FlightFilter flights={flights} value={flight} onChange={setFlight} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                aria-label="Show"
+                value={show}
+                onValueChange={(v) => v && setShow(v as Show)}
+              >
+                <ToggleGroupItem value="all" className="px-3">
+                  All
+                </ToggleGroupItem>
+                <ToggleGroupItem value="behind" className="px-3">
+                  To chase
+                </ToggleGroupItem>
+                <ToggleGroupItem value="ok" className="px-3">
+                  Up to date
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <FlightFilter flights={flights} value={flight} onChange={setFlight} />
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Earlier weeks"
+                onClick={() => first && setEnd(shiftWeek(first, -1))}
+              >
+                <ChevronLeft />
+              </Button>
+              <span className="min-w-32 text-center text-sm font-medium tabular-nums" aria-live="polite">
+                {formatShortDate(first)} – {formatShortDate(last)}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Later weeks"
+                disabled={atNow}
+                onClick={() => last && setEnd(shiftWeek(last, GRID_WEEKS))}
+              >
+                <ChevronRight />
+              </Button>
+            </div>
           </div>
 
           {shown.length ? (
-            <DataTable
-              label="Activity logs this week"
-              data={shown}
-              columns={columns}
-              rowKey={(c) => c.cin}
-              rowHref={(c) => `/cadets/activity-logs/${c.cin}`}
-              columnClassName={{
-                flight: "hidden md:table-cell",
-                summary: "sm:hidden",
-                skills: "hidden sm:table-cell",
-                volunteering: "hidden sm:table-cell",
-                physical: "hidden sm:table-cell",
-              }}
-            />
+            <div className="flex flex-col gap-3">
+              <WeekGrid weeks={grid.weeks} currentWeek={grid.current_week} cadets={shown} />
+              <WeekGridKey />
+            </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              {show === "behind" ? "Nobody to chase. Everyone's up to date." : "No cadets match."}
+              {show === "behind" ? "Nobody to chase. Everyone's up to date this week." : "No cadets match."}
             </p>
           )}
         </>
@@ -236,7 +150,7 @@ export default function ActivityLogsPage() {
         open={switching}
         onOpenChange={setSwitching}
         onDone={(log) => {
-          toast.success(`Activity log switched on for ${log.name}.`);
+          toast.success(`DofE activity log switched on for ${log.name}.`);
           router.push(`/cadets/activity-logs/${log.cin}`);
         }}
       />

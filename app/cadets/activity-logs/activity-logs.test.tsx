@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// DofE activity logs, staff side: the weekly dashboard (who has and hasn't
+// DofE activity logs, staff side: the week grid (who has and hasn't
 // logged), switching a cadet on, and one cadet's log with its PDF.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
@@ -10,10 +10,13 @@ import ActivityLogsPage from "@/app/cadets/activity-logs/page";
 import CadetActivityLogPage from "@/app/cadets/activity-logs/[cin]/page";
 import type {
   CadetActivityLog,
+  CellState,
+  GridCadet,
+  GridCell,
+  GridSection,
+  SectionKey,
   SectionLog,
-  WeeklyCadet,
-  WeeklyDashboard,
-  WeeklySection,
+  WeekGrid,
 } from "@/lib/activity-logs";
 
 const SESSION = {
@@ -29,57 +32,64 @@ vi.mock("next/navigation", () => ({ useRouter: () => router, useParams: () => ({
 const download = vi.hoisted(() => ({ saveResponseAsFile: vi.fn(() => Promise.resolve("x.pdf")) }));
 vi.mock("@/lib/download", () => download);
 
-const section = (over: Partial<WeeklySection>): WeeklySection => ({
-  section: "skills",
-  label: "Skills",
-  status: "done",
-  minutes: 60,
+const WEEKS = ["2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19"];
+type Cells = Record<SectionKey, GridCell>;
+const cells = (s: CellState, v: CellState, p: CellState, minutes = 60): Cells => ({
+  skills: { state: s, minutes: s === "done" ? minutes : 0 },
+  volunteering: { state: v, minutes: v === "done" ? minutes : v === "short" ? 20 : 0 },
+  physical: { state: p, minutes: p === "done" ? minutes : 0 },
+});
+const gridSection = (key: SectionKey, over: Partial<GridSection> = {}): GridSection => ({
+  section: key,
+  label: key[0].toUpperCase() + key.slice(1),
+  set_up: true,
+  complete: false,
   weeks_done: 5,
   weeks_needed: 12,
-  missed: 0,
   last_added: "2026-10-20T19:00:00",
   ...over,
 });
 
-const cadet = (over: Partial<WeeklyCadet>): WeeklyCadet => ({
+const cadet = (over: Partial<GridCadet>, weekCells: Cells[]): GridCadet => ({
   cin: 2100001,
   name: "Cara Cadet",
   rank: "Cpl",
   flight: "A",
   level: "Bronze",
   behind: false,
-  sections: [
-    section({}),
-    section({ section: "volunteering", label: "Volunteering" }),
-    section({ section: "physical", label: "Physical" }),
-  ],
+  sections: [gridSection("skills"), gridSection("volunteering"), gridSection("physical")],
+  weeks: WEEKS.map((week_start, i) => ({ week_start, cells: weekCells[i] })),
   ...over,
 });
 
-const WEEK: WeeklyDashboard = {
-  week_start: "2026-10-19",
-  week_end: "2026-10-25",
-  is_current_week: true,
+const GRID: WeekGrid = {
+  weeks: WEEKS,
+  current_week: "2026-10-19",
   cadets: [
-    cadet({}),
-    cadet({
-      cin: 2100002,
-      name: "Zoë Ó Briain",
-      rank: null,
-      flight: "B",
-      behind: true,
-      sections: [
-        section({ status: "none", minutes: 0, missed: 3 }),
-        section({ section: "volunteering", label: "Volunteering", status: "complete", weeks_done: 12 }),
-        section({
-          section: "physical",
-          label: "Physical",
-          status: "not_set_up",
-          weeks_needed: null,
-          weeks_done: 0,
-        }),
-      ],
-    }),
+    cadet(
+      {},
+      WEEKS.map(() => cells("done", "done", "done"))
+    ),
+    cadet(
+      {
+        cin: 2100002,
+        name: "Zoë Ó Briain",
+        rank: null,
+        flight: "B",
+        behind: true,
+        sections: [
+          gridSection("skills"),
+          gridSection("volunteering", { complete: true, weeks_done: 12 }),
+          gridSection("physical", { set_up: false, weeks_needed: null, weeks_done: 0, last_added: null }),
+        ],
+      },
+      [
+        cells("done", "done", "off"),
+        cells("missed", "done", "off"),
+        cells("missed", "off", "off"),
+        cells("due", "off", "off"),
+      ]
+    ),
   ],
 };
 
@@ -132,70 +142,78 @@ beforeEach(() => {
   download.saveResponseAsFile.mockClear();
 });
 
-describe("weekly dashboard", () => {
-  it("shows each cadet's sections for the week, and how many need chasing", async () => {
-    stubApi({ "GET /activity-logs/weekly": [WEEK] });
+describe("week grid", () => {
+  it("shows each cadet against the weeks, with which sections got their hour", async () => {
+    stubApi({ "GET /activity-logs/grid": [GRID] });
     await show(<ActivityLogsPage />);
-    const table = within(await screen.findByRole("table", { name: "Activity logs this week" }));
+    const table = within(await screen.findByRole("table", { name: "DofE activity, week by week" }));
     expect(table.getByRole("link", { name: "Cpl Cara Cadet" })).toHaveAttribute(
       "href",
       "/cadets/activity-logs/2100001"
     );
-    const zoe = table.getByRole("link", { name: "Zoë Ó Briain" }).closest("tr")!;
-    expect(within(zoe).getByText("Nothing logged")).toBeInTheDocument();
-    expect(within(zoe).getByText("Finished")).toBeInTheDocument();
-    expect(within(zoe).getByText("Not set up")).toBeInTheDocument();
-    expect(within(zoe).getByText(/3 missed/)).toBeInTheDocument();
-    expect(screen.getByText("This week 19 Oct–25 Oct")).toBeInTheDocument();
+    expect(table.getByRole("columnheader", { name: /This week/ })).toBeInTheDocument();
+    expect(table.getByRole("columnheader", { name: /28 Sept/ })).toBeInTheDocument();
+
+    const zoe = within(table.getByRole("link", { name: "Zoë Ó Briain" }).closest("tr")!);
+    // Each week reads out in words, so the squares' colours aren't the only signal.
+    expect(
+      zoe.getByRole("img", {
+        name: "Week of 12 Oct: Skills missed, Volunteering nothing due, Physical nothing due",
+      })
+    ).toBeInTheDocument();
+    expect(zoe.getByRole("img", { name: /Week of 19 Oct: Skills not logged yet/ })).toBeInTheDocument();
+    // Under the name on a phone, in its own column wider up.
+    expect(zoe.getAllByText("Chase")).toHaveLength(2);
 
     const stat = (label: string) => screen.getByText(label, { selector: "p" }).parentElement!;
     expect(stat("Switched on")).toHaveTextContent("2");
-    expect(stat("Need chasing")).toHaveTextContent("1");
+    expect(stat("To chase this week")).toHaveTextContent("1");
     expect(stat("Sections finished")).toHaveTextContent("1");
+    expect(screen.getByRole("list", { name: "Key" })).toHaveTextContent("hour done");
   });
 
-  it("narrows to the cadets who need chasing", async () => {
-    stubApi({ "GET /activity-logs/weekly": [WEEK] });
+  it("narrows to the cadets to chase this week", async () => {
+    stubApi({ "GET /activity-logs/grid": [GRID] });
     await show(<ActivityLogsPage />);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("radio", { name: "Need chasing" }));
-    const table = within(screen.getByRole("table", { name: "Activity logs this week" }));
+    await user.click(await screen.findByRole("radio", { name: "To chase" }));
+    const table = within(screen.getByRole("table", { name: "DofE activity, week by week" }));
     expect(table.getByRole("link", { name: "Zoë Ó Briain" })).toBeInTheDocument();
     expect(table.queryByRole("link", { name: "Cpl Cara Cadet" })).toBeNull();
   });
 
   it("says there's nobody to chase when everyone's up to date", async () => {
-    stubApi({ "GET /activity-logs/weekly": [{ ...WEEK, cadets: [cadet({})] }] });
+    stubApi({ "GET /activity-logs/grid": [{ ...GRID, cadets: [GRID.cadets[0]] }] });
     await show(<ActivityLogsPage />);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("radio", { name: "Need chasing" }));
-    expect(screen.getByText("Nobody to chase. Everyone's up to date.")).toBeInTheDocument();
+    await user.click(await screen.findByRole("radio", { name: "To chase" }));
+    expect(screen.getByText("Nobody to chase. Everyone's up to date this week.")).toBeInTheDocument();
   });
 
-  it("steps back a week and returns to this one", async () => {
-    const fetch = stubApi({ "GET /activity-logs/weekly": [WEEK] });
+  it("steps back to earlier weeks, and can't go past this week", async () => {
+    const fetch = stubApi({ "GET /activity-logs/grid": [GRID] });
     await show(<ActivityLogsPage />);
     const user = userEvent.setup();
-    expect(await screen.findByRole("button", { name: "Next week" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Previous week" }));
-    await waitFor(() => expect(calls(fetch, "GET", "weekly?week=2026-10-12")).toHaveLength(1));
+    expect(await screen.findByRole("button", { name: "Later weeks" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Earlier weeks" }));
+    await waitFor(() => expect(calls(fetch, "GET", "end=2026-09-21")).toHaveLength(1));
   });
 
   it("shows an empty state when nobody is switched on", async () => {
-    stubApi({ "GET /activity-logs/weekly": [{ ...WEEK, cadets: [] }] });
+    stubApi({ "GET /activity-logs/grid": [{ ...GRID, cadets: [] }] });
     await show(<ActivityLogsPage />);
-    expect(await screen.findByText("No activity logs switched on")).toBeInTheDocument();
+    expect(await screen.findByText("No DofE activity logs switched on")).toBeInTheDocument();
   });
 
   it("shows the API's error, and doesn't crash on an error body", async () => {
-    stubApi({ "GET /activity-logs/weekly": [{ detail: "Forbidden" }, 403] });
+    stubApi({ "GET /activity-logs/grid": [{ detail: "Forbidden" }, 403] });
     await show(<ActivityLogsPage />);
     expect(await screen.findByText("Forbidden")).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("won't switch on without a cadet", async () => {
-    const fetch = stubApi({ "GET /activity-logs/weekly": [WEEK] });
+    const fetch = stubApi({ "GET /activity-logs/grid": [GRID] });
     await show(<ActivityLogsPage />);
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Switch on a cadet" }));
@@ -360,7 +378,7 @@ describe("one cadet's log", () => {
       within(await screen.findByRole("dialog")).getByRole("button", { name: /Confirm|Delete|Yes/ })
     );
     await waitFor(() => expect(calls(fetch, "DELETE", "/enrolment")).toHaveLength(1));
-    expect(await screen.findByText("Activity log switched off")).toBeInTheDocument();
+    expect(await screen.findByText("DofE activity log switched off")).toBeInTheDocument();
   });
 
   it("a switched-off cadet can be switched back on", async () => {

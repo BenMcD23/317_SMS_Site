@@ -22,37 +22,72 @@ export const LEVELS: Level[] = ["Bronze", "Silver", "Gold"];
 export const DURATIONS = [3, 6, 12, 18] as const;
 export const WEEKLY_MINUTES = 60;
 
-/** A section's state for the week being looked at, as the API works it out. */
+/** A section's state this week, on a cadet's own page. */
 export type WeekStatus = "done" | "some" | "none" | "not_set_up" | "not_started" | "complete";
 
-export interface WeeklySection {
+/**
+ * One section in one week of the grid, as the API works it out. `due` is this
+ * week while there are days left; `off` is a week with nothing due (not set
+ * up, before the start, after finishing).
+ */
+export type CellState = "done" | "short" | "missed" | "due" | "off";
+
+export interface GridCell {
+  state: CellState;
+  minutes: number;
+}
+
+export interface GridSection {
   section: SectionKey;
   label: string;
-  status: WeekStatus;
-  minutes: number;
+  set_up: boolean;
+  complete: boolean;
   weeks_done: number;
   weeks_needed: number | null;
-  /** Past weeks still under an hour. */
-  missed: number;
   last_added: string | null;
 }
 
-export interface WeeklyCadet {
+export interface GridCadet {
   cin: number;
   name: string;
   rank: string | null;
   flight: string | null;
   level: Level;
-  /** A section due this week is under an hour, or nothing is set up yet. */
+  /** This week: a section due is under an hour, or nothing is set up yet. */
   behind: boolean;
-  sections: WeeklySection[];
+  sections: GridSection[];
+  /** Oldest first, matching `WeekGrid.weeks`. */
+  weeks: { week_start: string; cells: Record<SectionKey, GridCell> }[];
 }
 
-export interface WeeklyDashboard {
-  week_start: string;
-  week_end: string;
-  is_current_week: boolean;
-  cadets: WeeklyCadet[];
+export interface WeekGrid {
+  /** The Mondays shown, oldest first. */
+  weeks: string[];
+  current_week: string;
+  cadets: GridCadet[];
+}
+
+/** How many weeks the grid shows at once; "Earlier" steps back this far. */
+export const GRID_WEEKS = 8;
+
+const CELL_WORDS: Record<CellState, (minutes: number) => string> = {
+  done: (m) => `done, ${m} min`,
+  short: (m) => `${m} min, under an hour`,
+  missed: () => "missed",
+  due: () => "not logged yet",
+  off: () => "nothing due",
+};
+
+/** A grid cell in words, for its accessible name and tooltip. */
+export function cellLabel(weekStart: string, cells: Record<SectionKey, GridCell>): string {
+  const day = new Date(`${weekStart}T12:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+  const parts = SECTIONS.map(
+    ({ key, label }) => `${label} ${CELL_WORDS[cells[key].state](cells[key].minutes)}`
+  );
+  return `Week of ${day}: ${parts.join(", ")}`;
 }
 
 export interface Entry {
@@ -107,7 +142,7 @@ export interface EntryBody {
   minutes: number;
 }
 
-/** The dashboard's words for a status. Every badge says it, so colour is never the only signal. */
+/** The words for a section's status this week. Every badge says it, so colour is never the only signal. */
 export const STATUS_LABEL: Record<WeekStatus, string> = {
   done: "Done",
   some: "Under an hour",
@@ -141,7 +176,7 @@ export function switchOn(token: string, cin: number, level: Level) {
     token,
     `${base(cin)}/enrolment`,
     { method: "PUT", body: { level } },
-    "Couldn't switch the activity log on."
+    "Couldn't switch the DofE activity log on."
   );
 }
 
@@ -150,7 +185,7 @@ export function switchOff(token: string, cin: number) {
     token,
     `${base(cin)}/enrolment`,
     { method: "DELETE" },
-    "Couldn't switch the activity log off."
+    "Couldn't switch the DofE activity log off."
   );
 }
 

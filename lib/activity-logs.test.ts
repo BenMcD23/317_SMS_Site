@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { STATUS_LABEL, STATUS_TONE, shiftWeek, type WeekStatus } from "@/lib/activity-logs";
+import { STATUS_LABEL, STATUS_TONE, cellLabel, shiftWeek, type WeekStatus } from "@/lib/activity-logs";
 
 describe("shiftWeek", () => {
   it("steps whole weeks across months, years and the clocks changing", () => {
@@ -22,5 +22,24 @@ describe("status words", () => {
 
   it("only a section with nothing logged reads as the alarming colour", () => {
     expect(all.filter((s) => STATUS_TONE[s] === "destructive")).toEqual(["none"]);
+  });
+});
+
+describe("cellLabel", () => {
+  it("reads a week of the grid out in words, minutes included", () => {
+    expect(
+      cellLabel("2026-10-12", {
+        skills: { state: "done", minutes: 75 },
+        volunteering: { state: "short", minutes: 20 },
+        physical: { state: "missed", minutes: 0 },
+      })
+    ).toBe("Week of 12 Oct: Skills done, 75 min, Volunteering 20 min, under an hour, Physical missed");
+    expect(
+      cellLabel("2026-10-19", {
+        skills: { state: "due", minutes: 0 },
+        volunteering: { state: "off", minutes: 0 },
+        physical: { state: "off", minutes: 0 },
+      })
+    ).toBe("Week of 19 Oct: Skills not logged yet, Volunteering nothing due, Physical nothing due");
   });
 });

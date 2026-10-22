@@ -62,7 +62,7 @@ export function SwitchOnDialog({
       onDone(await switchOn(session?.id_token ?? "", values.cin, values.level));
       close();
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : "Couldn't switch the activity log on.");
+      setSubmitError(e instanceof Error ? e.message : "Couldn't switch the DofE activity log on.");
     }
   });
 
@@ -70,9 +70,9 @@ export function SwitchOnDialog({
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && close()}>
       <ResponsiveDialogContent className="sm:max-w-md">
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>Switch on an activity log</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>Switch on a DofE activity log</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            The cadet sees an Activity Log page on the cadet portal from their next visit.
+            The cadet sees a DofE Activity Log page on the cadet portal from their next visit.
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 

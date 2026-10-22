@@ -92,7 +92,7 @@ export default function CadetActivityLogPage() {
       const res = await apiFetch(pdfUrl(cin, section), { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok)
         throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't make the PDF.");
-      await saveResponseAsFile(res, `Activity Log - ${section}.pdf`);
+      await saveResponseAsFile(res, `DofE Activity Log - ${section}.pdf`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't make the PDF.");
     }
@@ -103,11 +103,11 @@ export default function CadetActivityLogPage() {
       <Button asChild variant="ghost" size="sm" className="-mb-2 -ml-2 w-fit">
         <Link href="/cadets/activity-logs">
           <ArrowLeft />
-          Activity Logs
+          DofE Activity Logs
         </Link>
       </Button>
       <PageHeader
-        title={log?.name ?? "Activity log"}
+        title={log?.name ?? "DofE activity log"}
         description={
           log
             ? log.enabled
@@ -148,8 +148,8 @@ export default function CadetActivityLogPage() {
                 variant="outline"
                 onClick={() =>
                   confirm(
-                    `Switch off ${log.name}'s activity log? It disappears from their portal. Nothing logged is deleted.`,
-                    () => run(() => switchOff(token, cin), "Activity log switched off.")
+                    `Switch off ${log.name}'s DofE activity log? It disappears from their portal. Nothing logged is deleted.`,
+                    () => run(() => switchOff(token, cin), "DofE activity log switched off.")
                   )
                 }
               >
@@ -160,16 +160,16 @@ export default function CadetActivityLogPage() {
         }
       />
 
-      <ErrorAlert message={error?.message ?? null} title="Could not load the activity log" />
+      <ErrorAlert message={error?.message ?? null} title="Could not load the DofE activity log" />
       {isLoading && <ListSkeleton rows={6} />}
 
       {log && !log.enabled && (
         <EmptyState
           icon={NotebookPen}
-          title="Activity log switched off"
+          title="DofE activity log switched off"
           description="The cadet can't see it on the portal. Switching it back on brings back what they'd logged."
         >
-          <Button onClick={() => run(() => switchOn(token, cin, "Bronze"), "Activity log switched on.")}>
+          <Button onClick={() => run(() => switchOn(token, cin, "Bronze"), "DofE activity log switched on.")}>
             Switch on (Bronze)
           </Button>
         </EmptyState>

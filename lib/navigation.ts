@@ -146,7 +146,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Events", href: "/cadets/events", icon: Calendar },
       // Staff-only (see lib/access.ts).
       {
-        label: "Activity Logs",
+        label: "DofE Activity Logs",
         href: "/cadets/activity-logs",
         icon: NotebookPen,
         keywords: ["dofe", "duke of edinburgh", "volunteering", "skills", "physical", "weekly log"],
