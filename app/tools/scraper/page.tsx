@@ -35,13 +35,15 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { VpSyncCard } from "@/components/vp-sync-card";
+import { LEAVING_KEY } from "@/components/oc/leaving-process-card";
+import { PARENT_EMAILS_KEY } from "@/components/oc/parent-emails-card";
 
 const SCRAPER_TOOLS = [
   {
     id: "cadet-quali",
-    label: "Cadet Qualification Scraper",
+    label: "Cadet Records Scraper",
     description:
-      "Fetches all cadet information (name, email, CIN), updates the database with cadets, attendance and their qualifications, and pushes the qualifications to the Google Sheet.",
+      "Updates every cadet from Bader: name, rank, flight, CIN and email, attendance, classification and qualifications. Adds parents' emails from the Next Of Kin report to the OC's parent list, and pushes the qualifications to the Google Sheet.",
   },
   {
     id: "cadet-event",
@@ -75,7 +77,8 @@ const SCRAPER_TOOLS = [
 // Scrapers feeding pages that aren't cached yet (cadet detail, events) map to
 // [] — add their keys here if/when those pages move to useApiQuery.
 const SCRAPER_CACHE_KEYS: Record<string, readonly (readonly string[])[]> = {
-  "cadet-quali": [["cadets"], ["stats"]], // cadet info + qualifications → list & dashboard
+  // cadet info + qualifications → list & dashboard; NoK emails → OC parent list
+  "cadet-quali": [["cadets"], ["stats"], PARENT_EMAILS_KEY, LEAVING_KEY],
   "cadet-event": [], // attendance + 317 event metadata (uncached)
   medical: [], // allergies/dietary on cadet detail (uncached)
   staff: [["staff", "users"]], // staff roster → staff overview/detail
@@ -574,8 +577,8 @@ function AttachmentChecksTab({ token }: { token: string }) {
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground flex items-start gap-2 text-sm">
         <Paperclip className="mt-0.5 size-4 shrink-0" />
-        When the Cadet Qualification Scraper runs, each qualification listed here is checked for a proof
-        attachment. Cadets missing one are flagged in the run log and on their qualification.
+        When the Cadet Records Scraper runs, each qualification listed here is checked for a proof attachment.
+        Cadets missing one are flagged in the run log and on their qualification.
       </p>
 
       <Card>
@@ -734,7 +737,10 @@ export default function ScraperPage() {
 
   // Which node the API is on: when home is down it fails over to Oracle, and
   // the Bader scrapers don't work from there.
-  const { data: host } = useApiQuery<{ node: string | null; on_oracle: boolean }>(["scraper-host"], "/scraper-host");
+  const { data: host } = useApiQuery<{ node: string | null; on_oracle: boolean }>(
+    ["scraper-host"],
+    "/scraper-host"
+  );
 
   // Initial load
   useEffect(() => {
@@ -874,8 +880,8 @@ export default function ScraperPage() {
           <CloudAlert />
           <AlertTitle>Scrapers may not work right now</AlertTitle>
           <AlertDescription className="text-amber-900/90 dark:text-amber-200/90">
-            The home server is down, so 317 SMS is running on the backup Oracle server ({host.node}). The Bader
-            scrapers usually fail from there — try again once home is back.
+            The home server is down, so 317 SMS is running on the backup Oracle server ({host.node}). The
+            Bader scrapers usually fail from there — try again once home is back.
           </AlertDescription>
         </Alert>
       )}

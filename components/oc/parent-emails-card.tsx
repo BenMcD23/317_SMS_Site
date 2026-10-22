@@ -25,7 +25,8 @@ export const PARENT_EMAILS_KEY = ["oc-parent-emails"] as const;
 /**
  * Every parent address on file as `a@x;b@y`, to paste into a BCC. The site
  * deliberately doesn't send to parents: the OC does that from their own account.
- * Addresses have no scrapable source, so they're entered here.
+ * The Cadet Records Scraper adds addresses from Bader's Next Of Kin report;
+ * the OC can add more here, and the scraper never removes one.
  */
 export function ParentEmailsCard() {
   const [editing, setEditing] = useState(false);
@@ -68,7 +69,7 @@ export function ParentEmailsCard() {
               readOnly
               aria-label="Parent emails, separated by semicolons"
               value={data.bcc}
-              placeholder="No parent emails on file yet — use “Edit emails” to add them."
+              placeholder="No parent emails on file yet. Run the Cadet Records Scraper, or use “Edit emails” to add them."
               className="max-h-40 min-h-24 font-mono text-xs"
               onFocus={(e) => e.currentTarget.select()}
             />

@@ -260,6 +260,12 @@ node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
   expiries, staff, stores stock and open orders. It stores ranks, flights and
   qualification names the way the scrapers do, so what you see is what
   production shows. Data you add through the UI persists until `--reset`.
+- **Changing the database means changing the seed.** Work that adds or alters
+  an API table or column also updates the seed in `app/scripts/dev_server.py`
+  (API repo) in the same change, so the preview shows it. The API's
+  `test_dev_server.py` fails on a column the seed never sets. Check the page
+  against the re-seeded data: `preview.sh` re-seeds by itself when the models
+  have moved past the dev database, and `--reset` forces it.
 - Stats trends need weeks of snapshots, so those charts show "not enough
   history" in the preview. That is expected.
 
