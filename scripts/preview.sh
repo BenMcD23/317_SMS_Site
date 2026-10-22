@@ -13,14 +13,16 @@
 #   scripts/preview.sh status       what's up?
 #
 # Expects the API checked out beside this repo (../SMS_Scrapers_API) or at
-# $SMS_API_DIR, the portal at ../317_cadet_portal or $PORTAL_DIR, and the website
+# $SMS_API_DIR, the portal at ../317_Cadet_Portal or $PORTAL_DIR, and the website
 # at ../cadet-website or $WEBSITE_DIR. Logs,
 # pids and the dev database go in .preview/ (gitignored), so nothing is
 # written into the API checkout. The API's seed is described in its
 # app/scripts/dev_server.py; screenshots: scripts/screenshot.mjs.
 #
-# Sign in at /login on either site with the STAFF / SNCO / NCO buttons. On the
-# portal SNCO and NCO are cadets with a record; STAFF is an adult without one.
+# Sign in at /login on either site with the STAFF / SNCO / NCO buttons. The
+# portal also has CADET: an ordinary cadet, Cdt Kian Ashworth, with no NCO
+# role. On the portal CADET, SNCO and NCO are cadets with a record; STAFF is an
+# adult without one. CADET has DofE switched on (Bronze), for the activity log.
 # The website has no login: open a recruit on /recruits here and use its link
 # (http://localhost:5173/enrol/<token>) to fill the joining form in.
 set -euo pipefail
@@ -28,7 +30,9 @@ set -euo pipefail
 SITE="$(cd "$(dirname "$0")/.." && pwd)"
 API="${SMS_API_DIR:-$SITE/../SMS_Scrapers_API}"
 STATE="$SITE/.preview"
-PORTAL="${PORTAL_DIR:-$SITE/../317_cadet_portal}"
+PORTAL="${PORTAL_DIR:-$SITE/../317_Cadet_Portal}"
+# Older checkouts cloned it lower-case.
+[[ -d "$PORTAL" || -n "${PORTAL_DIR:-}" ]] || PORTAL="$SITE/../317_cadet_portal"
 SITE_PORT="${SITE_PORT:-3000}"
 API_PORT="${API_PORT:-8000}"
 PORTAL_PORT="${PORTAL_PORT:-3001}"
@@ -90,7 +94,7 @@ case "${1:-start}" in
   stop) stop; exit 0 ;;
   status) status; exit 0 ;;
   start | --reset | --no-portal) ;;
-  *) sed -n '2,26p' "$0"; exit 1 ;;
+  *) sed -n '2,27p' "$0"; exit 1 ;;
 esac
 [[ "${1:-}" == "--no-portal" ]] && with_portal=0 with_website=0
 
@@ -105,13 +109,17 @@ if [[ ! -x "$API/venv/bin/python" ]]; then
   python3 -m venv "$API/venv"
   "$API/venv/bin/pip" install -q -r "$API/requirements-dev.txt"
 fi
-if [[ ! -d "$SITE/node_modules" ]]; then
-  echo "Installing node modules…"
-  (cd "$SITE" && npm ci --no-audit --no-fund)
-fi
+# Also when the lockfile has moved on since the last install, so a pull that
+# adds a package doesn't leave dev failing on a missing module.
+node_deps() {  # dir, label
+  [[ -f "$1/node_modules/.package-lock.json" && ! "$1/package-lock.json" -nt "$1/node_modules/.package-lock.json" ]] && return
+  echo "Installing $2 node modules…"
+  (cd "$1" && npm ci --no-audit --no-fund)
+}
+node_deps "$SITE" site
 
 if [[ $with_portal == 1 ]]; then
-  [[ -d "$PORTAL/node_modules" ]] || { echo "Installing portal node modules…"; (cd "$PORTAL" && npm ci --no-audit --no-fund); }
+  node_deps "$PORTAL" portal
   if [[ ! -f "$PORTAL/.env.local" ]]; then
     cat > "$PORTAL/.env.local" <<ENVEOF
 # Written by the site's scripts/preview.sh for the local preview. Not real credentials.
@@ -121,13 +129,11 @@ GOOGLE_CLIENT_SECRET=preview
 NEXT_PUBLIC_API_BASE=http://localhost:$API_PORT
 AUTH_DEV_BYPASS=1
 ENVEOF
-  elif ! grep -q '^AUTH_DEV_BYPASS=1' "$PORTAL/.env.local"; then
-    echo "warning: the portal's .env.local has no AUTH_DEV_BYPASS=1, so its login page won't sign you in." >&2
   fi
 fi
 
 if [[ $with_website == 1 ]]; then
-  [[ -d "$WEBSITE/node_modules" ]] || { echo "Installing website node modules…"; (cd "$WEBSITE" && npm ci --no-audit --no-fund); }
+  node_deps "$WEBSITE" website
 fi
 
 # Fake-auth settings only. An existing .env.local is someone's real config, so
@@ -167,9 +173,10 @@ launch() {  # name, dir, command…
 }
 launch api "$API" "$API/venv/bin/python" app/scripts/dev_server.py --port "$API_PORT" --db "$API_DB" "${reset[@]}"
 launch site "$SITE" npx next dev -p "$SITE_PORT"
-# The portal's own dev script (ipv4-first DNS) runs on 3001; the env var points
-# it at this API whatever its .env.local says.
-[[ $with_portal == 1 ]] && launch portal "$PORTAL" env "NEXT_PUBLIC_API_BASE=http://localhost:$API_PORT" npm run dev
+# The portal's own dev script (ipv4-first DNS) runs on 3001; the env vars point
+# it at this API and switch dev sign-in on whatever its .env.local says, so a
+# real .env.local there is left untouched.
+[[ $with_portal == 1 ]] && launch portal "$PORTAL" env "NEXT_PUBLIC_API_BASE=http://localhost:$API_PORT" AUTH_DEV_BYPASS=1 npm run dev
 # The website's joining form talks to this API straight from the browser, so
 # its API address is passed in; --strictPort so a busy port fails loudly (the
 # links the API hands out assume this one).
@@ -180,4 +187,4 @@ wait_for "http://localhost:$SITE_PORT/login" site 120
 [[ $with_portal == 1 ]] && wait_for "http://localhost:$PORTAL_PORT/login" portal 120
 [[ $with_website == 1 ]] && wait_for "http://localhost:$WEBSITE_PORT/" website 60
 status
-echo "Sign in with the STAFF / SNCO / NCO buttons on /login. Stop with: scripts/preview.sh stop"
+echo "Sign in with the STAFF / SNCO / NCO buttons on /login (the portal's CADET is Cdt Kian Ashworth). Stop with: scripts/preview.sh stop"

@@ -25,13 +25,20 @@ describe("canAccess", () => {
     expect(canAccess("snco", path)).toBe(true);
   });
 
-  it.each(["/cadets", "/cadets/123", "/stores", "/texts/messages", "/committee/requests", "/oc", "/backups"])(
-    "keeps NCOs and SNCOs out of %s",
-    (path) => {
-      expect(canAccess("nco", path)).toBe(false);
-      expect(canAccess("snco", path)).toBe(false);
-    }
-  );
+  it.each([
+    "/cadets",
+    "/cadets/123",
+    "/cadets/activity-logs",
+    "/cadets/activity-logs/123",
+    "/stores",
+    "/texts/messages",
+    "/committee/requests",
+    "/oc",
+    "/backups",
+  ])("keeps NCOs and SNCOs out of %s", (path) => {
+    expect(canAccess("nco", path)).toBe(false);
+    expect(canAccess("snco", path)).toBe(false);
+  });
 
   it("gives inspections to SNCOs but not NCOs", () => {
     expect(canAccess("snco", "/assessments/inspection")).toBe(true);

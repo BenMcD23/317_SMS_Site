@@ -20,6 +20,7 @@ import {
   LayoutGrid,
   MessageSquare,
   MessageSquareText,
+  NotebookPen,
   Images,
   Newspaper,
   Orbit,
@@ -151,6 +152,13 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ["exams", "lesson plan", "theory", "classification day", "qr code", "lessons"],
       },
       { label: "Events", href: "/cadets/events", icon: Calendar },
+      // Staff-only (see lib/access.ts).
+      {
+        label: "DofE Activity Logs",
+        href: "/cadets/activity-logs",
+        icon: NotebookPen,
+        keywords: ["dofe", "duke of edinburgh", "volunteering", "skills", "physical", "weekly log"],
+      },
       {
         label: "Flying Paperwork",
         href: "/cadets/flying",
