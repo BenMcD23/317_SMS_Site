@@ -22,7 +22,7 @@
 # Sign in at /login on either site with the STAFF / SNCO / NCO buttons. The
 # portal also has CADET: an ordinary cadet, Cdt Kian Ashworth, with no NCO
 # role. On the portal CADET, SNCO and NCO are cadets with a record; STAFF is an
-# adult without one. (CADET needs a database seeded since it was added: --reset.)
+# adult without one. CADET has DofE switched on (Bronze), for the activity log.
 # The website has no login: open a recruit on /recruits here and use its link
 # (http://localhost:5173/enrol/<token>) to fill the joining form in.
 set -euo pipefail
