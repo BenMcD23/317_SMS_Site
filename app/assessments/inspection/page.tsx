@@ -41,6 +41,7 @@ import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { ErrorAlert } from "@/components/error-alert";
 import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
+import { todayLocal } from "@/lib/format";
 
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
@@ -357,7 +358,7 @@ export default function InspectionPage() {
     draftRestored: restored,
   } = useAssessmentDraft<Sheet>(
     "inspection",
-    { date: new Date().toISOString().slice(0, 10), marks: {}, uniform: "blues" },
+    { date: todayLocal(), marks: {}, uniform: "blues" },
     session?.user?.email,
     (s) => Object.keys(s.marks).length > 0
   );

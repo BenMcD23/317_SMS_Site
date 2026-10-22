@@ -10,6 +10,8 @@ import { ErrorAlert } from "@/components/error-alert";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 import { AttendanceCard } from "@/components/attendance-card";
 import { Home, CalendarRange } from "lucide-react";
+import { OcOnly } from "@/components/oc/oc-access-required";
+import { Private, usePrivateText } from "@/components/private";
 
 type StaffMember = {
   cin: number;
@@ -32,7 +34,16 @@ function formatMonth(key: string): string {
 }
 
 export default function StaffDetailPage() {
+  return (
+    <OcOnly>
+      <StaffDetail />
+    </OcOnly>
+  );
+}
+
+function StaffDetail() {
   const { id } = useParams<{ id: string }>();
+  const privateText = usePrivateText();
   const [user, setUser] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +71,9 @@ export default function StaffDetailPage() {
   if (error) return <ErrorAlert message={error} title="Could not load staff member" />;
   if (!user) return <p className="text-muted-foreground text-sm">Staff member not found.</p>;
 
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || `CIN ${user.cin}`;
-  const description = [user.rank, user.email, user.phoneNumber, `CIN ${user.cin}`]
+  const name =
+    [user.firstName, user.lastName].filter(Boolean).join(" ") || privateText(user.email) || `CIN ${user.cin}`;
+  const description = [user.rank, privateText(user.email), privateText(user.phoneNumber), `CIN ${user.cin}`]
     .filter(Boolean)
     .join(" · ");
   const htdMonths = Object.entries(user.attendance ?? {}).sort(([a], [b]) => a.localeCompare(b));
@@ -71,26 +83,28 @@ export default function StaffDetailPage() {
       <PageHeader title={name} description={description} />
 
       <Tabs defaultValue="overview">
-        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
+        <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="uniform">Uniform</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Home className="text-muted-foreground h-4 w-4" />
-                Address
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className={user.address ? "text-sm" : "text-muted-foreground text-sm italic"}>
-                {user.address ?? "No address recorded."}
-              </p>
-            </CardContent>
-          </Card>
+          <Private>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Home className="text-muted-foreground h-4 w-4" />
+                  Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={user.address ? "text-sm" : "text-muted-foreground text-sm italic"}>
+                  {user.address ?? "No address recorded."}
+                </p>
+              </CardContent>
+            </Card>
+          </Private>
 
           {/* The monthly counts that prefill the HTD claim — distinct from the
               full register on the Attendance tab, which is unbounded. */}

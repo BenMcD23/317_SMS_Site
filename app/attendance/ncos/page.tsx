@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorAlert } from "@/components/error-alert";
 import { PageHeader } from "@/components/page-header";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { useApiQuery } from "@/lib/use-api-query";
 import { formatDate, formatShortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -261,7 +261,7 @@ export default function NcoAttendancePage() {
       ) : (
         <>
           {/* Team totals */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatGroup className="sm:grid-cols-3 lg:grid-cols-6">
             <Stat
               label="Team turnout"
               value={teamRate === null ? "—" : `${teamRate}%`}
@@ -277,7 +277,7 @@ export default function NcoAttendancePage() {
             <Stat label="Attended" value={teamCounts.present} tone="success" />
             <Stat label="Authorised absence" value={teamCounts.authorised} tone="warning" />
             <Stat label="Absent" value={teamCounts.absent} tone="destructive" />
-          </div>
+          </StatGroup>
 
           <Card>
             <CardHeader>

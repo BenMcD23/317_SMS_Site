@@ -12,6 +12,8 @@ import { ErrorAlert } from "@/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Search, ChevronRight, UserCog } from "lucide-react";
+import { OcOnly } from "@/components/oc/oc-access-required";
+import { usePrivateText } from "@/components/private";
 
 type StaffMember = {
   cin: number;
@@ -23,7 +25,16 @@ type StaffMember = {
 };
 
 export default function StaffOverviewPage() {
+  return (
+    <OcOnly>
+      <StaffOverview />
+    </OcOnly>
+  );
+}
+
+function StaffOverview() {
   const router = useRouter();
+  const privateText = usePrivateText();
   const [search, setSearch] = useState("");
 
   const {
@@ -42,11 +53,12 @@ export default function StaffOverviewPage() {
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
     const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase();
-    return !q || name.includes(q) || (u.email ?? "").toLowerCase().includes(q);
+    // A hidden email mustn't still match, or the search gives it away.
+    return !q || name.includes(q) || (privateText(u.email) ?? "").toLowerCase().includes(q);
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Staff"
         description={loading ? "Loading…" : `${users.length} staff member${users.length !== 1 ? "s" : ""}`}
@@ -57,7 +69,7 @@ export default function StaffOverviewPage() {
           <Search />
         </InputGroupAddon>
         <InputGroupInput
-          placeholder="Search by name or email…"
+          placeholder={privateText("email") ? "Search by name or email…" : "Search by name…"}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -77,8 +89,9 @@ export default function StaffOverviewPage() {
         <Card className="overflow-hidden py-0">
           <div className="divide-y">
             {filtered.map((u) => {
-              const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || `CIN ${u.cin}`;
-              const subtitle = [u.rank, u.email].filter(Boolean).join(" · ");
+              const name =
+                [u.firstName, u.lastName].filter(Boolean).join(" ") || privateText(u.email) || `CIN ${u.cin}`;
+              const subtitle = [u.rank, privateText(u.email)].filter(Boolean).join(" · ");
               return (
                 <button
                   key={u.cin}

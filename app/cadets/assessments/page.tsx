@@ -42,7 +42,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
 import { EmptyState } from "@/components/empty-state";
 
-const EDITABLE_TYPES = ["Blue Leadership", "Blue Radio", "MOI"];
+const EDITABLE_TYPES = ["Blue Leadership", "Blue Radio", "Blue Space", "MOI"];
 
 type AssessmentEntry = {
   id: number;
@@ -961,7 +961,7 @@ export default function AssessmentsOverviewPage() {
   const readyTotal = countForFilter("ready");
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Cadet Assessments"
         description={loading ? "Loading…" : `${cadets.length} cadets with assessment sheets`}

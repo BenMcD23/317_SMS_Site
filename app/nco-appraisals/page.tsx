@@ -115,7 +115,7 @@ export default function NcoAppraisalsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="NCO Appraisals"
         description="Write, keep and issue the squadron's NCO appraisals."

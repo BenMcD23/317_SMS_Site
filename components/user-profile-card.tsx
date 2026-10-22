@@ -12,6 +12,7 @@ import { Pencil, X, Check, Loader2, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { Private } from "@/components/private";
 
 export type UserProfile = {
   rank: string;
@@ -49,8 +50,21 @@ const FIELD_LABELS: { key: keyof UserProfile; label: string }[] = [
   { key: "car_reg", label: "Car Registration" },
 ];
 
-function ReadOnlyField({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
-  return (
+// Identifying beyond a name: removed by "Hide personal data".
+const PERSONAL_FIELDS: (keyof UserProfile)[] = ["jpa_number", "home_address", "car_reg"];
+
+function ReadOnlyField({
+  label,
+  value,
+  multiline,
+  personal,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+  personal?: boolean;
+}) {
+  const field = (
     <div className="min-w-0">
       <p className="text-muted-foreground text-xs">{label}</p>
       {value ? (
@@ -62,6 +76,7 @@ function ReadOnlyField({ label, value, multiline }: { label: string; value: stri
       )}
     </div>
   );
+  return personal ? <Private>{field}</Private> : field;
 }
 
 export function UserProfileCard({
@@ -287,6 +302,7 @@ export function UserProfileCard({
                   label={label}
                   value={profile[key]}
                   multiline={key === "home_address"}
+                  personal={PERSONAL_FIELDS.includes(key)}
                 />
               ))}
             </div>

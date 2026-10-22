@@ -28,13 +28,16 @@ export function HeaderBreadcrumbs() {
         <BreadcrumbList className="text-sm">
           {crumbs.map((crumb, i) => {
             const last = i === crumbs.length - 1;
-            // Ancestors collapse away on narrow screens; the page itself always shows.
+            // Ancestors collapse away on narrow screens; the page itself always
+            // shows. Every separator goes with them, or the page reads "› Orders".
             const hide = last ? undefined : "hidden md:flex";
             return (
               <Fragment key={`${crumb.label}-${i}`}>
-                {i > 0 && <BreadcrumbSeparator className={hide} />}
+                {i > 0 && <BreadcrumbSeparator className="hidden md:flex" />}
                 <BreadcrumbItem className={hide}>
-                  {last ? (
+                  {/* A last crumb with a link means we're on a record below that
+                      page (a cadet, a box) — keep it clickable as the way back. */}
+                  {last && !crumb.href ? (
                     <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                   ) : crumb.href ? (
                     <BreadcrumbLink asChild>

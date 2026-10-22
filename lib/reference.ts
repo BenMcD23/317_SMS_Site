@@ -53,6 +53,8 @@ export type Reference = {
   sizes: Record<string, string[]>;
   sizingFields: Record<string, string[]>;
   issuanceCategories: string[];
+  /** Item type → the issuance category its size is recorded under ("Slacks" → "Slacks/Trousers"). */
+  issuanceCategoryByItem: Record<string, string>;
   badgeCategories: BadgeCategory[];
   categoriesWithoutGainedWhere: Set<string>;
   gainedWhereOptions: GainedWhereOption[];
@@ -65,6 +67,7 @@ const EMPTY: Reference = {
   sizes: {},
   sizingFields: {},
   issuanceCategories: [],
+  issuanceCategoryByItem: {},
   badgeCategories: [],
   categoriesWithoutGainedWhere: new Set(),
   gainedWhereOptions: [],
@@ -78,6 +81,7 @@ function normalise(data: ReferencePayload): Reference {
     sizes: data.uniform.sizes,
     sizingFields: data.uniform.sizingFields,
     issuanceCategories: data.uniform.issuanceCategories,
+    issuanceCategoryByItem: data.uniform.issuanceCategoryByItem ?? {},
     badgeCategories: data.badges.categories,
     categoriesWithoutGainedWhere: new Set(data.badges.categoriesWithoutGainedWhere),
     gainedWhereOptions: data.badges.gainedWhereOptions,

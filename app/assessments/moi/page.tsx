@@ -18,6 +18,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
 import { SectionHeading } from "@/components/section-heading";
+import { todayLocal } from "@/lib/format";
 
 const SECTIONS = [
   {
@@ -168,7 +169,7 @@ const initialState = (): FormState => ({
   wingCcf: "GM",
   baderReference: "",
   placeOfAssessment: "317 Squadron",
-  date: new Date().toISOString().split("T")[0],
+  date: todayLocal(),
   scores: Object.fromEntries(ALL_QUESTIONS.map((q) => [q.id, null])),
   sectionComments: Object.fromEntries(SECTIONS.map((s) => [s.id, ""])),
   strengthsSummary: "",

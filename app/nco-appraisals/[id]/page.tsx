@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
+import { Private } from "@/components/private";
 import {
   APPRAISAL_SECTIONS,
   deleteAppraisal,
@@ -136,7 +137,7 @@ export default function AppraisalDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -145,7 +146,7 @@ export default function AppraisalDetailPage() {
 
   if (error || !data) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
         <ErrorAlert message={error?.message ?? "Appraisal not found"} />
         <Button asChild variant="outline" className="self-start">
           <Link href="/nco-appraisals">
@@ -158,7 +159,7 @@ export default function AppraisalDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <PageHeader
         title={data.nco_name || "NCO Appraisal"}
         description={`Appraised ${formatDate(data.appraisal_date)} by ${data.author_name}`}
@@ -194,10 +195,13 @@ export default function AppraisalDetailPage() {
                 <FileDown className="size-4" />
                 {downloading === "pdf" ? "Building…" : "PDF"}
               </Button>
-              <Button onClick={openEmail}>
-                <Mail className="size-4" />
-                Email to NCO
-              </Button>
+              {/* Its dialog fills in the NCO's address. */}
+              <Private>
+                <Button onClick={openEmail}>
+                  <Mail className="size-4" />
+                  Email to NCO
+                </Button>
+              </Private>
             </>
           )
         }
@@ -228,7 +232,9 @@ export default function AppraisalDetailPage() {
         <>
           <Card>
             <CardContent className="grid gap-4 sm:grid-cols-3">
-              <Field label="Age" value={data.age} />
+              <Private>
+                <Field label="Age" value={data.age} />
+              </Private>
               <Field label="Attendance" value={data.attendance} />
               <Field
                 label="Next NCO review"
@@ -257,7 +263,8 @@ export default function AppraisalDetailPage() {
             {data.emailed_at && (
               <Badge variant="outline" className="text-muted-foreground gap-1">
                 <Mail className="size-3" />
-                Sent to {data.emailed_to} on {formatTimestamp(data.emailed_at)}
+                Sent
+                <Private> to {data.emailed_to}</Private> on {formatTimestamp(data.emailed_at)}
               </Badge>
             )}
           </div>

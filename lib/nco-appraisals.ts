@@ -8,7 +8,9 @@
 "use client";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch, apiRequest, errorDetail } from "@/lib/api-fetch";
+import { saveResponseAsFile } from "@/lib/download";
+import { todayLocal } from "@/lib/format";
 
 /** Intervals the form offers, and the only values the API accepts. */
 export const REVIEW_INTERVALS = [12, 6, 3] as const;
@@ -160,8 +162,7 @@ export const EMPTY_SECTIONS: AppraisalSections = {
 /** "YYYY-MM-DD" for today, in local time — `toISOString` would shift the date
  *  back an hour either side of midnight during BST. */
 export function todayInput(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return todayLocal();
 }
 
 export function emptyDraft(): AppraisalDraft {
@@ -212,39 +213,12 @@ export function nextReviewDate(appraisalDate: string, months: number): Date | nu
   return target;
 }
 
-async function request<T>(
+function request<T>(
   token: string,
   path: string,
   init: { method: string; body?: unknown } = { method: "POST" }
 ): Promise<T> {
-  let res: Response;
-  try {
-    res = await apiFetch(`${API_BASE}/nco-appraisals${path}`, {
-      method: init.method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-    });
-  } catch {
-    throw new Error("Server unreachable.");
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(errorMessage(data) ?? "Something went wrong.");
-  return data as T;
-}
-
-/** FastAPI's `detail` is a string for our own HTTPExceptions but an array of
- *  per-field objects when validation rejects the body — flatten both. */
-function errorMessage(data: unknown): string | null {
-  const detail = (data as { detail?: unknown } | null)?.detail;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) {
-    const messages = detail.map((d) => (d as { msg?: string })?.msg).filter((m): m is string => !!m);
-    if (messages.length) return messages.join(", ");
-  }
-  return null;
+  return apiRequest<T>(token, `${API_BASE}/nco-appraisals${path}`, init);
 }
 
 export function createAppraisal(token: string, draft: AppraisalDraft): Promise<Appraisal> {
@@ -300,15 +274,7 @@ export async function downloadAppraisal(token: string, id: number, format: "docx
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    throw new Error(errorMessage(data) ?? "Couldn't build the document.");
+    throw new Error(errorDetail(data) ?? "Couldn't build the document.");
   }
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download =
-    res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] ??
-    `NCO_Appraisal_${id}.${format}`;
-  link.click();
-  URL.revokeObjectURL(url);
+  await saveResponseAsFile(res, `NCO_Appraisal_${id}.${format}`);
 }

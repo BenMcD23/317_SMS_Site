@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ErrorAlert } from "@/components/error-alert";
+import { StockItemFields } from "@/app/stores/uniform/stock/components/StockItemFields";
+import { apiFetch, errorDetail } from "@/lib/api-fetch";
+import { stockPayload, stockResolver, type StockForm, type StockFormContext } from "@/lib/stock-form";
 import { ShelfStructure, StockItem } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
-import { SizeCombobox } from "@/components/size-combobox";
 
 interface EditStockDialogProps {
   open: boolean;
@@ -17,6 +25,14 @@ interface EditStockDialogProps {
   shelfStructure: ShelfStructure;
   onSuccess: (updated: StockItem) => void;
 }
+
+const fromItem = (item: StockItem | null): StockForm => ({
+  itemType: item?.itemType ?? "",
+  size: item?.size ?? "",
+  quantity: item?.quantity ?? 0,
+  box: item?.box ?? "",
+  section: item?.section ?? "",
+});
 
 // Shared by the box detail view and the search results view so the
 // item-edit form and PATCH logic live in one place.
@@ -27,182 +43,76 @@ export function EditStockDialog({
   shelfStructure,
   onSuccess,
 }: EditStockDialogProps) {
-  const [itemType, setItemType] = useState("");
-  const [size, setSize] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [box, setBox] = useState("");
-  const [section, setSection] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const { noSizeItems } = useReference();
+  // An edit can count a line down to zero; adding can't.
+  const form = useForm<StockForm, StockFormContext>({
+    resolver: stockResolver(0),
+    context: { noSizeItems },
+    defaultValues: fromItem(item),
+    mode: "onChange",
+  });
+  const { getValues, setValue, handleSubmit, reset, formState } = form;
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (item) {
-      setItemType(item.itemType);
-      setSize(item.size);
-      setQuantity(item.quantity);
-      setBox(item.box);
-      setSection(item.section);
+      reset(fromItem(item));
       setSubmitError(null);
     }
-  }, [item]);
+  }, [item, reset]);
 
-  const { itemTypes, noSizeItems } = useReference();
-  const needsSize = itemType !== "" && !noSizeItems.has(itemType);
-
-  const boxOptions = useMemo(() => shelfStructure.boxes.map((b) => b.label), [shelfStructure]);
-
-  const sectionOptions = useMemo(() => {
-    if (!box) return [];
-    return shelfStructure.boxes.find((b) => b.label === box)?.sections.map((s) => s.label) ?? [];
-  }, [box, shelfStructure]);
-
-  const isValid =
-    itemType !== "" && (!needsSize || size !== "") && quantity >= 0 && box !== "" && section !== "";
-
-  function handleItemTypeChange(v: string) {
-    setItemType(v);
-    setSize(noSizeItems.has(v) ? "N/A" : noSizeItems.has(itemType) ? "" : size);
-  }
-
-  function handleBoxChange(v: string) {
-    setBox(v);
-    setSection("");
-  }
-
-  function handleClose() {
-    setSubmitting(false);
+  function close() {
     setSubmitError(null);
     onOpenChange(false);
   }
 
-  async function handleSubmit() {
-    if (!item || !isValid) return;
-    setSubmitting(true);
+  const submit = handleSubmit(async (v) => {
+    if (!item) return;
     setSubmitError(null);
     try {
-      const res = await fetch(`/api/stores/stock/${item.id}`, {
+      const res = await apiFetch(`/api/stores/stock/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          itemType,
-          size: needsSize ? size : "N/A",
-          box,
-          section,
-          quantity,
-        }),
+        body: JSON.stringify(stockPayload(v, noSizeItems)),
       });
-      if (!res.ok) throw new Error("Failed to update item");
-      const updated = await res.json();
-      onSuccess(updated);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(errorDetail(data) ?? "Couldn't save the changes. Try again.");
+      onSuccess(data as StockItem);
     } catch (e: unknown) {
-      setSubmitError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setSubmitting(false);
+      setSubmitError(e instanceof Error ? e.message : "Couldn't save the changes. Try again.");
     }
-  }
+  });
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) handleClose();
-      }}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Stock Item</DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && close()}>
+      <ResponsiveDialogContent className="sm:max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Edit stock item</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Item Type</Label>
-            <Select value={itemType} onValueChange={handleItemTypeChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select item type" />
-              </SelectTrigger>
-              <SelectContent>
-                {itemTypes.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {needsSize && (
-            <div className="space-y-1.5">
-              <Label>Size</Label>
-              <SizeCombobox
-                itemType={itemType}
-                value={size}
-                onChange={setSize}
-                placeholder="e.g. 95/36 or 74"
-              />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Box</Label>
-              <Select value={box} onValueChange={handleBoxChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Box" />
-                </SelectTrigger>
-                <SelectContent>
-                  {boxOptions.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      Box {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Section</Label>
-              <Select
-                value={section}
-                onValueChange={setSection}
-                disabled={!box || sectionOptions.length === 0}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={sectionOptions.length === 0 ? "No sections" : "Section"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {sectionOptions.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      Section {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="editstock-qty">Quantity</Label>
-            <Input
-              id="editstock-qty"
-              type="number"
-              min={0}
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 0)}
-              className="w-28"
-            />
-          </div>
-
-          {submitError && <p className="text-destructive text-sm">{submitError}</p>}
+        <div className="flex flex-col gap-4">
+          <StockItemFields
+            form={form}
+            idPrefix="editstock"
+            shelfStructure={shelfStructure}
+            // Switching between two sized items keeps the size (often the same
+            // garment, re-labelled); coming off an unsized one clears its "N/A".
+            onItemTypeChange={() => {
+              if (getValues("size") === "N/A") setValue("size", "", { shouldValidate: true });
+            }}
+          />
+          <ErrorAlert message={submitError} title="Changes not saved" />
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+        <ResponsiveDialogFooter>
+          <Button type="button" variant="outline" onClick={close}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !isValid}>
-            {submitting ? "Saving…" : "Save Changes"}
+          <Button type="button" onClick={submit} disabled={!formState.isValid || formState.isSubmitting}>
+            {formState.isSubmitting ? "Saving…" : "Save Changes"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

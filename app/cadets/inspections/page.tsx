@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { flightBadgeClass } from "@/lib/cadet-format";
 import { EmptyState } from "@/components/empty-state";
+import { AiMarkdown } from "@/components/ai-markdown";
+import { InspectionAuditTab } from "@/components/inspection-audit";
 import { toast } from "sonner";
 import {
   Search,
@@ -522,52 +524,6 @@ function SortHead({
   );
 }
 
-function AiMarkdown({ text }: { text: string }) {
-  const blocks: React.ReactNode[] = [];
-  let bullets: string[] = [];
-
-  const flush = (key: string) => {
-    if (bullets.length) {
-      blocks.push(
-        <ul key={key} className="ml-4 list-disc space-y-1 text-sm">
-          {bullets.map((b, i) => (
-            <li key={i}>{b}</li>
-          ))}
-        </ul>
-      );
-      bullets = [];
-    }
-  };
-
-  text.split("\n").forEach((raw, i) => {
-    const line = raw.trim();
-    if (!line) {
-      flush(`u-${i}`);
-      return;
-    }
-    if (line.startsWith("###")) {
-      flush(`u-${i}`);
-      blocks.push(
-        <h4 key={i} className="mt-3 text-sm font-semibold first:mt-0">
-          {line.replace(/^#+\s*/, "")}
-        </h4>
-      );
-    } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      bullets.push(line.slice(2));
-    } else {
-      flush(`u-${i}`);
-      blocks.push(
-        <p key={i} className="text-muted-foreground text-sm">
-          {line}
-        </p>
-      );
-    }
-  });
-  flush("u-end");
-
-  return <div className="space-y-2">{blocks}</div>;
-}
-
 function faultTally(timeline: TimelineEntry[]) {
   const byRegion = new Map<string, number>();
   for (const e of timeline) {
@@ -915,19 +871,23 @@ export default function InspectionHistoryPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Inspection History"
-        description="Browse past inspections by date, export them to PDF, and track score & uniform trends per cadet."
+        description="Browse past inspections by date, export them to PDF, and track score & uniform trends per cadet, and audit what needs improving most."
       />
 
       <Tabs defaultValue="history">
         <TabsList>
           <TabsTrigger value="history">By date</TabsTrigger>
           <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          <TabsTrigger value="audit">Audit</TabsTrigger>
         </TabsList>
         <TabsContent value="history" className="mt-4">
           <HistoryTab />
         </TabsContent>
         <TabsContent value="leaderboard" className="mt-4">
           <LeaderboardTab />
+        </TabsContent>
+        <TabsContent value="audit" className="mt-4">
+          <InspectionAuditTab />
         </TabsContent>
       </Tabs>
     </div>

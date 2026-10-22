@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -30,12 +31,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
-import { Plus, Pencil, Trash2, Download, Upload, MessageCircle, ExternalLink, Contact } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Download,
+  Upload,
+  MessageCircle,
+  ExternalLink,
+  Contact,
+  Search,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { Private, usePrivateText } from "@/components/private";
 
 type Source = "cadet" | "staff" | "extra";
 
@@ -92,6 +104,7 @@ const SOURCE_LABEL: Record<Source, string> = {
 
 export default function TextRecipientsPage() {
   const { data: session } = useSession();
+  const privateText = usePrivateText();
 
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,6 +254,22 @@ export default function TextRecipientsPage() {
     }
   };
 
+  // Finding one person's number among a squadron's worth is the common job here.
+  // Digits are compared without spaces so "07700 900" finds "07700900…".
+  const [filter, setFilter] = useState("");
+  const shown = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return recipients;
+    const digits = q.replace(/\s+/g, "");
+    return recipients.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        `${r.rank} ${r.surname}`.toLowerCase().includes(q) ||
+        // A hidden number mustn't still match, or the search gives it away.
+        (/^\+?\d+$/.test(digits) && (privateText(r.phone_number) ?? "").replace(/\s+/g, "").includes(digits))
+    );
+  }, [recipients, filter, privateText]);
+
   const counts = useMemo(
     () => ({
       cadet: recipients.filter((r) => r.source === "cadet").length,
@@ -383,15 +412,17 @@ export default function TextRecipientsPage() {
   const editingExtra = !editing || editing.source === "extra";
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Text Recipients"
         description="Everyone with a mobile saved against their record, plus anyone without one"
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button variant="outline" onClick={handleExport} disabled={recipients.length === 0}>
-              <Download /> Export CSV
-            </Button>
+            <Private>
+              <Button variant="outline" onClick={handleExport} disabled={recipients.length === 0}>
+                <Download /> Export CSV
+              </Button>
+            </Private>
             <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!session}>
               <Upload /> Import
             </Button>
@@ -462,50 +493,81 @@ export default function TextRecipientsPage() {
             {recipients.length} recipient{recipients.length !== 1 ? "s" : ""} — {counts.cadet} cadet
             {counts.cadet !== 1 ? "s" : ""}, {counts.staff} staff, {counts.extra} without an account.
           </p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Greeted as</TableHead>
-                <TableHead>Phone number</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recipients.map((r) => (
-                <TableRow key={r.key}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span>{r.name || "—"}</span>
-                      <Badge variant="outline" className="text-xs font-normal">
-                        {SOURCE_LABEL[r.source]}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {`${r.rank} ${r.surname}`.trim() || "—"}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">{r.phone_number}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon-sm" aria-label="Edit" onClick={() => openEdit(r)}>
-                        <Pencil />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="Remove"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleting(r)}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <InputGroup>
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              placeholder={
+                privateText("number") ? "Search by name, greeting or number…" : "Search by name or greeting…"
+              }
+              aria-label="Search recipients"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          </InputGroup>
+          {shown.length === 0 ? (
+            <p className="text-muted-foreground py-6 text-center text-sm">
+              Nobody matches &ldquo;{filter}&rdquo;.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Greeted as</TableHead>
+                  <Private>
+                    <TableHead>Phone number</TableHead>
+                  </Private>
+                  <TableHead className="w-24" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {shown.map((r) => (
+                  <TableRow key={r.key}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{r.name || "—"}</span>
+                        <Badge variant="outline" className="text-xs font-normal">
+                          {SOURCE_LABEL[r.source]}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {`${r.rank} ${r.surname}`.trim() || "—"}
+                    </TableCell>
+                    <Private>
+                      <TableCell className="font-mono text-sm">{r.phone_number}</TableCell>
+                    </Private>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        {/* The edit form shows the number, so it goes too. */}
+                        <Private>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Edit ${r.name || r.surname || "recipient"}`}
+                            onClick={() => openEdit(r)}
+                          >
+                            <Pencil />
+                          </Button>
+                        </Private>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Remove ${r.name || r.surname || "recipient"}`}
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleting(r)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </>
       )}
 
@@ -705,8 +767,9 @@ export default function TextRecipientsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Take this number off the list?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting && `${deleting.name || deleting.surname} (${deleting.phone_number})`} will no longer
-              receive parade night texts.
+              {deleting &&
+                `${deleting.name || deleting.surname}${privateText(deleting.phone_number) ? ` (${deleting.phone_number})` : ""}`}{" "}
+              will no longer receive parade night texts.
               {deleting && deleting.source !== "extra"
                 ? " Their record stays — only the number is cleared, and they can save a new one themselves."
                 : ""}

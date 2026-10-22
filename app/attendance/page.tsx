@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CalendarCheck, ShieldUser, Users, UserCog } from "lucide-react";
+import { CalendarCheck, ChevronRight, ShieldUser, Users, UserCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -310,7 +310,7 @@ export default function AttendancePage() {
           </div>
 
           {/* Totals */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatGroup className="sm:grid-cols-3 lg:grid-cols-6">
             <Stat
               label="Average turnout"
               value={rate === null ? "—" : `${rate}%`}
@@ -326,7 +326,7 @@ export default function AttendancePage() {
             <Stat label="Attended" value={totals.present} tone="success" />
             <Stat label="Authorised absence" value={totals.authorised} tone="warning" />
             <Stat label="Absent" value={totals.absent} tone="destructive" />
-          </div>
+          </StatGroup>
 
           {filtered.length === 0 ? (
             <p className="text-muted-foreground text-sm">No nights match these filters.</p>
@@ -396,6 +396,7 @@ export default function AttendancePage() {
                           <TableHead>{group === "ncos" ? "NCOs" : "Cadets"}</TableHead>
                           <TableHead>Staff</TableHead>
                           <TableHead className="text-right">Turnout</TableHead>
+                          <TableHead className="w-8" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -411,7 +412,11 @@ export default function AttendancePage() {
                               className="cursor-pointer"
                             >
                               <TableCell className="pl-6 font-medium whitespace-nowrap">
-                                {formatDate(night.date)}
+                                {/* The row's click handler opens it; the button is
+                                    what makes that reachable by keyboard. */}
+                                <button type="button" className="hover:underline">
+                                  {formatDate(night.date)}
+                                </button>
                               </TableCell>
                               <TableCell className="text-muted-foreground">
                                 {night.registerType ?? "—"}
@@ -424,6 +429,9 @@ export default function AttendancePage() {
                               </TableCell>
                               <TableCell className="text-right font-medium tabular-nums">
                                 {nightRate === null ? "—" : `${nightRate}%`}
+                              </TableCell>
+                              <TableCell className="pr-4">
+                                <ChevronRight className="text-muted-foreground/50 size-4" />
                               </TableCell>
                             </TableRow>
                           );

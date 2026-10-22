@@ -5,21 +5,27 @@ import {
   Calendar,
   CalendarCheck,
   CalendarOff,
+  ChartColumn,
+  ChartLine,
+  ChartNoAxesColumn,
   ClipboardCheck,
   ClipboardList,
   Contact,
   DatabaseBackup,
   DatabaseZap,
+  FileSearch,
   FileText,
   GraduationCap,
   LayoutDashboard,
   MessageSquare,
   MessageSquareText,
+  Images,
   Newspaper,
+  Orbit,
   Package,
+  Plane,
   Radio,
   ReceiptText,
-  ScrollText,
   Shirt,
   ShieldCheck,
   ShieldUser,
@@ -28,6 +34,7 @@ import {
   UserCheck,
   UserCog,
   UserMinus,
+  UserPlus,
   Users,
 } from "lucide-react";
 
@@ -53,6 +60,9 @@ export type NavLink = {
   ocOnly?: boolean;
   /** Extra words the palette should match, e.g. old names people still use. */
   keywords?: string[];
+  /** Highlight only on this exact path — for a group's landing page (/oc)
+   *  whose siblings (/oc/leaving) live underneath it. */
+  exact?: boolean;
 };
 
 /** A collapsible parent with its own children (Stores › Uniform › Stock). */
@@ -76,24 +86,75 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard },
-      { label: "OC Dashboard", href: "/oc", icon: ShieldUser, ocOnly: true },
+      {
+        label: "Squadron Stats",
+        href: "/stats",
+        icon: ChartLine,
+        keywords: ["badge progression", "trends", "strength", "expiring"],
+      },
+      {
+        kind: "group",
+        label: "OC",
+        icon: ShieldUser,
+        links: [
+          {
+            label: "Dashboard",
+            href: "/oc",
+            icon: ShieldUser,
+            ocOnly: true,
+            exact: true,
+            keywords: ["oc dashboard"],
+          },
+          {
+            label: "Leaving Process",
+            href: "/oc/leaving",
+            icon: UserMinus,
+            ocOnly: true,
+            keywords: ["leavers", "lapsed cadets", "parent emails"],
+          },
+          {
+            label: "Staff",
+            href: "/staff/overview",
+            icon: UserCog,
+            ocOnly: true,
+            keywords: ["cfav", "adults"],
+          },
+        ],
+      },
     ],
   },
   {
     label: "Cadets",
     items: [
       { label: "Overview", href: "/cadets/overview", icon: Users, keywords: ["cadet list", "roll"] },
+      // Staff-only (see lib/access.ts): parents' and medical details.
+      {
+        label: "Recruits",
+        href: "/recruits",
+        icon: UserPlus,
+        keywords: ["joining form", "new cadets", "3822a", "3822h", "consent", "health declaration", "enrol"],
+      },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["results"] },
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
-      { label: "Theory Progress", href: "/cadets/theory", icon: GraduationCap },
+      {
+        label: "Classifications",
+        href: "/cadets/classifications",
+        icon: GraduationCap,
+        keywords: ["exams", "lesson plan", "theory", "classification day", "qr code", "lessons"],
+      },
       { label: "Events", href: "/cadets/events", icon: Calendar },
+      {
+        label: "Flying Paperwork",
+        href: "/cadets/flying",
+        icon: Plane,
+        keywords: ["aef", "gliding", "tg21", "tg23", "av med"],
+      },
       {
         label: "Audit",
         href: "/cadets/audit",
         icon: ShieldCheck,
         keywords: ["qualifications", "medical", "dietary"],
       },
-      { label: "Leaving Process", href: "/cadets/leaving", icon: UserMinus },
     ],
   },
   {
@@ -102,6 +163,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
+      { label: "Space", href: "/assessments/space", icon: Orbit, keywords: ["blue space", "workbook"] },
       { label: "MOI", href: "/assessments/moi", icon: BookOpen, keywords: ["method of instruction"] },
     ],
   },
@@ -136,6 +198,12 @@ export const NAV_SECTIONS: NavSection[] = [
             href: "/stores/uniform/orders",
             icon: ShoppingCart,
             keywords: ["uniform orders", "kitting"],
+          },
+          {
+            label: "Insights",
+            href: "/stores/uniform/insights",
+            icon: ChartColumn,
+            keywords: ["popular sizes", "what to order", "low stock", "unused stock", "reorder"],
           },
         ],
       },
@@ -172,12 +240,12 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ["website", "publish"],
       },
       { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper, keywords: ["website"] },
+      { label: "Gallery", href: "/tools/gallery-updater", icon: Images, keywords: ["website", "photos"] },
     ],
   },
   {
     label: "Squadron",
     items: [
-      { label: "Staff", href: "/staff/overview", icon: UserCog },
       {
         label: "Attendance",
         href: "/attendance",
@@ -195,6 +263,13 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/tools/ji-ao-generator",
         icon: FileText,
         keywords: ["joining instructions", "admin order"],
+      },
+      // Staff-only: lib/access.ts doesn't list it for NCOs, and the API requires staff.
+      {
+        label: "Docs Assistant",
+        href: "/tools/docs-assistant",
+        icon: FileSearch,
+        keywords: ["ai", "chatbot", "rafac documents", "policy", "acp", "jsp", "sharepoint"],
       },
       {
         kind: "group",
@@ -222,7 +297,13 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap, keywords: ["sync", "import"] },
       { label: "Backups", href: "/backups", icon: DatabaseBackup, ownerOnly: true },
-      { label: "API Logs", href: "/api-logs", icon: ScrollText, ownerOnly: true },
+      {
+        label: "Usage",
+        href: "/usage",
+        icon: ChartNoAxesColumn,
+        ownerOnly: true,
+        keywords: ["analytics", "stats"],
+      },
     ],
   },
 ];
@@ -231,8 +312,8 @@ export function isGroup(item: NavItem): item is NavGroup {
   return item.kind === "group";
 }
 
-export function isLinkActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+export function isLinkActive(pathname: string, href: string, exact = false): boolean {
+  if (href === "/" || exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -281,6 +362,15 @@ const UNLISTED_PAGES: Record<string, string> = {
 };
 
 /**
+ * Record pages that live beside their list rather than under it (/cadets/1234
+ * next to /cadets/overview), so prefix matching alone finds no trail for them.
+ */
+const DETAIL_PARENTS: Array<[prefix: string, listHref: string]> = [
+  ["/cadets/", "/cadets/overview"],
+  ["/staff/", "/staff/overview"],
+];
+
+/**
  * Breadcrumb trail for the header, from the deepest nav link that matches the
  * current path. Pages deeper than any nav link (e.g. /cadets/1234) get the
  * nearest ancestor and a trailing "…" the page itself replaces with a title.
@@ -297,7 +387,10 @@ export function breadcrumbsFor(pathname: string): Crumb[] {
   }
   if (!best) {
     const label = UNLISTED_PAGES[pathname];
-    return label ? [{ label }] : [];
+    if (label) return [{ label }];
+    const parent = DETAIL_PARENTS.find(([prefix]) => pathname.startsWith(prefix));
+    // Recurse on the list page; with a trailing segment it comes back linked.
+    return parent ? breadcrumbsFor(`${parent[1]}/_`) : [];
   }
   const exact = best.crumbs[best.crumbs.length - 1].href === pathname;
   return exact ? best.crumbs.map((c, i, a) => (i === a.length - 1 ? { label: c.label } : c)) : best.crumbs;

@@ -19,6 +19,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { usePrivateText } from "@/components/private";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -226,6 +227,7 @@ function MessageCard({
   });
   const [busy, setBusy] = useState<string | null>(null);
   const [testPhone, setTestPhone] = useState("");
+  const privateText = usePrivateText();
   const [testOpen, setTestOpen] = useState(false);
   // The regenerate choice waiting on its confirmation — one dialog, worded for
   // whichever menu item opened it.
@@ -365,7 +367,10 @@ function MessageCard({
                 {failures.map((f) => (
                   <span key={f.phone} className="flex items-center gap-1.5">
                     <AlertTriangle className="size-3.5" />
-                    {f.name ? `${f.name} (${f.phone})` : f.phone}: {f.error}
+                    {f.name
+                      ? `${f.name}${privateText(f.phone) ? ` (${f.phone})` : ""}`
+                      : (privateText(f.phone) ?? "A recipient")}
+                    : {f.error}
                   </span>
                 ))}
               </div>
@@ -760,7 +765,7 @@ export default function TextMessagesPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Parade Night Texts"
         description="Generate, review and approve the weekly SMS — texts go out automatically at 4pm the day before each parade night"

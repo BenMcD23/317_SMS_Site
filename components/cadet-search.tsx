@@ -48,7 +48,10 @@ export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }:
         const res = await apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(query)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setResults(await res.json());
+        // An error answers with `{detail}`, not a list — rendering that would
+        // throw on `.map` and take the whole page down with the search box.
+        const data = res.ok ? await res.json() : [];
+        setResults(Array.isArray(data) ? data : []);
       } catch {
         setResults([]);
       } finally {

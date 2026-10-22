@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useApiQuery } from "@/lib/use-api-query";
 import { isOc } from "@/lib/config";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,7 +27,8 @@ import {
 import { rateOf, totalOf, type StateCounts } from "@/lib/attendance";
 import { formatDate } from "@/lib/format";
 import { SectionHeading } from "@/components/section-heading";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
+import { OcAccessRequired } from "@/components/oc/oc-access-required";
 
 interface StaffAttendance {
   cin: number;
@@ -61,8 +66,16 @@ interface QualSummary {
   expiring_90: number;
 }
 
+interface BadgeCoverage {
+  // Cadets the coverage is counted over — the whole squadron, or everyone
+  // past Junior when the filter is on.
+  cadets: number;
+  badges: Record<string, Record<string, number>>;
+}
+
 interface OcDashboard {
   strength: Strength;
+  badge_coverage: BadgeCoverage;
   staff_attendance: StaffAttendance[];
   attendance_trend: TrendNight[];
   qual_summary: QualSummary;
@@ -208,28 +221,19 @@ export default function OcDashboardPage() {
   const { data: session } = useSession();
   const allowed = isOc(session?.user?.email);
 
-  const { data: dash, isLoading } = useApiQuery<OcDashboard>(["oc-dashboard"], "/oc/dashboard", {
-    enabled: allowed,
-  });
+  const [excludeJuniors, setExcludeJuniors] = useState(false);
+  const { data: dash, isLoading } = useApiQuery<OcDashboard>(
+    ["oc-dashboard", { excludeJuniors }],
+    `/oc/dashboard${excludeJuniors ? "?exclude_juniors=true" : ""}`,
+    // Keep the current numbers on screen while the other view loads, rather
+    // than collapsing the whole page to skeletons on every toggle.
+    { enabled: allowed, placeholderData: keepPreviousData }
+  );
   const { data: committee } = useApiQuery<CommitteeList>(["committee-requests"], "/committee-requests", {
     enabled: allowed,
   });
 
-  if (!allowed) {
-    return (
-      <div className="mx-auto w-full max-w-lg pt-16">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="text-destructive size-5" />
-              <CardTitle>OC access required</CardTitle>
-            </div>
-            <CardDescription>This dashboard is only available to the Officer Commanding.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  if (!allowed) return <OcAccessRequired />;
 
   // Committee request status counts + the ones needing OC action.
   const requests = committee?.requests ?? [];
@@ -267,9 +271,11 @@ export default function OcDashboardPage() {
   const cadetAvg = cadetTotals.total ? Math.round((cadetTotals.present / cadetTotals.total) * 100) : null;
   const staffAvg = staffTotals.total ? Math.round((staffTotals.present / staffTotals.total) * 100) : null;
 
-  // Qualification coverage — how many cadets hold something vs nothing per badge.
-  const badges = dash?.strength.badges ?? {};
-  const totalCadets = dash?.strength.total_cadets ?? 0;
+  // Qualification coverage — how many cadets hold something vs nothing per badge,
+  // out of the cohort the backend counted (juniors dropped when filtered).
+  const badges = dash?.badge_coverage.badges ?? {};
+  const totalCadets = dash?.badge_coverage.cadets ?? 0;
+  const classifications = CLASSIFICATION_ORDER.filter((label) => !excludeJuniors || label !== "Junior Cadet");
   const coverage = Object.entries(badges)
     .map(([key, levels]) => {
       const held = Object.entries(levels)
@@ -297,7 +303,7 @@ export default function OcDashboardPage() {
             </Button>
           }
         />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatGroup className="lg:grid-cols-4">
           <Stat
             size="lg"
             label="Awaiting you"
@@ -307,7 +313,7 @@ export default function OcDashboardPage() {
           <Stat size="lg" label="Approved" value={counts.approved ?? 0} hint="Awaiting receipts" />
           <Stat size="lg" label="To pay" value={counts.sent_for_payment ?? 0} hint="Awaiting payment" />
           <Stat size="lg" label="Paid" value={counts.paid ?? 0} />
-        </div>
+        </StatGroup>
 
         {actionable.length > 0 && (
           <div className="overflow-x-auto rounded-lg border">
@@ -358,7 +364,7 @@ export default function OcDashboardPage() {
           <Skeleton className="h-40 w-full" />
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatGroup className="lg:grid-cols-4">
               <Stat size="lg" label="Total cadets" value={dash?.strength.total_cadets ?? 0} />
               <Stat size="lg" label="Total staff" value={dash?.strength.total_staff ?? 0} />
               <Stat
@@ -373,15 +379,15 @@ export default function OcDashboardPage() {
                 value={staffAvg === null ? "—" : `${staffAvg}%`}
                 hint={`Last ${trend.length} parade night${trend.length !== 1 ? "s" : ""}`}
               />
-            </div>
+            </StatGroup>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatGroup className="lg:grid-cols-4">
               {Object.entries(dash?.strength.by_flight ?? {})
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([flight, n]) => (
                   <Stat size="lg" key={flight} label={`${flight} Flight`} value={n} />
                 ))}
-            </div>
+            </StatGroup>
 
             {/* Two single-series charts rather than one with two series: the
                 theme's chart ramp is three near-adjacent blues, and no pair of
@@ -410,14 +416,28 @@ export default function OcDashboardPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <SectionHeading title="Qualifications" />
+        <SectionHeading
+          title="Qualifications"
+          actions={
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="exclude-juniors"
+                checked={excludeJuniors}
+                onCheckedChange={(v) => setExcludeJuniors(v === true)}
+              />
+              <Label htmlFor="exclude-juniors" className="text-sm font-normal">
+                Exclude junior cadets
+              </Label>
+            </div>
+          }
+        />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatGroup className="lg:grid-cols-4">
           <Stat size="lg" label="Total held" value={dash?.qual_summary.total ?? 0} />
           <Stat size="lg" label="Expired" value={dash?.qual_summary.expired ?? 0} hint="Already lapsed" />
           <Stat size="lg" label="Expiring in 30 days" value={dash?.qual_summary.expiring_30 ?? 0} />
           <Stat size="lg" label="Expiring in 3 months" value={dash?.qual_summary.expiring_90 ?? 0} />
-        </div>
+        </StatGroup>
 
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Coverage — a bar per badge is a lot of near-identical rows; a
@@ -467,9 +487,8 @@ export default function OcDashboardPage() {
                 <Skeleton className="h-48 w-full" />
               ) : (
                 <div className="divide-y">
-                  {CLASSIFICATION_ORDER.map(
-                    (label) => [label, dash?.strength.by_classification?.[label] ?? 0] as const
-                  )
+                  {classifications
+                    .map((label) => [label, dash?.strength.by_classification?.[label] ?? 0] as const)
                     .filter(([, n]) => n > 0)
                     .map(([label, n]) => (
                       <div key={label} className="flex items-center justify-between py-2 text-sm">

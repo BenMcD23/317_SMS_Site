@@ -14,7 +14,7 @@ import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, CalendarDays, Users, ChevronDown, ChevronRight, Ban } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch, loadError } from "@/lib/api-fetch";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 
@@ -36,6 +36,8 @@ type SubAppEvent = {
 type CadetEvent = {
   id: number;
   title: string;
+  /** Bader's category, e.g. "Road Marching"; null when the scrape couldn't read it. */
+  category: string | null;
   cadet_count: number;
   cadets: EventCadet[];
   sub_apps: SubAppEvent[];
@@ -189,6 +191,7 @@ function EventCard({ event }: { event: CadetEvent }) {
           <CalendarDays className="text-muted-foreground size-4 shrink-0" />
           <div className="min-w-0 flex-1">
             <CardTitle className="truncate text-sm font-medium">{event.title}</CardTitle>
+            {event.category && <p className="text-muted-foreground truncate text-xs">{event.category}</p>}
           </div>
           <Badge variant="secondary" className="shrink-0 gap-1">
             <Users className="size-3" />
@@ -247,12 +250,15 @@ export default function CadetEventListPage() {
     const headers = { Authorization: `Bearer ${session.id_token}` };
     setLoading(true);
     Promise.all([
-      apiFetch(`${API_BASE}/cadet-events`, { headers }).then((r) => r.json()),
-      apiFetch(`${API_BASE}/bans`, { headers }).then((r) => r.json()),
+      apiFetch(`${API_BASE}/cadet-events`, { headers }),
+      apiFetch(`${API_BASE}/bans`, { headers }),
     ])
-      .then(([evts, bannedCadets]) => {
-        setEvents(evts);
-        setBans(bannedCadets);
+      .then(async ([evtsRes, bansRes]) => {
+        // An error body is `{detail}`, not a list; storing it crashed the page
+        // on `.filter` instead of showing what went wrong.
+        if (!evtsRes.ok || !bansRes.ok) throw await loadError(evtsRes, bansRes);
+        setEvents(await evtsRes.json());
+        setBans(await bansRes.json());
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -262,6 +268,7 @@ export default function CadetEventListPage() {
     const q = search.toLowerCase();
     if (!q) return true;
     if (e.title.toLowerCase().includes(q)) return true;
+    if (e.category?.toLowerCase().includes(q)) return true;
     if (
       e.cadets.some(
         (c) =>
@@ -284,7 +291,7 @@ export default function CadetEventListPage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Events"
         description={
@@ -327,7 +334,7 @@ export default function CadetEventListPage() {
           <Search />
         </InputGroupAddon>
         <InputGroupInput
-          placeholder="Search by event name or cadet…"
+          placeholder="Search by event, category or cadet…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

@@ -3,18 +3,79 @@
 export const FLIGHT_ORDER = ["NCO", "A", "B", "C"];
 export const RANK_ORDER = ["Cadet", "Cpl", "Sgt", "FS", "CWO"];
 
+// Flights use the chart hues, never the status colours: B Flight in the
+// destructive red read as "something's wrong with these cadets".
+const ALPHA = "border-chart-1/40 bg-chart-1/10 text-chart-1";
+const BRAVO = "border-chart-5/40 bg-chart-5/10 text-chart-5";
+const CHARLIE = "border-chart-3/40 bg-chart-3/10 text-chart-3";
+const DELTA = "border-chart-4/40 bg-chart-4/15 text-chart-4";
+const NO_FLIGHT = "border-border bg-muted text-muted-foreground";
+
+// Flights are stored as the letter ("A", "C" — see FLIGHT_ORDER and the API's
+// kit-flight query); the spelled-out names are kept so either form colours.
 const FLIGHT_BADGE_CLASSES: Record<string, string> = {
-  Alpha: "border-chart-1/40 bg-chart-1/10 text-chart-1",
-  Bravo: "border-destructive/40 bg-destructive/10 text-destructive",
-  Charlie: "border-success/40 bg-success/10 text-success",
-  Delta: "border-warning/40 bg-warning/15 text-warning",
+  A: ALPHA,
+  B: BRAVO,
+  C: CHARLIE,
+  D: DELTA,
+  Alpha: ALPHA,
+  Bravo: BRAVO,
+  Charlie: CHARLIE,
+  Delta: DELTA,
 };
 
 export function flightBadgeClass(flight: string | null | undefined): string {
-  if (!flight) return "border-border bg-muted text-muted-foreground";
-  return FLIGHT_BADGE_CLASSES[flight] ?? "border-border bg-muted text-muted-foreground";
+  if (!flight) return NO_FLIGHT;
+  return FLIGHT_BADGE_CLASSES[flight.trim()] ?? NO_FLIGHT;
+}
+
+// Classification steps up in the same order as the dashboard chart, so the
+// colour progression reads as progression rather than arbitrary tags. It
+// deepens in the squadron navy up to a solid badge for Master Air Cadet — the
+// top award was red before, the same colour as an error.
+const CLASSIFICATION_BADGE_CLASSES: Record<string, string> = {
+  "Junior Cadet": "border-border bg-muted text-muted-foreground",
+  "First Class Cadet": "border-primary/25 bg-primary/5 text-primary",
+  "Leading Cadet": "border-primary/40 bg-primary/10 text-primary",
+  "Senior Cadet": "border-primary/60 bg-primary/20 text-primary",
+  "Master Air Cadet": "border-primary bg-primary text-primary-foreground",
+};
+
+export function classificationBadgeClass(classification: string | null | undefined): string {
+  return (
+    CLASSIFICATION_BADGE_CLASSES[classification || "Junior Cadet"] ??
+    "border-border bg-muted text-muted-foreground"
+  );
 }
 
 export function cadetInitials(firstName?: string | null, lastName?: string | null): string {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "?";
+}
+
+/** The flights present in a roster, in squadron order (NCO, A, B, C, then anything unexpected). */
+export function flightsIn(cadets: Array<{ flight: string | null }>): string[] {
+  const present = new Set(cadets.map((c) => c.flight?.trim()).filter((f): f is string => !!f));
+  const known = FLIGHT_ORDER.filter((f) => present.has(f));
+  const extra = [...present].filter((f) => !FLIGHT_ORDER.includes(f)).sort();
+  return [...known, ...extra];
+}
+
+/** "A Flight" for the letter the API stores; anything already spelled out is left alone. */
+export function flightLabel(flight: string): string {
+  return /flight$/i.test(flight.trim()) ? flight.trim() : `${flight.trim()} Flight`;
+}
+
+/**
+ * Compares two "First Last" display names by surname, then first name. The API
+ * only sends the joined name, so the surname is the last word; multi-word
+ * first names still sort correctly because the remainder breaks ties.
+ */
+export function compareByLastName(a: string, b: string): number {
+  const split = (name: string) => {
+    const words = name.trim().split(/\s+/);
+    return { last: words.pop() ?? "", first: words.join(" ") };
+  };
+  const x = split(a);
+  const y = split(b);
+  return x.last.localeCompare(y.last) || x.first.localeCompare(y.first);
 }

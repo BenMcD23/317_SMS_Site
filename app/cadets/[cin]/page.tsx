@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { AttendanceCard } from "@/components/attendance-card";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/format";
+import { Private } from "@/components/private";
+import { formatDate, timeSince } from "@/lib/format";
 import {
   Loader2,
   CheckCircle2,
@@ -35,6 +36,7 @@ import {
   Ban,
 } from "lucide-react";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
+import { FlyingCard, type Flight, type FlyingStage } from "@/components/flying-card";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -73,6 +75,11 @@ type CadetDetail = {
   rank: string | null;
   flight: string | null;
   classification: string | null;
+  // From the Volunteer Portal sync; absent until a cadet has been synced.
+  joined_on?: string | null;
+  classification_dates?: Record<string, string>;
+  flights?: Flight[];
+  flying_blue_stages?: FlyingStage[];
   banned: boolean;
   qualifications: Qualification[];
   events: CadetEvent[];
@@ -101,6 +108,7 @@ function EditableField({
   icon: Icon,
   placeholder = "—",
   type = "text",
+  href,
 }: {
   label: string;
   value: string | null;
@@ -108,6 +116,8 @@ function EditableField({
   icon?: React.ElementType;
   placeholder?: string;
   type?: string;
+  /** Makes the saved value a link, e.g. `mailto:` so staff can contact the cadet in one tap. */
+  href?: (value: string) => string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
@@ -159,6 +169,7 @@ function EditableField({
               className="text-success hover:text-success size-8 shrink-0"
               onClick={handleSave}
               disabled={saving}
+              aria-label={`Save ${label.toLowerCase()}`}
             >
               {saving ? <Loader2 className="animate-spin" /> : <Save />}
             </Button>
@@ -168,6 +179,7 @@ function EditableField({
               className="size-8 shrink-0"
               onClick={handleCancel}
               disabled={saving}
+              aria-label="Cancel"
             >
               <X />
             </Button>
@@ -176,16 +188,25 @@ function EditableField({
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <span className={cn("text-sm font-medium", !value && "text-muted-foreground italic")}>
-            {value || placeholder}
-          </span>
+          {value && href ? (
+            <a href={href(value)} className="text-sm font-medium underline-offset-4 hover:underline">
+              {value}
+            </a>
+          ) : (
+            <span className={cn("text-sm font-medium", !value && "text-muted-foreground italic")}>
+              {value || placeholder}
+            </span>
+          )}
+          {/* Hover-to-reveal would leave touch screens with no way to edit, so the
+              pencil is always shown where there's no hover, and on keyboard focus. */}
           <button
             type="button"
+            aria-label={`Edit ${label.toLowerCase()}`}
             onClick={() => {
               setDraft(value ?? "");
               setEditing(true);
             }}
-            className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover/field:opacity-100"
+            className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover/field:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
           >
             <Pencil className="h-3 w-3" />
           </button>
@@ -225,6 +246,8 @@ export default function CadetOverviewPage() {
   const { data: session } = useSession();
   const params = useParams();
   const cin = Number(params?.cin);
+  // ?tab=qualifications|uniform|… — links from the stores order pages open a tab directly.
+  const initialTab = useSearchParams().get("tab") ?? "overview";
 
   const [cadet, setCadet] = useState<CadetDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -312,10 +335,12 @@ export default function CadetOverviewPage() {
   const passedAssessments = cadet.assessments.filter((a) => a.passed === true).length;
   const attendedEvents = cadet.events.filter((e) => e.attended).length;
   const cadetAge = age(cadet.date_of_birth);
-  const expiredCount = cadet.qualifications.filter((q) => expiryStatus(q.expires_date) === "expired").length;
-  const expiringSoonCount = cadet.qualifications.filter(
-    (q) => expiryStatus(q.expires_date) === "soon"
-  ).length;
+  // Soonest first, so the one that needs booking onto a course next is at the top.
+  const lapsing = cadet.qualifications
+    .filter((q) => ["expired", "soon"].includes(expiryStatus(q.expires_date)))
+    .sort((a, b) => (a.expires_date ?? "").localeCompare(b.expires_date ?? ""));
+  const expiredCount = lapsing.filter((q) => expiryStatus(q.expires_date) === "expired").length;
+  const expiringSoonCount = lapsing.length - expiredCount;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-16">
@@ -369,11 +394,23 @@ export default function CadetOverviewPage() {
             )}
             {expiringSoonCount > 0 && <>{expiringSoonCount} expiring within 60 days</>}
           </AlertTitle>
+          <AlertDescription>
+            <ul>
+              {lapsing.map((q) => (
+                <li key={q.id}>
+                  {q.qualification_name} —{" "}
+                  {expiryStatus(q.expires_date) === "expired" ? "expired" : "expires"}{" "}
+                  {formatDate(q.expires_date)}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
         </Alert>
       )}
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Stats row. One row of equal tiles however many there are: the age
+          tile goes when personal data is hidden, and mustn't leave a gap. */}
+      <div className="grid grid-cols-2 gap-3 sm:auto-cols-fr sm:grid-flow-col">
         <StatPill label="Qualifications" value={cadet.qualifications.length} />
         <StatPill label="Events Attended" value={`${attendedEvents} / ${cadet.events.length}`} />
         <StatPill
@@ -381,11 +418,15 @@ export default function CadetOverviewPage() {
           value={passedAssessments}
           variant={passedAssessments > 0 ? "success" : "muted"}
         />
-        {cadetAge !== null && <StatPill label="Age" value={cadetAge} />}
+        {cadetAge !== null && (
+          <Private>
+            <StatPill label="Age" value={cadetAge} />
+          </Private>
+        )}
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
+      <Tabs defaultValue={initialTab}>
+        <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="qualifications">Qualifications</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
@@ -404,32 +445,36 @@ export default function CadetOverviewPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-2">
-              <EditableField
-                label="Email"
-                value={cadet.email}
-                onSave={(v) => patchField("email", v)}
-                icon={Mail}
-                placeholder="No email set"
-                type="email"
-              />
-              <EditableField
-                label="Mobile"
-                value={cadet.phone_number}
-                onSave={(v) => patchField("phone_number", v)}
-                icon={Phone}
-                placeholder="No number set"
-                type="tel"
-              />
-              <div>
-                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-                  <Calendar className="h-3 w-3" /> Date of Birth
-                </p>
-                <span className="text-sm font-medium">
-                  {cadet.date_of_birth
-                    ? `${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`
-                    : "—"}
-                </span>
-              </div>
+              <Private>
+                <EditableField
+                  label="Email"
+                  value={cadet.email}
+                  onSave={(v) => patchField("email", v)}
+                  icon={Mail}
+                  placeholder="No email set"
+                  type="email"
+                  href={(v) => `mailto:${v}`}
+                />
+                <EditableField
+                  label="Mobile"
+                  value={cadet.phone_number}
+                  onSave={(v) => patchField("phone_number", v)}
+                  icon={Phone}
+                  placeholder="No number set"
+                  type="tel"
+                  href={(v) => `tel:${v.replace(/\s+/g, "")}`}
+                />
+                <div>
+                  <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                    <Calendar className="h-3 w-3" /> Date of Birth
+                  </p>
+                  <span className="text-sm font-medium">
+                    {cadet.date_of_birth
+                      ? `${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`
+                      : "—"}
+                  </span>
+                </div>
+              </Private>
               <div>
                 <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
                   <Shield className="h-3 w-3" /> Rank
@@ -440,13 +485,33 @@ export default function CadetOverviewPage() {
                 <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
                   <Plane className="h-3 w-3" /> Flight
                 </p>
-                <span className="text-sm font-medium">{cadet.flight ?? "—"}</span>
+                <span className="text-sm font-medium">{cadet.flight ? `${cadet.flight} Flight` : "—"}</span>
               </div>
               <div>
                 <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
                   <Award className="h-3 w-3" /> Classification
                 </p>
                 <span className="text-sm font-medium">{cadet.classification || "Junior Cadet"}</span>
+                {cadet.classification && cadet.classification_dates?.[cadet.classification] && (
+                  <span className="text-muted-foreground text-sm">
+                    {" "}
+                    since {formatDate(cadet.classification_dates[cadet.classification])}
+                  </span>
+                )}
+              </div>
+              <div>
+                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
+                  <Calendar className="h-3 w-3" /> Joined 317
+                </p>
+                <span className="text-sm font-medium">
+                  {cadet.joined_on ? formatDate(cadet.joined_on) : "—"}
+                </span>
+                {timeSince(cadet.joined_on ?? null) && (
+                  <span className="text-muted-foreground text-sm">
+                    {" "}
+                    ({timeSince(cadet.joined_on ?? null)})
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -531,6 +596,9 @@ export default function CadetOverviewPage() {
               )}
             </CardContent>
           </Card>
+          <div className="mt-4">
+            <FlyingCard flights={cadet.flights ?? []} stages={cadet.flying_blue_stages ?? []} />
+          </div>
         </TabsContent>
 
         <TabsContent value="attendance" className="mt-4">

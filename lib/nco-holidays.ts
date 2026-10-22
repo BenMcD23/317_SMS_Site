@@ -8,7 +8,7 @@
 "use client";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { apiRequest } from "@/lib/api-fetch";
 
 export interface NcoHoliday {
   id: number;
@@ -63,27 +63,12 @@ export function holidayDays(h: { date_from: string; date_to: string }): number {
   return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
 }
 
-async function request<T>(
+function request<T>(
   token: string,
   path: string,
   init: { method: string; body?: unknown } = { method: "POST" }
 ): Promise<T> {
-  let res: Response;
-  try {
-    res = await apiFetch(`${API_BASE}/nco-holidays${path}`, {
-      method: init.method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-    });
-  } catch {
-    throw new Error("Server unreachable.");
-  }
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.detail ?? "Something went wrong.");
-  return data as T;
+  return apiRequest<T>(token, `${API_BASE}/nco-holidays${path}`, init);
 }
 
 /**

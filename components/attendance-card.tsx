@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Stat } from "@/components/stat";
+import { Stat, StatGroup } from "@/components/stat";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AttendanceState } from "@/lib/attendance";
@@ -187,7 +187,7 @@ export function AttendanceCard({ baseUrl }: Props) {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <StatGroup className="sm:grid-cols-3 lg:grid-cols-5">
               <Stat
                 label="Attendance rate"
                 value={rate === null ? "—" : `${rate}%`}
@@ -202,7 +202,7 @@ export function AttendanceCard({ baseUrl }: Props) {
               <Stat label="Authorised absence" value={counts.authorised} tone="warning" />
               <Stat label="Absent" value={counts.absent} tone="destructive" />
               <Stat label="Last attended" value={lastAttended ? formatDate(lastAttended) : "—"} />
-            </div>
+            </StatGroup>
 
             {filtered.length === 0 ? (
               <p className="text-muted-foreground text-sm">No records in this range.</p>

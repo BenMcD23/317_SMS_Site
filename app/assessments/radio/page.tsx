@@ -18,6 +18,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
 import { SectionHeading } from "@/components/section-heading";
+import { todayLocal } from "@/lib/format";
 
 const CRITERIA = [
   { id: "callsigns", label: "Correct Use of Both Full Callsigns" },
@@ -95,7 +96,7 @@ const initialState = (): FormState => ({
   comments: "",
   assessorName: "",
   assessorRole: "",
-  date: new Date().toISOString().split("T")[0],
+  date: todayLocal(),
 });
 
 export default function RadioAssessmentPage() {

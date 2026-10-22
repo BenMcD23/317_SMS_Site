@@ -491,8 +491,12 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
           <CardTitle className="text-base">History</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2 text-sm">
-          <TimelineRow label="Created" who={plan.author_email} when={plan.created_at} />
-          <TimelineRow label="Submitted" who={plan.author_email} when={plan.submitted_at} />
+          <TimelineRow label="Created" who={plan.author_email || plan.author_name} when={plan.created_at} />
+          <TimelineRow
+            label="Submitted"
+            who={plan.author_email || plan.author_name}
+            when={plan.submitted_at}
+          />
           <TimelineRow
             label={plan.status === "approved" ? "Approved" : "Reviewed"}
             who={plan.reviewed_by}

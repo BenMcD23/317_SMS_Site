@@ -4,6 +4,7 @@
 
 const NCO_ALLOWED_ROUTES = [
   "/",
+  "/stats",
   "/assessments",
   "/cadets/assessments",
   "/session-plans",

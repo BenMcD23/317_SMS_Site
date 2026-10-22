@@ -46,8 +46,13 @@ export default function JiGenerator() {
   useEffect(() => {
     if (!token) return;
     apiFetch(`${API_BASE}/events`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => res.json())
-      .then(setEvents)
+      .then(async (res) => {
+        // An error body is `{detail}`, not a list — storing it would crash the
+        // event picker's `.map` on the next render.
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setEvents(Array.isArray(data) ? data : []);
+      })
       .catch(() => toast.error("Failed to load events"));
   }, [token]);
 
@@ -204,8 +209,8 @@ export default function JiGenerator() {
               <TriangleAlert />
               <AlertTitle>No signature for the Adult IC</AlertTitle>
               <AlertDescription>
-                {fields.ji.adult_ic || "The Adult IC"} hasn&apos;t saved a signature in Settings, so the document
-                will be generated with a blank space to sign by hand.
+                {fields.ji.adult_ic || "The Adult IC"} hasn&apos;t saved a signature in Settings, so the
+                document will be generated with a blank space to sign by hand.
               </AlertDescription>
             </Alert>
           )}
