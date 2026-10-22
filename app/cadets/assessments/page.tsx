@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { streamAuthed } from "@/lib/sse";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
 import { EmptyState } from "@/components/empty-state";
 
@@ -384,7 +385,7 @@ function UploadButton({
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(uploaded);
-  const esRef = useRef<EventSource | null>(null);
+  const streamRef = useRef<AbortController | null>(null);
 
   const handleUpload = async () => {
     if (!token) return;
@@ -419,51 +420,57 @@ function UploadButton({
       return;
     }
 
-    const es = new EventSource(`${API_BASE}/upload-stream/${jobId}?token=${encodeURIComponent(token)}`);
-    esRef.current = es;
+    const ctrl = new AbortController();
+    streamRef.current = ctrl;
 
-    es.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
+    try {
+      for await (const msg of streamAuthed<{ type: string; value: string }>(
+        `${API_BASE}/upload-stream/${jobId}`,
+        token,
+        ctrl.signal
+      )) {
         if (msg.type === "info" || msg.type === "warning" || msg.type === "log") {
           toast.loading(msg.value, { id: toastId, duration: Infinity });
         }
         if (msg.type === "status" && msg.value === "done") {
           setDone(true);
           setLoading(false);
-          es.close();
           toast.success("Upload complete", {
             id: toastId,
             description: "Qualification uploaded to Bader SMS.",
             duration: 6000,
           });
           onUploaded();
+          return;
         }
         if (msg.type === "error") {
           setLoading(false);
-          es.close();
           toast.error("Upload failed", {
             id: toastId,
             description: msg.value,
             duration: 8000,
           });
+          return;
         }
-      } catch {}
-    };
-    es.onerror = () => {
-      es.close();
+      }
+      // The stream ended without a result: treat it like a dropped connection.
+      throw new Error("Connection to scraper lost.");
+    } catch (e: unknown) {
+      if (ctrl.signal.aborted) return; // the user left the page
       setLoading(false);
       toast.error("Upload failed", {
         id: toastId,
-        description: "Connection to scraper lost.",
+        description: e instanceof Error ? e.message : "Connection to scraper lost.",
         duration: 8000,
       });
-    };
+    } finally {
+      ctrl.abort();
+    }
   };
 
   useEffect(
     () => () => {
-      esRef.current?.close();
+      streamRef.current?.abort();
     },
     []
   );

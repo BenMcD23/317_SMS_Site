@@ -17,6 +17,7 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  LayoutGrid,
   MessageSquare,
   MessageSquareText,
   NotebookPen,
@@ -105,6 +106,13 @@ export const NAV_SECTIONS: NavSection[] = [
             ocOnly: true,
             exact: true,
             keywords: ["oc dashboard"],
+          },
+          {
+            label: "Custom Dashboard",
+            href: "/oc/custom",
+            icon: LayoutGrid,
+            ocOnly: true,
+            keywords: ["grafana", "panels", "query", "charts", "build your own"],
           },
           {
             label: "Leaving Process",

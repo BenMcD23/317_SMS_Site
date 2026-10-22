@@ -53,3 +53,12 @@ describe("scraper page host warning", () => {
     expect(screen.queryByText(WARNING)).toBeNull();
   });
 });
+
+describe("scraper list", () => {
+  it("names the cadet scraper for what it updates, parent emails included", async () => {
+    renderWithHost(() => Response.json({ node: "home", on_oracle: false }));
+    expect(await screen.findByText("Cadet Records Scraper")).toBeTruthy();
+    expect(screen.queryByText("Cadet Qualification Scraper")).toBeNull();
+    expect(screen.getByText(/parents' emails from the Next Of Kin report/)).toBeTruthy();
+  });
+});

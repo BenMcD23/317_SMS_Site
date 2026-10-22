@@ -13,6 +13,12 @@ export const DEV_USERS = {
 
 export type DevRole = keyof typeof DEV_USERS;
 
+/** The dev sign-in signs in as the owner with no credentials, so it needs the
+ *  flag AND a non-production build: a stray env var on a deployed build can't
+ *  switch it on. Mirrors the API refusing DEV_FAKE_AUTH outside ENV=dev. */
+export const devBypassEnabled = () =>
+  process.env.AUTH_DEV_BYPASS === "1" && process.env.NODE_ENV !== "production";
+
 export const authConfig: NextAuthConfig = {
   session: {
     // Rolling — every session read re-signs the cookie for another full year,
@@ -104,8 +110,8 @@ export const authConfig: NextAuthConfig = {
       authorization: { params: { access_type: "offline" } },
     }),
     // ponytail: dev-only fake login for local Playwright/UI testing.
-    // Inert unless AUTH_DEV_BYPASS=1 (never set in production).
-    ...(process.env.AUTH_DEV_BYPASS === "1"
+    // Inert unless AUTH_DEV_BYPASS=1 and this is not a production build.
+    ...(devBypassEnabled()
       ? [
           Credentials({
             credentials: { role: {} },

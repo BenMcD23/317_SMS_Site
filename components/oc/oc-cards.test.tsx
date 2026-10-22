@@ -130,6 +130,8 @@ describe("LeavingProcessCard", () => {
       true
     );
     expect(screen.getByText(/No parent email on file/)).toBeTruthy();
+    // The usual fix is Bader's next of kin, which the cadet scraper reads.
+    expect(screen.getByText(/next of kin on Bader and run the Cadet Records Scraper/)).toBeTruthy();
   });
 
   it("marks the parents notified, and removal stays locked while the notice runs", async () => {

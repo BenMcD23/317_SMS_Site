@@ -831,13 +831,6 @@ export default function OrdersPage() {
         </p>
       )}
 
-      {/* Completed tab info */}
-      {!loading && activeTab === "completed" && (
-        <p className="text-muted-foreground text-center text-xs">
-          Completed orders are automatically removed after 6 months.
-        </p>
-      )}
-
       {/* Orders list */}
       {!loading && activeTab !== "logsform" && filteredOrders.length > 0 && (
         <OrderList>
