@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let session: { id_token?: string; error?: string } | null = null;
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: session }), signIn: vi.fn() }));
@@ -12,13 +12,19 @@ vi.mock("@/lib/api-fetch", async (importOriginal) => {
   return { ...real, reauth: (...a: unknown[]) => reauth(...(a as [])) };
 });
 
+import { API_OUTAGE_EVENT } from "@/components/api-status-overlay";
 import { AUTH_LOOP_EVENT } from "@/lib/api-fetch";
 import { ApiStatusBadge, useApiStatus } from "@/components/layout/api-status";
 
+let outages = 0;
+const countOutage = () => outages++;
 beforeEach(() => {
   reauth.mockClear();
   session = { id_token: "tok" };
+  outages = 0;
+  window.addEventListener(API_OUTAGE_EVENT, countOutage);
 });
+afterEach(() => window.removeEventListener(API_OUTAGE_EVENT, countOutage));
 
 const health = (status: number | "network") =>
   vi.stubGlobal(
@@ -33,20 +39,34 @@ describe("useApiStatus", () => {
   it.each([
     [200, "ok"],
     [403, "auth-error"],
-    [500, "api-down"],
-    ["network" as const, "api-down"],
   ])("health %s -> %s", async (status, expected) => {
     health(status);
     const { result } = renderHook(() => useApiStatus());
     expect(result.current).toBe("checking");
     await waitFor(() => expect(result.current).toBe(expected));
+    expect(outages).toBe(0);
   });
+
+  // One failed request from the browser can't tell an outage from a flaky
+  // connection, so the overlay confirms it instead of the header badge.
+  it.each([[500], ["network" as const]])(
+    "%s hands over to the outage check and shows no badge",
+    async (status) => {
+      health(status);
+      const { result } = renderHook(() => useApiStatus());
+      await waitFor(() => expect(outages).toBe(1));
+      expect(result.current).toBe("checking");
+      const { container } = render(<ApiStatusBadge status={result.current} />);
+      expect(container).toBeEmptyDOMElement();
+    }
+  );
 
   it("a 401 re-auths instead of showing an error", async () => {
     health(401);
     const { result } = renderHook(() => useApiStatus());
     await waitFor(() => expect(reauth).toHaveBeenCalledWith("/"));
     expect(result.current).toBe("checking");
+    expect(outages).toBe(0);
   });
 
   it("does nothing without a token", () => {
@@ -86,9 +106,10 @@ describe("ApiStatusBadge", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("says when the API is offline", () => {
-    render(<ApiStatusBadge status="api-down" />);
-    expect(screen.getByRole("status")).toHaveTextContent("API offline");
+  it("only reports session problems, never 'API offline'", () => {
+    render(<ApiStatusBadge status="auth-error" />);
+    expect(screen.getByRole("status")).toHaveTextContent("sign in again");
+    expect(screen.queryByText(/API offline/)).not.toBeInTheDocument();
   });
 
   it("sign in again forces a re-auth even inside the cooldown", async () => {
