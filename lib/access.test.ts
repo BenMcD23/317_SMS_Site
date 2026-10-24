@@ -46,6 +46,16 @@ describe("canAccess", () => {
     expect(canAccess("nco", "/assessments/inspection")).toBe(false);
   });
 
+  it("keeps the MOI sheet to staff", () => {
+    expect(canAccess("staff", "/assessments/moi")).toBe(true);
+    expect(canAccess("snco", "/assessments/moi")).toBe(false);
+    expect(canAccess("nco", "/assessments/moi")).toBe(false);
+    expect(canAccess(undefined, "/assessments/moi")).toBe(false);
+    // the other assessment sheets stay as they were
+    expect(canAccess("nco", "/assessments/radio")).toBe(true);
+    expect(canAccess("snco", "/assessments/space")).toBe(true);
+  });
+
   it("matches whole path segments, not prefixes", () => {
     // "/settings-export" is not under "/settings".
     expect(canAccess("nco", "/settings-export")).toBe(false);
