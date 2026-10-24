@@ -96,6 +96,9 @@ export interface Entry {
   description: string;
   minutes: number;
   created_at: string;
+  /** The assessor's initials once signed off; null until then. */
+  signed_off_initials: string | null;
+  signed_off_at: string | null;
 }
 
 export interface SectionLog {
@@ -223,6 +226,31 @@ export function deleteEntry(token: string, cin: number, section: SectionKey, id:
     { method: "DELETE" },
     "Couldn't delete the entry."
   );
+}
+
+/** Sign an entry off with these initials (the signed-in staff member's or anyone's), replacing any already there. */
+export function signOff(token: string, cin: number, section: SectionKey, id: number, initials: string) {
+  return apiRequest<CadetActivityLog>(
+    token,
+    `${base(cin)}/${section}/entries/${id}/sign-off`,
+    { method: "PUT", body: { initials } },
+    "Couldn't sign the entry off."
+  );
+}
+
+export function undoSignOff(token: string, cin: number, section: SectionKey, id: number) {
+  return apiRequest<CadetActivityLog>(
+    token,
+    `${base(cin)}/${section}/entries/${id}/sign-off`,
+    { method: "DELETE" },
+    "Couldn't remove the sign-off."
+  );
+}
+
+/** Tidies typed initials the way the API does ("k. s." → "KS"); null if they aren't 1 to 4 letters. */
+export function cleanInitials(raw: string): string | null {
+  const v = raw.replace(/[\s.]/g, "").toUpperCase();
+  return /^\p{L}{1,4}$/u.test(v) ? v : null;
 }
 
 export function pdfUrl(cin: number, section: SectionKey): string {

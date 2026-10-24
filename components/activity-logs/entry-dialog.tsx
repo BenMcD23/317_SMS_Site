@@ -104,7 +104,11 @@ export function EntryDialog({
           <ResponsiveDialogTitle>{entry ? "Edit entry" : "Add entry"}</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
             {entry
-              ? "Fix the day, what they did or how long."
+              ? `Fix the day, what they did or how long.${
+                  entry.signed_off_initials
+                    ? ` Changing it removes ${entry.signed_off_initials}'s sign-off.`
+                    : ""
+                }`
               : "Something the cadet did that isn't logged yet."}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>

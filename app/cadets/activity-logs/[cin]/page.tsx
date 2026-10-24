@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EntryDialog } from "@/components/activity-logs/entry-dialog";
+import { SignOffMenu } from "@/components/activity-logs/sign-off-menu";
 import { SetupDialog } from "@/components/activity-logs/setup-dialog";
 import { WeekStatusBadge } from "@/components/activity-logs/week-status-badge";
 import {
@@ -25,8 +26,10 @@ import {
   WEEKLY_MINUTES,
   deleteEntry,
   pdfUrl,
+  signOff,
   switchOff,
   switchOn,
+  undoSignOff,
   type CadetActivityLog,
   type Entry,
   type Level,
@@ -215,6 +218,15 @@ export default function CadetActivityLogPage() {
                 label={label}
                 onAdd={() => setDialog({ kind: "entry", section, log: s, entry: null })}
                 onEdit={(entry) => setDialog({ kind: "entry", section, log: s, entry })}
+                onSign={(entry, initials) =>
+                  run(
+                    () =>
+                      initials
+                        ? signOff(token, cin, section, entry.id, initials)
+                        : undoSignOff(token, cin, section, entry.id),
+                    initials ? `Signed off as ${initials}.` : "Sign-off removed."
+                  )
+                }
                 onDelete={(entry) =>
                   confirm(`Delete the ${label} entry for ${formatDate(entry.date)}?`, () =>
                     run(() => deleteEntry(token, cin, section, entry.id), "Entry deleted.")
@@ -260,12 +272,14 @@ function SectionBody({
   label,
   onAdd,
   onEdit,
+  onSign,
   onDelete,
 }: {
   log: SectionLog;
   label: string;
   onAdd: () => void;
   onEdit: (entry: Entry) => void;
+  onSign: (entry: Entry, initials: string | null) => void;
   onDelete: (entry: Entry) => void;
 }) {
   const plan: [string, string][] = [
@@ -295,7 +309,8 @@ function SectionBody({
             <span className="w-24 shrink-0 tabular-nums">{formatDate(e.date)}</span>
             <span className="min-w-0 flex-1 text-pretty">{e.description}</span>
             <span className="text-muted-foreground w-16 tabular-nums">{e.minutes} min</span>
-            <span className="flex gap-1">
+            <span className="flex items-center gap-1">
+              <SignOffMenu entry={e} onSign={(initials) => onSign(e, initials)} />
               <Button
                 variant="ghost"
                 size="icon"

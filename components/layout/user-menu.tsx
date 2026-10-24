@@ -16,16 +16,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { Private } from "@/components/private";
+import { initialsOf } from "@/lib/format";
 
 function initials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  return initialsOf(name) || "?";
 }
 
 const ROLE_LABELS: Record<string, string> = { staff: "Staff", snco: "SNCO", nco: "NCO" };
