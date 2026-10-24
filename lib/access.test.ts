@@ -30,6 +30,8 @@ describe("canAccess", () => {
     "/cadets/123",
     "/cadets/activity-logs",
     "/cadets/activity-logs/123",
+    "/applications/staff-cadets",
+    "/applications/adult-staff",
     "/stores",
     "/texts/messages",
     "/committee/requests",

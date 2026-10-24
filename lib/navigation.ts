@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Award,
+  BadgeCheck,
   BookOpen,
   Calendar,
   CalendarCheck,
@@ -13,6 +14,7 @@ import {
   Contact,
   DatabaseBackup,
   DatabaseZap,
+  FileCheck,
   FileSearch,
   FileText,
   GraduationCap,
@@ -37,6 +39,7 @@ import {
   UserCog,
   UserMinus,
   UserPlus,
+  UserRoundPlus,
   Users,
 } from "lucide-react";
 
@@ -262,6 +265,43 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Squadron",
     items: [
+      // Staff-only (see lib/access.ts), as the API requires.
+      {
+        kind: "group",
+        label: "Applications",
+        icon: FileCheck,
+        links: [
+          {
+            label: "Staff Cadets",
+            href: "/applications/staff-cadets",
+            icon: BadgeCheck,
+            keywords: [
+              "staff cadet application",
+              "pi501",
+              "18th birthday",
+              "bpss",
+              "dbs",
+              "5-01",
+              "turning 18",
+            ],
+          },
+          {
+            label: "Adult Staff",
+            href: "/applications/adult-staff",
+            icon: UserRoundPlus,
+            keywords: [
+              "uniformed staff",
+              "cfav application",
+              "snco",
+              "cfc",
+              "officer",
+              "wing board",
+              "1-10",
+              "cic",
+            ],
+          },
+        ],
+      },
       {
         label: "Attendance",
         href: "/attendance",
