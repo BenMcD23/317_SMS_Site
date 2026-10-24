@@ -71,7 +71,9 @@ export function StepChecklist({
                 <span className="sr-only">{step.done ? " (done)" : " (not done)"}</span>
               </span>
               {gaps.length > 0 && (
-                <span className="text-muted-foreground text-xs text-pretty">Still needed: {gaps.join(", ")}</span>
+                <span className="text-muted-foreground text-xs text-pretty">
+                  Still needed: {gaps.join(", ")}
+                </span>
               )}
             </div>
           </li>

@@ -45,8 +45,7 @@ export default function LoginPage() {
             Squadron Management System
           </p>
           <p className="text-sidebar-foreground/70 text-sm leading-relaxed">
-            Marking sheets, stores and the parade-night tools, all in one place for the staff and NCO
-            teams.
+            Marking sheets, stores and the parade-night tools, all in one place for the staff and NCO teams.
           </p>
         </div>
         <p className="text-sidebar-foreground/50 relative text-xs">For authorised staff and NCOs only.</p>
