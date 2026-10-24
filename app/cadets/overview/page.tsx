@@ -108,7 +108,12 @@ function NotOnSms({ cadets }: { cadets: Cadet[] }) {
       async () => {
         if (!session?.id_token) return;
         try {
-          await apiRequest(session.id_token, `${API_BASE}/cadets/${c.cin}`, { method: "DELETE" }, `Couldn't remove ${name}.`);
+          await apiRequest(
+            session.id_token,
+            `${API_BASE}/cadets/${c.cin}`,
+            { method: "DELETE" },
+            `Couldn't remove ${name}.`
+          );
           toast.success(`${name} removed.`);
           queryClient.invalidateQueries({ queryKey: ["cadets"] });
         } catch (e) {

@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -72,7 +79,10 @@ export default function GalleryUpdaterPage() {
 
   function addFiles(files: FileList | null) {
     const images = [...(files ?? [])].filter((f) => f.type.startsWith("image/"));
-    setPicked((prev) => [...prev, ...images.map((file) => ({ file, url: URL.createObjectURL(file), alt: "" }))]);
+    setPicked((prev) => [
+      ...prev,
+      ...images.map((file) => ({ file, url: URL.createObjectURL(file), alt: "" })),
+    ]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -121,7 +131,9 @@ export default function GalleryUpdaterPage() {
         toast.error(data.detail || "Upload failed.");
         return;
       }
-      toast.success(`Added ${data.added.length} photo${data.added.length !== 1 ? "s" : ""} to ${data.section}. The site will redeploy shortly.`);
+      toast.success(
+        `Added ${data.added.length} photo${data.added.length !== 1 ? "s" : ""} to ${data.section}. The site will redeploy shortly.`
+      );
       picked.forEach((p) => URL.revokeObjectURL(p.url));
       setPicked([]);
       setSection(data.section);
@@ -218,7 +230,9 @@ export default function GalleryUpdaterPage() {
                 className="border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/5 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors"
               >
                 <Upload className="text-muted-foreground h-8 w-8" />
-                <span className="text-muted-foreground text-sm">Click or drop photos here (JPEG, PNG or WebP)</span>
+                <span className="text-muted-foreground text-sm">
+                  Click or drop photos here (JPEG, PNG or WebP)
+                </span>
               </button>
               <input
                 ref={fileInputRef}
@@ -243,7 +257,13 @@ export default function GalleryUpdaterPage() {
                         setPicked((prev) => prev.map((q, j) => (j === i ? { ...q, alt: e.target.value } : q)))
                       }
                     />
-                    <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => removePicked(i)} aria-label="Remove">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => removePicked(i)}
+                      aria-label="Remove"
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </li>
@@ -279,7 +299,12 @@ export default function GalleryUpdaterPage() {
                   .filter((p) => p.cat === s)
                   .map((p) => (
                     <li key={p.file} className="flex flex-col gap-1">
-                      <img src={RAW + p.file} alt={p.alt} loading="lazy" className="aspect-square w-full rounded-md object-cover" />
+                      <img
+                        src={RAW + p.file}
+                        alt={p.alt}
+                        loading="lazy"
+                        className="aspect-square w-full rounded-md object-cover"
+                      />
                       <div className="flex items-start gap-1">
                         <p className="text-muted-foreground line-clamp-2 flex-1 text-xs">{p.alt}</p>
                         {deleteConfirm === p.file ? (
@@ -312,7 +337,8 @@ export default function GalleryUpdaterPage() {
         ))}
 
       <p className="text-muted-foreground text-center text-xs">
-        Changes are committed to GitHub and the website redeploys automatically — allow a minute or two to go live.
+        Changes are committed to GitHub and the website redeploys automatically — allow a minute or two to go
+        live.
       </p>
     </div>
   );

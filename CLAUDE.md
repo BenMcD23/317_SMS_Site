@@ -114,14 +114,14 @@ drifting back to the generic-template look.
 
 **Components: reuse before you build**
 
-| Need | Use |
-| --- | --- |
-| Sortable list of records | `DataTable` (TanStack Table), columns from `dataTableColumns<Row>()` |
-| Expandable orders | `OrderDisclosure` in an `OrderList`, `OrderListSkeleton` while loading |
-| Headline figures | `StatGroup` of `Stat`s |
-| Framed list of links | `DividedGrid as="ul"` |
-| Form in a dialog | `ResponsiveDialog` + react-hook-form + zod (`lib/stock-form.ts` is the pattern) |
-| Empty, error, loading | `EmptyState`, `ErrorAlert`, `ListSkeleton` / `OrderListSkeleton` |
+| Need                     | Use                                                                             |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| Sortable list of records | `DataTable` (TanStack Table), columns from `dataTableColumns<Row>()`            |
+| Expandable orders        | `OrderDisclosure` in an `OrderList`, `OrderListSkeleton` while loading          |
+| Headline figures         | `StatGroup` of `Stat`s                                                          |
+| Framed list of links     | `DividedGrid as="ul"`                                                           |
+| Form in a dialog         | `ResponsiveDialog` + react-hook-form + zod (`lib/stock-form.ts` is the pattern) |
+| Empty, error, loading    | `EmptyState`, `ErrorAlert`, `ListSkeleton` / `OrderListSkeleton`                |
 
 If the same markup appears on a second page, extract it into `components/`
 with a doc comment saying why it exists, and give it a test. New shadcn parts:
@@ -269,15 +269,21 @@ node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
 - Stats trends need weeks of snapshots, so those charts show "not enough
   history" in the preview. That is expected.
 
-## Before committing
-
-Run `npm run check` (lint + typecheck + tests); `npm run build` for anything that
-touches routing or config. ESLint config is `eslint.config.mjs`; formatting is
-prettier (`npm run format`).
-
 ## Navigation and reference data
 
 - New pages are registered in `lib/navigation.ts` (sidebar, breadcrumbs and the
   ⌘K palette all read it) and gated in `lib/access.ts`.
 - Item types, sizes and the badge catalogue come from `useReference()` in
   `lib/reference.ts` (the API's `/reference`). Never hardcode them.
+
+## Branches and pull requests
+
+- Branch off `main` and open a pull request into it. `main` takes nothing else:
+  no direct pushes, force-pushes or deletion.
+- CI must pass to merge: the `check` job (lint, prettier, typecheck, tests,
+  build). `npm-audit` doesn't block, but fix a red one. Changes under
+  `.github/` also need @BenMcD23's review (`.github/CODEOWNERS`).
+- Fill in the pull request template: what changed, why, and how you checked it.
+  A UI change includes phone and desktop screenshots from the preview.
+- Before pushing: `npm run check && npm run format:check`, plus
+  `npm run build` for anything that touches routing or config.
