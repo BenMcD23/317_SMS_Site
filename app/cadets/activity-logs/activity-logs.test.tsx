@@ -381,6 +381,28 @@ describe("one cadet's log", () => {
     expect(await screen.findByText("DofE activity log switched off")).toBeInTheDocument();
   });
 
+  it("switching off refreshes the week grid so the cadet drops off the list", async () => {
+    const fetch = stubApi({
+      "GET /activity-logs/grid": [GRID],
+      [`GET ${BASE}`]: [LOG],
+      [`DELETE ${BASE}/enrolment`]: [{ enabled: false, cin: 2100001, name: "Cpl Cara Cadet", sections: [] }],
+    });
+    // Both pages on one query client, as when staff click through from the list.
+    await show(
+      <>
+        <ActivityLogsPage />
+        <CadetActivityLogPage />
+      </>
+    );
+    await waitFor(() => expect(calls(fetch, "GET", "/activity-logs/grid")).toHaveLength(1));
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Switch off" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: /Confirm|Delete|Yes/ })
+    );
+    await waitFor(() => expect(calls(fetch, "GET", "/activity-logs/grid")).toHaveLength(2));
+  });
+
   it("a switched-off cadet can be switched back on", async () => {
     const fetch = stubApi({
       [`GET ${BASE}`]: [{ enabled: false, cin: 2100001, name: "Cpl Cara Cadet", sections: [] }],
