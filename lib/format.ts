@@ -60,3 +60,14 @@ export function timeSince(iso: string | null, now: Date = new Date()): string | 
   if (months < 0) return null;
   return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}m` : `${months}m`;
 }
+
+/** "Ben McDonald" → "BM": first letters of the first two words. */
+export function initialsOf(name: string | null | undefined): string {
+  return (name ?? "")
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}

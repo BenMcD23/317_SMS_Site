@@ -20,7 +20,7 @@ import type {
 } from "@/lib/activity-logs";
 
 const SESSION = {
-  data: { id_token: "tok", role: "staff", user: { email: "staff@317atc.co.uk" } },
+  data: { id_token: "tok", role: "staff", user: { email: "staff@317atc.co.uk", name: "Ben McDonald" } },
   status: "authenticated",
   update: () => Promise.resolve(null),
 };
@@ -235,7 +235,17 @@ const sectionLog = (over: Partial<SectionLog> = {}): SectionLog => ({
   start_date: "2026-07-27",
   end_date: "2026-10-27",
   completed_at: null,
-  entries: [{ id: 7, date: "2026-10-14", description: "Sorted donations", minutes: 60, created_at: "" }],
+  entries: [
+    {
+      id: 7,
+      date: "2026-10-14",
+      description: "Sorted donations",
+      minutes: 60,
+      created_at: "",
+      signed_off_initials: null,
+      signed_off_at: null,
+    },
+  ],
   weeks_done: 10,
   weeks_needed: 12,
   complete: false,
@@ -364,6 +374,94 @@ describe("one cadet's log", () => {
     await user.click(vol.getByRole("button", { name: "PDF" }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Set up first."));
     expect(download.saveResponseAsFile).not.toHaveBeenCalled();
+  });
+
+  // The Volunteering section's one entry, as the API returns it once signed off.
+  const signedAs = (initials: string): CadetActivityLog => ({
+    ...LOG,
+    sections: LOG.sections.map((s) =>
+      s.section === "volunteering" && s.log
+        ? {
+            ...s,
+            log: {
+              ...s.log,
+              entries: s.log.entries.map((e) => ({
+                ...e,
+                signed_off_initials: initials,
+                signed_off_at: "x",
+              })),
+            },
+          }
+        : s
+    ),
+  });
+  const SIGN = `${BASE}/volunteering/entries/7/sign-off`;
+  const bodyOf = (fetch: ReturnType<typeof stubApi>) =>
+    JSON.parse(String(calls(fetch, "PUT", "/sign-off")[0][1]?.body));
+
+  it("signs an entry off with the logged-in staff member's initials in one click", async () => {
+    const fetch = stubApi({ [`GET ${BASE}`]: [LOG], [`PUT ${SIGN}`]: [signedAs("BM")] });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Sign off 14 Oct 2026" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Sign off as BM" }));
+    await waitFor(() => expect(bodyOf(fetch)).toEqual({ initials: "BM" }));
+    expect(await screen.findByRole("button", { name: "Signed off by BM, 14 Oct 2026" })).toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith("Signed off as BM.");
+  });
+
+  it("signs off with someone else's initials, tidied the way the API does", async () => {
+    const fetch = stubApi({ [`GET ${BASE}`]: [LOG], [`PUT ${SIGN}`]: [signedAs("KS")] });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Sign off 14 Oct 2026" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Other initials…" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Initials"), "k. s.");
+    await user.click(within(dialog).getByRole("button", { name: "Sign off" }));
+    await waitFor(() => expect(bodyOf(fetch)).toEqual({ initials: "KS" }));
+  });
+
+  it("won't send initials that aren't 1 to 4 letters", async () => {
+    const fetch = stubApi({ [`GET ${BASE}`]: [LOG] });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Sign off 14 Oct 2026" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Other initials…" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Initials"), "B1");
+    await user.click(within(dialog).getByRole("button", { name: "Sign off" }));
+    expect(await within(dialog).findByText("Enter 1 to 4 letters")).toBeInTheDocument();
+    expect(calls(fetch, "PUT", "/sign-off")).toHaveLength(0);
+  });
+
+  it("removes a sign-off, and doesn't offer the same initials again", async () => {
+    const fetch = stubApi({ [`GET ${BASE}`]: [signedAs("BM")], [`DELETE ${SIGN}`]: [LOG] });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Signed off by BM, 14 Oct 2026" }));
+    expect(screen.queryByRole("menuitem", { name: "Sign off as BM" })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("menuitem", { name: "Remove sign-off" }));
+    await waitFor(() => expect(calls(fetch, "DELETE", "/sign-off")).toHaveLength(1));
+    expect(await screen.findByRole("button", { name: "Sign off 14 Oct 2026" })).toBeInTheDocument();
+  });
+
+  it("a sign-off the API refuses says why and leaves the entry unsigned", async () => {
+    stubApi({ [`GET ${BASE}`]: [LOG], [`PUT ${SIGN}`]: [{ detail: "Switched off." }, 409] });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Sign off 14 Oct 2026" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Sign off as BM" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Switched off."));
+    expect(screen.getByRole("button", { name: "Sign off 14 Oct 2026" })).toBeInTheDocument();
+  });
+
+  it("editing a signed-off entry warns that the sign-off goes", async () => {
+    stubApi({ [`GET ${BASE}`]: [signedAs("BM")] });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Edit 14 Oct 2026" }));
+    expect(await screen.findByText(/Changing it removes BM's sign-off/)).toBeInTheDocument();
   });
 
   it("switching off asks first, then shows the switched-off state", async () => {
