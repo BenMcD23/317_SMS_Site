@@ -19,10 +19,10 @@ export default function OcLeavingPage() {
           description={
             personalHidden
               ? "Cadets who haven't paraded for eight weeks."
-              : "Cadets who haven't paraded for eight weeks, and parent emails to BCC from your own account."
+              : "Cadets who haven't paraded for eight weeks, and the email to send their parents from your own account."
           }
         />
-        <div className={cn("grid items-start gap-4", !personalHidden && "lg:grid-cols-2")}>
+        <div className={cn("grid items-start gap-4 *:min-w-0", !personalHidden && "lg:grid-cols-2")}>
           <LeavingProcessCard />
           {!personalHidden && <ParentEmailsCard />}
         </div>
