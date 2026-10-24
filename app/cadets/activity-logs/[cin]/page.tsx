@@ -74,8 +74,8 @@ export default function CadetActivityLogPage() {
 
   function saved(next: CadetActivityLog) {
     client.setQueryData(key, next);
-    // The weekly dashboard is stale now too.
-    void client.invalidateQueries({ queryKey: ["activity-logs", "weekly"] });
+    // The week grid on the list page is stale now too.
+    void client.invalidateQueries({ queryKey: ["activity-logs", "grid"] });
   }
 
   async function run(action: () => Promise<CadetActivityLog>, done?: string) {
