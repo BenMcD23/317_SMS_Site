@@ -364,6 +364,57 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+/**
+ * The bottom tab bar on a phone: the few places each role goes on parade
+ * night, one thumb-tap away. Everything else stays in the sidebar, which the
+ * bar's "More" tab opens. `match` widens what lights the tab up (any page under
+ * /stores lights "Orders"); the longest match wins, so an NCO on
+ * /cadets/assessments sees "Results", not nothing.
+ */
+export type MobileTab = { label: string; href: string; icon: LucideIcon; match: string[] };
+
+const HOME: MobileTab = { label: "Home", href: "/", icon: LayoutDashboard, match: [] };
+
+const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
+  staff: [
+    HOME,
+    { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits"] },
+    { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
+    { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart, match: ["/stores"] },
+  ],
+  // SNCOs run inspections, so the marking tab opens on that sheet.
+  snco: [
+    HOME,
+    { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
+    { label: "Plans", href: "/session-plans", icon: ClipboardList, match: ["/session-plans"] },
+    { label: "Results", href: "/cadets/assessments", icon: Award, match: ["/cadets/assessments"] },
+  ],
+  nco: [
+    HOME,
+    { label: "Marking", href: "/assessments/leadership", icon: ClipboardCheck, match: ["/assessments"] },
+    { label: "Plans", href: "/session-plans", icon: ClipboardList, match: ["/session-plans"] },
+    { label: "Results", href: "/cadets/assessments", icon: Award, match: ["/cadets/assessments"] },
+  ],
+};
+
+/** The tabs for a role, minus any it can't reach (the same rule as the sidebar). */
+export function mobileTabsFor(role: string | undefined): MobileTab[] {
+  const tabs = MOBILE_TABS[role as keyof typeof MOBILE_TABS] ?? [HOME];
+  return tabs.filter((t) => canAccess(role, t.href));
+}
+
+/** Which tab the current page belongs to, or null (the page lives under "More"). */
+export function activeMobileTab(pathname: string, tabs: MobileTab[]): MobileTab | null {
+  let best: { tab: MobileTab; len: number } | null = null;
+  for (const tab of tabs) {
+    for (const prefix of [tab.href, ...tab.match]) {
+      if (!isLinkActive(pathname, prefix)) continue;
+      if (!best || prefix.length > best.len) best = { tab, len: prefix.length };
+    }
+  }
+  return best?.tab ?? null;
+}
+
 export function isGroup(item: NavItem): item is NavGroup {
   return item.kind === "group";
 }

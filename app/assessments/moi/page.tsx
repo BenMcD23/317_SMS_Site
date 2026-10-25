@@ -15,6 +15,8 @@ import { Loader2, CheckCircle2, XCircle, RotateCcw, Paperclip, X } from "lucide-
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { sendOrQueue } from "@/lib/outbox";
+import { SavedHeading } from "@/components/assessments/saved-heading";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
 import { SectionHeading } from "@/components/section-heading";
@@ -192,6 +194,7 @@ export default function MoiAssessmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [queued, setQueued] = useState(false);
   const [assessmentId, setAssessmentId] = useState<number | null>(null);
 
   const [lessonPlanFile, setLessonPlanFile] = useState<File | null>(null);
@@ -256,6 +259,7 @@ export default function MoiAssessmentPage() {
     setError(null);
     setOverrideSignature(null);
     setSubmitted(false);
+    setQueued(false);
     setAssessmentId(null);
     setLessonPlanFile(null);
     setLessonPlanBase64(null);
@@ -297,6 +301,10 @@ export default function MoiAssessmentPage() {
     }
 
     setError(null);
+    if (!session?.id_token || !session.user?.email) {
+      setError("You're signed out. Sign in again, then submit.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -323,14 +331,24 @@ export default function MoiAssessmentPage() {
           : {}),
       };
 
-      const res = await apiFetch(`${API_BASE}/assessments/moi/add-assessment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.id_token ? { Authorization: `Bearer ${session.id_token}` } : {}),
+      // Without signal the sheet is kept on this phone and sent later
+      // (lib/outbox.ts); an answer from the server is handled as before.
+      const sent = await sendOrQueue(
+        {
+          url: `${API_BASE}/assessments/moi/add-assessment`,
+          method: "POST",
+          body: payload,
+          label: `MOI assessment — ${form.cadetForename} ${form.cadetSurname}`,
         },
-        body: JSON.stringify(payload),
-      });
+        { token: session.id_token, owner: session.user.email }
+      );
+      if (sent.queued) {
+        clearDraft();
+        setQueued(true);
+        setSubmitted(true);
+        return;
+      }
+      const res = sent.res;
 
       if (!res.ok) {
         const detail = await res.json().catch(() => ({ detail: res.statusText }));
@@ -354,18 +372,12 @@ export default function MoiAssessmentPage() {
         <SectionHeading title="MOI Assessment" description="Air Cadet Methods of Instruction Course" />
 
         <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
-          <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
-            <CheckCircle2 className="text-success h-8 w-8" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold">Assessment Saved</h2>
-            <p className="text-muted-foreground text-sm">
-              {form.cadetForename} {form.cadetSurname}&apos;s MOI assessment has been recorded.
-            </p>
-            {assessmentId && (
-              <p className="text-muted-foreground mt-1 text-xs">Assessment ID: #{assessmentId}</p>
-            )}
-          </div>
+          <SavedHeading
+            title="Assessment Saved"
+            what={`${form.cadetForename} ${form.cadetSurname}'s MOI assessment`}
+            queued={queued}
+            assessmentId={assessmentId}
+          />
 
           <div className="bg-card w-full max-w-xs space-y-1.5 rounded-lg border px-4 py-3 text-left text-sm">
             <div className="flex justify-between">
