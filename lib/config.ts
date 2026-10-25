@@ -1,4 +1,19 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+/** Where the API is. The browser always uses the public NEXT_PUBLIC_API_BASE.
+ *  The server prefers API_INTERNAL_BASE, read at runtime, because a cluster
+ *  preview stack reaches its API through the in-cluster Service while phones
+ *  reach it over the tailnet, and the pod can't resolve tailnet names. */
+export const API_BASE =
+  (typeof window === "undefined" && process.env.API_INTERNAL_BASE) ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  "http://localhost:8000";
+
+/** Whether this build may offer the dev sign-in: `next dev`, or the cluster's
+ *  preview image, whose Dockerfile sets NEXT_PUBLIC_PREVIEW_BUILD. That flag is
+ *  inlined at build time, so it can't be switched on in an existing deployment;
+ *  Vercel never sets it. The sign-in still needs AUTH_DEV_BYPASS=1 too
+ *  (auth.config.ts). */
+export const devSignInBuild = () =>
+  process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_PREVIEW_BUILD === "1";
 
 // Sole owner/maintainer — gates developer-only views (e.g. /backups, /usage).
 // Mirrors OWNER_EMAIL in the API's core/config.py.

@@ -269,6 +269,16 @@ node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
 - Stats trends need weeks of snapshots, so those charts show "not enough
   history" in the preview. That is expected.
 
+### On your phone: a preview stack on the cluster
+
+Label a pull request `preview` (here, in the API or in the portal) and the
+k3s cluster runs that branch on the same seed with the same sign-in buttons,
+on the tailnet: `https://pv-<branch>-sms.tail02e471.ts.net` and
+`https://pv-<branch>-portal.tail02e471.ts.net`. A repo without the branch
+runs main. The image is this repo's `Dockerfile`, built for every branch by
+`.github/workflows/preview-image.yml`; how it fits together is in k3s-homelab's
+ADR 0010.
+
 ## Navigation and reference data
 
 - New pages are registered in `lib/navigation.ts` (sidebar, breadcrumbs and the
