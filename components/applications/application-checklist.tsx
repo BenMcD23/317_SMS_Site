@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { ExternalLink, Mail, Printer, Trash2 } from "lucide-react";
+import { CircleCheck, ExternalLink, Mail, Printer, Trash2, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,8 +25,8 @@ import { cn } from "@/lib/utils";
 /**
  * The checklist inside an application row, shared by the staff cadet and
  * adult staff pages: each stage's steps as tick boxes (with who ticked them
- * and when), each stage's note, links to print each paper form, a notes box and
- * remove. Saves go straight to the API and the returned application replaces
+ * and when), each stage's note, links to print each paper form, marking it
+ * complete whatever's ticked, a notes box and remove. Saves go straight to the API and the returned application replaces
  * the cached one, so the row's progress updates without a refetch.
  */
 export function ApplicationChecklist<T extends Application>({
@@ -62,6 +62,19 @@ export function ApplicationChecklist<T extends Application>({
       replace(await tickStep<T>(token, application.id, key, done));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't save that step.");
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function markComplete(complete: boolean) {
+    setSaving("complete");
+    try {
+      replace(await updateApplication<T>(token, application.id, { complete }));
+      // The row leaves this tab for the other one, so say where it went.
+      toast.success(complete ? "Marked complete." : "Moved back to In progress.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't save the application.");
     } finally {
       setSaving(null);
     }
@@ -165,6 +178,8 @@ export function ApplicationChecklist<T extends Application>({
         );
       })}
 
+      <Completion application={application} saving={saving === "complete"} onChange={markComplete} />
+
       <div className="flex flex-col gap-2">
         <Label htmlFor={`notes-${application.id}`}>Notes</Label>
         <Textarea
@@ -192,6 +207,45 @@ export function ApplicationChecklist<T extends Application>({
         </div>
       </div>
       {confirmDialog}
+    </div>
+  );
+}
+
+/**
+ * Marking complete by hand, for one that finished before SMS tracked it or a
+ * step the Wing waived. Once every step is ticked it's complete anyway, so
+ * there's nothing to mark or undo.
+ */
+function Completion({
+  application,
+  saving,
+  onChange,
+}: {
+  application: Application;
+  saving: boolean;
+  onChange: (complete: boolean) => void;
+}) {
+  const { markedComplete: marked, done, total } = application;
+  if (done >= total) return null;
+  if (!marked) {
+    return (
+      <Button variant="outline" className="h-9 self-start" onClick={() => onChange(true)} disabled={saving}>
+        <CircleCheck />
+        Mark complete
+      </Button>
+    );
+  }
+  const left = total - done;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border px-3 py-2.5">
+      <p className="text-muted-foreground text-sm">
+        Marked complete {formatDate(marked.at)}
+        {marked.by && ` by ${marked.by}`}, with {left} step{left === 1 ? "" : "s"} not ticked.
+      </p>
+      <Button variant="outline" className="h-9" onClick={() => onChange(false)} disabled={saving}>
+        <Undo2 />
+        Move back to In progress
+      </Button>
     </div>
   );
 }

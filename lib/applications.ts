@@ -6,6 +6,9 @@ import { API_BASE } from "@/lib/config";
  * checklists, ticked off on SMS as the applicant goes through them. The steps,
  * their wording and the print-off form links come from the API
  * (`core/appointments.py`), so the two can't disagree about what a step is.
+ *
+ * An application is complete once every step is ticked, or when staff mark it
+ * complete by hand: one finished before SMS tracked it, or a waived step.
  */
 
 export type Route = "snco" | "cfc";
@@ -33,8 +36,12 @@ type ApplicationBase = {
   startedBy: string | null;
   done: number;
   total: number;
+  /** Every step ticked, or marked complete by hand. */
   complete: boolean;
+  /** The first step not ticked, even when it's been marked complete. */
   nextStep: string | null;
+  /** Who marked it complete by hand, whatever's ticked; null if nobody did. */
+  markedComplete: Tick | null;
 };
 
 export type NearingCadet = {
@@ -109,20 +116,21 @@ export function deadlineText(daysTo18: number | null): string {
 
 // ── Writes ───────────────────────────────────────────────────────────────────
 
-export function startStaffCadet(token: string, cin: number) {
+/** `complete` puts it straight on the Complete list: done before SMS tracked it. */
+export function startStaffCadet(token: string, cin: number, complete = false) {
   return apiRequest<StaffCadetApplication>(
     token,
     `${API_BASE}/applications/staff-cadets`,
-    { method: "POST", body: { cin } },
-    "Couldn't start the application."
+    { method: "POST", body: complete ? { cin, complete } : { cin } },
+    complete ? "Couldn't mark it complete." : "Couldn't start the application."
   );
 }
 
-export function addUniformed(token: string, name: string, route: Route) {
+export function addUniformed(token: string, name: string, route: Route, complete = false) {
   return apiRequest<UniformedApplication>(
     token,
     `${API_BASE}/applications/uniformed`,
-    { method: "POST", body: { name, route } },
+    { method: "POST", body: complete ? { name, route, complete } : { name, route } },
     "Couldn't add the applicant."
   );
 }
@@ -139,7 +147,7 @@ export function tickStep<T extends Application>(token: string, id: number, key: 
 export function updateApplication<T extends Application>(
   token: string,
   id: number,
-  body: { notes?: string; name?: string; route?: Route }
+  body: { notes?: string; name?: string; route?: Route; complete?: boolean }
 ) {
   return apiRequest<T>(
     token,
