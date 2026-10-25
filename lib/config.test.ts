@@ -20,6 +20,13 @@ describe("config", () => {
     expect(isOc("")).toBe(false);
   });
 
+  it("isOc accepts a comma-separated list", async () => {
+    const { isOc } = await loadConfig({ NEXT_PUBLIC_OC_EMAIL: "oc@317atc.co.uk, Extra@317atc.co.uk" });
+    expect(isOc("oc@317atc.co.uk")).toBe(true);
+    expect(isOc("extra@317atc.co.uk")).toBe(true);
+    expect(isOc("staff@317atc.co.uk")).toBe(false);
+  });
+
   it("isOc is never true when no OC is configured", async () => {
     const { isOc } = await loadConfig({ NEXT_PUBLIC_OC_EMAIL: "" });
     expect(isOc("")).toBe(false);

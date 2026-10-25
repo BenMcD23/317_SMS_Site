@@ -68,12 +68,14 @@ describe("visibleSections", () => {
 
   it("hides the OC dashboard unless the OC is configured and signed in", async () => {
     expect(hrefs("staff", "oc@317atc.co.uk")).not.toContain("/oc");
+    expect(hrefs("staff", "oc@317atc.co.uk")).not.toContain("/oc/custom");
     vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
     vi.resetModules();
     const nav = await import("@/lib/navigation");
     const ocLinks = nav.flattenLinks(nav.visibleSections("staff", "OC@317atc.co.uk")).map((l) => l.href);
     expect(ocLinks).toContain("/oc");
     expect(ocLinks).toContain("/oc/leaving");
+    expect(ocLinks).toContain("/oc/custom");
   });
 
   it("puts the OC dashboard and leaving process together under an OC group", async () => {
@@ -84,7 +86,7 @@ describe("visibleSections", () => {
       .visibleSections("staff", "oc@317atc.co.uk")
       .flatMap((s) => s.items.filter(nav.isGroup));
     const oc = groups.find((g) => g.label === "OC");
-    expect(oc?.links.map((l) => l.href)).toEqual(["/oc", "/oc/leaving", "/staff/overview"]);
+    expect(oc?.links.map((l) => l.href)).toEqual(["/oc", "/oc/custom", "/oc/leaving", "/staff/overview"]);
     // Nobody else gets an empty OC group.
     const others = visibleSections("staff", "other@317atc.co.uk").flatMap((s) => s.items.filter(isGroup));
     expect(others.some((g) => g.label === "OC")).toBe(false);

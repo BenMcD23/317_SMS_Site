@@ -57,14 +57,21 @@ const columns = col.columns([
 ]);
 
 export default function RecruitsPage() {
-  const { data: recruits = [], isLoading, error, refetch } = useApiQuery<Recruit[]>(["recruits"], "/recruits");
+  const {
+    data: recruits = [],
+    isLoading,
+    error,
+    refetch,
+  } = useApiQuery<Recruit[]>(["recruits"], "/recruits");
   const [adding, setAdding] = useState(false);
 
   async function added(recruit: Recruit) {
     void refetch();
     // The link is the thing staff need next, so it goes straight onto the clipboard.
     if (await copyText(recruit.link)) {
-      toast.success(`${recruitName(recruit)} added. Their joining link is copied — send it to ${recruit.parentName}.`);
+      toast.success(
+        `${recruitName(recruit)} added. Their joining link is copied — send it to ${recruit.parentName}.`
+      );
     } else {
       toast.success(`${recruitName(recruit)} added. Open them to copy their joining link.`);
     }

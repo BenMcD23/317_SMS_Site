@@ -21,6 +21,7 @@ import { API_BASE } from "@/lib/config";
 import { copyText } from "@/lib/clipboard";
 import { formatDate } from "@/lib/format";
 import { type LeavingCadet, type LeavingResponse, STATUS_LABEL, leaverQueryDraft } from "@/lib/leaving";
+import { useLeavingEmail } from "@/lib/use-leaving-email";
 import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
 
@@ -203,6 +204,7 @@ function LeavingDialogBody({
   const { confirm, confirmDialog } = useConfirm();
   const [busy, setBusy] = useState<string | null>(null);
 
+  const { template } = useLeavingEmail();
   const bcc = cadet.parentEmails.join(";");
   const notified = !!cadet.notifiedAt;
 
@@ -250,7 +252,8 @@ function LeavingDialogBody({
         <Private>
           {cadet.parentEmails.length === 0 ? (
             <p className="text-warning text-xs">
-              No parent email on file — add one under &ldquo;Parent emails&rdquo; on this dashboard.
+              No parent email on file. Add one to their next of kin on Bader and run the Cadet Records
+              Scraper, or add it under &ldquo;Parent emails&rdquo; on this page.
             </p>
           ) : (
             <p className="text-muted-foreground bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
@@ -268,7 +271,7 @@ function LeavingDialogBody({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => copy(leaverQueryDraft(cadet.name, cadet.weeksAbsent), "draft email")}
+            onClick={() => copy(leaverQueryDraft(cadet.name, cadet.weeksAbsent, template), "draft email")}
           >
             <Copy data-icon="inline-start" />
             Copy draft message

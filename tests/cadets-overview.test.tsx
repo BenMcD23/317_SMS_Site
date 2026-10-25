@@ -145,9 +145,14 @@ describe("cadets no longer on SMS", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Remove" }));
     await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
     await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/cadets\/9$/), expect.objectContaining({ method: "DELETE" }))
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/cadets\/9$/),
+        expect.objectContaining({ method: "DELETE" })
+      )
     );
-    await waitFor(() => expect(fetch.mock.calls.filter(([, i]) => !i?.method || i.method === "GET").length).toBe(2));
+    await waitFor(() =>
+      expect(fetch.mock.calls.filter(([, i]) => !i?.method || i.method === "GET").length).toBe(2)
+    );
   });
 
   it("doesn't offer removal to an SNCO", async () => {
@@ -163,14 +168,18 @@ describe("cadets no longer on SMS", () => {
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) =>
         init?.method === "DELETE"
-          ? new Response(JSON.stringify({ detail: "This cadet is still on SMS, so can't be removed." }), { status: 409 })
+          ? new Response(JSON.stringify({ detail: "This cadet is still on SMS, so can't be removed." }), {
+              status: 409,
+            })
           : new Response(JSON.stringify([{ ...GONE, missing_since: "2026-10-07T03:48:00" }]))
       )
     );
     renderPage();
     await userEvent.click(await screen.findByRole("button", { name: "Remove" }));
     await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("This cadet is still on SMS, so can't be removed."));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("This cadet is still on SMS, so can't be removed.")
+    );
     expect(toast.success).not.toHaveBeenCalled();
   });
 });

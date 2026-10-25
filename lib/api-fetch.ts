@@ -109,7 +109,8 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   } catch (e) {
     // Network-level failure — could be the API or just this device's
     // connection. Only nudges the overlay to re-check; it decides which.
-    flagPossibleOutage();
+    // A caller cancelling its own request (leaving the page) is not an outage.
+    if (!(e instanceof DOMException && e.name === "AbortError")) flagPossibleOutage();
     throw e;
   }
   if ([502, 503, 504].includes(res.status)) flagPossibleOutage();

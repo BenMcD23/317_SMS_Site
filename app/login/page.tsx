@@ -45,8 +45,7 @@ export default function LoginPage() {
             Squadron Management System
           </p>
           <p className="text-sidebar-foreground/70 text-sm leading-relaxed">
-            Cadet records, marking sheets, stores and the parade-night tools, all in one place for the staff
-            and NCO teams.
+            Marking sheets, stores and the parade-night tools, all in one place for the staff and NCO teams.
           </p>
         </div>
         <p className="text-sidebar-foreground/50 relative text-xs">For authorised staff and NCOs only.</p>
@@ -65,7 +64,6 @@ export default function LoginPage() {
             />
             <div className="flex flex-col gap-1.5">
               <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-              <p className="text-muted-foreground text-sm">Use your squadron Google account to continue.</p>
             </div>
           </div>
 

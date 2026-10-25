@@ -5,11 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import HomePage from "@/app/page";
 
-const SESSION = {
-  data: { id_token: "tok", role: "nco", user: { email: "nco@317atc.co.uk", name: "Nat NCO" } },
+const sessionFor = (role: string) => ({
+  data: { id_token: "tok", role, user: { email: `${role}@317atc.co.uk`, name: "Nat NCO" } },
   status: "authenticated",
   update: () => Promise.resolve(null),
-};
+});
+// One stable object per role: pages key effects on the session.
+const SESSIONS = { nco: sessionFor("nco"), staff: sessionFor("staff") };
+let SESSION = SESSIONS.nco;
 vi.mock("next-auth/react", () => ({
   useSession: () => SESSION,
   signIn: vi.fn(),
@@ -57,6 +60,7 @@ async function renderDashboard() {
 }
 
 beforeEach(() => {
+  SESSION = SESSIONS.nco;
   vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 9, 7, 20, 0) });
 });
 afterEach(() => {
@@ -105,5 +109,29 @@ describe("dashboard", () => {
     stubApi({ "/stats/current": [current], "/stats/awards": [[]] });
     await renderDashboard();
     expect(screen.queryByText("Bader Scrapers")).toBeNull();
+  });
+
+  it("shows staff the badges still to give out", async () => {
+    SESSION = SESSIONS.staff;
+    const toGive = {
+      orderId: "1",
+      itemId: "7",
+      badgeName: "Radio – Bronze",
+      cadetName: "Amy Adams",
+      cadetCin: 1,
+      orderedAt: "2026-09-01T18:00:00",
+      stage: "in_hand",
+    };
+    stubApi({ "/stats/current": [current], "/stats/awards": [[]], "/stores/badges/to-give": [[toGive]] });
+    await renderDashboard();
+    expect(screen.getByRole("heading", { name: "Badges to give out" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Amy Adams/ }).textContent).toContain("In stores");
+  });
+
+  it("doesn't ask for badge orders on an NCO's dashboard, which the API would refuse", async () => {
+    const fetch = stubApi({ "/stats/current": [current], "/stats/awards": [[]] });
+    await renderDashboard();
+    expect(screen.queryByRole("heading", { name: "Badges to give out" })).toBeNull();
+    expect(fetch.mock.calls.some(([url]) => String(url).includes("/stores/badges/to-give"))).toBe(false);
   });
 });

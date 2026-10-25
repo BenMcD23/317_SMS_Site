@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section-heading";
 import { DividedGrid } from "@/components/divided-grid";
+import { BadgesToGive } from "@/components/badges/badges-to-give";
 import { BadgeGlance } from "@/components/stats/badge-glance";
 import { SquadronKpis } from "@/components/stats/kpis";
 import { RecentAwards } from "@/components/stats/qual-lists";
@@ -135,6 +136,9 @@ export default function HomePage() {
             <SquadronKpis stats={stats} />
 
             {session?.role === "staff" && <QuickTools />}
+
+            {/* Badge orders are staff-only in the API, so NCOs don't get an empty 403 box. */}
+            {session?.role === "staff" && <BadgesToGive />}
 
             <section className="flex flex-col gap-3">
               <SectionHeading title="Badges" />

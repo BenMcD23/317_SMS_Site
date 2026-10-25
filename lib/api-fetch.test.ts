@@ -32,6 +32,17 @@ describe("apiFetch", () => {
     expect(fetch).toHaveBeenCalledWith("/x", { method: "POST" });
   });
 
+  it("doesn't call a caller's own abort an outage", async () => {
+    const { apiFetch } = await load();
+    const { API_OUTAGE_EVENT } = await import("@/components/api-status-overlay");
+    const heard = vi.fn();
+    window.addEventListener(API_OUTAGE_EVENT, heard);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("aborted", "AbortError")));
+    await expect(apiFetch("/x")).rejects.toThrow("aborted");
+    expect(heard).not.toHaveBeenCalled();
+    window.removeEventListener(API_OUTAGE_EVENT, heard);
+  });
+
   it.each([502, 503, 504])("flags a possible outage on %i", async (status) => {
     const { apiFetch } = await load();
     const { API_OUTAGE_EVENT } = await import("@/components/api-status-overlay");

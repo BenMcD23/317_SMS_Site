@@ -52,7 +52,11 @@ export function AddRecruitDialog({
   onAdded: (recruit: Recruit) => void;
 }) {
   const { data: session } = useSession();
-  const form = useForm<NewRecruit>({ resolver: zodResolver(schema), defaultValues: EMPTY, mode: "onTouched" });
+  const form = useForm<NewRecruit>({
+    resolver: zodResolver(schema),
+    defaultValues: EMPTY,
+    mode: "onTouched",
+  });
   const { register, handleSubmit, reset, formState } = form;
   const [submitError, setSubmitError] = useState<string | null>(null);
 

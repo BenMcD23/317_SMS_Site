@@ -1,0 +1,35 @@
+# Dependency vulnerability scan. Fails on a high/critical advisory in anything
+# that ships (`--omit=dev`); dev tooling (shadcn CLI, eslint) is reported but
+# never blocks, because it doesn't run in production and its fixes often need a
+# major bump. Runs weekly as well as on PRs: advisories are published against
+# code that hasn't changed. Fixes arrive as Dependabot security PRs (see
+# dependabot.yml), which ignore the quarterly schedule.
+name: Security
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Audit dev dependencies (report only)
+        continue-on-error: true
+        run: npm audit --audit-level=high

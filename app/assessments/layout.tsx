@@ -11,13 +11,16 @@ const TABS = [
   { label: "Leadership", href: "/assessments/leadership" },
   { label: "Radio", href: "/assessments/radio" },
   { label: "Space", href: "/assessments/space" },
-  { label: "MOI", href: "/assessments/moi" },
+  { label: "MOI", href: "/assessments/moi", staffOnly: true },
 ];
 
 export default function AssessmentsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const tabs = TABS.filter((tab) => !tab.sncoOnly || session?.role === "staff" || session?.role === "snco");
+  const tabs = TABS.filter((tab) => {
+    if (tab.staffOnly) return session?.role === "staff";
+    return !tab.sncoOnly || session?.role === "staff" || session?.role === "snco";
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
