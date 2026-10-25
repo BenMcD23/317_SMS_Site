@@ -50,8 +50,8 @@ describe("OC leaving process page", () => {
     );
     await renderPage();
     expect(screen.getByRole("heading", { name: "Leaving process" })).toBeTruthy();
-    expect(screen.queryByText(/Parent emails/)).toBeNull();
-    expect(screen.queryByText(/parent emails to BCC/)).toBeNull();
+    expect(screen.queryByText(/Email the parents/)).toBeNull();
+    expect(screen.queryByText(/email to send their parents/)).toBeNull();
   });
 
   it("turns away other staff without asking the API", async () => {

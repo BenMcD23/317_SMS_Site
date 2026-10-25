@@ -209,43 +209,143 @@ describe("LeavingProcessCard", () => {
   });
 });
 
-const PARENTS = {
-  bcc: "mum@x.co;dad@x.co",
-  count: 2,
-  missing: 1,
-  cadets: [
-    { cin: 1, name: "Gone Away", flight: "B", parentEmails: ["mum@x.co", "dad@x.co"] },
-    { cin: 2, name: "No Parents", flight: null, parentEmails: [] },
-  ],
-};
+const NO_SAVED_EMAIL: [unknown] = [{ subject: null, body: null }];
 
 describe("ParentEmailsCard", () => {
-  it("shows the BCC string, copies it, and counts cadets with none", async () => {
-    stubApi({ "GET /oc/parent-emails": [PARENTS] });
+  it("lists only flagged cadets, not everyone on file or those already contacted", async () => {
+    stubApi({
+      ...leaving([
+        cadet({ cin: 1, name: "Gone Away", parentEmails: ["mum@x.co", "dad@x.co"] }),
+        cadet({ cin: 2, name: "Already Told", status: "waiting", parentEmails: ["told@x.co"] }),
+        cadet({ cin: 3, name: "Came Back", returned: true, parentEmails: ["back@x.co"] }),
+        cadet({ cin: 4, name: "Ready Out", status: "start_leaving", parentEmails: ["out@x.co"] }),
+      ]),
+      "GET /oc/leaving-email": NO_SAVED_EMAIL,
+    });
     await show(<ParentEmailsCard />);
-    expect(
-      (screen.getByLabelText("Parent emails, separated by semicolons") as HTMLTextAreaElement).value
-    ).toBe("mum@x.co;dad@x.co");
+    expect(screen.getByText("Gone Away")).toBeTruthy();
+    expect(screen.getByText("mum@x.co;dad@x.co")).toBeTruthy();
+    for (const other of ["Already Told", "Came Back", "Ready Out"])
+      expect(screen.queryByText(other)).toBeNull();
+  });
+
+  it("Open in Gmail goes to the OC's account with this cadet's parents and name filled in", async () => {
+    stubApi({ ...leaving([cadet({ name: "Zoë Ó Briain" })]), "GET /oc/leaving-email": NO_SAVED_EMAIL });
+    await show(<ParentEmailsCard />);
+    const link = screen.getByRole("link", { name: "Open email to Zoë Ó Briain's parents in Gmail" });
+    const url = new URL(link.getAttribute("href")!);
+    expect(url.origin + url.pathname).toBe("https://mail.google.com/mail/");
+    expect(url.searchParams.get("authuser")).toBe("oc@317atc.co.uk");
+    expect(url.searchParams.get("bcc")).toBe("mum@x.co,dad@x.co");
+    expect(url.searchParams.get("su")).toContain("Zoë Ó Briain");
+    expect(url.searchParams.get("body")).toContain("Zoë Ó Briain hasn't been on parade for around 9 weeks");
+    expect(url.searchParams.get("body")).not.toContain("{{");
+    expect(link.getAttribute("target")).toBe("_blank");
+  });
+
+  it("uses the OC's saved message, with the cadet's name put in", async () => {
+    stubApi({
+      ...leaving([cadet({ name: "Gone Away" })]),
+      "GET /oc/leaving-email": [{ subject: "About {{cadet_name}}", body: "Hello, re {{ cadet_name }}." }],
+    });
+    await show(<ParentEmailsCard />);
+    expect((screen.getByLabelText("Message") as HTMLTextAreaElement).value).toBe(
+      "Hello, re {{ cadet_name }}."
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Copy message for Gone Away" }));
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith("Subject: About Gone Away\n\nHello, re Gone Away.")
+    );
+  });
+
+  it("saves an edited message to the API", async () => {
+    const fetch = stubApi({
+      ...leaving([cadet()]),
+      "GET /oc/leaving-email": NO_SAVED_EMAIL,
+      "PUT /oc/leaving-email": [{ subject: "S", body: "B {{ cadet_name }}" }],
+    });
+    await show(<ParentEmailsCard />);
+    fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "S" } });
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "B {{ cadet_name }}" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save message" }));
+    await waitFor(() => expect(called(fetch, "PUT", "/oc/leaving-email")).toBe(true));
+    const put = fetch.mock.calls.find(([, init]) => init?.method === "PUT");
+    expect(JSON.parse(String(put?.[1]?.body))).toEqual({ subject: "S", body: "B {{ cadet_name }}" });
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Saved your message"));
+  });
+
+  it("a failed save says so and a blank message can't be saved", async () => {
+    stubApi({
+      ...leaving([cadet()]),
+      "GET /oc/leaving-email": NO_SAVED_EMAIL,
+      "PUT /oc/leaving-email": [{ detail: "Message too long" }, 422],
+    });
+    await show(<ParentEmailsCard />);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "  " } });
+    expect((screen.getByRole("button", { name: "Save message" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save message" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Message too long"));
+  });
+
+  it("resets to the standard message only after confirming", async () => {
+    const fetch = stubApi({
+      ...leaving([cadet()]),
+      "GET /oc/leaving-email": [{ subject: "S", body: "Mine" }],
+      "DELETE /oc/leaving-email": [{ subject: null, body: null }],
+    });
+    await show(<ParentEmailsCard />);
+    fireEvent.click(screen.getByRole("button", { name: "Use standard message" }));
+    expect(called(fetch, "DELETE", "/oc/leaving-email")).toBe(false);
+    fireEvent.click(await screen.findByRole("button", { name: /confirm|yes|continue|ok/i }));
+    await waitFor(() => expect(called(fetch, "DELETE", "/oc/leaving-email")).toBe(true));
+  });
+
+  it("if the saved message can't be loaded it says so and still offers the standard one", async () => {
+    stubApi({ ...leaving([cadet()]), "GET /oc/leaving-email": [{ detail: "Database down" }, 500] });
+    await show(<ParentEmailsCard />);
+    expect(screen.getByText(/Database down/)).toBeTruthy();
+    expect((screen.getByLabelText("Message") as HTMLTextAreaElement).value).toContain("{{ cadet_name }}");
+    expect(screen.getByRole("link", { name: /Open email to Gone Away/ })).toBeTruthy();
+  });
+
+  it("copies every flagged cadet's parents once, and counts cadets with none", async () => {
+    stubApi({
+      ...leaving([
+        cadet({ cin: 1, name: "A One", parentEmails: ["mum@x.co", "dad@x.co"] }),
+        cadet({ cin: 2, name: "B Two", parentEmails: ["MUM@x.co"] }),
+        cadet({ cin: 3, name: "No Parents", parentEmails: [] }),
+      ]),
+      "GET /oc/leaving-email": NO_SAVED_EMAIL,
+    });
+    await show(<ParentEmailsCard />);
     expect(screen.getByText("1 cadet has no parent email")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Copy all" }));
+    // No address, nothing to open or copy for that cadet.
+    expect(screen.queryByRole("link", { name: /No Parents/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Copy all parent emails" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("mum@x.co;dad@x.co"));
   });
 
-  it("with no addresses on file the copy button is disabled", async () => {
-    stubApi({ "GET /oc/parent-emails": [{ bcc: "", count: 0, missing: 2, cadets: [] }] });
+  it("with nobody flagged it says so instead of offering to send", async () => {
+    stubApi({ ...leaving([]), "GET /oc/leaving-email": NO_SAVED_EMAIL });
     await show(<ParentEmailsCard />);
-    expect((screen.getByRole("button", { name: "Copy all" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/Nobody is waiting to be contacted/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Copy all parent emails" })).toBeNull();
   });
 
   it("an error body shows a message instead of crashing", async () => {
-    stubApi({ "GET /oc/parent-emails": [{ detail: "OC access required" }, 403] });
+    stubApi({ "GET /leaving-process": [{ detail: "OC access required" }, 403] });
     await show(<ParentEmailsCard />);
     expect(screen.getByText("OC access required")).toBeTruthy();
   });
 
   it("saves one cadet's addresses and surfaces the API's complaint about a typo", async () => {
     const fetch = stubApi({
-      "GET /oc/parent-emails": [PARENTS],
+      ...leaving([
+        cadet({ cin: 1, name: "Gone Away" }),
+        cadet({ cin: 2, name: "No Parents", flight: null, parentEmails: [] }),
+      ]),
+      "GET /oc/leaving-email": NO_SAVED_EMAIL,
       "PUT /oc/parent-emails/2": [{ cin: 2, parentEmails: ["new@x.co"] }],
       "PUT /oc/parent-emails/1": [{ detail: "'nope' is not an email address" }, 400],
     });
@@ -266,7 +366,7 @@ describe("ParentEmailsCard", () => {
   });
 
   it("Save stays disabled until a row is changed", async () => {
-    stubApi({ "GET /oc/parent-emails": [PARENTS] });
+    stubApi({ ...leaving([cadet()]), "GET /oc/leaving-email": NO_SAVED_EMAIL });
     await show(<ParentEmailsCard />);
     fireEvent.click(screen.getByRole("button", { name: "Edit emails" }));
     expect((screen.getByRole("button", { name: "Save Gone Away" }) as HTMLButtonElement).disabled).toBe(true);
