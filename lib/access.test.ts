@@ -25,18 +25,37 @@ describe("canAccess", () => {
     expect(canAccess("snco", path)).toBe(true);
   });
 
-  it.each(["/cadets", "/cadets/123", "/stores", "/texts/messages", "/committee/requests", "/oc", "/backups"])(
-    "keeps NCOs and SNCOs out of %s",
-    (path) => {
-      expect(canAccess("nco", path)).toBe(false);
-      expect(canAccess("snco", path)).toBe(false);
-    }
-  );
+  it.each([
+    "/cadets",
+    "/cadets/123",
+    "/cadets/activity-logs",
+    "/cadets/activity-logs/123",
+    "/applications/staff-cadets",
+    "/applications/adult-staff",
+    "/stores",
+    "/texts/messages",
+    "/committee/requests",
+    "/oc",
+    "/backups",
+  ])("keeps NCOs and SNCOs out of %s", (path) => {
+    expect(canAccess("nco", path)).toBe(false);
+    expect(canAccess("snco", path)).toBe(false);
+  });
 
   it("gives inspections to SNCOs but not NCOs", () => {
     expect(canAccess("snco", "/assessments/inspection")).toBe(true);
     expect(canAccess("snco", "/assessments/inspection/history")).toBe(true);
     expect(canAccess("nco", "/assessments/inspection")).toBe(false);
+  });
+
+  it("keeps the MOI sheet to staff", () => {
+    expect(canAccess("staff", "/assessments/moi")).toBe(true);
+    expect(canAccess("snco", "/assessments/moi")).toBe(false);
+    expect(canAccess("nco", "/assessments/moi")).toBe(false);
+    expect(canAccess(undefined, "/assessments/moi")).toBe(false);
+    // the other assessment sheets stay as they were
+    expect(canAccess("nco", "/assessments/radio")).toBe(true);
+    expect(canAccess("snco", "/assessments/space")).toBe(true);
   });
 
   it("matches whole path segments, not prefixes", () => {

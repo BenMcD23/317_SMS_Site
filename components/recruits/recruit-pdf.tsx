@@ -28,8 +28,11 @@ export function RecruitPdf({ id, form, fileLabel }: { id: number; form: PdfForm;
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch(recruitPdfPath(id, form), { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't load the PDF.");
+        const res = await apiFetch(recruitPdfPath(id, form), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok)
+          throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't load the PDF.");
         objectUrl = URL.createObjectURL(await res.blob());
         if (!cancelled) setUrl(objectUrl);
       } catch (e) {
@@ -46,7 +49,8 @@ export function RecruitPdf({ id, form, fileLabel }: { id: number; form: PdfForm;
     setSaving(true);
     try {
       const res = await apiFetch(recruitPdfPath(id, form), { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't download the PDF.");
+      if (!res.ok)
+        throw new Error(errorDetail(await res.json().catch(() => null)) ?? "Couldn't download the PDF.");
       await saveResponseAsFile(res, `${fileLabel}.pdf`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't download the PDF.");
@@ -66,7 +70,12 @@ export function RecruitPdf({ id, form, fileLabel }: { id: number; form: PdfForm;
         </Button>
       </div>
       {url ? (
-        <iframe src={url} className="w-full rounded-lg border" style={{ height: "min(900px, 75vh)" }} title={fileLabel} />
+        <iframe
+          src={url}
+          className="w-full rounded-lg border"
+          style={{ height: "min(900px, 75vh)" }}
+          title={fileLabel}
+        />
       ) : (
         <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
           <Loader2 className="size-4 animate-spin" /> Drawing the form…

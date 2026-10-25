@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Award,
+  BadgeCheck,
   BookOpen,
   Calendar,
   CalendarCheck,
@@ -13,6 +14,7 @@ import {
   Contact,
   DatabaseBackup,
   DatabaseZap,
+  FileCheck,
   FileSearch,
   FileText,
   GraduationCap,
@@ -20,6 +22,7 @@ import {
   LayoutGrid,
   MessageSquare,
   MessageSquareText,
+  NotebookPen,
   Images,
   Newspaper,
   Orbit,
@@ -36,6 +39,7 @@ import {
   UserCog,
   UserMinus,
   UserPlus,
+  UserRoundPlus,
   Users,
 } from "lucide-react";
 
@@ -151,6 +155,13 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ["exams", "lesson plan", "theory", "classification day", "qr code", "lessons"],
       },
       { label: "Events", href: "/cadets/events", icon: Calendar },
+      // Staff-only (see lib/access.ts).
+      {
+        label: "DofE Activity Logs",
+        href: "/cadets/activity-logs",
+        icon: NotebookPen,
+        keywords: ["dofe", "duke of edinburgh", "volunteering", "skills", "physical", "weekly log"],
+      },
       {
         label: "Flying Paperwork",
         href: "/cadets/flying",
@@ -254,6 +265,43 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Squadron",
     items: [
+      // Staff-only (see lib/access.ts), as the API requires.
+      {
+        kind: "group",
+        label: "Applications",
+        icon: FileCheck,
+        links: [
+          {
+            label: "Staff Cadets",
+            href: "/applications/staff-cadets",
+            icon: BadgeCheck,
+            keywords: [
+              "staff cadet application",
+              "pi501",
+              "18th birthday",
+              "bpss",
+              "dbs",
+              "5-01",
+              "turning 18",
+            ],
+          },
+          {
+            label: "Adult Staff",
+            href: "/applications/adult-staff",
+            icon: UserRoundPlus,
+            keywords: [
+              "uniformed staff",
+              "cfav application",
+              "snco",
+              "cfc",
+              "officer",
+              "wing board",
+              "1-10",
+              "cic",
+            ],
+          },
+        ],
+      },
       {
         label: "Attendance",
         href: "/attendance",

@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/api-fetch";
+
 /**
  * Read a `text/event-stream` response as it arrives, yielding each event's
  * decoded `data:` payload.
@@ -39,4 +41,22 @@ export async function* streamSse<T>(response: Response): AsyncGenerator<T> {
   } finally {
     reader.releaseLock();
   }
+}
+
+/**
+ * Open an authenticated GET stream and yield its events.
+ *
+ * Shared by the scraper log and the assessment upload progress so neither
+ * needs `EventSource`: that can't set an Authorization header, which left the
+ * id_token in the URL, and from there in proxy logs, history and Referer.
+ * Abort `signal` to close the connection (on unmount, or once the job is done).
+ * A non-2xx answer throws with the API's own message.
+ */
+export async function* streamAuthed<T>(url: string, token: string, signal: AbortSignal): AsyncGenerator<T> {
+  const res = await apiFetch(url, { headers: { Authorization: `Bearer ${token}` }, signal });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(typeof body?.detail === "string" ? body.detail : res.statusText || `HTTP ${res.status}`);
+  }
+  yield* streamSse<T>(res);
 }

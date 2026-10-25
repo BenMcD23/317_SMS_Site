@@ -143,7 +143,12 @@ export function daysLeft(expiresAt: string, now: Date = new Date()): number {
 }
 
 export function addRecruit(token: string, body: NewRecruit) {
-  return apiRequest<Recruit>(token, `${API_BASE}/recruits`, { method: "POST", body }, "Couldn't add the recruit.");
+  return apiRequest<Recruit>(
+    token,
+    `${API_BASE}/recruits`,
+    { method: "POST", body },
+    "Couldn't add the recruit."
+  );
 }
 
 export function extendRecruitLink(token: string, id: number) {
@@ -167,7 +172,12 @@ export function reopenRecruit(token: string, id: number) {
 
 export async function deleteRecruit(token: string, id: number) {
   // 204: no body, so apiRequest's JSON parse just yields null.
-  await apiRequest<null>(token, `${API_BASE}/recruits/${id}`, { method: "DELETE" }, "Couldn't delete the recruit.");
+  await apiRequest<null>(
+    token,
+    `${API_BASE}/recruits/${id}`,
+    { method: "DELETE" },
+    "Couldn't delete the recruit."
+  );
 }
 
 export function recruitPdfPath(id: number, form: PdfForm): string {

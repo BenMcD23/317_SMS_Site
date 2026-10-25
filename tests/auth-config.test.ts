@@ -42,6 +42,9 @@ describe("middleware authorized()", () => {
     expect(visit("/assessments/inspection", user("snco"))).toBe(true);
     expect(visit("/assessments/inspection", user("nco"))).toBe("redirect:/unauthorized");
     expect(visit("/session-plans/3", user("nco"))).toBe(true);
+    expect(visit("/assessments/moi", user("staff"))).toBe(true);
+    expect(visit("/assessments/moi", user("snco"))).toBe("redirect:/unauthorized");
+    expect(visit("/assessments/moi", user("nco"))).toBe("redirect:/unauthorized");
   });
 });
 
@@ -74,6 +77,15 @@ describe("config", () => {
     vi.resetModules();
     const { authConfig: devConfig } = await import("@/auth.config");
     expect(devConfig.providers).toHaveLength(2);
+  });
+
+  it("ignores AUTH_DEV_BYPASS on a production build", async () => {
+    vi.stubEnv("AUTH_DEV_BYPASS", "1");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+    const { authConfig: prodConfig, devBypassEnabled } = await import("@/auth.config");
+    expect(devBypassEnabled()).toBe(false);
+    expect(prodConfig.providers).toHaveLength(1);
   });
 
   it("dev accounts match the API's _dev_fake_email", () => {
