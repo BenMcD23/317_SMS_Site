@@ -225,7 +225,7 @@ function TurnoutChart({
 export default function OcDashboardPage() {
   const router = useRouter();
   const { data: session } = useSession();
-  const allowed = isOc(session?.user?.email);
+  const allowed = isOc(session);
 
   const [excludeJuniors, setExcludeJuniors] = useState(false);
   const { data: dash, isLoading } = useApiQuery<OcDashboard>(

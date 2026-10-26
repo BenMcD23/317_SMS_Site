@@ -55,7 +55,9 @@ export function CommandPalette({
   const debouncedQuery = useDebounced(query.trim(), 200);
   const token = session?.id_token;
 
-  const pages = flattenLinks(visibleSections(session?.role, session?.user?.email ?? undefined));
+  const pages = flattenLinks(
+    visibleSections(session?.role, session?.user?.email ?? undefined, session?.is_oc)
+  );
 
   const { data: cadets = [], isFetching } = useQuery<CadetHit[]>({
     queryKey: ["cadets", "search", debouncedQuery],

@@ -8,7 +8,7 @@ vi.mock("next-auth/react", () => ({
   useSession: () => {
     // One stable object per identity, like the real hook.
     session.value ??= {
-      data: { id_token: "tok", role: "staff", user: { email: session.email } },
+      data: { id_token: "tok", role: "staff", is_oc: session.email === "oc@317atc.co.uk", user: { email: session.email } },
       status: "authenticated",
       update: () => Promise.resolve(null),
     };
@@ -50,7 +50,6 @@ const roster =
 async function renderAs(email: string) {
   session.email = email;
   session.value = null;
-  vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
   vi.resetModules();
   const { default: HTDPage } = await import("@/app/form-generators/htd/page");
   return render(<HTDPage />);

@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 
 import { canAccess } from "@/lib/access";
-import { OWNER_EMAIL, isOc } from "@/lib/config";
+import { OWNER_EMAIL } from "@/lib/config";
 
 /**
  * The site map: what the sidebar shows, what the header breadcrumbs say, and
@@ -429,9 +429,12 @@ export function isGroupActive(pathname: string, group: NavGroup): boolean {
 }
 
 /** The sections a signed-in user should see, with every link they can't reach removed. */
-export function visibleSections(role: string | undefined, email: string | undefined): NavSection[] {
+export function visibleSections(
+  role: string | undefined,
+  email: string | undefined,
+  oc = false
+): NavSection[] {
   const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
-  const oc = isOc(email);
   const canSee = (item: { ownerOnly?: boolean; ocOnly?: boolean }) =>
     (!item.ownerOnly || isOwner) && (!item.ocOnly || oc);
   const keepLink = (l: NavLink) => canSee(l) && canAccess(role, l.href);
