@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { Images, Trash2, Upload, X } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 
 interface Photo {
   cat: string;
@@ -37,13 +38,18 @@ interface Photo {
 const RAW = "https://raw.githubusercontent.com/BenMcD23/cadet-website/master/src/assets/gallery/";
 const NEW_SECTION = "__new__";
 
+const GALLERY_KEY = ["gallery"];
+
 export default function GalleryUpdaterPage() {
   const { data: session } = useSession();
   const idToken = session?.id_token as string | undefined;
 
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useApiQuery<Photo[]>(GALLERY_KEY, "/gallery");
+  const photos = useMemo(() => query.data ?? [], [query.data]);
+  const error = query.error?.message ?? null;
+  const loading = query.isPending && !error;
+  const setPhotos = useSetApiQueryData<Photo[]>(GALLERY_KEY);
+  const load = () => void query.refetch();
 
   const [section, setSection] = useState("");
   const [newSection, setNewSection] = useState("");
@@ -55,27 +61,6 @@ export default function GalleryUpdaterPage() {
 
   // Same order the website shows them in: the order each section first appears.
   const sections = useMemo(() => [...new Set(photos.map((p) => p.cat))], [photos]);
-
-  useEffect(() => {
-    if (idToken) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idToken]);
-
-  async function load() {
-    if (!idToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`${API_BASE}/gallery`, { headers: { Authorization: `Bearer ${idToken}` } });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.detail || "Failed to load the gallery");
-      setPhotos(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function addFiles(files: FileList | null) {
     const images = [...(files ?? [])].filter((f) => f.type.startsWith("image/"));
@@ -158,7 +143,7 @@ export default function GalleryUpdaterPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || "Failed to delete photo");
       }
-      setPhotos((prev) => prev.filter((p) => p.file !== file));
+      setPhotos((prev) => prev?.filter((p) => p.file !== file));
       setDeleteConfirm(null);
       toast.success("Photo removed. The site will redeploy shortly.");
     } catch (e: unknown) {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -12,7 +12,7 @@ vi.mock("next-auth/react", () => ({
 }));
 
 import { API_BASE } from "@/lib/config";
-import { apiQueryUrl, useApiQuery } from "@/lib/use-api-query";
+import { apiQueryUrl, useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -71,5 +71,22 @@ describe("useApiQuery", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(fetch).not.toHaveBeenCalled();
     expect(result.current.fetchStatus).toBe("idle");
+  });
+
+  it("a write that knows its result updates the cached list without a refetch", async () => {
+    const fetch = stub(200, [{ id: 1 }, { id: 2 }]);
+    const { result } = renderHook(
+      () => ({
+        query: useApiQuery<{ id: number }[]>(["rows"], "/rows"),
+        set: useSetApiQueryData<{ id: number }[]>(["rows"]),
+      }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.query.data).toHaveLength(2));
+    act(() => {
+      result.current.set((prev) => prev?.filter((r) => r.id !== 1));
+    });
+    await waitFor(() => expect(result.current.query.data).toEqual([{ id: 2 }]));
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

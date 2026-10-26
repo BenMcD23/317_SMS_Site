@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -19,7 +18,7 @@ import { EmptyState } from "@/components/empty-state";
 import { useConfirm } from "@/components/confirm-dialog";
 import { API_BASE } from "@/lib/config";
 import { apiRequest } from "@/lib/api-fetch";
-import { useApiQuery } from "@/lib/use-api-query";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -176,25 +175,26 @@ export default function FlyingPaperworkPage() {
   const events = query.data ?? NO_EVENTS;
   const loading = query.isPending && !query.error;
   const error = query.error?.message ?? null;
-  const queryClient = useQueryClient();
-  // Ticks and closes edit the cached list in place, so the page answers at once
-  // and a revisit still shows them.
+  // Ticks and closes edit the cached list in place, so the page answers at once.
+  const setCached = useSetApiQueryData<FlyingEvent[]>(FLYING_KEY);
   const setEvents = useCallback(
-    (update: (prev: FlyingEvent[]) => FlyingEvent[]) =>
-      queryClient.setQueryData<FlyingEvent[]>(FLYING_KEY, (prev) => update(prev ?? [])),
-    [queryClient]
+    (update: (prev: FlyingEvent[]) => FlyingEvent[]) => setCached((prev) => update(prev ?? [])),
+    [setCached]
   );
   const { confirm, confirmDialog } = useConfirm();
 
-  const patchCadet = useCallback((eventId: number, cin: number, change: Partial<FlyingCadet>) => {
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id !== eventId) return e;
-        const cadets = e.cadets.map((c) => (c.cin === cin ? { ...c, ...change } : c));
-        return { ...e, cadets, has_ticks: cadets.some((c) => FORMS.some((f) => c[f.key])) };
-      })
-    );
-  }, []);
+  const patchCadet = useCallback(
+    (eventId: number, cin: number, change: Partial<FlyingCadet>) => {
+      setEvents((prev) =>
+        prev.map((e) => {
+          if (e.id !== eventId) return e;
+          const cadets = e.cadets.map((c) => (c.cin === cin ? { ...c, ...change } : c));
+          return { ...e, cadets, has_ticks: cadets.some((c) => FORMS.some((f) => c[f.key])) };
+        })
+      );
+    },
+    [setEvents]
+  );
 
   async function tick(event: FlyingEvent, cadet: FlyingCadet, form: Form, value: boolean) {
     if (!token) return;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +40,7 @@ import { FlyingCard, type Flight, type FlyingStage } from "@/components/flying-c
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
-import { useApiQuery } from "@/lib/use-api-query";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 
 type Qualification = {
   id: number;
@@ -257,11 +256,11 @@ export default function CadetOverviewPage() {
   const cadet = query.data ?? null;
   const error = query.error?.message ?? null;
   const loading = query.isPending && !error;
-  const queryClient = useQueryClient();
   // Edits update the cached record in place: the page answers straight away
   // and coming back to this cadet shows them without a refetch.
+  const setCached = useSetApiQueryData<CadetDetail>(cadetKey);
   const setCadet = (update: (prev: CadetDetail | null) => CadetDetail | null) =>
-    queryClient.setQueryData<CadetDetail | null>(cadetKey, (prev) => update(prev ?? null));
+    setCached((prev) => update(prev ?? null) ?? undefined);
 
   const patchField = async (field: string, value: string) => {
     const res = await apiFetch(`${API_BASE}/cadets/${cin}`, {

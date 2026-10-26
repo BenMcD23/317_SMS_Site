@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import { ErrorAlert } from "@/components/error-alert";
 import { toast } from "sonner";
 import { Newspaper, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { API_BASE } from "@/lib/config";
+import { apiFetch } from "@/lib/api-fetch";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { NewsletterDialog } from "./NewsletterDialog";
@@ -19,49 +21,32 @@ import type { Newsletter } from "./types";
 // Set NEXT_PUBLIC_NEWSLETTER_SITE to enable it; left blank the link is hidden.
 const NEWSLETTER_SITE = process.env.NEXT_PUBLIC_NEWSLETTER_SITE ?? "";
 
+const NEWSLETTERS_KEY = ["newsletters"];
+
 export default function NewsletterManagementPage() {
   const { data: session } = useSession();
   const idToken = session?.id_token as string | undefined;
 
-  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useApiQuery<Newsletter[]>(NEWSLETTERS_KEY, "/newsletters", {
+    // Highest issue first (the homepage 'current' one).
+    select: (data) => [...data].sort((a, b) => b.issue - a.issue),
+  });
+  const newsletters = query.data ?? [];
+  const error = query.error?.message ?? null;
+  const loading = query.isPending && !error;
+  const setNewsletters = useSetApiQueryData<Newsletter[]>(NEWSLETTERS_KEY);
+  const load = () => void query.refetch();
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Newsletter | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (idToken) load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idToken]);
-
-  async function load() {
-    if (!idToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/newsletters`, {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!res.ok) throw new Error("Failed to load newsletters");
-      const data: Newsletter[] = await res.json();
-      // Highest issue first (the homepage 'current' one).
-      data.sort((a, b) => b.issue - a.issue);
-      setNewsletters(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleDelete(issue: number) {
     if (!idToken) return;
     setDeleting(issue);
     try {
-      const res = await fetch(`${API_BASE}/newsletters/${issue}`, {
+      const res = await apiFetch(`${API_BASE}/newsletters/${issue}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${idToken}` },
       });
@@ -69,7 +54,7 @@ export default function NewsletterManagementPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || "Failed to delete newsletter");
       }
-      setNewsletters((prev) => prev.filter((n) => n.issue !== issue));
+      setNewsletters((prev) => prev?.filter((n) => n.issue !== issue));
       setDeleteConfirm(null);
       toast.success("Newsletter deleted. The site will redeploy shortly.");
     } catch (e: unknown) {

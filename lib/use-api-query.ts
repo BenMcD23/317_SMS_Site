@@ -1,7 +1,8 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useQuery, useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch, errorDetail } from "@/lib/api-fetch";
@@ -50,4 +51,18 @@ export function useApiQuery<T>(
     // `enabled` narrows the gate rather than bypassing the token check).
     enabled: !!token && (options?.enabled ?? true),
   });
+}
+
+/**
+ * A setter for a useApiQuery's cached data, for writes that already know the
+ * result (a tick, a delete): the page updates at once without a refetch, and
+ * a revisit shows the change. `update` gets undefined if nothing is cached.
+ */
+export function useSetApiQueryData<T>(key: readonly unknown[]) {
+  const queryClient = useQueryClient();
+  const hash = JSON.stringify(key);
+  return useCallback(
+    (update: (prev: T | undefined) => T | undefined) => queryClient.setQueryData<T>(JSON.parse(hash), update),
+    [queryClient, hash]
+  );
 }
