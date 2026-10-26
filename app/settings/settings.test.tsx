@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -23,6 +23,8 @@ vi.mock("next-auth/react", () => ({ useSession: () => session, signIn: vi.fn() }
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import SettingsPage from "@/app/settings/page";
+import { ASSESSOR_NAME_KEY } from "@/lib/assessor-defaults";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 afterEach(() => {
   window.localStorage.clear();
@@ -46,7 +48,7 @@ const privacySwitch = () => screen.queryByRole("switch", { name: /^Hide personal
 describe("settings: hide personal data", () => {
   it("staff get the switch, and turning it on takes their number and bank details off the page", async () => {
     respond();
-    render(<SettingsPage />);
+    renderWithQuery(<SettingsPage />);
     await screen.findByRole("heading", { name: "Privacy" });
     expect(screen.getByDisplayValue("07700 900123")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Bank details" })).toBeInTheDocument();
@@ -68,7 +70,7 @@ describe("settings: hide personal data", () => {
     // Left on by staff in this browser; it mustn't apply to someone else.
     window.localStorage.setItem("sms.privacy.hide", "1");
     respond();
-    render(<SettingsPage />);
+    renderWithQuery(<SettingsPage />);
     expect(await screen.findByDisplayValue("07700 900123")).toHaveAttribute("type", "tel");
     expect(screen.queryByRole("heading", { name: "Privacy" })).not.toBeInTheDocument();
     expect(privacySwitch()).not.toBeInTheDocument();
@@ -79,8 +81,27 @@ describe("settings: hide personal data", () => {
       "fetch",
       vi.fn(async () => new Response(JSON.stringify({ detail: "Boom" }), { status: 500 }))
     );
-    render(<SettingsPage />);
+    renderWithQuery(<SettingsPage />);
     expect(await screen.findByRole("heading", { name: "Privacy" })).toBeInTheDocument();
     expect(privacySwitch()).not.toBeChecked();
+  });
+});
+
+describe("settings: assessor name", () => {
+  it("saving it makes the assessment sheets pick up the new name", async () => {
+    respond();
+    const { client } = renderWithQuery(<SettingsPage />);
+    // What an assessment sheet opened earlier left in the cache.
+    client.setQueryData(ASSESSOR_NAME_KEY, "Old Name");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }))
+    );
+
+    const input = await screen.findByRole("textbox", { name: "Assessor display name" });
+    await userEvent.type(input, "Sgt New");
+    await userEvent.click(within(input.parentElement!).getByRole("button", { name: "Save" }));
+
+    await vi.waitFor(() => expect(client.getQueryState(ASSESSOR_NAME_KEY)?.isInvalidated).toBe(true));
   });
 });

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Upload, Trash2, CheckCircle2, PenLine, RotateCcw, ExternalLink } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { ASSESSOR_NAME_KEY, SIGNATURE_KEY } from "@/lib/assessor-defaults";
 import { SectionHeading } from "@/components/section-heading";
 import { PersonalDataSetting } from "@/components/private";
 import { NotificationSettings } from "@/components/notification-settings";
@@ -21,6 +23,7 @@ import { usePersonalDataHidden } from "@/lib/privacy";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
 
   // Signature, assessor name, phone number and bank details are fetched
   // independently below; this flips false once all four have settled so the
@@ -227,6 +230,8 @@ export default function SettingsPage() {
         body: formData,
       });
       if (res.ok) {
+        // The assessment sheets cache it; make them pick up the new one.
+        void queryClient.invalidateQueries({ queryKey: SIGNATURE_KEY });
         toast.success("Signature saved.");
         setHasSavedSignature(true);
         if (signatureMode === "draw" && drawnDataUrl) {
@@ -255,6 +260,7 @@ export default function SettingsPage() {
         headers: { Authorization: `Bearer ${session.id_token}` },
       });
       if (res.ok) {
+        void queryClient.invalidateQueries({ queryKey: SIGNATURE_KEY });
         setSignaturePreview(null);
         setSignatureFile(null);
         setHasSavedSignature(false);
@@ -281,6 +287,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ assessor_name: assessorName }),
       });
       if (res.ok) {
+        void queryClient.invalidateQueries({ queryKey: ASSESSOR_NAME_KEY });
         toast.success("Assessor name saved.");
         setAssessorNameDirty(false);
       } else {
@@ -498,6 +505,7 @@ export default function SettingsPage() {
               <CardContent>
                 <div className="flex gap-2">
                   <Input
+                    aria-label="Assessor display name"
                     value={assessorName}
                     onChange={(e) => {
                       setAssessorName(e.target.value);
