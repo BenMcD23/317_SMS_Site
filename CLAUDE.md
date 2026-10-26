@@ -295,5 +295,10 @@ ADR 0010.
   `.github/` also need @BenMcD23's review (`.github/CODEOWNERS`).
 - Fill in the pull request template: what changed, why, and how you checked it.
   A UI change includes phone and desktop screenshots from the preview.
+- After opening a pull request, ask whether to deploy a preview of it. Only on
+  a yes, `gh pr edit <number> --add-label preview`: the cluster then runs the
+  branch's API, SMS site and portal on seeded data, on the tailnet, within a
+  few minutes (k3s-homelab ADR 0010). Removing the label, merging or closing
+  tears it down. Never add the label unasked: at most three stacks run at once.
 - Before pushing: `npm run check && npm run format:check`, plus
   `npm run build` for anything that touches routing or config.
