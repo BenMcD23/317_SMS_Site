@@ -7,7 +7,12 @@ const session = vi.hoisted(() => ({ email: "", value: null as unknown }));
 vi.mock("next-auth/react", () => ({
   useSession: () =>
     (session.value ??= {
-      data: { id_token: "tok", role: "staff", user: { email: session.email } },
+      data: {
+        id_token: "tok",
+        role: "staff",
+        is_oc: session.email === "oc@317atc.co.uk",
+        user: { email: session.email },
+      },
       status: "authenticated",
     }),
 }));
@@ -16,7 +21,6 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePar
 async function renderAs(email: string, page: "overview" | "detail") {
   session.email = email;
   session.value = null;
-  vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
   vi.resetModules();
   const { default: Page } =
     page === "overview" ? await import("@/app/staff/overview/page") : await import("@/app/staff/[id]/page");

@@ -136,6 +136,7 @@ export const authConfig: NextAuthConfig = {
     session({ session, token }) {
       session.id_token = token.id_token;
       session.role = token.role;
+      session.is_oc = token.is_oc;
       session.error = token.error;
       return session;
     },

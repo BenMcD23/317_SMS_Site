@@ -154,7 +154,7 @@ export function AppSidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { isMobile, setOpenMobile, state } = useSidebar();
-  const sections = visibleSections(session?.role, session?.user?.email ?? undefined);
+  const sections = visibleSections(session?.role, session?.user?.email ?? undefined, session?.is_oc);
   const { isOpen, setOpen } = useOpenSections(
     pathname,
     sections.flatMap((s) => (s.label ? [s.label] : []))

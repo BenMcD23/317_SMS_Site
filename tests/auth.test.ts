@@ -1,7 +1,7 @@
 // auth.ts — who may sign in, how roles are looked up, and how a session's
 // Google tokens are kept alive. NextAuth and googleapis are replaced so the
 // callbacks can be driven directly.
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 type Callbacks = {
   jwt: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
@@ -43,10 +43,16 @@ async function load() {
   return config.callbacks;
 }
 
-let googleToken: ReturnType<typeof vi.fn>;
+// fetch goes to Google's token endpoint or to the API's GET /oc/me; each has
+// its own fake so a test about one isn't counting calls to the other.
+type FakeFetch = Mock<(url: string, init: RequestInit) => Promise<Response>>;
+let googleToken: FakeFetch;
+let ocMe: FakeFetch;
 function googleAnswers(...responses: (() => Response)[]) {
   googleToken = vi.fn(async () => (responses.length > 1 ? responses.shift()! : responses[0])());
-  vi.stubGlobal("fetch", googleToken);
+}
+function ocAnswers(answer: () => Response) {
+  ocMe = vi.fn(async () => answer());
 }
 
 beforeEach(() => {
@@ -55,6 +61,11 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.stubEnv("GOOGLE_CLIENT_ID", "cid");
   vi.stubEnv("GOOGLE_CLIENT_SECRET", "secret");
+  googleAnswers(() => new Response("unexpected Google call", { status: 500 }));
+  ocAnswers(() => Response.json({ is_oc: false }));
+  vi.stubGlobal("fetch", (url: string, init: RequestInit) =>
+    String(url).endsWith("/oc/me") ? ocMe(url, init) : googleToken(url, init)
+  );
 });
 
 describe("signIn", () => {
@@ -148,6 +159,31 @@ describe("jwt on sign-in", () => {
     expect(token.role).toBeUndefined();
   });
 
+  it("asks the API whether this is the OC, with the new id_token", async () => {
+    const cb = await load();
+    ocAnswers(() => Response.json({ is_oc: true }));
+    const id = idToken(now() + 3600);
+    const token = await cb.jwt({
+      token: {},
+      account: { provider: "google", id_token: id },
+      user: { email: "staff@317atc.co.uk" },
+    });
+    expect(token.is_oc).toBe(true);
+    expect(ocMe.mock.calls[0][1].headers).toEqual({ Authorization: `Bearer ${id}` });
+  });
+
+  it("an API that can't answer hides the OC pages instead of failing the sign-in", async () => {
+    const cb = await load();
+    ocAnswers(() => new Response("down", { status: 503 }));
+    const token = await cb.jwt({
+      token: { is_oc: true },
+      account: { provider: "google", id_token: idToken(now() + 3600) },
+      user: { email: "staff@317atc.co.uk" },
+    });
+    expect(token.is_oc).toBe(false);
+    expect(token.role).toBe("staff");
+  });
+
   it("the dev bypass gets a role-suffixed fake token that outlives the session", async () => {
     const cb = await load();
     const token = await cb.jwt({
@@ -199,6 +235,17 @@ describe("jwt renewal", () => {
     const body = googleToken.mock.calls[0][1].body as URLSearchParams;
     expect(body.get("grant_type")).toBe("refresh_token");
     expect(body.get("refresh_token")).toBe("r");
+  });
+
+  it("re-asks the API about OC on renewal, keeping the old answer if it's down", async () => {
+    const cb = await load();
+    googleAnswers(fresh());
+    ocAnswers(() => Response.json({ is_oc: true }));
+    const base = { email: "staff@317atc.co.uk", expires_at: now() + 120, role: "staff" };
+    expect((await cb.jwt({ token: { ...base, refresh_token: "oc1", is_oc: false } })).is_oc).toBe(true);
+
+    ocAnswers(() => new Response("down", { status: 503 }));
+    expect((await cb.jwt({ token: { ...base, refresh_token: "oc2", is_oc: true } })).is_oc).toBe(true);
   });
 
   it("keeps the existing role when the re-check can't reach Google", async () => {

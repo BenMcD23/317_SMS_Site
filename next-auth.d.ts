@@ -4,6 +4,7 @@ declare module "next-auth" {
   interface Session {
     id_token?: string;
     role?: "staff" | "snco" | "nco";
+    is_oc?: boolean;
     error?: string;
     user: {
       id?: string;
@@ -17,6 +18,7 @@ declare module "next-auth/jwt" {
     refresh_token?: string;
     expires_at?: number;
     role?: "staff" | "snco" | "nco";
+    is_oc?: boolean;
     error?: string;
   }
 }

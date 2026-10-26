@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { canAccess } from "@/lib/access";
 import { OWNER_EMAIL } from "@/lib/config";
@@ -66,25 +66,17 @@ describe("visibleSections", () => {
     expect(gated.every((h) => hrefs("staff", OWNER_EMAIL.toUpperCase()).includes(h))).toBe(true);
   });
 
-  it("hides the OC dashboard unless the OC is configured and signed in", async () => {
+  it("hides the OC dashboard unless the API says this is the OC", () => {
     expect(hrefs("staff", "oc@317atc.co.uk")).not.toContain("/oc");
     expect(hrefs("staff", "oc@317atc.co.uk")).not.toContain("/oc/custom");
-    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
-    vi.resetModules();
-    const nav = await import("@/lib/navigation");
-    const ocLinks = nav.flattenLinks(nav.visibleSections("staff", "OC@317atc.co.uk")).map((l) => l.href);
+    const ocLinks = flattenLinks(visibleSections("staff", "oc@317atc.co.uk", true)).map((l) => l.href);
     expect(ocLinks).toContain("/oc");
     expect(ocLinks).toContain("/oc/leaving");
     expect(ocLinks).toContain("/oc/custom");
   });
 
-  it("puts the OC dashboard and leaving process together under an OC group", async () => {
-    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
-    vi.resetModules();
-    const nav = await import("@/lib/navigation");
-    const groups = nav
-      .visibleSections("staff", "oc@317atc.co.uk")
-      .flatMap((s) => s.items.filter(nav.isGroup));
+  it("puts the OC dashboard and leaving process together under an OC group", () => {
+    const groups = visibleSections("staff", "oc@317atc.co.uk", true).flatMap((s) => s.items.filter(isGroup));
     const oc = groups.find((g) => g.label === "OC");
     expect(oc?.links.map((l) => l.href)).toEqual(["/oc", "/oc/custom", "/oc/leaving", "/staff/overview"]);
     // Nobody else gets an empty OC group.

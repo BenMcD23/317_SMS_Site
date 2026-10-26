@@ -32,5 +32,5 @@ export function OcAccessRequired() {
  */
 export function OcOnly({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-  return isOc(session?.user?.email) ? <>{children}</> : <OcAccessRequired />;
+  return isOc(session) ? <>{children}</> : <OcAccessRequired />;
 }

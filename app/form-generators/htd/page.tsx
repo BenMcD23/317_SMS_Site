@@ -85,7 +85,7 @@ export default function HTDPage() {
   const token = session?.id_token;
   // The OC can raise a claim for anyone; everyone else only ever gets their
   // own record back from the API, so there's nothing to pick.
-  const oc = isOc(session?.user?.email);
+  const oc = isOc(session);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
   const [selectedCin, setSelectedCin] = useState<string>("");

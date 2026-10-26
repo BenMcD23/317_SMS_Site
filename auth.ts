@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import { authConfig, DEV_USERS, type DevRole } from "./auth.config";
 import { google } from "googleapis";
+import { API_BASE } from "@/lib/config";
 
 // The client sends the raw Google id_token to the API, and Google only issues
 // those with a 1-hour life — that ceiling is Google's, not ours, so the only
@@ -64,6 +65,19 @@ async function getUserRole(userEmail: string): Promise<"staff" | "snco" | "nco" 
   if (await isGroupMember(admin, SNCO_GROUP, userEmail)) return "snco";
   if (await isGroupMember(admin, NCO_GROUP, userEmail)) return "nco";
   return null;
+}
+
+/** Whether the API counts this user as an OC. Its OC_EMAIL is the only list, so
+ * the site never needs a copy. Throws if the API can't answer, so the caller
+ * decides what a failure means. */
+async function fetchIsOc(idToken: string): Promise<boolean> {
+  const res = await fetch(`${API_BASE}/oc/me`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+    // Sign-in waits on this; a hung API mustn't hold it up.
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error(`GET /oc/me: ${res.status}`);
+  return (await res.json()).is_oc === true;
 }
 
 function idTokenExp(idToken: string): number {
@@ -218,10 +232,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // names it, and the API derives the same role from the token suffix.
           const role =
             (Object.keys(DEV_USERS) as DevRole[]).find((r) => DEV_USERS[r].email === user?.email) ?? "staff";
+          const id_token = `dev-fake-token:${role}`;
           return {
             ...token,
             role,
-            id_token: `dev-fake-token:${role}`,
+            is_oc: await fetchIsOc(id_token).catch(() => false),
+            id_token,
             // No Google behind it to renew from, so just outlive the session.
             expires_at: Math.floor(Date.now() / 1000) + 366 * 24 * 60 * 60,
           };
@@ -249,6 +265,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           console.error("[jwt] role lookup failed:", e);
           token.role = undefined;
         }
+        try {
+          token.is_oc = token.id_token ? await fetchIsOc(token.id_token) : false;
+        } catch (e) {
+          // Only hides the OC pages until the next renewal; the API still decides.
+          console.error("[jwt] OC lookup failed:", e);
+          token.is_oc = false;
+        }
         return token;
       }
 
@@ -265,6 +288,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         fresh.role = (await getUserRole(fresh.email as string)) ?? undefined;
       } catch (e) {
         console.error("[jwt] role re-check failed, keeping existing role:", e);
+      }
+      try {
+        fresh.is_oc = await fetchIsOc(fresh.id_token!);
+      } catch (e) {
+        console.error("[jwt] OC re-check failed, keeping existing:", e);
       }
       return fresh;
     },

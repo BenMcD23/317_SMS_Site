@@ -12,24 +12,11 @@ describe("config", () => {
     expect(API_BASE).toBe("http://localhost:8000");
   });
 
-  it("isOc matches the configured OC case-insensitively", async () => {
-    const { isOc } = await loadConfig({ NEXT_PUBLIC_OC_EMAIL: "OC@317atc.co.uk" });
-    expect(isOc("oc@317ATC.co.uk")).toBe(true);
-    expect(isOc("staff@317atc.co.uk")).toBe(false);
+  it("isOc trusts only the API's answer carried on the session", async () => {
+    const { isOc } = await loadConfig({});
+    expect(isOc({ is_oc: true })).toBe(true);
+    expect(isOc({ is_oc: false })).toBe(false);
+    expect(isOc({})).toBe(false);
     expect(isOc(null)).toBe(false);
-    expect(isOc("")).toBe(false);
-  });
-
-  it("isOc accepts a comma-separated list", async () => {
-    const { isOc } = await loadConfig({ NEXT_PUBLIC_OC_EMAIL: "oc@317atc.co.uk, Extra@317atc.co.uk" });
-    expect(isOc("oc@317atc.co.uk")).toBe(true);
-    expect(isOc("extra@317atc.co.uk")).toBe(true);
-    expect(isOc("staff@317atc.co.uk")).toBe(false);
-  });
-
-  it("isOc is never true when no OC is configured", async () => {
-    const { isOc } = await loadConfig({ NEXT_PUBLIC_OC_EMAIL: "" });
-    expect(isOc("")).toBe(false);
-    expect(isOc("anyone@317atc.co.uk")).toBe(false);
   });
 });
