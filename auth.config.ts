@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { canAccess } from "./lib/access";
+import { devSignInBuild } from "./lib/config";
 
 /** Accounts the dev bypass can log in as — must match the API's
  *  `_dev_fake_email` so the fake token resolves to the same role there. */
@@ -14,10 +15,10 @@ export const DEV_USERS = {
 export type DevRole = keyof typeof DEV_USERS;
 
 /** The dev sign-in signs in as the owner with no credentials, so it needs the
- *  flag AND a non-production build: a stray env var on a deployed build can't
- *  switch it on. Mirrors the API refusing DEV_FAKE_AUTH outside ENV=dev. */
-export const devBypassEnabled = () =>
-  process.env.AUTH_DEV_BYPASS === "1" && process.env.NODE_ENV !== "production";
+ *  flag AND a build that allows it (`next dev` or the preview image): a stray
+ *  env var on a deployed build can't switch it on. Mirrors the API refusing
+ *  DEV_FAKE_AUTH outside ENV=dev. */
+export const devBypassEnabled = () => process.env.AUTH_DEV_BYPASS === "1" && devSignInBuild();
 
 export const authConfig: NextAuthConfig = {
   session: {
@@ -110,7 +111,7 @@ export const authConfig: NextAuthConfig = {
       authorization: { params: { access_type: "offline" } },
     }),
     // ponytail: dev-only fake login for local Playwright/UI testing.
-    // Inert unless AUTH_DEV_BYPASS=1 and this is not a production build.
+    // Inert unless AUTH_DEV_BYPASS=1 and the build allows it (devSignInBuild).
     ...(devBypassEnabled()
       ? [
           Credentials({

@@ -269,6 +269,16 @@ node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
 - Stats trends need weeks of snapshots, so those charts show "not enough
   history" in the preview. That is expected.
 
+### On your phone: a preview stack on the cluster
+
+Label a pull request `preview` (here, in the API or in the portal) and the
+k3s cluster runs that branch on the same seed with the same sign-in buttons,
+on the tailnet: `https://pv-<branch>-sms.tail02e471.ts.net` and
+`https://pv-<branch>-portal.tail02e471.ts.net`. A repo without the branch
+runs main. The image is this repo's `Dockerfile`, built for labelled pull
+requests by `.github/workflows/preview-image.yml`; how it fits together is in k3s-homelab's
+ADR 0010.
+
 ## Navigation and reference data
 
 - New pages are registered in `lib/navigation.ts` (sidebar, breadcrumbs and the
@@ -285,5 +295,12 @@ node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
   `.github/` also need @BenMcD23's review (`.github/CODEOWNERS`).
 - Fill in the pull request template: what changed, why, and how you checked it.
   A UI change includes phone and desktop screenshots from the preview.
+- After opening a pull request, ask whether to deploy a preview of it. Only on
+  a yes, `gh pr edit <number> --add-label preview`: that builds the branch's
+  image, and the cluster then runs it with the other two apps on seeded data,
+  on the tailnet, within a few minutes (k3s-homelab ADR 0010). A change across
+  repos needs the label on each repo's pull request, or those run main.
+  Removing the label, merging or closing tears it down. Never add the label
+  unasked: at most three stacks run at once.
 - Before pushing: `npm run check && npm run format:check`, plus
   `npm run build` for anything that touches routing or config.

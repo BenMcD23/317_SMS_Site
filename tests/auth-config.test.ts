@@ -88,6 +88,24 @@ describe("config", () => {
     expect(prodConfig.providers).toHaveLength(1);
   });
 
+  it("offers the dev login on the cluster's preview image, a production build", async () => {
+    vi.stubEnv("AUTH_DEV_BYPASS", "1");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_PREVIEW_BUILD", "1");
+    vi.resetModules();
+    const { authConfig: previewConfig } = await import("@/auth.config");
+    expect(previewConfig.providers).toHaveLength(2);
+  });
+
+  it("keeps the dev login off a preview image unless AUTH_DEV_BYPASS is set too", async () => {
+    vi.stubEnv("AUTH_DEV_BYPASS", "");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_PREVIEW_BUILD", "1");
+    vi.resetModules();
+    const { devBypassEnabled } = await import("@/auth.config");
+    expect(devBypassEnabled()).toBe(false);
+  });
+
   it("dev accounts match the API's _dev_fake_email", () => {
     expect(DEV_USERS.staff.email).toBe("ci.mcdonald@317atc.co.uk");
     expect(DEV_USERS.snco.email).toBe("dev.snco@317atc.co.uk");

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { devSignInBuild } from "@/lib/config";
 
 function GoogleIcon() {
   return (
@@ -86,7 +87,7 @@ export default function LoginPage() {
 
           {/* ponytail: dev-only role picker for the fake login. The credentials
               provider behind it only exists when AUTH_DEV_BYPASS=1. */}
-          {process.env.NODE_ENV !== "production" && (
+          {devSignInBuild() && (
             <div className="flex flex-col gap-2 border-t pt-6">
               <p className="text-muted-foreground text-xs">Dev sign-in</p>
               <div className="flex gap-2">
