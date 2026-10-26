@@ -296,11 +296,20 @@ ADR 0010.
 - Fill in the pull request template: what changed, why, and how you checked it.
   A UI change includes phone and desktop screenshots from the preview.
 - After opening a pull request, ask whether to deploy a preview of it. Only on
-  a yes, `gh pr edit <number> --add-label preview`: that builds the branch's
-  image, and the cluster then runs it with the other two apps on seeded data,
-  on the tailnet, within a few minutes (k3s-homelab ADR 0010). A change across
-  repos needs the label on each repo's pull request, or those run main.
-  Removing the label, merging or closing tears it down. Never add the label
-  unasked: at most three stacks run at once.
+  a yes, label it (`gh pr edit --add-label` fails here on a Projects classic
+  error, so use the API):
+
+  ```bash
+  gh api -X POST repos/BenMcD23/317_SMS_Site/issues/<number>/labels -f 'labels[]=preview'
+  ```
+
+  That builds the branch's image, and the cluster then runs it with the other
+  two apps on seeded data, on the tailnet, within a few minutes (k3s-homelab
+  ADR 0010). A change across repos needs the label on each repo's pull
+  request, or those run main. So does a pull request that conflicts with
+  main: GitHub runs no `pull_request` workflows for it. Removing the label,
+  merging or closing tears it down. Never add the label unasked: at most
+  three stacks run at once.
+
 - Before pushing: `npm run check && npm run format:check`, plus
   `npm run build` for anything that touches routing or config.
