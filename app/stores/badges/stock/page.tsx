@@ -1,7 +1,7 @@
 "use client";
 
-import { loadError } from "@/lib/api-fetch";
-import { useState, useEffect, useMemo } from "react";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
+import { useState, useMemo } from "react";
 import { Check, Plus, Search, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,23 @@ import { BadgeGrid, BadgeItem } from "@/lib/stores-types";
 import { BadgeGridView } from "../components/BadgeGridView";
 import { type BadgeCategory, buildBadgeName, parseBadgeName, useReference } from "@/lib/reference";
 
+const BADGE_GRID_KEY = ["stores", "badges", "grid"];
+
 export default function BadgeStockPage() {
   const { badgeCategories } = useReference();
-  const [grid, setGrid] = useState<BadgeGrid | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Badge orders take stock off the grid too: refetch on every visit, showing
+  // the cached grid meanwhile.
+  const gridQuery = useApiQuery<BadgeGrid>(BADGE_GRID_KEY, "/api/stores/badges", {
+    refetchOnMount: "always",
+  });
+  const grid = gridQuery.data ?? null;
+  const loading = gridQuery.isPending && !gridQuery.error;
+  const setCachedGrid = useSetApiQueryData<BadgeGrid>(BADGE_GRID_KEY);
+  const setGrid = (update: BadgeGrid | null | ((prev: BadgeGrid | null) => BadgeGrid | null)) =>
+    setCachedGrid((prev) => (typeof update === "function" ? update(prev ?? null) : update) ?? undefined);
+  // Errors from edits on this page; a failed load is the query's error.
+  const [actionError, setError] = useState<string | null>(null);
+  const error = actionError ?? gridQuery.error?.message ?? null;
 
   // Add badge dialog
   const [addBadgeOpen, setAddBadgeOpen] = useState(false);
@@ -50,25 +62,6 @@ export default function BadgeStockPage() {
   // Delete row/col confirm dialogs
   const [deleteRowConfirm, setDeleteRowConfirm] = useState<number | null>(null);
   const [deleteColConfirm, setDeleteColConfirm] = useState<number | null>(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/stores/badges");
-      if (!res.ok) throw await loadError(res);
-      setGrid(await res.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Load once on mount.
-  useEffect(() => {
-    load();
-  }, []);
 
   async function handleAddRow() {
     if (!grid) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarCheck } from "lucide-react";
 
@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Stat, StatGroup } from "@/components/stat";
+import { ErrorAlert } from "@/components/error-alert";
+import { useApiQuery } from "@/lib/use-api-query";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AttendanceState } from "@/lib/attendance";
@@ -72,19 +74,13 @@ interface Props {
 }
 
 export function AttendanceCard({ baseUrl }: Props) {
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const query = useApiQuery<AttendanceRecord[]>(["attendance-records", baseUrl], baseUrl);
+  const records = useMemo(() => (Array.isArray(query.data) ? query.data : []), [query.data]);
+  const error = query.error?.message ?? null;
+  const loading = query.isPending && !error;
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [type, setType] = useState(ALL_TYPES);
-
-  useEffect(() => {
-    fetch(baseUrl)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: AttendanceRecord[]) => setRecords(Array.isArray(rows) ? rows : []))
-      .catch(() => setRecords([]))
-      .finally(() => setLoading(false));
-  }, [baseUrl]);
 
   const registerTypes = useMemo(
     () => [...new Set(records.map((r) => r.registerType).filter(Boolean))].sort() as string[],
@@ -132,6 +128,9 @@ export function AttendanceCard({ baseUrl }: Props) {
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-48 w-full" />
           </div>
+        ) : error ? (
+          // A failed lookup isn't "no attendance": say which it is.
+          <ErrorAlert message={error} title="Could not load attendance" />
         ) : records.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             No attendance recorded. It is pulled in by the cadet/staff scraper.
