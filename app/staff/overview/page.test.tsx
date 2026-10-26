@@ -7,7 +7,12 @@ const session = vi.hoisted(() => ({ email: "", value: null as unknown }));
 vi.mock("next-auth/react", () => ({
   useSession: () =>
     (session.value ??= {
-      data: { id_token: "tok", role: "staff", is_oc: session.email === "oc@317atc.co.uk", user: { email: session.email } },
+      data: {
+        id_token: "tok",
+        role: "staff",
+        is_oc: session.email === "oc@317atc.co.uk",
+        user: { email: session.email },
+      },
       status: "authenticated",
     }),
 }));

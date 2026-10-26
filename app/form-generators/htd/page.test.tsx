@@ -8,7 +8,12 @@ vi.mock("next-auth/react", () => ({
   useSession: () => {
     // One stable object per identity, like the real hook.
     session.value ??= {
-      data: { id_token: "tok", role: "staff", is_oc: session.email === "oc@317atc.co.uk", user: { email: session.email } },
+      data: {
+        id_token: "tok",
+        role: "staff",
+        is_oc: session.email === "oc@317atc.co.uk",
+        user: { email: session.email },
+      },
       status: "authenticated",
       update: () => Promise.resolve(null),
     };
