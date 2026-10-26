@@ -10,6 +10,23 @@ export const STRUCTURE_KEY = ["stores", "structure"] as const;
 const NO_STOCK: StockItem[] = [];
 
 /**
+ * The uniform stock list on its own, for pages that match orders against it
+ * (the orders page takes items off it). Same cache as useStoresStock.
+ */
+export function useStockList() {
+  const query = useApiQuery<StockItem[]>(STOCK_KEY, "/api/stores/stock", { refetchOnMount: "always" });
+  const setStockData = useSetApiQueryData<StockItem[]>(STOCK_KEY);
+  return {
+    query,
+    stock: Array.isArray(query.data) ? query.data : NO_STOCK,
+    setStock: useCallback(
+      (update: (prev: StockItem[]) => StockItem[]) => setStockData((prev) => update(prev ?? [])),
+      [setStockData]
+    ),
+  };
+}
+
+/**
  * Uniform stock and the shelf layout it sits on. Shared by the stock overview
  * and a box's page, so opening a box from the overview shows it at once.
  *
@@ -19,11 +36,10 @@ const NO_STOCK: StockItem[] = [];
  * cache through `setStock` / `setShelfStructure`.
  */
 export function useStoresStock() {
-  const stockQuery = useApiQuery<StockItem[]>(STOCK_KEY, "/api/stores/stock", { refetchOnMount: "always" });
+  const { query: stockQuery, stock, setStock } = useStockList();
   const structureQuery = useApiQuery<ShelfStructure>(STRUCTURE_KEY, "/api/stores/structure", {
     refetchOnMount: "always",
   });
-  const setStockData = useSetApiQueryData<StockItem[]>(STOCK_KEY);
   const setStructureData = useSetApiQueryData<ShelfStructure>(STRUCTURE_KEY);
 
   const loadError = stockQuery.error?.message ?? structureQuery.error?.message ?? null;
@@ -31,14 +47,11 @@ export function useStoresStock() {
   const { refetch: refetchStructure } = structureQuery;
 
   return {
-    stock: Array.isArray(stockQuery.data) ? stockQuery.data : NO_STOCK,
+    stock,
     shelfStructure: structureQuery.data ?? null,
     loading: !loadError && (stockQuery.isPending || structureQuery.isPending),
     loadError,
-    setStock: useCallback(
-      (update: (prev: StockItem[]) => StockItem[]) => setStockData((prev) => update(prev ?? [])),
-      [setStockData]
-    ),
+    setStock,
     setShelfStructure: useCallback(
       (structure: ShelfStructure | null) => setStructureData(() => structure ?? undefined),
       [setStructureData]

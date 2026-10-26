@@ -1,6 +1,6 @@
 "use client";
 
-import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
+import { useBadgeGrid } from "@/lib/badge-grid";
 import { useState, useMemo } from "react";
 import { Check, Plus, Search, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -13,24 +13,14 @@ import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BadgeGrid, BadgeItem } from "@/lib/stores-types";
+import { BadgeItem } from "@/lib/stores-types";
 import { BadgeGridView } from "../components/BadgeGridView";
 import { type BadgeCategory, buildBadgeName, parseBadgeName, useReference } from "@/lib/reference";
 
-const BADGE_GRID_KEY = ["stores", "badges", "grid"];
-
 export default function BadgeStockPage() {
   const { badgeCategories } = useReference();
-  // Badge orders take stock off the grid too: refetch on every visit, showing
-  // the cached grid meanwhile.
-  const gridQuery = useApiQuery<BadgeGrid>(BADGE_GRID_KEY, "/api/stores/badges", {
-    refetchOnMount: "always",
-  });
-  const grid = gridQuery.data ?? null;
+  const { query: gridQuery, grid, setGrid } = useBadgeGrid();
   const loading = gridQuery.isPending && !gridQuery.error;
-  const setCachedGrid = useSetApiQueryData<BadgeGrid>(BADGE_GRID_KEY);
-  const setGrid = (update: BadgeGrid | null | ((prev: BadgeGrid | null) => BadgeGrid | null)) =>
-    setCachedGrid((prev) => (typeof update === "function" ? update(prev ?? null) : update) ?? undefined);
   // Errors from edits on this page; a failed load is the query's error.
   const [actionError, setError] = useState<string | null>(null);
   const error = actionError ?? gridQuery.error?.message ?? null;

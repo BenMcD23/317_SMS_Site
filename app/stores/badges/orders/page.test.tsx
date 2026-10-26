@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BadgeOrdersPage from "@/app/stores/badges/orders/page";
+import { renderWithQuery } from "@/tests/render-with-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { BadgeOrder, BadgeOrderItem } from "@/lib/stores-types";
 
@@ -75,7 +76,7 @@ const calls = (fetch: ReturnType<typeof stubApi>, key: string) =>
 
 async function renderPage() {
   await act(async () => {
-    render(
+    renderWithQuery(
       <TooltipProvider>
         <BadgeOrdersPage />
       </TooltipProvider>
@@ -284,7 +285,7 @@ describe("undoing a given badge", () => {
       "GET /api/stores/badges/orders": () => json([{ ...orders()[1], completed: true }]),
     });
     await act(async () => {
-      render(
+      renderWithQuery(
         <TooltipProvider>
           <BadgeOrdersPage />
         </TooltipProvider>
@@ -364,15 +365,13 @@ describe("expand all", () => {
   it("when the orders fail to load there's nothing to expand", async () => {
     stubApi({ "GET /api/stores/badges/orders": () => json({ detail: "down" }, 500) });
     await act(async () => {
-      render(
+      renderWithQuery(
         <TooltipProvider>
           <BadgeOrdersPage />
         </TooltipProvider>
       );
     });
-    expect(
-      await screen.findByText(/Failed to load: \/api\/stores\/badges\/orders → 500/)
-    ).toBeInTheDocument();
+    expect(await screen.findByText("down")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Expand all" })).toBeDisabled();
   });
 });
@@ -414,5 +413,51 @@ describe("Blue Flying stages", () => {
     await expand("Alex Smith");
     expect(within(card("Alex Smith")).getByText("Qualification is held")).toBeTruthy();
     expect(within(card("Alex Smith")).queryByText(/Missing stage/)).toBeNull();
+  });
+});
+
+describe("the order list", () => {
+  const ENTRY = {
+    id: "e1",
+    orderItemId: "12",
+    badgeName: "Leadership – Bronze",
+    cadetName: "Alex Smith",
+    addedAt: "2026-09-03T10:00:00Z",
+    addedBy: "Sam Staff",
+    orderedAt: null,
+    orderedBy: null,
+    receivedAt: null,
+    receivedBy: null,
+  };
+
+  it("an entry links back to the badge on its order, opening it", async () => {
+    stubApi({ "GET /api/stores/badges/order-lists": () => json([ENTRY]) });
+    await renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: /Order List/ }));
+    await userEvent.click(await screen.findByTitle("Go to Alex Smith's order"));
+
+    expect(screen.getByRole("tab", { name: /Active/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Collapse order for Alex Smith" })).toBeInTheDocument();
+  });
+
+  it("a note added on the list is saved on the badge's order", async () => {
+    const fetch = stubApi({
+      "GET /api/stores/badges/order-lists": () => json([ENTRY]),
+      "PATCH /api/stores/badges/orders/1": (_url, init) =>
+        json({ ...orders()[0], ...JSON.parse(String(init!.body)) }),
+    });
+    await renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: /Order List/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add QM Note" }));
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "QM note on Leadership – Bronze" }),
+      "Wing out of stock"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save Note" }));
+
+    expect(await screen.findByText("Wing out of stock")).toBeInTheDocument();
+    const [, init] = fetch.mock.calls.find(([, i]) => i?.method === "PATCH")!;
+    const badge = JSON.parse(String(init!.body)).items.find((i: BadgeOrderItem) => i.id === "12");
+    expect(badge.qmNotes).toEqual([expect.objectContaining({ content: "Wing out of stock" })]);
   });
 });
