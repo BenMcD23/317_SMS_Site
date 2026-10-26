@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -17,7 +17,8 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useConfirm } from "@/components/confirm-dialog";
 import { API_BASE } from "@/lib/config";
-import { apiFetch, apiRequest, loadError } from "@/lib/api-fetch";
+import { apiRequest } from "@/lib/api-fetch";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -163,38 +164,37 @@ function FlyingEventCard({
   );
 }
 
+const FLYING_KEY = ["flying-paperwork"];
+const NO_EVENTS: FlyingEvent[] = [];
+
 export default function FlyingPaperworkPage() {
   const { data: session } = useSession();
   const token = session?.id_token;
 
-  const [events, setEvents] = useState<FlyingEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useApiQuery<FlyingEvent[]>(FLYING_KEY, "/flying-paperwork");
+  const events = query.data ?? NO_EVENTS;
+  const loading = query.isPending && !query.error;
+  const error = query.error?.message ?? null;
+  // Ticks and closes edit the cached list in place, so the page answers at once.
+  const setCached = useSetApiQueryData<FlyingEvent[]>(FLYING_KEY);
+  const setEvents = useCallback(
+    (update: (prev: FlyingEvent[]) => FlyingEvent[]) => setCached((prev) => update(prev ?? [])),
+    [setCached]
+  );
   const { confirm, confirmDialog } = useConfirm();
 
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    apiFetch(`${API_BASE}/flying-paperwork`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async (res) => {
-        // An error body is `{detail}`, not a list.
-        if (!res.ok) throw await loadError(res);
-        setEvents(await res.json());
-        setError(null);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  const patchCadet = useCallback((eventId: number, cin: number, change: Partial<FlyingCadet>) => {
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id !== eventId) return e;
-        const cadets = e.cadets.map((c) => (c.cin === cin ? { ...c, ...change } : c));
-        return { ...e, cadets, has_ticks: cadets.some((c) => FORMS.some((f) => c[f.key])) };
-      })
-    );
-  }, []);
+  const patchCadet = useCallback(
+    (eventId: number, cin: number, change: Partial<FlyingCadet>) => {
+      setEvents((prev) =>
+        prev.map((e) => {
+          if (e.id !== eventId) return e;
+          const cadets = e.cadets.map((c) => (c.cin === cin ? { ...c, ...change } : c));
+          return { ...e, cadets, has_ticks: cadets.some((c) => FORMS.some((f) => c[f.key])) };
+        })
+      );
+    },
+    [setEvents]
+  );
 
   async function tick(event: FlyingEvent, cadet: FlyingCadet, form: Form, value: boolean) {
     if (!token) return;

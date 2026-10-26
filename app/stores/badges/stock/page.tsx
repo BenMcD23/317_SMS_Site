@@ -1,7 +1,7 @@
 "use client";
 
-import { loadError } from "@/lib/api-fetch";
-import { useState, useEffect, useMemo } from "react";
+import { useBadgeGrid } from "@/lib/badge-grid";
+import { useState, useMemo } from "react";
 import { Check, Plus, Search, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,17 @@ import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BadgeGrid, BadgeItem } from "@/lib/stores-types";
+import { BadgeItem } from "@/lib/stores-types";
 import { BadgeGridView } from "../components/BadgeGridView";
 import { type BadgeCategory, buildBadgeName, parseBadgeName, useReference } from "@/lib/reference";
 
 export default function BadgeStockPage() {
   const { badgeCategories } = useReference();
-  const [grid, setGrid] = useState<BadgeGrid | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { query: gridQuery, grid, setGrid } = useBadgeGrid();
+  const loading = gridQuery.isPending && !gridQuery.error;
+  // Errors from edits on this page; a failed load is the query's error.
+  const [actionError, setError] = useState<string | null>(null);
+  const error = actionError ?? gridQuery.error?.message ?? null;
 
   // Add badge dialog
   const [addBadgeOpen, setAddBadgeOpen] = useState(false);
@@ -50,25 +52,6 @@ export default function BadgeStockPage() {
   // Delete row/col confirm dialogs
   const [deleteRowConfirm, setDeleteRowConfirm] = useState<number | null>(null);
   const [deleteColConfirm, setDeleteColConfirm] = useState<number | null>(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/stores/badges");
-      if (!res.ok) throw await loadError(res);
-      setGrid(await res.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Load once on mount.
-  useEffect(() => {
-    load();
-  }, []);
 
   async function handleAddRow() {
     if (!grid) return;

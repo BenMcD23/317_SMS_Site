@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const SESSION = { data: { id_token: "tok" }, status: "authenticated" };
+vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
 vi.mock("@/lib/reference", () => ({
   useReference: () => ({ issuanceCategories: ["Beret", "Tie", "Belt"] }),
 }));
 
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 let posted: unknown[];
 let failWrites = false;
@@ -44,7 +47,7 @@ beforeEach(() => {
 
 describe("UniformIssuancesCard", () => {
   it("lists every catalogue category with what was last issued", async () => {
-    render(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
+    renderWithQuery(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
     expect(await screen.findByText("3 Sept 2025")).toBeInTheDocument();
     expect(screen.getByText("Size: 56")).toBeInTheDocument();
     expect(screen.getAllByText("N/A")).toHaveLength(2);
@@ -52,7 +55,7 @@ describe("UniformIssuancesCard", () => {
 
   it("records an issue and shows it", async () => {
     const user = userEvent.setup();
-    render(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
+    renderWithQuery(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
     await user.click(await screen.findByRole("button", { name: "Edit Tie" }));
     await user.type(screen.getByPlaceholderText("Size (optional)"), "Short");
     await user.click(screen.getByRole("button", { name: "Save Tie" }));
@@ -66,7 +69,7 @@ describe("UniformIssuancesCard", () => {
 
   it("a blank size is sent as null", async () => {
     const user = userEvent.setup();
-    render(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
+    renderWithQuery(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
     await user.click(await screen.findByRole("button", { name: "Edit Belt" }));
     await user.click(screen.getByRole("button", { name: "Save Belt" }));
     await waitFor(() => expect(posted).toHaveLength(1));
@@ -75,7 +78,7 @@ describe("UniformIssuancesCard", () => {
 
   it("clears a record", async () => {
     const user = userEvent.setup();
-    render(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
+    renderWithQuery(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
     await user.click(await screen.findByRole("button", { name: "Edit Beret" }));
     await user.click(screen.getByRole("button", { name: "Clear" }));
     await waitFor(() => expect(screen.getAllByText("N/A")).toHaveLength(3));
@@ -84,7 +87,7 @@ describe("UniformIssuancesCard", () => {
   it("shows an error and keeps the editor open when saving fails", async () => {
     failWrites = true;
     const user = userEvent.setup();
-    render(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
+    renderWithQuery(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
     await user.click(await screen.findByRole("button", { name: "Edit Tie" }));
     await user.click(screen.getByRole("button", { name: "Save Tie" }));
     expect(await screen.findByText("Failed to save")).toBeInTheDocument();
@@ -96,7 +99,16 @@ describe("UniformIssuancesCard", () => {
       "fetch",
       vi.fn(async () => new Response("{}", { status: 500 }))
     );
-    render(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
+    renderWithQuery(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
     await waitFor(() => expect(screen.getAllByText("N/A")).toHaveLength(3));
+  });
+
+  it("a failed lookup says so, rather than showing nothing issued", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ detail: "Cadet record unavailable" }), { status: 500 }))
+    );
+    renderWithQuery(<UniformIssuancesCard baseUrl="/api/stores/issuances/1" />);
+    expect(await screen.findByText("Cadet record unavailable")).toBeInTheDocument();
   });
 });

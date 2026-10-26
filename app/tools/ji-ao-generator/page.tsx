@@ -21,6 +21,7 @@ import { Download, FileText, RotateCcw, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
+import { useApiQuery } from "@/lib/use-api-query";
 import { apiFetch } from "@/lib/api-fetch";
 import { EmptyState } from "@/components/empty-state";
 import { AoPreview, JiPreview, type Fields } from "./document-preview";
@@ -31,30 +32,24 @@ type BothFields = { ji: Fields; ao: Fields; signature_missing: boolean };
 
 const DOC_LABEL: Record<Action, string> = { ji: "JI", ao: "AO" };
 
+const NO_EVENTS: Event317[] = [];
+
 export default function JiGenerator() {
   const { data: session } = useSession();
   const token = session?.id_token as string | undefined;
 
-  const [events, setEvents] = useState<Event317[]>([]);
+  const eventsQuery = useApiQuery<Event317[]>(["events", "317"], "/events");
+  const events = Array.isArray(eventsQuery.data) ? eventsQuery.data : NO_EVENTS;
+  const eventsError = eventsQuery.error?.message;
+  useEffect(() => {
+    if (eventsError) toast.error(`Failed to load events: ${eventsError}`);
+  }, [eventsError]);
   const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [fields, setFields] = useState<BothFields | null>(null);
   const [loadingFields, setLoadingFields] = useState(false);
   const [tab, setTab] = useState<Action>("ji");
   const [generating, setGenerating] = useState<Action | null>(null);
   const [aiLoading, setAiLoading] = useState<Action | null>(null);
-
-  useEffect(() => {
-    if (!token) return;
-    apiFetch(`${API_BASE}/events`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async (res) => {
-        // An error body is `{detail}`, not a list — storing it would crash the
-        // event picker's `.map` on the next render.
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setEvents(Array.isArray(data) ? data : []);
-      })
-      .catch(() => toast.error("Failed to load events"));
-  }, [token]);
 
   // Defaults come from the API rather than being rebuilt here, so the preview
   // starts out as exactly what the document would say untouched.

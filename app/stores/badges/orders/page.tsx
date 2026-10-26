@@ -1,6 +1,5 @@
 "use client";
 
-import { errorDetail, loadError } from "@/lib/api-fetch";
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -11,7 +10,6 @@ import {
   Plus,
   Trash2,
   X,
-  StickyNote,
   ArrowUpDown,
   PackageCheck,
   PackageMinus,
@@ -43,7 +41,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   BadgeOrder,
   BadgeOrderItem,
-  QmNote,
   BadgeGrid,
   BadgeItem,
   BadgeCell,
@@ -63,6 +60,12 @@ import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/orde
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
 import { GivenStamp } from "@/components/given-stamp";
 import { StockHistory } from "@/components/stock-history";
+import { QmNotes } from "@/components/qm-notes";
+import { ReadyStamp } from "@/components/ready-stamp";
+import { MarkGivenDialog } from "@/components/mark-given-dialog";
+import { useOrderWorkflow } from "@/lib/use-order-workflow";
+import { useBadgeGrid } from "@/lib/badge-grid";
+import { useApiQuery } from "@/lib/use-api-query";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/format";
 import { completeOrderBlockers } from "@/lib/badge-orders";
@@ -73,11 +76,6 @@ type StockMatch = { item: BadgeItem; cell: BadgeCell };
 
 /** An order list entry resolved back to the order item it was created from. */
 type OrderItemRef = { order: BadgeOrder; item: BadgeOrderItem };
-
-/** Note composers are keyed so the one in an order and the one on the order list stay independent. */
-function entryNoteKey(entryId: string) {
-  return `list:${entryId}`;
-}
 
 function BadgePicker({
   category,
@@ -250,6 +248,10 @@ type NewBadgeEntry = {
   gainedDateTo: string;
 };
 
+const BADGE_ORDERS_KEY = ["stores", "badges", "orders"];
+const ORDER_LIST_KEY = ["stores", "badges", "order-lists"];
+const NO_ENTRIES: BadgeOrderListEntry[] = [];
+
 export default function BadgeOrdersPage() {
   const { data: session } = useSession();
   const { gainedWhereOptions } = useReference();
@@ -259,16 +261,41 @@ export default function BadgeOrdersPage() {
     (session as { user?: { name?: string; email?: string } } | null)?.user?.email ??
     "Unknown";
 
-  const [orders, setOrders] = useState<BadgeOrder[]>([]);
-  const [grid, setGrid] = useState<BadgeGrid | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "orderlist">("active");
 
+  // Generic confirm dialog
+  const { confirm: openConfirm, confirmDialog } = useConfirm();
+
+  // Orders leaving the current tab (deleted, completed, reopened) collapse out
+  const { isLeaving, exit } = useExitCollapse();
+
+  const workflow = useOrderWorkflow<BadgeOrderItem, BadgeOrder>({
+    basePath: "/api/stores/badges/orders",
+    queryKey: BADGE_ORDERS_KEY,
+    tabOf: (order) => (order.completed ? "completed" : "active"),
+    activeTab,
+    currentUser,
+    confirm: openConfirm,
+    exit,
+  });
+  const {
+    orders,
+    setOrders,
+    setError,
+    expandedIds,
+    setExpandedIds,
+    toggleExpand,
+    markingAsReady,
+    removingStock,
+  } = workflow;
+  const { query: gridQuery, grid, setGrid } = useBadgeGrid();
+
   // Order list — each entry moves queued -> ordered -> received on its own
-  const [orderListEntries, setOrderListEntries] = useState<BadgeOrderListEntry[]>([]);
+  const orderListQuery = useApiQuery<BadgeOrderListEntry[]>(ORDER_LIST_KEY, "/api/stores/badges/order-lists");
+  const orderListEntries = orderListQuery.data ?? NO_ENTRIES;
+  // The page waits for all three: matching a badge to the grid needs the grid.
+  const error = workflow.error ?? gridQuery.error?.message ?? orderListQuery.error?.message ?? null;
+  const loading = !error && (workflow.loading || gridQuery.isPending || orderListQuery.isPending);
   const [addingToListId, setAddingToListId] = useState<string | null>(null);
   const [markingOrderedId, setMarkingOrderedId] = useState<string | null>(null);
   const [markingReceivedId, setMarkingReceivedId] = useState<string | null>(null);
@@ -297,21 +324,12 @@ export default function BadgeOrdersPage() {
   const [addLevel, setAddLevel] = useState<string | null>(null);
   const [addGainedWhere, setAddGainedWhere] = useState<GainedWhereState>(emptyGainedWhere());
 
-  // QM notes
-  const [addingNoteItemId, setAddingNoteItemId] = useState<string | null>(null);
-  const [noteText, setNoteText] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-
   // Mark as given
   const [markingAsGiven, setMarkingAsGiven] = useState<string | null>(null);
   const [undoingGiven, setUndoingGiven] = useState<string | null>(null);
   const [markGivenOpen, setMarkGivenOpen] = useState(false);
   const [markGivenOrder, setMarkGivenOrder] = useState<BadgeOrder | null>(null);
   const [markGivenItem, setMarkGivenItem] = useState<BadgeOrderItem | null>(null);
-  const [markingAsReady, setMarkingAsReady] = useState<string | null>(null);
-
-  // Remove from / add back to stock (order item id of the row whose call is in flight)
-  const [removingStock, setRemovingStock] = useState<string | null>(null);
 
   // Sort + search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
@@ -320,12 +338,6 @@ export default function BadgeOrdersPage() {
   // Jumping from an order list entry back to the order item it came from
   const [pendingJumpItemId, setPendingJumpItemId] = useState<string | null>(null);
   const [highlightItemId, setHighlightItemId] = useState<string | null>(null);
-
-  // Generic confirm dialog
-  const { confirm: openConfirm, confirmDialog } = useConfirm();
-
-  // Orders leaving the current tab (deleted, completed, reopened) collapse out
-  const { isLeaving, exit } = useExitCollapse();
 
   // Runs once the target order has been switched to and expanded, so the row is in the DOM.
   useEffect(() => {
@@ -343,39 +355,6 @@ export default function BadgeOrdersPage() {
     return () => clearTimeout(timer);
   }, [highlightItemId]);
 
-  async function fetchAll() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [ordersRes, gridRes, listsRes] = await Promise.all([
-        fetch("/api/stores/badges/orders"),
-        fetch("/api/stores/badges"),
-        fetch("/api/stores/badges/order-lists"),
-      ]);
-      if (!ordersRes.ok || !gridRes.ok || !listsRes.ok) throw await loadError(ordersRes, gridRes, listsRes);
-      setOrders(await ordersRes.json());
-      setGrid(await gridRes.json());
-      setOrderListEntries(await listsRes.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  function toggleExpand(id: string) {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   function findBadgeStockMatch(badgeName: string): StockMatch | undefined {
     if (!grid) return undefined;
     for (const cell of grid.cells) {
@@ -385,31 +364,22 @@ export default function BadgeOrdersPage() {
     return undefined;
   }
 
-  // The backend adjusts the grid count and appends to the item's stock history
-  // together, so the count and the history can't disagree.
   async function doStockAction(
     order: BadgeOrder,
     orderItem: BadgeOrderItem,
     action: "remove" | "return",
     match?: StockMatch
   ) {
-    setRemovingStock(orderItem.id);
-    try {
-      const res = await fetch(`/api/stores/badges/orders/${order.id}/items/${orderItem.id}/stock`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, itemId: match?.item.id, by: currentUser }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.detail ?? "Failed to update stock");
-      const updatedOrder: BadgeOrder = data.order;
-      setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
-      setGrid(data.badges);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setRemovingStock(null);
-    }
+    // The answer carries the whole grid back, so the counts can't drift.
+    const data = await workflow.stockAction<{ order: BadgeOrder; badges: BadgeGrid }>(
+      order.id,
+      orderItem.id,
+      {
+        action,
+        itemId: match?.item.id,
+      }
+    );
+    if (data) setGrid(data.badges);
   }
 
   function handleRemoveFromStock(order: BadgeOrder, orderItem: BadgeOrderItem, match: StockMatch) {
@@ -424,110 +394,12 @@ export default function BadgeOrdersPage() {
     );
   }
 
-  function replaceOrder(updated: BadgeOrder) {
-    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-  }
-
-  // An order that has moved to another tab collapses out of this one first,
-  // rather than vanishing and jerking the list up under you.
-  function applyOrderUpdate(updated: BadgeOrder) {
-    const tab = updated.completed ? "completed" : "active";
-    if (tab === activeTab) replaceOrder(updated);
-    else exit(updated.id, () => replaceOrder(updated));
-  }
-
-  async function patchOrder(orderId: string, patch: Partial<BadgeOrder>) {
-    try {
-      const res = await fetch(`/api/stores/badges/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error("Failed to update order");
-      applyOrderUpdate(await res.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    }
-  }
-
-  async function doDeleteOrder(orderId: string) {
-    try {
-      const res = await fetch(`/api/stores/badges/orders/${orderId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete order");
-      exit(orderId, () => {
-        setOrders((prev) => prev.filter((o) => o.id !== orderId));
-        setExpandedIds((prev) => {
-          const n = new Set(prev);
-          n.delete(orderId);
-          return n;
-        });
-      });
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    }
-  }
-
-  function handleDeleteOrder(orderId: string, cadetName: string) {
-    openConfirm(`Delete the entire order for ${cadetName}? This cannot be undone.`, () =>
-      doDeleteOrder(orderId)
-    );
-  }
-
-  function handleDeleteOrderItem(orderId: string, itemId: string, badgeName: string) {
-    openConfirm(`Remove "${badgeName}" from this order?`, () => {
-      const order = orders.find((o) => o.id === orderId);
-      if (!order) return;
-      patchOrder(orderId, { items: order.items.filter((i) => i.id !== itemId) });
-    });
-  }
-
-  function handleDeleteQmNote(orderId: string, item: BadgeOrderItem, noteId: string) {
-    openConfirm("Delete this QM note? This cannot be undone.", () => {
-      const order = orders.find((o) => o.id === orderId);
-      if (!order) return;
-      patchOrder(orderId, {
-        items: order.items.map((i) =>
-          i.id === item.id ? { ...i, qmNotes: (i.qmNotes ?? []).filter((n) => n.id !== noteId) } : i
-        ),
-      });
-    });
-  }
-
-  function handleCompleteOrder(orderId: string, cadetName: string) {
-    openConfirm(`Mark the order for ${cadetName} as complete? It will move to Completed Orders.`, () =>
-      patchOrder(orderId, { completed: true })
-    );
-  }
-
-  function handleReopenOrder(orderId: string, cadetName: string) {
-    openConfirm(`Reopen the order for ${cadetName}? It will return to Active Orders.`, () =>
-      patchOrder(orderId, { completed: false })
-    );
-  }
-
-  async function handleAddQmNote(orderId: string, item: BadgeOrderItem) {
-    if (!noteText.trim()) return;
-    setSavingNote(true);
-    const newNote: QmNote = {
-      id: crypto.randomUUID(),
-      content: noteText.trim(),
-      timestamp: new Date().toISOString(),
-      addedBy: currentUser,
-    };
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) {
-      setSavingNote(false);
-      return;
-    }
-    await patchOrder(orderId, {
-      items: order.items.map((i) =>
-        i.id === item.id ? { ...i, qmNotes: [...(i.qmNotes ?? []), newNote] } : i
-      ),
-    });
-    setNoteText("");
-    setSavingNote(false);
-    setAddingNoteItemId(null);
-  }
+  const { replaceOrder, patchOrder } = workflow;
+  const handleDeleteOrder = workflow.deleteOrder;
+  const handleDeleteOrderItem = (orderId: string, itemId: string, badgeName: string) =>
+    workflow.deleteItem(orderId, itemId, `"${badgeName}"`);
+  const handleCompleteOrder = workflow.completeOrder;
+  const handleReopenOrder = workflow.reopenOrder;
 
   function handleMarkItemAsGiven(order: BadgeOrder, item: BadgeOrderItem) {
     setMarkGivenOrder(order);
@@ -554,17 +426,14 @@ export default function BadgeOrdersPage() {
     verb: "mark-given" | "undo-given",
     failure: string
   ) {
-    try {
-      const res = await fetch(`/api/stores/badges/orders/${orderId}/items/${itemId}/${verb}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ by: currentUser }),
-      });
-      if (!res.ok) throw new Error(errorDetail(await res.json().catch(() => null)) ?? failure);
-      replaceOrder(await res.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    }
+    const updated = await workflow.itemAction<BadgeOrder>(
+      orderId,
+      itemId,
+      verb,
+      { by: currentUser },
+      failure
+    );
+    if (updated) replaceOrder(updated);
   }
 
   function handleUndoGiven(order: BadgeOrder, item: BadgeOrderItem) {
@@ -581,22 +450,7 @@ export default function BadgeOrdersPage() {
     );
   }
 
-  async function handleMarkItemAsReady(orderId: string, itemId: string) {
-    setMarkingAsReady(itemId);
-    try {
-      const res = await fetch(`/api/stores/badges/orders/${orderId}/items/${itemId}/mark-ready`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Failed to mark as ready to collect");
-      // The API answers with the updated order — reloading everything instead
-      // flashed the whole page to skeletons and lost your scroll position.
-      replaceOrder(await res.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setMarkingAsReady(null);
-    }
-  }
+  const handleMarkItemAsReady = workflow.markReady;
 
   const currentBadgeName = newCategory ? buildBadgeName(newCategory, newSubType, newLevel) : null;
   const addBadgeName = addCategory ? buildBadgeName(addCategory, addSubType, addLevel) : null;
@@ -676,8 +530,6 @@ export default function BadgeOrdersPage() {
     setActiveTab(ref.order.completed ? "completed" : "active");
     setSearchQuery("");
     setExpandedIds((prev) => new Set(prev).add(ref.order.id));
-    setAddingNoteItemId(null);
-    setNoteText("");
     setPendingJumpItemId(ref.item.id);
   }
 
@@ -698,8 +550,7 @@ export default function BadgeOrdersPage() {
   }
 
   async function refreshOrderListEntries() {
-    const res = await fetch("/api/stores/badges/order-lists");
-    if (res.ok) setOrderListEntries(await res.json());
+    await orderListQuery.refetch();
   }
 
   // Raw calls shared by the Order List tab's own buttons and the order item's
@@ -831,8 +682,6 @@ export default function BadgeOrdersPage() {
     const ref = resolveEntry(entry);
     const notes = ref?.item.qmNotes ?? [];
     const canEditNotes = stage === "toOrder" && !!ref && !ref.order.completed;
-    const noteKey = entryNoteKey(entry.id);
-    const isAddingNoteHere = addingNoteItemId === noteKey;
 
     return (
       <li key={entry.id} className="bg-muted/30 space-y-2 rounded-md border px-3 py-2">
@@ -925,77 +774,14 @@ export default function BadgeOrdersPage() {
           </Button>
         )}
 
-        {(notes.length > 0 || canEditNotes) && (
-          <div className="space-y-1.5 border-t pt-2">
-            {notes.map((note) => (
-              <div key={note.id} className="bg-background space-y-0.5 rounded border px-2.5 py-1.5">
-                <p className="text-xs whitespace-pre-wrap">{note.content}</p>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-muted-foreground text-[10px]">
-                    {note.addedBy} · {formatTimestamp(note.timestamp)}
-                  </p>
-                  {canEditNotes && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-muted-foreground hover:text-destructive h-5 w-5"
-                      onClick={() => handleDeleteQmNote(ref!.order.id, ref!.item, note.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {canEditNotes &&
-              (isAddingNoteHere ? (
-                <div className="space-y-1.5">
-                  <textarea
-                    className="bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-1.5 text-xs focus:ring-1 focus:outline-none"
-                    rows={3}
-                    placeholder="Type your note..."
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="h-7 px-3 text-xs"
-                      disabled={!noteText.trim() || savingNote}
-                      onClick={() => handleAddQmNote(ref!.order.id, ref!.item)}
-                    >
-                      {savingNote ? "Saving..." : "Save Note"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => {
-                        setAddingNoteItemId(null);
-                        setNoteText("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 w-full px-2 text-xs"
-                  onClick={() => {
-                    setAddingNoteItemId(noteKey);
-                    setNoteText("");
-                  }}
-                >
-                  <StickyNote className="mr-1.5 h-3 w-3" />
-                  Add QM Note
-                </Button>
-              ))}
-          </div>
+        {ref && (
+          <QmNotes
+            notes={notes}
+            editable={canEditNotes}
+            itemLabel={entry.badgeName}
+            onAdd={(content) => workflow.addNote(ref.order.id, ref.item.id, content)}
+            onDelete={(noteId) => workflow.deleteNote(ref.order.id, ref.item.id, noteId)}
+          />
         )}
       </li>
     );
@@ -1033,15 +819,7 @@ export default function BadgeOrdersPage() {
     filteredOrders.length > 0 && filteredOrders.every(({ order }) => expandedIds.has(order.id));
 
   function toggleExpandAll() {
-    const ids = filteredOrders.map(({ order }) => order.id);
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (allExpanded) next.delete(id);
-        else next.add(id);
-      }
-      return next;
-    });
+    workflow.toggleExpandAll(filteredOrders.map(({ order }) => order.id));
   }
 
   return (
@@ -1181,7 +959,6 @@ export default function BadgeOrdersPage() {
                     {visibleItems.map((orderItem) => {
                       const stockMatch = findBadgeStockMatch(orderItem.badgeName);
                       const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
-                      const isAddingNoteHere = addingNoteItemId === orderItem.id;
                       const orderListEntry = orderListEntryFor(orderItem.id);
                       const orderListStage = orderListStageFor(orderItem.id);
 
@@ -1360,15 +1137,7 @@ export default function BadgeOrdersPage() {
                             )}
                           </div>
 
-                          {/* Ready to collect stamp */}
-                          {orderItem.readyToCollect && !orderItem.givenAt && (
-                            <div className="bg-primary/10 border-primary/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                              <Bell className="text-primary h-3 w-3 shrink-0" />
-                              <p className="text-primary text-xs">
-                                Cadet notified {formatTimestamp(orderItem.readyToCollect)}
-                              </p>
-                            </div>
-                          )}
+                          <ReadyStamp readyToCollect={orderItem.readyToCollect} givenAt={orderItem.givenAt} />
 
                           {/* Given stamp: the hand-over, an Undo while the order is open, and the history */}
                           <GivenStamp
@@ -1419,83 +1188,13 @@ export default function BadgeOrdersPage() {
                           {/* Stock history */}
                           <StockHistory events={orderItem.stockEvents} />
 
-                          <div className="space-y-1.5 border-t pt-2">
-                            {(orderItem.qmNotes ?? []).length > 0 && (
-                              <div className="space-y-1">
-                                {(orderItem.qmNotes ?? []).map((note) => (
-                                  <div
-                                    key={note.id}
-                                    className="bg-background space-y-0.5 rounded border px-2.5 py-1.5"
-                                  >
-                                    <p className="text-xs whitespace-pre-wrap">{note.content}</p>
-                                    <div className="flex items-center justify-between gap-2">
-                                      <p className="text-muted-foreground text-[10px]">
-                                        {note.addedBy} · {formatTimestamp(note.timestamp)}
-                                      </p>
-                                      {!isCompleted && (
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="text-muted-foreground hover:text-destructive h-5 w-5"
-                                          onClick={() => handleDeleteQmNote(order.id, orderItem, note.id)}
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {!isCompleted &&
-                              (isAddingNoteHere ? (
-                                <div className="space-y-1.5">
-                                  <textarea
-                                    className="bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-1.5 text-xs focus:ring-1 focus:outline-none"
-                                    rows={3}
-                                    placeholder="Type your note..."
-                                    value={noteText}
-                                    onChange={(e) => setNoteText(e.target.value)}
-                                    autoFocus
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      className="h-7 px-3 text-xs"
-                                      disabled={!noteText.trim() || savingNote}
-                                      onClick={() => handleAddQmNote(order.id, orderItem)}
-                                    >
-                                      {savingNote ? "Saving..." : "Save Note"}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-7 px-2 text-xs"
-                                      onClick={() => {
-                                        setAddingNoteItemId(null);
-                                        setNoteText("");
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 w-full px-2 text-xs"
-                                  onClick={() => {
-                                    setAddingNoteItemId(orderItem.id);
-                                    setNoteText("");
-                                  }}
-                                >
-                                  <StickyNote className="mr-1.5 h-3 w-3" />
-                                  Add QM Note
-                                </Button>
-                              ))}
-                          </div>
+                          <QmNotes
+                            notes={orderItem.qmNotes}
+                            editable={!isCompleted}
+                            itemLabel={orderItem.badgeName}
+                            onAdd={(content) => workflow.addNote(order.id, orderItem.id, content)}
+                            onDelete={(noteId) => workflow.deleteNote(order.id, orderItem.id, noteId)}
+                          />
                         </li>
                       );
                     })}
@@ -1833,33 +1532,17 @@ export default function BadgeOrdersPage() {
       </Dialog>
 
       {/* Mark as Given Dialog */}
-      <Dialog open={markGivenOpen} onOpenChange={setMarkGivenOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Mark as Given</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <p>
-              <span className="font-medium">{markGivenItem?.badgeName}</span> will be recorded as issued to{" "}
-              <span className="font-medium">{markGivenOrder?.cadetName}</span>.
-            </p>
-            <p className="text-muted-foreground">This cannot be undone.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMarkGivenOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-success hover:bg-success/90 text-white"
-              onClick={confirmMarkAsGiven}
-              disabled={markingAsGiven !== null}
-            >
-              <PackageCheck className="mr-2 h-4 w-4" />
-              Mark as Given
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MarkGivenDialog
+        open={markGivenOpen}
+        onOpenChange={setMarkGivenOpen}
+        busy={markingAsGiven !== null}
+        onConfirm={confirmMarkAsGiven}
+      >
+        <p>
+          <span className="font-medium">{markGivenItem?.badgeName}</span> will be recorded as issued to{" "}
+          <span className="font-medium">{markGivenOrder?.cadetName}</span>.
+        </p>
+      </MarkGivenDialog>
 
       {/* Confirm Dialog */}
       {confirmDialog}

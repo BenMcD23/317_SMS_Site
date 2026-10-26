@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, RotateCcw, Paperclip, X } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { useFillAssessorName, useSavedSignature } from "@/lib/assessor-defaults";
 import { sendOrQueue } from "@/lib/outbox";
 import { SavedHeading } from "@/components/assessments/saved-heading";
 import { CadetSearchInput } from "@/components/cadet-search";
@@ -202,48 +202,10 @@ export default function MoiAssessmentPage() {
   const [lessonPlanError, setLessonPlanError] = useState<string | null>(null);
 
   const [showDrawOverride, setShowDrawOverride] = useState(false);
-  const [savedSignatureUrl, setSavedSignatureUrl] = useState<string | null>(null);
   const [overrideSignature, setOverrideSignature] = useState<string | null>(null);
-  const [sigLoading, setSigLoading] = useState(true);
-  const [savedSignatureB64, setSavedSignatureB64] = useState<string | null>(null);
 
-  const loadAssessorName = useCallback(async () => {
-    if (!session?.id_token) return;
-    const res = await apiFetch(`${API_BASE}/settings/assessor-name`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setForm((f) => ({ ...f, assessorName: d.assessor_name || session.user?.name || "" }));
-    }
-  }, [session]);
-
-  useEffect(() => {
-    if (!session?.id_token) return;
-
-    apiFetch(`${API_BASE}/settings/assessor-name`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    }).then((res) => {
-      if (res.ok)
-        res
-          .json()
-          .then((d) => setForm((f) => ({ ...f, assessorName: d.assessor_name || session.user?.name || "" })));
-    });
-
-    setSigLoading(true);
-    apiFetch(`${API_BASE}/get-signature`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const blob = await res.blob();
-        setSavedSignatureUrl(URL.createObjectURL(blob));
-        const reader = new FileReader();
-        reader.onloadend = () => setSavedSignatureB64(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .finally(() => setSigLoading(false));
-  }, [session]);
+  const { signature: savedSignature, loading: sigLoading } = useSavedSignature();
+  const fillAssessorName = useFillAssessorName((assessorName) => setForm((f) => ({ ...f, assessorName })));
 
   const answeredScores = Object.values(form.scores).filter((v): v is number => v !== null);
   const totalScore = answeredScores.reduce((a, b) => a + b, 0);
@@ -251,7 +213,7 @@ export default function MoiAssessmentPage() {
   const hasOneScore = Object.values(form.scores).some((v) => v === 1);
   const passed = allAnswered && totalScore >= PASS_SCORE && !hasOneScore;
   const completionPct = Math.round((answeredScores.length / ALL_QUESTIONS.length) * 100);
-  const effectiveSignature = overrideSignature ?? savedSignatureB64 ?? null;
+  const effectiveSignature = overrideSignature ?? savedSignature ?? null;
 
   const handleReset = () => {
     setShowDrawOverride(false);
@@ -266,7 +228,7 @@ export default function MoiAssessmentPage() {
     setLessonPlanError(null);
     clearDraft();
     setDraftBannerDismissed(true);
-    loadAssessorName();
+    fillAssessorName();
   };
 
   const handleLessonPlanChange = (file: File | null) => {
@@ -796,7 +758,7 @@ export default function MoiAssessmentPage() {
             onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
             showNameFromAccount={!!session?.user?.name}
             sigLoading={sigLoading}
-            savedSignatureUrl={savedSignatureUrl}
+            savedSignatureUrl={savedSignature}
             overrideSignature={overrideSignature}
             onOverrideSignature={setOverrideSignature}
             showDraw={showDrawOverride}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Check, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShelfStructure, ShelfBox, StockItem } from "@/lib/stores-types";
+import { ShelfBox, StockItem } from "@/lib/stores-types";
+import { useStoresStock } from "@/lib/stores-stock";
+import { ErrorAlert } from "@/components/error-alert";
 import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
 import { BoxDetailView } from "../components/BoxDetailView";
@@ -32,10 +34,10 @@ export default function BoxPage() {
   const router = useRouter();
   const boxLabel = String(params.box).toUpperCase();
 
-  const [shelfStructure, setShelfStructure] = useState<ShelfStructure | null>(null);
-  const [stock, setStock] = useState<StockItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { stock, shelfStructure, loading, loadError, setStock, setShelfStructure } = useStoresStock();
+  // Errors from edits on this page; a failed load is loadError.
+  const [actionError, setError] = useState<string | null>(null);
+  const error = actionError ?? loadError;
   const [editMode, setEditMode] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -45,29 +47,7 @@ export default function BoxPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
 
-  async function loadAll() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [stockRes, structRes] = await Promise.all([
-        fetch("/api/stores/stock"),
-        fetch("/api/stores/structure"),
-      ]);
-      if (!stockRes.ok || !structRes.ok) throw new Error("Failed to load data");
-      const [stockData, structData] = await Promise.all([stockRes.json(), structRes.json()]);
-      setStock(stockData);
-      setShelfStructure(structData);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // Load once on mount.
-  useEffect(() => {
-    loadAll();
-  }, []);
 
   const selectedBox: ShelfBox | null = useMemo(
     () => shelfStructure?.boxes.find((b) => b.label === boxLabel) ?? null,
@@ -210,6 +190,14 @@ export default function BoxPage() {
             <Skeleton key={i} className="aspect-square w-full" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-5xl pb-16">
+        <ErrorAlert message={loadError} title="Could not load stock" />
       </div>
     );
   }

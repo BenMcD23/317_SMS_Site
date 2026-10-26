@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { API_BASE, OWNER_EMAIL } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useApiQuery } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { RefreshCw, ShieldX, DatabaseBackup, Eye, RotateCcw } from "lucide-react";
@@ -77,11 +78,16 @@ export default function BackupsPage() {
   const token = session?.id_token;
   const isOwner = (session?.user?.email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
 
-  const [backups, setBackups] = useState<Backup[] | null>(null);
-  const [retention, setRetention] = useState(14);
-  const [loading, setLoading] = useState(false);
+  const backupsQuery = useApiQuery<{ backups?: Backup[]; retention?: number }>(["backups"], "/backups", {
+    enabled: isOwner,
+  });
+  const backups = backupsQuery.data ? (backupsQuery.data.backups ?? []) : null;
+  const retention = backupsQuery.data?.retention ?? 14;
+  const loading = backupsQuery.isFetching;
+  const error = backupsQuery.error?.message ?? null;
+  const { refetch } = backupsQuery;
+  const load = useCallback(() => void refetch(), [refetch]);
   const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Preview dialog state
   const [previewFor, setPreviewFor] = useState<Backup | null>(null);
@@ -93,25 +99,6 @@ export default function BackupsPage() {
   const [restoring, setRestoring] = useState(false);
 
   const authHeaders = useCallback(() => ({ Authorization: `Bearer ${token}` }), [token]);
-
-  const load = useCallback(() => {
-    if (!token || !isOwner) return;
-    setLoading(true);
-    setError(null);
-    apiFetch(`${API_BASE}/backups`, { headers: authHeaders() })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Failed to load backups (${res.status})`);
-        const data = await res.json();
-        setRetention(data.retention ?? 14);
-        setBackups(data.backups ?? []);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load backups"))
-      .finally(() => setLoading(false));
-  }, [token, isOwner, authHeaders]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const runBackup = useCallback(() => {
     if (!token) return;

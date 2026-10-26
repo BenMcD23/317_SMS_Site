@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -14,15 +13,7 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { Search, ChevronRight, UserCog } from "lucide-react";
 import { OcOnly } from "@/components/oc/oc-access-required";
 import { usePrivateText } from "@/components/private";
-
-type StaffMember = {
-  cin: number;
-  email: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  rank: string | null;
-  userId: number | null;
-};
+import { useStaffUsers } from "@/lib/staff-users";
 
 export default function StaffOverviewPage() {
   return (
@@ -37,18 +28,7 @@ function StaffOverview() {
   const privateText = usePrivateText();
   const [search, setSearch] = useState("");
 
-  const {
-    data: users = [],
-    isLoading: loading,
-    error,
-  } = useQuery<StaffMember[], Error>({
-    queryKey: ["staff", "users"],
-    queryFn: async () => {
-      const res = await fetch("/api/staff/users");
-      if (!res.ok) throw new Error("Failed to load staff");
-      return (await res.json()) as StaffMember[];
-    },
-  });
+  const { data: users = [], isLoading: loading, error } = useStaffUsers();
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();

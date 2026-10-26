@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type SetStateAction } from "react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +66,7 @@ import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { streamSse } from "@/lib/sse";
 
 // `name` is absent on messages sent before recipients were tied to accounts.
@@ -530,19 +531,39 @@ function MessageCard({
   );
 }
 
+const NO_MESSAGES: ParadeMessage[] = [];
+const NO_FAILURES: Record<string, string> = {};
+
 export default function TextMessagesPage() {
   const { data: session } = useSession();
 
   const now = new Date();
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
-  const [messages, setMessages] = useState<ParadeMessage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const messagesKey = ["texts", "messages", month, year];
+  const messagesQuery = useApiQuery<ParadeMessage[]>(
+    messagesKey,
+    `/texts/messages?month=${month}&year=${year}`
+  );
+  const messages = Array.isArray(messagesQuery.data) ? messagesQuery.data : NO_MESSAGES;
+  const loading = messagesQuery.isFetching && !messagesQuery.data;
+  const setCachedMessages = useSetApiQueryData<ParadeMessage[]>(messagesKey);
+  const setMessages = (update: (prev: ParadeMessage[]) => ParadeMessage[]) =>
+    setCachedMessages((prev) => update(prev ?? []));
+  const loadError = messagesQuery.error?.message;
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   // Nights the AI wouldn't write, by parade date — each gets a card of its own
   // with a retry, so one bad night doesn't mean re-running the whole month.
-  const [failed, setFailed] = useState<Record<string, string>>({});
+  // Kept per month, so switching month shows that month's failures only.
+  const period = `${year}-${month}`;
+  const [failedByPeriod, setFailedByPeriod] = useState<Record<string, Record<string, string>>>({});
+  const failed = failedByPeriod[period] ?? NO_FAILURES;
+  const setFailed = (update: SetStateAction<Record<string, string>>) =>
+    setFailedByPeriod((prev) => ({
+      ...prev,
+      [period]: typeof update === "function" ? update(prev[period] ?? {}) : update,
+    }));
   const [retrying, setRetrying] = useState<string | null>(null);
 
   const authHeaders = useMemo(
@@ -550,29 +571,9 @@ export default function TextMessagesPage() {
     [session?.id_token]
   );
 
-  const loadMessages = useCallback(async () => {
-    if (!session?.id_token) return;
-    setLoading(true);
-    try {
-      const resp = await apiFetch(`${API_BASE}/texts/messages?month=${month}&year=${year}`, {
-        headers: authHeaders,
-      });
-      if (!resp.ok) {
-        toast.error("Failed to load messages.");
-        return;
-      }
-      setMessages(await resp.json());
-      setFailed({});
-    } catch {
-      toast.error("Server unreachable.");
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.id_token, month, year, authHeaders]);
-
   useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
+    if (loadError) toast.error(`Failed to load messages: ${loadError}`);
+  }, [loadError]);
 
   /** Slot a night into the list in parade order, replacing any existing copy.
    *  Generation streams nights back in the order the AI finishes them, so cards

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 
 import RadioAssessmentPage from "@/app/assessments/radio/page";
 import { readOutbox } from "@/lib/outbox";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 const DRAFT_KEY = "assessment_draft_radio_nco@317atc.co.uk";
 
@@ -48,7 +49,7 @@ function api(submit: () => Promise<Response>) {
 }
 
 async function submitSheet() {
-  render(<RadioAssessmentPage />);
+  renderWithQuery(<RadioAssessmentPage />);
   const button = await screen.findByRole("button", { name: /Submit Assessment/ });
   // The saved signature loads asynchronously; submitting before it lands is a
   // validation error, which isn't what these tests are about.
