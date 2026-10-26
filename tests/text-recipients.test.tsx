@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,7 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import TextRecipientsPage from "@/app/texts/recipients/page";
 import { setPersonalDataHidden } from "@/lib/privacy";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 afterEach(() => window.localStorage.clear());
 
@@ -58,7 +59,7 @@ const rows = () => screen.getAllByRole("row").slice(1);
 describe("text recipients", () => {
   it("finds someone by name, by greeting, or by a number typed with spaces", async () => {
     respond(RECIPIENTS);
-    render(<TextRecipientsPage />);
+    renderWithQuery(<TextRecipientsPage />);
     const search = await screen.findByRole("textbox", { name: "Search recipients" });
 
     await userEvent.type(search, "mcdonald");
@@ -78,7 +79,7 @@ describe("text recipients", () => {
 
   it("says nobody matches rather than showing an empty table", async () => {
     respond(RECIPIENTS);
-    render(<TextRecipientsPage />);
+    renderWithQuery(<TextRecipientsPage />);
     await userEvent.type(await screen.findByRole("textbox", { name: "Search recipients" }), "zzz");
     expect(screen.getByText(/Nobody matches/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
@@ -86,7 +87,7 @@ describe("text recipients", () => {
 
   it("names whose row each edit and remove button is for", async () => {
     respond(RECIPIENTS);
-    render(<TextRecipientsPage />);
+    renderWithQuery(<TextRecipientsPage />);
     expect(await screen.findByRole("button", { name: "Edit Jack Brown" })).toBeInTheDocument();
     // No account, so no full name — the surname still tells the rows apart.
     expect(screen.getByRole("button", { name: "Remove Jones" })).toBeInTheDocument();
@@ -95,7 +96,7 @@ describe("text recipients", () => {
   it("drops the number column, export and edit when personal data is hidden", async () => {
     act(() => setPersonalDataHidden(true));
     respond(RECIPIENTS);
-    render(<TextRecipientsPage />);
+    renderWithQuery(<TextRecipientsPage />);
     expect(await screen.findByText("Jack Brown")).toBeInTheDocument();
     expect(screen.queryByText(/0\d{10}/)).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: "Phone number" })).not.toBeInTheDocument();
@@ -109,7 +110,7 @@ describe("text recipients", () => {
   it("won't find anyone by a hidden number, which would give it away", async () => {
     act(() => setPersonalDataHidden(true));
     respond(RECIPIENTS);
-    render(<TextRecipientsPage />);
+    renderWithQuery(<TextRecipientsPage />);
     const search = await screen.findByRole("textbox", { name: "Search recipients" });
     expect(search).toHaveAttribute("placeholder", "Search by name or greeting…");
     await userEvent.type(search, "07700 900019");
@@ -118,7 +119,7 @@ describe("text recipients", () => {
 
   it("shows the empty state, not a search box, when the list fails to load", async () => {
     respond({ detail: "boom" }, 500);
-    render(<TextRecipientsPage />);
+    renderWithQuery(<TextRecipientsPage />);
     expect(await screen.findByText("No recipients yet")).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Search recipients" })).not.toBeInTheDocument();
   });
