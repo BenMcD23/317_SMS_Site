@@ -11,9 +11,9 @@ import { useAssessorName, useFillAssessorName, useSavedSignature } from "@/lib/a
 
 function makeWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  };
 }
 
 function stubApi(routes: Record<string, () => Response>) {
