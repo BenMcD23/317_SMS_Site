@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { RefreshCw, ShieldX } from "lucide-react";
@@ -15,8 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { apiFetch, errorDetail } from "@/lib/api-fetch";
-import { API_BASE, OWNER_EMAIL } from "@/lib/config";
+import { OWNER_EMAIL } from "@/lib/config";
+import { useApiQuery } from "@/lib/use-api-query";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Private } from "@/components/private";
@@ -59,32 +59,18 @@ function MethodBadge({ method }: { method: string }) {
 
 export default function UsagePage() {
   const { data: session, status } = useSession();
-  const token = session?.id_token;
   const isOwner = (session?.user?.email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
 
   const [days, setDays] = useState("30");
-  const [usage, setUsage] = useState<Usage | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
 
-  const load = useCallback(() => {
-    if (!token || !isOwner) return;
-    setLoading(true);
-    setError(null);
-    apiFetch(`${API_BASE}/usage?days=${days}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async (res) => {
-        const body = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(errorDetail(body) ?? `Failed to load usage (${res.status})`);
-        setUsage(body);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load usage"))
-      .finally(() => setLoading(false));
-  }, [token, isOwner, days]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const {
+    data: usage,
+    error: loadError,
+    isFetching: loading,
+    refetch,
+  } = useApiQuery<Usage>(["usage", days], `/usage?days=${days}`, { enabled: isOwner });
+  const error = loadError?.message ?? null;
 
   const q = filter.trim().toLowerCase();
   const matches = useCallback(
@@ -152,7 +138,7 @@ export default function UsagePage() {
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
-            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={loading}>
               <RefreshCw size={14} className={cn(loading && "animate-spin")} /> Refresh
             </Button>
           </div>
@@ -161,7 +147,7 @@ export default function UsagePage() {
 
       {error && <p className="text-destructive text-sm">{error}</p>}
 
-      {usage === null && loading && <ListSkeleton rows={6} />}
+      {!usage && loading && <ListSkeleton rows={6} />}
 
       {usage && (
         <>

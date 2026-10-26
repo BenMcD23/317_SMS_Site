@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import UsagePage from "@/app/usage/page";
 import { OWNER_EMAIL } from "@/lib/config";
 import { setPersonalDataHidden } from "@/lib/privacy";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 // One stable object per identity, like the real hook — swapped per test.
 const OWNER = {
@@ -81,14 +82,14 @@ describe("Usage page", () => {
   it("turns away anyone but the owner without asking the API", () => {
     session = STAFF;
     const fetchMock = stubApi(json(USAGE));
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     expect(screen.getByText("Not authorised")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("loads the last 30 days with the owner's token and ranks endpoints by calls", async () => {
     const fetchMock = stubApi(json(USAGE));
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
 
     const rows = await screen.findAllByRole("row");
     const [url, init] = fetchMock.mock.calls[0];
@@ -105,7 +106,7 @@ describe("Usage page", () => {
   it("changing the window reloads that many days", async () => {
     const fetchMock = stubApi(json(USAGE));
     const user = userEvent.setup();
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     await screen.findByText("/stores/orders");
 
     await user.click(screen.getByRole("radio", { name: "Last 7 days" }));
@@ -116,7 +117,7 @@ describe("Usage page", () => {
   it("shows who uses the site and which endpoints nobody called", async () => {
     stubApi(json(USAGE));
     const user = userEvent.setup();
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     await screen.findByText("/stores/orders");
 
     await user.click(screen.getByRole("tab", { name: "People (2)" }));
@@ -131,7 +132,7 @@ describe("Usage page", () => {
   it("drops the People tab while personal data is hidden, since it lists people by email", async () => {
     setPersonalDataHidden(true);
     stubApi(json(USAGE));
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     await screen.findByText("/stores/orders");
     expect(screen.queryByRole("tab", { name: /People/ })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Unused (1)" })).toBeInTheDocument();
@@ -141,7 +142,7 @@ describe("Usage page", () => {
   it("the filter narrows endpoints by path and people by role", async () => {
     stubApi(json(USAGE));
     const user = userEvent.setup();
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     await screen.findByText("/stores/orders");
 
     await user.type(screen.getByRole("textbox", { name: "Filter" }), "stores");
@@ -159,7 +160,7 @@ describe("Usage page", () => {
   it("with no recorded use it says so instead of showing empty tables", async () => {
     stubApi(json({ ...USAGE, total_calls: 0, routes: [], users: [] }));
     const user = userEvent.setup();
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     expect(await screen.findByText("No calls recorded in the last 30 days.")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "People (0)" }));
     expect(screen.getByText("No one signed in has used the API in this window.")).toBeInTheDocument();
@@ -167,21 +168,21 @@ describe("Usage page", () => {
 
   it("a 403 shows the API's own reason", async () => {
     stubApi(json({ detail: "Owner access required" }, 403));
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     expect(await screen.findByText("Owner access required")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("a validation error list is flattened, not shown as [object Object]", async () => {
     stubApi(json({ detail: [{ msg: "Input should be less than or equal to 180" }] }, 422));
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     expect(await screen.findByText("Input should be less than or equal to 180")).toBeInTheDocument();
   });
 
   it("a 500 with no JSON body still gives a readable error", async () => {
     stubApi(() => new Response("Internal Server Error", { status: 500 }));
-    render(<UsagePage />);
-    expect(await screen.findByText("Failed to load usage (500)")).toBeInTheDocument();
+    renderWithQuery(<UsagePage />);
+    expect(await screen.findByText("Request failed (500)")).toBeInTheDocument();
   });
 
   it("an unreachable API shows an error instead of loading forever", async () => {
@@ -189,13 +190,13 @@ describe("Usage page", () => {
       "fetch",
       vi.fn(() => Promise.reject(new TypeError("Failed to fetch")))
     );
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     expect(await screen.findByText("Failed to fetch")).toBeInTheDocument();
   });
 
   it("a 401 mid-session sends the owner to sign in again", async () => {
     stubApi(json({ detail: "Invalid Token" }, 401));
-    render(<UsagePage />);
+    renderWithQuery(<UsagePage />);
     await vi.waitFor(() => expect(signIn).toHaveBeenCalled());
   });
 });

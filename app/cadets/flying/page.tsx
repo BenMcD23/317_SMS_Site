@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -17,7 +18,8 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useConfirm } from "@/components/confirm-dialog";
 import { API_BASE } from "@/lib/config";
-import { apiFetch, apiRequest, loadError } from "@/lib/api-fetch";
+import { apiRequest } from "@/lib/api-fetch";
+import { useApiQuery } from "@/lib/use-api-query";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -163,28 +165,26 @@ function FlyingEventCard({
   );
 }
 
+const FLYING_KEY = ["flying-paperwork"];
+const NO_EVENTS: FlyingEvent[] = [];
+
 export default function FlyingPaperworkPage() {
   const { data: session } = useSession();
   const token = session?.id_token;
 
-  const [events, setEvents] = useState<FlyingEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useApiQuery<FlyingEvent[]>(FLYING_KEY, "/flying-paperwork");
+  const events = query.data ?? NO_EVENTS;
+  const loading = query.isPending && !query.error;
+  const error = query.error?.message ?? null;
+  const queryClient = useQueryClient();
+  // Ticks and closes edit the cached list in place, so the page answers at once
+  // and a revisit still shows them.
+  const setEvents = useCallback(
+    (update: (prev: FlyingEvent[]) => FlyingEvent[]) =>
+      queryClient.setQueryData<FlyingEvent[]>(FLYING_KEY, (prev) => update(prev ?? [])),
+    [queryClient]
+  );
   const { confirm, confirmDialog } = useConfirm();
-
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    apiFetch(`${API_BASE}/flying-paperwork`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async (res) => {
-        // An error body is `{detail}`, not a list.
-        if (!res.ok) throw await loadError(res);
-        setEvents(await res.json());
-        setError(null);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [token]);
 
   const patchCadet = useCallback((eventId: number, cin: number, change: Partial<FlyingCadet>) => {
     setEvents((prev) =>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarCheck, ChevronRight, ShieldUser, Users, UserCog } from "lucide-react";
@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { Stat, StatGroup } from "@/components/stat";
 import { formatDate } from "@/lib/format";
+import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
 import {
   addCounts,
@@ -158,40 +159,27 @@ function RosterList({
 }
 
 export default function AttendancePage() {
-  const [nights, setNights] = useState<Night[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const nightsQuery = useApiQuery<Night[]>(["attendance", "nights"], "/api/attendance/nights");
+  const nights = useMemo(() => (Array.isArray(nightsQuery.data) ? nightsQuery.data : []), [nightsQuery.data]);
+  const error = nightsQuery.error?.message ?? null;
+  const loading = nightsQuery.isPending && !error;
 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [type, setType] = useState(ALL_TYPES);
   const [group, setGroup] = useState<Group>("all");
 
-  // `detail` is cleared when a night is picked, so "no detail yet" is the
-  // loading state — no separate flag to keep in step.
   const [selected, setSelected] = useState<Night | null>(null);
-  const [detail, setDetail] = useState<NightDetail | null>(null);
-
-  useEffect(() => {
-    fetch("/api/attendance/nights")
-      .then(async (res) => {
-        if (!res.ok) throw new Error((await res.json())?.detail ?? "Failed to load attendance");
-        return res.json();
-      })
-      .then((rows: Night[]) => setNights(Array.isArray(rows) ? rows : []))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load attendance"))
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Each night is (date, register type), so the drill-in needs both.
-  useEffect(() => {
-    if (!selected) return;
-    const query = selected.registerType ? `?registerType=${encodeURIComponent(selected.registerType)}` : "";
-    fetch(`/api/attendance/nights/${selected.date}${query}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setDetail)
-      .catch(() => setDetail(null));
-  }, [selected]);
+  // Each night is (date, register type), so the drill-in needs both. Keyed on
+  // both too, so a quick second pick never shows the first night's roster.
+  const detailQuery = useApiQuery<NightDetail>(
+    ["attendance", "night", selected?.date, selected?.registerType ?? null],
+    `/api/attendance/nights/${selected?.date}${
+      selected?.registerType ? `?registerType=${encodeURIComponent(selected.registerType)}` : ""
+    }`,
+    { enabled: !!selected }
+  );
+  const detail = detailQuery.data ?? null;
 
   const registerTypes = useMemo(
     () => [...new Set(nights.map((n) => n.registerType).filter(Boolean))].sort() as string[],
@@ -405,10 +393,7 @@ export default function AttendancePage() {
                           return (
                             <TableRow
                               key={`${night.date}-${night.registerType}`}
-                              onClick={() => {
-                                setDetail(null);
-                                setSelected(night);
-                              }}
+                              onClick={() => setSelected(night)}
                               className="cursor-pointer"
                             >
                               <TableCell className="pl-6 font-medium whitespace-nowrap">
@@ -459,7 +444,9 @@ export default function AttendancePage() {
             <DialogTitle>{selected ? formatDate(selected.date) : ""}</DialogTitle>
             <DialogDescription>{selected?.registerType ?? "Register"}</DialogDescription>
           </DialogHeader>
-          {!detail ? (
+          {detailQuery.error ? (
+            <ErrorAlert message={detailQuery.error.message} title="Could not load this night" />
+          ) : !detail ? (
             <div className="space-y-3">
               <Skeleton className="h-32 w-full" />
               <Skeleton className="h-32 w-full" />

@@ -58,4 +58,34 @@ describe("Staff pages", () => {
     expect(await screen.findByText(/Sam Staff/)).toBeTruthy();
     expect(screen.queryByText("OC access required")).toBeNull();
   });
+
+  const SAM = { cin: 10, email: "a@x", firstName: "Sam", lastName: "Staff", rank: "Sgt", userId: null };
+
+  it("the detail page shows the member named in the URL", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify([SAM]), { status: 200 }))
+    );
+    await renderAs("oc@317atc.co.uk", "detail");
+    expect(await screen.findByRole("heading", { name: "Sam Staff" })).toBeTruthy();
+  });
+
+  it("the detail page says when nobody has that CIN", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify([{ ...SAM, cin: 11 }]), { status: 200 }))
+    );
+    await renderAs("oc@317atc.co.uk", "detail");
+    expect(await screen.findByText("Staff member not found.")).toBeTruthy();
+  });
+
+  it("the detail page shows the API's error instead of 'not found' when the list fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ detail: "Database unavailable" }), { status: 500 }))
+    );
+    await renderAs("oc@317atc.co.uk", "detail");
+    expect(await screen.findByText("Database unavailable")).toBeTruthy();
+    expect(screen.queryByText("Staff member not found.")).toBeNull();
+  });
 });
