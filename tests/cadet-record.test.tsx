@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
 
 import CadetRecordPage from "@/app/cadets/[cin]/page";
 import { setPersonalDataHidden } from "@/lib/privacy";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 afterEach(() => window.localStorage.clear());
 
@@ -53,7 +54,7 @@ function respond(cadet: unknown, status = 200) {
 describe("cadet record", () => {
   it("names the qualifications that have lapsed or are about to, soonest first", async () => {
     respond(CADET);
-    render(<CadetRecordPage />);
+    renderWithQuery(<CadetRecordPage />);
     await screen.findByText("1 qualification expired · 1 expiring within 60 days");
     const items = screen.getAllByRole("listitem").map((li) => li.textContent);
     expect(items[0]).toMatch(/^Blue Radio — expired/);
@@ -64,14 +65,14 @@ describe("cadet record", () => {
 
   it("shows no expiry warning when nothing is close to lapsing", async () => {
     respond({ ...CADET, qualifications: [CADET.qualifications[2]] });
-    render(<CadetRecordPage />);
+    renderWithQuery(<CadetRecordPage />);
     await screen.findByRole("heading", { name: "Amy Able" });
     expect(screen.queryByText(/expir/)).not.toBeInTheDocument();
   });
 
   it("makes the email and mobile tappable", async () => {
     respond(CADET);
-    render(<CadetRecordPage />);
+    renderWithQuery(<CadetRecordPage />);
     expect(await screen.findByRole("link", { name: "amy@example.com" })).toHaveAttribute(
       "href",
       "mailto:amy@example.com"
@@ -82,7 +83,7 @@ describe("cadet record", () => {
   it("drops email, mobile, date of birth and age entirely when personal data is hidden, but not the name", async () => {
     act(() => setPersonalDataHidden(true));
     respond(CADET);
-    render(<CadetRecordPage />);
+    renderWithQuery(<CadetRecordPage />);
     expect(await screen.findByRole("heading", { name: "Amy Able" })).toBeInTheDocument();
     expect(screen.queryByText(/amy@example\.com|07700|2012/)).not.toBeInTheDocument();
     // The fields go with their labels, and leave no placeholder behind.
@@ -98,7 +99,7 @@ describe("cadet record", () => {
 
   it("gives the edit pencils a name, so they can be found without hovering", async () => {
     respond({ ...CADET, email: null });
-    render(<CadetRecordPage />);
+    renderWithQuery(<CadetRecordPage />);
     await userEvent.click(await screen.findByRole("button", { name: "Edit email" }));
     expect(screen.getByRole("button", { name: "Save email" })).toBeInTheDocument();
     // No address, so nothing to link.
@@ -107,13 +108,13 @@ describe("cadet record", () => {
 
   it("spells out the flight", async () => {
     respond(CADET);
-    render(<CadetRecordPage />);
+    renderWithQuery(<CadetRecordPage />);
     expect(await screen.findAllByText(/B Flight/)).not.toHaveLength(0);
   });
 
   it("shows the API's reason when the cadet can't be loaded", async () => {
     respond({ detail: "Cadet not found" }, 404);
-    render(<CadetRecordPage />);
+    renderWithQuery(<CadetRecordPage />);
     expect(await screen.findByText("Cadet not found")).toBeInTheDocument();
   });
 });

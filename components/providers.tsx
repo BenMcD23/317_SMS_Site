@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { MotionConfig } from "motion/react";
 
 import { ApiStatusOverlay } from "@/components/api-status-overlay";
+import { ServiceWorkerRegistration } from "@/components/service-worker";
 import { ReferenceProvider } from "@/lib/reference";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -42,6 +43,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </MotionConfig>
           <Toaster position="top-right" richColors />
           <ApiStatusOverlay />
+          <ServiceWorkerRegistration />
         </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import FlyingPaperworkPage from "@/app/cadets/flying/page";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 const SESSION = {
   data: { id_token: "tok", role: "staff", user: { email: "staff@317atc.co.uk", name: "Sam Staff" } },
@@ -88,7 +89,7 @@ beforeEach(() => {
 describe("Flying paperwork page", () => {
   it("lists each event with its cadets, what's ticked and how many are done", async () => {
     stubApi(listThen(() => json({})));
-    render(<FlyingPaperworkPage />);
+    renderWithQuery(<FlyingPaperworkPage />);
 
     const aef = (await screen.findByText("11 AEF Flying Day")).closest("[data-slot=card]") as HTMLElement;
     expect(within(aef).getByText("AEF")).toBeTruthy();
@@ -112,7 +113,7 @@ describe("Flying paperwork page", () => {
 
   it("ticking a form saves just that form for that cadet", async () => {
     const fetchMock = stubApi(listThen(() => json(cadet(2, "Bob", "Baker", { tg23: true }))));
-    render(<FlyingPaperworkPage />);
+    renderWithQuery(<FlyingPaperworkPage />);
 
     const box = await screen.findByRole("checkbox", { name: "TG 23 for Bob Baker" });
     await userEvent.click(box);
@@ -126,7 +127,7 @@ describe("Flying paperwork page", () => {
 
   it("a failed save puts the tick back and says why", async () => {
     stubApi(listThen(() => json({ detail: "That cadet isn't on this flying event" }, 404)));
-    render(<FlyingPaperworkPage />);
+    renderWithQuery(<FlyingPaperworkPage />);
 
     const box = await screen.findByRole("checkbox", { name: "TG 21 for Bob Baker" });
     await userEvent.click(box);
@@ -137,7 +138,7 @@ describe("Flying paperwork page", () => {
 
   it("closing asks first, then deletes the event and drops its card", async () => {
     const fetchMock = stubApi(listThen(() => json({ ok: true })));
-    render(<FlyingPaperworkPage />);
+    renderWithQuery(<FlyingPaperworkPage />);
 
     await userEvent.click(await screen.findByRole("button", { name: "Close 11 AEF Flying Day" }));
     // Still on Bader, so the confirm warns it'll be picked up again.
@@ -154,7 +155,7 @@ describe("Flying paperwork page", () => {
 
   it("a failed close keeps the card", async () => {
     stubApi(listThen(() => json({ detail: "Flying event not found" }, 404)));
-    render(<FlyingPaperworkPage />);
+    renderWithQuery(<FlyingPaperworkPage />);
 
     await userEvent.click(await screen.findByRole("button", { name: "Close 632 VGS Gliding" }));
     expect(screen.queryByText(/start tracking it again/)).toBeNull(); // already off Bader
@@ -166,13 +167,13 @@ describe("Flying paperwork page", () => {
 
   it("no flying events shows how they get here", async () => {
     stubApi(() => json([]));
-    render(<FlyingPaperworkPage />);
+    renderWithQuery(<FlyingPaperworkPage />);
     expect(await screen.findByText("No flying events")).toBeTruthy();
   });
 
   it("an error body shows the error instead of crashing", async () => {
     stubApi(() => json({ detail: "Staff access required" }, 403));
-    render(<FlyingPaperworkPage />);
+    renderWithQuery(<FlyingPaperworkPage />);
     expect(await screen.findByText("Could not load flying paperwork")).toBeTruthy();
     // ...and not "no flying events", which would read as everything being done.
     expect(screen.queryByText("No flying events")).toBeNull();

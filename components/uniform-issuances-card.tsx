@@ -1,7 +1,8 @@
 "use client";
 
 import { useReference } from "@/lib/reference";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,24 +21,25 @@ interface Props {
   baseUrl: string;
 }
 
+const NO_ISSUANCES: Issuance[] = [];
+
 export function UniformIssuancesCard({ baseUrl }: Props) {
   const { issuanceCategories } = useReference();
-  const [issuances, setIssuances] = useState<Issuance[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const issuancesKey = ["issuances", baseUrl];
+  const query = useApiQuery<Issuance[]>(issuancesKey, baseUrl);
+  const issuances = Array.isArray(query.data) ? query.data : NO_ISSUANCES;
+  const loading = query.isPending && !query.error;
+  const setCached = useSetApiQueryData<Issuance[]>(issuancesKey);
+  const setIssuances = (update: (prev: Issuance[]) => Issuance[]) => setCached((prev) => update(prev ?? []));
+  // A failed save or delete; a failed load is the query's error. Both show, so
+  // a lookup that failed never reads as "nothing issued".
+  const [actionError, setError] = useState<string | null>(null);
+  const error = actionError ?? query.error?.message ?? null;
 
   const [editing, setEditing] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
   const [editSize, setEditSize] = useState("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    fetch(baseUrl)
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setIssuances)
-      .catch(() => setIssuances([]))
-      .finally(() => setLoading(false));
-  }, [baseUrl]);
 
   function startEdit(category: string) {
     const record = issuances.find((i) => i.itemCategory === category);

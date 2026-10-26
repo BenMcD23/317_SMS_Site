@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { apiFetch } from "@/lib/api-fetch";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Private, usePrivateText } from "@/components/private";
@@ -102,12 +103,25 @@ const SOURCE_LABEL: Record<Source, string> = {
   extra: "No account",
 };
 
+const RECIPIENTS_KEY = ["texts", "recipients"];
+const NO_RECIPIENTS: Recipient[] = [];
+const NO_STAFF: StaffRow[] = [];
+
 export default function TextRecipientsPage() {
   const { data: session } = useSession();
   const privateText = usePrivateText();
 
-  const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [loading, setLoading] = useState(true);
+  const recipientsQuery = useApiQuery<Recipient[]>(RECIPIENTS_KEY, "/texts/recipients");
+  const recipients = Array.isArray(recipientsQuery.data) ? recipientsQuery.data : NO_RECIPIENTS;
+  const loading = recipientsQuery.isPending && !recipientsQuery.error;
+  const setCachedRecipients = useSetApiQueryData<Recipient[]>(RECIPIENTS_KEY);
+  const setRecipients = (update: (prev: Recipient[]) => Recipient[]) =>
+    setCachedRecipients((prev) => update(prev ?? []));
+  const recipientsError = recipientsQuery.error?.message;
+  const { refetch: refetchRecipients } = recipientsQuery;
+  const loadRecipients = useCallback(async () => {
+    await refetchRecipients();
+  }, [refetchRecipients]);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Recipient | null>(null);
@@ -117,7 +131,9 @@ export default function TextRecipientsPage() {
   const [addMode, setAddMode] = useState<AddMode>("cadet");
   const [query, setQuery] = useState("");
   const [cadetHits, setCadetHits] = useState<CadetHit[]>([]);
-  const [staffRoster, setStaffRoster] = useState<StaffRow[]>([]);
+  // Fetched the first time "Staff" is picked, then kept.
+  const staffQuery = useApiQuery<StaffRow[]>(["staff", "roster"], "/staff", { enabled: addMode === "staff" });
+  const staffRoster = Array.isArray(staffQuery.data) ? staffQuery.data : NO_STAFF;
   const [picked, setPicked] = useState<PersonHit | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -134,25 +150,9 @@ export default function TextRecipientsPage() {
     [session?.id_token]
   );
 
-  const loadRecipients = useCallback(async () => {
-    if (!session?.id_token) return;
-    try {
-      const resp = await apiFetch(`${API_BASE}/texts/recipients`, { headers: authHeaders });
-      if (!resp.ok) {
-        toast.error("Failed to load recipients.");
-        return;
-      }
-      setRecipients(await resp.json());
-    } catch {
-      toast.error("Server unreachable.");
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.id_token, authHeaders]);
-
   useEffect(() => {
-    loadRecipients();
-  }, [loadRecipients]);
+    if (recipientsError) toast.error(`Failed to load recipients: ${recipientsError}`);
+  }, [recipientsError]);
 
   useEffect(() => {
     if (!session?.id_token) return;
@@ -197,16 +197,6 @@ export default function TextRecipientsPage() {
 
   // Staff are a few dozen, so the whole roster comes down once and the filtering
   // happens below — a search endpoint for that many rows would earn nothing.
-  useEffect(() => {
-    if (addMode !== "staff" || !session?.id_token || staffRoster.length) return;
-    apiFetch(`${API_BASE}/staff`, { headers: authHeaders })
-      .then((resp) => (resp.ok ? resp.json() : []))
-      .then(setStaffRoster)
-      .catch(() => {
-        // Same as above: an empty picker is the visible failure.
-      });
-  }, [addMode, session?.id_token, authHeaders, staffRoster.length]);
-
   // Whichever roster is being searched, as one list for the picker.
   const hits: PersonHit[] = useMemo(() => {
     const q = query.trim().toLowerCase();

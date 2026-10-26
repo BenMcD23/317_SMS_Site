@@ -38,6 +38,7 @@ import {
   Lock,
 } from "lucide-react";
 import { API_BASE } from "@/lib/config";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { apiFetch } from "@/lib/api-fetch";
 import { streamAuthed } from "@/lib/sse";
 import { AssessmentEditor } from "@/components/assessments/assessment-editor";
@@ -889,32 +890,24 @@ function CadetAssessmentCard({
   );
 }
 
+const OVERVIEW_KEY = ["assessments", "overview"];
+const NO_CADETS: CadetAssessments[] = [];
+
 export default function AssessmentsOverviewPage() {
   const { data: session } = useSession();
-  const [cadets, setCadets] = useState<CadetAssessments[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const overviewQuery = useApiQuery<CadetAssessments[]>(OVERVIEW_KEY, "/assessments/overview");
+  const cadets = Array.isArray(overviewQuery.data) ? overviewQuery.data : NO_CADETS;
+  const error = overviewQuery.error?.message ?? null;
+  const loading = overviewQuery.isPending && !error;
+  const setCachedOverview = useSetApiQueryData<CadetAssessments[]>(OVERVIEW_KEY);
+  const setCadets = (update: (prev: CadetAssessments[]) => CadetAssessments[]) =>
+    setCachedOverview((prev) => update(prev ?? []));
+  const fetchData = () => void overviewQuery.refetch();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<AssessmentFilter>("active");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
   const token = session?.id_token ?? null;
-
-  const fetchData = async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const res = await apiFetch(`${API_BASE}/assessments/overview`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error((await res.json()).detail ?? res.statusText);
-      setCadets(await res.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAssessmentDeleted = (deletedId: number) => {
     setCadets((prev) =>
@@ -932,10 +925,6 @@ export default function AssessmentsOverviewPage() {
         .filter((cadet) => cadet.groups.length > 0)
     );
   };
-
-  useEffect(() => {
-    fetchData();
-  }, [token]);
 
   const availableTypes = Array.from(new Set(cadets.flatMap((c) => c.groups.map((g) => g.assessment_type))));
 

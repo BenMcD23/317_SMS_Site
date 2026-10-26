@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,18 +11,7 @@ import { AttendanceCard } from "@/components/attendance-card";
 import { Home, CalendarRange } from "lucide-react";
 import { OcOnly } from "@/components/oc/oc-access-required";
 import { Private, usePrivateText } from "@/components/private";
-
-type StaffMember = {
-  cin: number;
-  email: string | null;
-  phoneNumber: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  rank: string | null;
-  address: string | null;
-  attendance: Record<string, number> | null; // { "YYYY-MM": count }
-  userId: number | null;
-};
+import { useStaffUsers } from "@/lib/staff-users";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -44,22 +32,11 @@ export default function StaffDetailPage() {
 function StaffDetail() {
   const { id } = useParams<{ id: string }>();
   const privateText = usePrivateText();
-  const [user, setUser] = useState<StaffMember | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: all, isPending, error: loadError } = useStaffUsers();
+  const user = all?.find((u) => String(u.cin) === id) ?? null;
+  const error = loadError?.message ?? null;
 
-  useEffect(() => {
-    fetch("/api/staff/users")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to load staff");
-        const all: StaffMember[] = await res.json();
-        setUser(all.find((u) => String(u.cin) === id) ?? null);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  if (loading) {
+  if (isPending && !error) {
     return (
       <div className="mx-auto max-w-5xl space-y-4">
         <Skeleton className="h-10 w-64" />

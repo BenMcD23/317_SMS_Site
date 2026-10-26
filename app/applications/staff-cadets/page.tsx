@@ -87,7 +87,7 @@ export default function StaffCadetApplicationsPage() {
           title={tab === "complete" ? "No finished applications" : "No applications in progress"}
           description={
             tab === "complete"
-              ? "An application lands here once every step is ticked."
+              ? "An application lands here once every step is ticked or it's marked complete."
               : "Start one from the Nearing 18 tab."
           }
         >
@@ -102,7 +102,8 @@ export default function StaffCadetApplicationsPage() {
       {ok && tab !== "nearing" && shown.length > 0 && (
         <OrderList>
           {shown.map((app) => {
-            const next = nextStepLabel(ok.stages, app.nextStep);
+            // A row marked complete by hand has steps left, but nothing next.
+            const next = app.complete ? null : nextStepLabel(ok.stages, app.nextStep);
             return (
               <OrderDisclosure
                 key={app.id}
@@ -144,19 +145,27 @@ export default function StaffCadetApplicationsPage() {
   );
 }
 
-/** Cadets 17½ and over with no application yet, soonest birthday first. */
+/**
+ * Cadets 17½ and over with no application yet, soonest birthday first. One
+ * already done before SMS tracked it can go straight to Complete; the list
+ * stays put so several can be cleared in a row.
+ */
 function NearingList({ cadets, onStarted }: { cadets: NearingCadet[]; onStarted: () => void }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [starting, setStarting] = useState<number | null>(null);
 
-  async function start(cadet: NearingCadet) {
+  async function start(cadet: NearingCadet, complete = false) {
     setStarting(cadet.cin);
     try {
-      await startStaffCadet(session?.id_token ?? "", cadet.cin);
+      await startStaffCadet(session?.id_token ?? "", cadet.cin, complete);
       await queryClient.invalidateQueries({ queryKey: STAFF_CADET_KEY });
-      toast.success(`Application started for ${cadet.name}.`);
-      onStarted();
+      if (complete) {
+        toast.success(`${cadet.name} marked complete.`);
+      } else {
+        toast.success(`Application started for ${cadet.name}.`);
+        onStarted();
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't start the application.");
     } finally {
@@ -193,14 +202,26 @@ function NearingList({ cadets, onStarted }: { cadets: NearingCadet[]; onStarted:
               </Private>
             </span>
           </div>
-          <Button
-            variant="outline"
-            className="h-9"
-            onClick={() => void start(c)}
-            disabled={starting !== null}
-          >
-            Start application
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="ghost"
+              className="h-9"
+              aria-label={`Mark complete for ${c.name}`}
+              onClick={() => void start(c, true)}
+              disabled={starting !== null}
+            >
+              <CircleCheck />
+              Mark complete
+            </Button>
+            <Button
+              variant="outline"
+              className="h-9"
+              onClick={() => void start(c)}
+              disabled={starting !== null}
+            >
+              Start application
+            </Button>
+          </div>
         </div>
       ))}
     </OrderList>

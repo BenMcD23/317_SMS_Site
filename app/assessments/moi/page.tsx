@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, RotateCcw, Paperclip, X } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { useFillAssessorName, useSavedSignature } from "@/lib/assessor-defaults";
+import { sendOrQueue } from "@/lib/outbox";
+import { SavedHeading } from "@/components/assessments/saved-heading";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
 import { SectionHeading } from "@/components/section-heading";
@@ -192,6 +194,7 @@ export default function MoiAssessmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [queued, setQueued] = useState(false);
   const [assessmentId, setAssessmentId] = useState<number | null>(null);
 
   const [lessonPlanFile, setLessonPlanFile] = useState<File | null>(null);
@@ -199,48 +202,10 @@ export default function MoiAssessmentPage() {
   const [lessonPlanError, setLessonPlanError] = useState<string | null>(null);
 
   const [showDrawOverride, setShowDrawOverride] = useState(false);
-  const [savedSignatureUrl, setSavedSignatureUrl] = useState<string | null>(null);
   const [overrideSignature, setOverrideSignature] = useState<string | null>(null);
-  const [sigLoading, setSigLoading] = useState(true);
-  const [savedSignatureB64, setSavedSignatureB64] = useState<string | null>(null);
 
-  const loadAssessorName = useCallback(async () => {
-    if (!session?.id_token) return;
-    const res = await apiFetch(`${API_BASE}/settings/assessor-name`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setForm((f) => ({ ...f, assessorName: d.assessor_name || session.user?.name || "" }));
-    }
-  }, [session]);
-
-  useEffect(() => {
-    if (!session?.id_token) return;
-
-    apiFetch(`${API_BASE}/settings/assessor-name`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    }).then((res) => {
-      if (res.ok)
-        res
-          .json()
-          .then((d) => setForm((f) => ({ ...f, assessorName: d.assessor_name || session.user?.name || "" })));
-    });
-
-    setSigLoading(true);
-    apiFetch(`${API_BASE}/get-signature`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const blob = await res.blob();
-        setSavedSignatureUrl(URL.createObjectURL(blob));
-        const reader = new FileReader();
-        reader.onloadend = () => setSavedSignatureB64(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .finally(() => setSigLoading(false));
-  }, [session]);
+  const { signature: savedSignature, loading: sigLoading } = useSavedSignature();
+  const fillAssessorName = useFillAssessorName((assessorName) => setForm((f) => ({ ...f, assessorName })));
 
   const answeredScores = Object.values(form.scores).filter((v): v is number => v !== null);
   const totalScore = answeredScores.reduce((a, b) => a + b, 0);
@@ -248,7 +213,7 @@ export default function MoiAssessmentPage() {
   const hasOneScore = Object.values(form.scores).some((v) => v === 1);
   const passed = allAnswered && totalScore >= PASS_SCORE && !hasOneScore;
   const completionPct = Math.round((answeredScores.length / ALL_QUESTIONS.length) * 100);
-  const effectiveSignature = overrideSignature ?? savedSignatureB64 ?? null;
+  const effectiveSignature = overrideSignature ?? savedSignature ?? null;
 
   const handleReset = () => {
     setShowDrawOverride(false);
@@ -256,13 +221,14 @@ export default function MoiAssessmentPage() {
     setError(null);
     setOverrideSignature(null);
     setSubmitted(false);
+    setQueued(false);
     setAssessmentId(null);
     setLessonPlanFile(null);
     setLessonPlanBase64(null);
     setLessonPlanError(null);
     clearDraft();
     setDraftBannerDismissed(true);
-    loadAssessorName();
+    fillAssessorName();
   };
 
   const handleLessonPlanChange = (file: File | null) => {
@@ -297,6 +263,10 @@ export default function MoiAssessmentPage() {
     }
 
     setError(null);
+    if (!session?.id_token || !session.user?.email) {
+      setError("You're signed out. Sign in again, then submit.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -323,14 +293,24 @@ export default function MoiAssessmentPage() {
           : {}),
       };
 
-      const res = await apiFetch(`${API_BASE}/assessments/moi/add-assessment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.id_token ? { Authorization: `Bearer ${session.id_token}` } : {}),
+      // Without signal the sheet is kept on this phone and sent later
+      // (lib/outbox.ts); an answer from the server is handled as before.
+      const sent = await sendOrQueue(
+        {
+          url: `${API_BASE}/assessments/moi/add-assessment`,
+          method: "POST",
+          body: payload,
+          label: `MOI assessment — ${form.cadetForename} ${form.cadetSurname}`,
         },
-        body: JSON.stringify(payload),
-      });
+        { token: session.id_token, owner: session.user.email }
+      );
+      if (sent.queued) {
+        clearDraft();
+        setQueued(true);
+        setSubmitted(true);
+        return;
+      }
+      const res = sent.res;
 
       if (!res.ok) {
         const detail = await res.json().catch(() => ({ detail: res.statusText }));
@@ -354,18 +334,12 @@ export default function MoiAssessmentPage() {
         <SectionHeading title="MOI Assessment" description="Air Cadet Methods of Instruction Course" />
 
         <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
-          <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
-            <CheckCircle2 className="text-success h-8 w-8" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold">Assessment Saved</h2>
-            <p className="text-muted-foreground text-sm">
-              {form.cadetForename} {form.cadetSurname}&apos;s MOI assessment has been recorded.
-            </p>
-            {assessmentId && (
-              <p className="text-muted-foreground mt-1 text-xs">Assessment ID: #{assessmentId}</p>
-            )}
-          </div>
+          <SavedHeading
+            title="Assessment Saved"
+            what={`${form.cadetForename} ${form.cadetSurname}'s MOI assessment`}
+            queued={queued}
+            assessmentId={assessmentId}
+          />
 
           <div className="bg-card w-full max-w-xs space-y-1.5 rounded-lg border px-4 py-3 text-left text-sm">
             <div className="flex justify-between">
@@ -784,7 +758,7 @@ export default function MoiAssessmentPage() {
             onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
             showNameFromAccount={!!session?.user?.name}
             sigLoading={sigLoading}
-            savedSignatureUrl={savedSignatureUrl}
+            savedSignatureUrl={savedSignature}
             overrideSignature={overrideSignature}
             onOverrideSignature={setOverrideSignature}
             showDraw={showDrawOverride}

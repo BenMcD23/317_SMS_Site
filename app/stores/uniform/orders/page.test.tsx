@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import OrdersPage from "@/app/stores/uniform/orders/page";
 import type { Order, OrderItem } from "@/lib/stores-types";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 // One stable object, like the real hook — pages key effects on `session`.
 const SESSION = {
@@ -96,7 +97,7 @@ const calls = (fetch: ReturnType<typeof stubApi>, key: string) =>
 
 async function renderPage() {
   await act(async () => {
-    render(<OrdersPage />);
+    renderWithQuery(<OrdersPage />);
   });
   await screen.findByText("Alex Smith");
 }
@@ -207,7 +208,7 @@ describe("acting on an item doesn't reload the page", () => {
       within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as Given" }).click()
     );
 
-    expect(await screen.findByText(/Failed to load: \/api\/stores\/orders → /)).toBeInTheDocument();
+    expect(await screen.findByText("down")).toBeInTheDocument();
     expect(screen.getByText("Alex Smith")).toBeInTheDocument();
   });
 });
@@ -290,7 +291,7 @@ describe("undoing a given item", () => {
     });
     // renderPage waits for an Active order; this one is already completed.
     await act(async () => {
-      render(<OrdersPage />);
+      renderWithQuery(<OrdersPage />);
     });
     await userEvent.click(await screen.findByRole("tab", { name: /Completed/ }));
     await screen.findByText("Alex Smith");
@@ -492,9 +493,42 @@ describe("expand all", () => {
   it("when the orders fail to load the button has nothing to expand", async () => {
     stubApi({ "GET /api/stores/orders": () => json({ detail: "down" }, 500) });
     await act(async () => {
-      render(<OrdersPage />);
+      renderWithQuery(<OrdersPage />);
     });
-    expect(await screen.findByText(/Failed to load: \/api\/stores\/orders → /)).toBeInTheDocument();
+    expect(await screen.findByText("down")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Expand all" })).toBeDisabled();
+  });
+});
+
+describe("QM notes", () => {
+  it("a note is saved on the order and shown under the item", async () => {
+    const fetch = stubApi({
+      "PATCH /api/stores/orders/1": (_url, init) =>
+        json({ ...orders()[0], ...JSON.parse(String(init!.body)) }),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    const alex = within(card("Alex Smith"));
+    await userEvent.click(alex.getAllByRole("button", { name: "Add QM Note" })[0]);
+    await userEvent.type(alex.getByRole("textbox", { name: "QM note on Beret" }), "Try a 57");
+    await userEvent.click(alex.getByRole("button", { name: "Save Note" }));
+
+    expect(await alex.findByText("Try a 57")).toBeInTheDocument();
+    const [, init] = fetch.mock.calls.find(([, i]) => i?.method === "PATCH")!;
+    const beret = JSON.parse(String(init!.body)).items.find((i: OrderItem) => i.id === "11");
+    expect(beret.qmNotes).toEqual([expect.objectContaining({ content: "Try a 57", addedBy: "Sam Staff" })]);
+  });
+
+  it("a note that fails to save stays in the box and says why", async () => {
+    stubApi({ "PATCH /api/stores/orders/1": () => json({ detail: "nope" }, 500) });
+    await renderPage();
+    await expand("Alex Smith");
+    const alex = within(card("Alex Smith"));
+    await userEvent.click(alex.getAllByRole("button", { name: "Add QM Note" })[0]);
+    await userEvent.type(alex.getByRole("textbox", { name: "QM note on Beret" }), "Try a 57");
+    await userEvent.click(alex.getByRole("button", { name: "Save Note" }));
+
+    expect(await screen.findByText("Failed to update order")).toBeInTheDocument();
+    expect(alex.getByRole("textbox", { name: "QM note on Beret" })).toHaveValue("Try a 57");
   });
 });

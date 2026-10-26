@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const session = vi.hoisted(() => ({
   current: {
-    data: { id_token: "tok", role: "staff", user: { email: "oc@317atc.co.uk" } },
+    data: { id_token: "tok", role: "staff", is_oc: true, user: { email: "oc@317atc.co.uk" } },
     status: "authenticated",
     update: () => Promise.resolve(null),
   },
@@ -27,13 +27,12 @@ afterEach(() => {
   window.localStorage.clear();
   session.current = {
     ...session.current,
-    data: { ...session.current.data, user: { email: "oc@317atc.co.uk" } },
+    data: { ...session.current.data, is_oc: true, user: { email: "oc@317atc.co.uk" } },
   };
 });
 
 describe("OC leaving process page", () => {
   it("shows the leavers and parent emails to the OC", async () => {
-    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
     const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify({}), { status: 200 })));
     vi.stubGlobal("fetch", fetchMock);
     await renderPage();
@@ -42,7 +41,6 @@ describe("OC leaving process page", () => {
   });
 
   it("drops the parent emails card while personal data is hidden", async () => {
-    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
     window.localStorage.setItem("sms.privacy.hide", "1");
     vi.stubGlobal(
       "fetch",
@@ -55,10 +53,9 @@ describe("OC leaving process page", () => {
   });
 
   it("turns away other staff without asking the API", async () => {
-    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
     session.current = {
       ...session.current,
-      data: { ...session.current.data, user: { email: "staff@317atc.co.uk" } },
+      data: { ...session.current.data, is_oc: false, user: { email: "staff@317atc.co.uk" } },
     };
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

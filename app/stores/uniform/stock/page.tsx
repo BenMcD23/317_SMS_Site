@@ -1,7 +1,6 @@
 "use client";
 
-import { loadError } from "@/lib/api-fetch";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, FolderPlus, Check, Settings2, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,17 +12,18 @@ import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShelfStructure, StockItem } from "@/lib/stores-types";
+import { StockItem } from "@/lib/stores-types";
+import { useStoresStock } from "@/lib/stores-stock";
 import { ShelfView } from "./components/ShelfView";
 import { AddStockDialog } from "./components/AddStockDialog";
 import { EditStockDialog } from "./components/EditStockDialog";
 
 export default function StockPage() {
   const router = useRouter();
-  const [shelfStructure, setShelfStructure] = useState<ShelfStructure | null>(null);
-  const [stock, setStock] = useState<StockItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { stock, shelfStructure, loading, loadError, setStock, setShelfStructure, reload } = useStoresStock();
+  // Errors from edits on this page; a failed load is loadError.
+  const [actionError, setError] = useState<string | null>(null);
+  const error = actionError ?? loadError;
 
   const [searchName, setSearchName] = useState("");
   const [searchSize, setSearchSize] = useState("");
@@ -37,29 +37,6 @@ export default function StockPage() {
   const [deleteItemConfirm, setDeleteItemConfirm] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<StockItem | null>(null);
-
-  useEffect(() => {
-    loadAll();
-  }, []);
-
-  async function loadAll() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [stockRes, structRes] = await Promise.all([
-        fetch("/api/stores/stock"),
-        fetch("/api/stores/structure"),
-      ]);
-      if (!stockRes.ok || !structRes.ok) throw await loadError(stockRes, structRes);
-      const [stockData, structData] = await Promise.all([stockRes.json(), structRes.json()]);
-      setStock(stockData);
-      setShelfStructure(structData);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const totalCount = stock.reduce((sum, i) => sum + i.quantity, 0);
   const isSearching = searchName.trim() !== "";
@@ -275,7 +252,7 @@ export default function StockPage() {
           onOpenChange={setAddStockOpen}
           stock={stock}
           shelfStructure={shelfStructure}
-          onSuccess={loadAll}
+          onSuccess={() => void reload()}
         />
       )}
 

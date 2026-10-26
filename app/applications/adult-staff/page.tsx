@@ -84,7 +84,7 @@ export default function AdultStaffApplicationsPage() {
           title={tab === "complete" ? "No finished applications" : "No applications in progress"}
           description={
             tab === "complete"
-              ? "An application lands here once the applicant has done their CIC."
+              ? "An application lands here once the applicant has done their CIC or it's marked complete."
               : "Add someone applying to join as uniformed staff to track their application."
           }
         >
@@ -101,7 +101,8 @@ export default function AdultStaffApplicationsPage() {
         <OrderList>
           {shown.map((app) => {
             const stages = stagesFor(ok.stages, app.route);
-            const next = nextStepLabel(stages, app.nextStep);
+            // A row marked complete by hand has steps left, but nothing next.
+            const next = app.complete ? null : nextStepLabel(stages, app.nextStep);
             return (
               <OrderDisclosure
                 key={app.id}
@@ -144,8 +145,8 @@ export default function AdultStaffApplicationsPage() {
         open={adding}
         onOpenChange={setAdding}
         onAdded={(app) => {
-          toast.success(`${app.name} added.`);
-          setTab("progress");
+          toast.success(app.complete ? `${app.name} added as complete.` : `${app.name} added.`);
+          setTab(app.complete ? "complete" : "progress");
           setOpenId(app.id);
           void queryClient.invalidateQueries({ queryKey: UNIFORMED_KEY });
         }}

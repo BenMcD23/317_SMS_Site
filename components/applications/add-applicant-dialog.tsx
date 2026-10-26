@@ -15,7 +15,8 @@ import {
   ResponsiveDialogTitle,
 } from "@/components/responsive-dialog";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ErrorAlert } from "@/components/error-alert";
@@ -24,15 +25,17 @@ import { ROUTE_LABEL, type Route, type UniformedApplication, addUniformed } from
 const schema = z.object({
   name: z.string().trim().min(1, "Enter their name").max(200, "200 characters at most"),
   route: z.enum(["snco", "cfc"]),
+  complete: z.boolean(),
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY: Values = { name: "", route: "snco" };
+const EMPTY: Values = { name: "", route: "snco", complete: false };
 
 /**
  * Adds an adult applicant to track. They aren't on SMS until HQ appoints
  * them, so it's just their name and which route they're applying for: officer
- * (CFC) applicants also sit the Region board.
+ * (CFC) applicants also sit the Region board. Someone appointed before SMS
+ * tracked it can go straight on the Complete list.
  */
 export function AddApplicantDialog({
   open,
@@ -59,7 +62,7 @@ export function AddApplicantDialog({
   const submit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      onAdded(await addUniformed(session?.id_token ?? "", values.name, values.route));
+      onAdded(await addUniformed(session?.id_token ?? "", values.name, values.route, values.complete));
       close();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Couldn't add the applicant.");
@@ -112,6 +115,25 @@ export function AddApplicantDialog({
               )}
             />
           </Field>
+          <Controller
+            control={control}
+            name="complete"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="applicant-complete"
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor="applicant-complete">Already complete</FieldLabel>
+                  <FieldDescription>
+                    Goes straight on the Complete list, with no steps ticked.
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+            )}
+          />
           <ErrorAlert message={submitError} title="Applicant not added" />
         </form>
 

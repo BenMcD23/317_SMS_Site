@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +12,7 @@ import { cn } from "@/lib/utils";
 import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, CalendarDays, Users, ChevronDown, ChevronRight, Ban } from "lucide-react";
 
-import { API_BASE } from "@/lib/config";
-import { apiFetch, loadError } from "@/lib/api-fetch";
+import { useApiQuery } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 
@@ -236,33 +234,17 @@ function EventCard({ event }: { event: CadetEvent }) {
   );
 }
 
+const NO_EVENTS: CadetEvent[] = [];
+const NO_BANS: BannedCadet[] = [];
+
 export default function CadetEventListPage() {
-  const { data: session } = useSession();
-
-  const [events, setEvents] = useState<CadetEvent[]>([]);
-  const [bans, setBans] = useState<BannedCadet[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const eventsQuery = useApiQuery<CadetEvent[]>(["cadet-events"], "/cadet-events");
+  const bansQuery = useApiQuery<BannedCadet[]>(["bans"], "/bans");
+  const events = eventsQuery.data ?? NO_EVENTS;
+  const bans = bansQuery.data ?? NO_BANS;
+  const error = eventsQuery.error?.message ?? bansQuery.error?.message ?? null;
+  const loading = !error && (eventsQuery.isPending || bansQuery.isPending);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (!session?.id_token) return;
-    const headers = { Authorization: `Bearer ${session.id_token}` };
-    setLoading(true);
-    Promise.all([
-      apiFetch(`${API_BASE}/cadet-events`, { headers }),
-      apiFetch(`${API_BASE}/bans`, { headers }),
-    ])
-      .then(async ([evtsRes, bansRes]) => {
-        // An error body is `{detail}`, not a list; storing it crashed the page
-        // on `.filter` instead of showing what went wrong.
-        if (!evtsRes.ok || !bansRes.ok) throw await loadError(evtsRes, bansRes);
-        setEvents(await evtsRes.json());
-        setBans(await bansRes.json());
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [session?.id_token]);
 
   const filtered = events.filter((e) => {
     const q = search.toLowerCase();

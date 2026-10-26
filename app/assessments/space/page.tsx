@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { useFillAssessorName, useSavedSignature } from "@/lib/assessor-defaults";
+import { sendOrQueue } from "@/lib/outbox";
+import { SavedHeading } from "@/components/assessments/saved-heading";
 import { SPACE_CHECKLIST, SPACE_EXPERIMENTS_MAX, spacePassed } from "@/lib/assessment-fields";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
@@ -87,49 +89,19 @@ export default function SpaceAssessmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [queued, setQueued] = useState(false);
   const [assessmentId, setAssessmentId] = useState<number | null>(null);
 
   // Signature state
   const [showDrawOverride, setShowDrawOverride] = useState(false);
-  const [savedSignatureUrl, setSavedSignatureUrl] = useState<string | null>(null);
   const [overrideSignature, setOverrideSignature] = useState<string | null>(null);
-  const [sigLoading, setSigLoading] = useState(true);
-  const [savedSignatureB64, setSavedSignatureB64] = useState<string | null>(null);
 
-  const loadAssessorName = useCallback(async () => {
-    if (!session?.id_token) return;
-    const res = await apiFetch(`${API_BASE}/settings/assessor-name`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    });
-    if (res.ok) {
-      const d = await res.json();
-      const name = d.assessor_name || session.user?.name || "";
-      setForm((f) => ({ ...f, assessorName: name }));
-    }
-  }, [session, setForm]);
-
-  useEffect(() => {
-    if (!session?.id_token) return;
-
-    loadAssessorName();
-
-    apiFetch(`${API_BASE}/get-signature`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const blob = await res.blob();
-        setSavedSignatureUrl(URL.createObjectURL(blob));
-        const reader = new FileReader();
-        reader.onloadend = () => setSavedSignatureB64(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .finally(() => setSigLoading(false));
-  }, [session, loadAssessorName]);
+  const { signature: savedSignature, loading: sigLoading } = useSavedSignature();
+  const fillAssessorName = useFillAssessorName((assessorName) => setForm((f) => ({ ...f, assessorName })));
 
   const checkedCount = Object.values(form.checklist).filter(Boolean).length;
   const allChecked = spacePassed(form.checklist);
-  const effectiveSignature = overrideSignature ?? savedSignatureB64 ?? null;
+  const effectiveSignature = overrideSignature ?? savedSignature ?? null;
 
   const handleReset = () => {
     setShowDrawOverride(false);
@@ -137,10 +109,11 @@ export default function SpaceAssessmentPage() {
     setError(null);
     setOverrideSignature(null);
     setSubmitted(false);
+    setQueued(false);
     setAssessmentId(null);
     clearDraft();
     setDraftBannerDismissed(true);
-    loadAssessorName();
+    fillAssessorName();
   };
 
   const handleSubmit = async () => {
@@ -166,6 +139,10 @@ export default function SpaceAssessmentPage() {
     }
 
     setError(null);
+    if (!session?.id_token || !session.user?.email) {
+      setError("You're signed out. Sign in again, then submit.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -180,14 +157,24 @@ export default function SpaceAssessmentPage() {
         date: form.date,
       };
 
-      const res = await apiFetch(`${API_BASE}/assessments/space/add-assessment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.id_token ? { Authorization: `Bearer ${session.id_token}` } : {}),
+      // Without signal the sheet is kept on this phone and sent later
+      // (lib/outbox.ts); an answer from the server is handled as before.
+      const sent = await sendOrQueue(
+        {
+          url: `${API_BASE}/assessments/space/add-assessment`,
+          method: "POST",
+          body: payload,
+          label: `Blue Space checklist — ${form.cadetName}`,
         },
-        body: JSON.stringify(payload),
-      });
+        { token: session.id_token, owner: session.user.email }
+      );
+      if (sent.queued) {
+        clearDraft();
+        setQueued(true);
+        setSubmitted(true);
+        return;
+      }
+      const res = sent.res;
 
       if (!res.ok) {
         const detail = await res.json().catch(() => ({ detail: res.statusText }));
@@ -214,18 +201,12 @@ export default function SpaceAssessmentPage() {
         />
 
         <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
-          <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
-            <CheckCircle2 className="text-success h-8 w-8" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-foreground text-xl font-semibold">Checklist Saved</h2>
-            <p className="text-muted-foreground text-sm">
-              {form.cadetName}&apos;s Blue Space checklist has been recorded successfully.
-            </p>
-            {assessmentId && (
-              <p className="text-muted-foreground mt-1 text-xs">Assessment ID: #{assessmentId}</p>
-            )}
-          </div>
+          <SavedHeading
+            title="Checklist Saved"
+            what={`${form.cadetName}'s Blue Space checklist`}
+            queued={queued}
+            assessmentId={assessmentId}
+          />
 
           <div className="bg-card w-full max-w-xs space-y-1.5 rounded-lg border px-4 py-3 text-left text-sm">
             <div className="flex justify-between">
@@ -408,7 +389,7 @@ export default function SpaceAssessmentPage() {
             onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
             showNameFromAccount={!!session?.user?.name}
             sigLoading={sigLoading}
-            savedSignatureUrl={savedSignatureUrl}
+            savedSignatureUrl={savedSignature}
             overrideSignature={overrideSignature}
             onOverrideSignature={setOverrideSignature}
             showDraw={showDrawOverride}

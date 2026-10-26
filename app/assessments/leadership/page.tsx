@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,9 @@ import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { useFillAssessorName, useSavedSignature } from "@/lib/assessor-defaults";
+import { sendOrQueue } from "@/lib/outbox";
+import { SavedHeading } from "@/components/assessments/saved-heading";
 
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
@@ -152,57 +154,16 @@ export default function LeadershipAssessmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [queued, setQueued] = useState(false);
   const [assessmentId, setAssessmentId] = useState<number | null>(null);
 
   // Signature state
   const [showDrawOverride, setShowDrawOverride] = useState(false);
 
-  const [savedSignatureUrl, setSavedSignatureUrl] = useState<string | null>(null);
   const [overrideSignature, setOverrideSignature] = useState<string | null>(null);
-  const [sigLoading, setSigLoading] = useState(true);
-  const [savedSignatureB64, setSavedSignatureB64] = useState<string | null>(null);
 
-  const loadAssessorName = useCallback(async () => {
-    if (!session?.id_token) return;
-    const res = await apiFetch(`${API_BASE}/settings/assessor-name`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    });
-    if (res.ok) {
-      const d = await res.json();
-      const name = d.assessor_name || session.user?.name || "";
-      setForm((f) => ({ ...f, assessorName: name }));
-    }
-  }, [session]);
-
-  useEffect(() => {
-    if (!session?.id_token) return;
-
-    // Load assessor name from settings (falls back to Google account name)
-    apiFetch(`${API_BASE}/settings/assessor-name`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    }).then((res) => {
-      if (res.ok)
-        res.json().then((d) => {
-          const name = d.assessor_name || session.user?.name || "";
-          setForm((f) => ({ ...f, assessorName: name }));
-        });
-    });
-
-    // Load signature
-    setSigLoading(true);
-    apiFetch(`${API_BASE}/get-signature`, {
-      headers: { Authorization: `Bearer ${session.id_token}` },
-    })
-      .then(async (res) => {
-        if (!res.ok) return;
-        const blob = await res.blob();
-        setSavedSignatureUrl(URL.createObjectURL(blob));
-        const reader = new FileReader();
-        reader.onloadend = () => setSavedSignatureB64(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .finally(() => setSigLoading(false));
-  }, [session]);
+  const { signature: savedSignature, loading: sigLoading } = useSavedSignature();
+  const fillAssessorName = useFillAssessorName((assessorName) => setForm((f) => ({ ...f, assessorName })));
 
   const answeredScores = Object.values(form.scores).filter((v): v is number => v !== null);
   const totalScore = answeredScores.reduce((a, b) => a + b, 0);
@@ -211,7 +172,7 @@ export default function LeadershipAssessmentPage() {
   const passed = allAnswered && totalScore >= 30 && !hasOneInCol;
   const completionPct = Math.round((answeredScores.length / QUESTIONS.length) * 100);
 
-  const effectiveSignature = overrideSignature ?? savedSignatureB64 ?? null;
+  const effectiveSignature = overrideSignature ?? savedSignature ?? null;
 
   const handleReset = () => {
     setShowDrawOverride(false);
@@ -219,10 +180,11 @@ export default function LeadershipAssessmentPage() {
     setError(null);
     setOverrideSignature(null);
     setSubmitted(false);
+    setQueued(false);
     setAssessmentId(null);
     clearDraft();
     setDraftBannerDismissed(true);
-    loadAssessorName();
+    fillAssessorName();
   };
 
   const handleSubmit = async () => {
@@ -240,6 +202,10 @@ export default function LeadershipAssessmentPage() {
     }
 
     setError(null);
+    if (!session?.id_token || !session.user?.email) {
+      setError("You're signed out. Sign in again, then submit.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -255,14 +221,24 @@ export default function LeadershipAssessmentPage() {
         debriefing_notes: form.debriefingNotes,
       };
 
-      const res = await apiFetch(`${API_BASE}/assessments/leadership/add-assessment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.id_token ? { Authorization: `Bearer ${session.id_token}` } : {}),
+      // Without signal the sheet is kept on this phone and sent later
+      // (lib/outbox.ts); an answer from the server is handled as before.
+      const sent = await sendOrQueue(
+        {
+          url: `${API_BASE}/assessments/leadership/add-assessment`,
+          method: "POST",
+          body: payload,
+          label: `Leadership assessment — ${form.cadetName}`,
         },
-        body: JSON.stringify(payload),
-      });
+        { token: session.id_token, owner: session.user.email }
+      );
+      if (sent.queued) {
+        clearDraft();
+        setQueued(true);
+        setSubmitted(true);
+        return;
+      }
+      const res = sent.res;
 
       if (!res.ok) {
         const detail = await res.json().catch(() => ({ detail: res.statusText }));
@@ -286,18 +262,12 @@ export default function LeadershipAssessmentPage() {
         <SectionHeading title="Leadership Assessment" description="Blue Badge — Air Cadet Foundation" />
 
         <div className="border-success/30 bg-success/10 flex flex-col items-center gap-6 rounded-xl border px-8 py-12 text-center">
-          <div className="bg-success/20 flex h-16 w-16 items-center justify-center rounded-full">
-            <CheckCircle2 className="text-success h-8 w-8" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-foreground text-xl font-semibold">Assessment Saved</h2>
-            <p className="text-muted-foreground text-sm">
-              {form.cadetName}&apos;s leadership assessment has been recorded successfully.
-            </p>
-            {assessmentId && (
-              <p className="text-muted-foreground mt-1 text-xs">Assessment ID: #{assessmentId}</p>
-            )}
-          </div>
+          <SavedHeading
+            title="Assessment Saved"
+            what={`${form.cadetName}'s leadership assessment`}
+            queued={queued}
+            assessmentId={assessmentId}
+          />
 
           <div className="bg-card w-full max-w-xs space-y-1.5 rounded-lg border px-4 py-3 text-left text-sm">
             <div className="flex justify-between">
@@ -526,7 +496,7 @@ export default function LeadershipAssessmentPage() {
             onDateChange={(v) => setForm((f) => ({ ...f, date: v }))}
             showNameFromAccount={!!session?.user?.name}
             sigLoading={sigLoading}
-            savedSignatureUrl={savedSignatureUrl}
+            savedSignatureUrl={savedSignature}
             overrideSignature={overrideSignature}
             onOverrideSignature={setOverrideSignature}
             showDraw={showDrawOverride}

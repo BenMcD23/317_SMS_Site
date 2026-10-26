@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // Staff cadet and adult staff applications: who's nearing 18, starting an
-// application, ticking steps, the print-off form links, notes, removing, and
-// the officer-only Region board.
+// application, ticking steps, marking complete by hand, the print-off form
+// links, notes, removing, and the officer-only Region board.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -93,6 +93,7 @@ const cadetApp = (over: Partial<StaffCadetApplication> = {}): StaffCadetApplicat
   total: 2,
   complete: false,
   nextStep: "bpss",
+  markedComplete: null,
   ...over,
 });
 
@@ -110,6 +111,7 @@ const adultApp = (over: Partial<UniformedApplication> = {}): UniformedApplicatio
   total: 1,
   complete: false,
   nextStep: "pers_1_10",
+  markedComplete: null,
   ...over,
 });
 
@@ -151,8 +153,19 @@ beforeEach(() => {
     addEventListener() {},
     removeEventListener() {},
   })) as unknown as typeof window.matchMedia;
+  // Radix's checkbox measures itself inside a form; jsdom has no ResizeObserver.
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
 });
 afterEach(() => window.localStorage.clear());
+
+const MARK = { at: "2026-10-24T19:30:00", by: "staff@317atc.co.uk" };
 
 const staffCadets = (over: Partial<StaffCadetResponse> = {}): StaffCadetResponse => ({
   stages: CADET_STAGES,
@@ -302,6 +315,101 @@ describe("Staff cadet applications", () => {
     expect(screen.getByText("Zoë Ó Briain")).toBeTruthy();
   });
 
+  it("a cadet nearing 18 can go straight to Complete, leaving the list on Nearing 18", async () => {
+    const fetch = stubApi({
+      "GET /applications/staff-cadets": [staffCadets({ nearing18: [nearing()] })],
+      "POST /applications/staff-cadets": [cadetApp({ complete: true, markedComplete: MARK }), 201],
+    });
+    await show(<StaffCadetApplicationsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Mark complete for Zoë Ó Briain" }));
+    await waitFor(() => expect(calls(fetch, "POST", "/applications/staff-cadets")).toHaveLength(1));
+    expect(bodyOf(calls(fetch, "POST", "/applications/staff-cadets")[0])).toEqual({
+      cin: 2100001,
+      complete: true,
+    });
+    expect(toast.success).toHaveBeenCalledWith("Zoë Ó Briain marked complete.");
+    await waitFor(() => expect(calls(fetch, "GET", "/applications/staff-cadets")).toHaveLength(2));
+    // Stays put, so the next one can be cleared too.
+    expect(screen.getByRole("tab", { name: /^Nearing 18/ }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("a refused mark-complete says why and keeps the cadet listed", async () => {
+    stubApi({
+      "GET /applications/staff-cadets": [staffCadets({ nearing18: [nearing()] })],
+      "POST /applications/staff-cadets": [{ detail: "Database unavailable" }, 503],
+    });
+    await show(<StaffCadetApplicationsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Mark complete for Zoë Ó Briain" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Database unavailable"));
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByText("Zoë Ó Briain")).toBeTruthy();
+  });
+
+  it("marking an application complete with steps unticked moves it to Complete", async () => {
+    const fetch = stubApi({
+      "GET /applications/staff-cadets": [staffCadets({ applications: [cadetApp()] })],
+      "PATCH /applications/1": [cadetApp({ complete: true, markedComplete: MARK })],
+    });
+    await show(<StaffCadetApplicationsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Expand application for Zoë Ó Briain" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark complete" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marked complete."));
+    expect(bodyOf(calls(fetch, "PATCH", "/applications/1")[0])).toEqual({ complete: true });
+    expect(screen.getByRole("tab", { name: "In progress 0" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("tab", { name: "Complete 1" }));
+    expect(screen.getByText("Complete", { selector: "[data-slot=badge]" })).toBeTruthy();
+    // Nothing is next on a finished application, even with steps left.
+    expect(screen.queryByText(/^Next:/)).toBeNull();
+  });
+
+  it("a marked-complete application says who marked it and can go back to In progress", async () => {
+    const fetch = stubApi({
+      "GET /applications/staff-cadets": [
+        staffCadets({ applications: [cadetApp({ complete: true, markedComplete: MARK, done: 1 })] }),
+      ],
+      "PATCH /applications/1": [cadetApp({ done: 1, nextStep: "dbs_requested" })],
+    });
+    await show(<StaffCadetApplicationsPage />);
+    await userEvent.click(await screen.findByRole("tab", { name: "Complete 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Expand application for Zoë Ó Briain" }));
+    expect(
+      screen.getByText("Marked complete 24 Oct 2026 by staff@317atc.co.uk, with 1 step not ticked.")
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Mark complete" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Move back to In progress" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Moved back to In progress."));
+    expect(bodyOf(calls(fetch, "PATCH", "/applications/1")[0])).toEqual({ complete: false });
+    expect(screen.getByRole("tab", { name: "In progress 1" })).toBeTruthy();
+  });
+
+  it("a failed mark-complete says why and leaves it in progress", async () => {
+    stubApi({
+      "GET /applications/staff-cadets": [staffCadets({ applications: [cadetApp()] })],
+      "PATCH /applications/1": [{ detail: "boom" }, 500],
+    });
+    await show(<StaffCadetApplicationsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Expand application for Zoë Ó Briain" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark complete" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("boom"));
+    expect(screen.getByRole("tab", { name: "In progress 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Mark complete" })).toBeTruthy();
+  });
+
+  it("a fully ticked application offers nothing to mark or undo", async () => {
+    stubApi({
+      "GET /applications/staff-cadets": [
+        staffCadets({
+          applications: [cadetApp({ complete: true, done: 2, nextStep: null, markedComplete: MARK })],
+        }),
+      ],
+    });
+    await show(<StaffCadetApplicationsPage />);
+    await userEvent.click(await screen.findByRole("tab", { name: "Complete 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Expand application for Zoë Ó Briain" }));
+    expect(screen.queryByRole("button", { name: "Mark complete" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Move back to In progress" })).toBeNull();
+  });
+
   it("hiding personal data takes the birthday off but keeps how urgent it is", async () => {
     setPersonalDataHidden(true);
     stubApi({
@@ -354,6 +462,43 @@ describe("Adult staff applications", () => {
       route: "cfc",
     });
     expect(toast.success).toHaveBeenCalledWith("Rachel Kowalski added.");
+  });
+
+  it("adds an applicant who's already finished straight to Complete", async () => {
+    const fetch = stubApi({
+      "GET /applications/uniformed": [adults()],
+      "POST /applications/uniformed": [
+        adultApp({ name: "Grace Mensah", complete: true, markedComplete: MARK }),
+        201,
+      ],
+    });
+    await show(<AdultStaffApplicationsPage />);
+    await userEvent.click((await screen.findAllByRole("button", { name: "Add applicant" }))[0]);
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Grace Mensah");
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Already complete" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add applicant" }));
+    await waitFor(() => expect(calls(fetch, "POST", "/applications/uniformed")).toHaveLength(1));
+    expect(bodyOf(calls(fetch, "POST", "/applications/uniformed")[0])).toEqual({
+      name: "Grace Mensah",
+      route: "snco",
+      complete: true,
+    });
+    expect(toast.success).toHaveBeenCalledWith("Grace Mensah added as complete.");
+    expect(screen.getByRole("tab", { name: /^Complete/ }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("marking an adult applicant complete hides the CIC deadline", async () => {
+    stubApi({
+      "GET /applications/uniformed": [adults({ applications: [adultApp({ cicDueBy: "2027-10-24" })] })],
+      "PATCH /applications/5": [adultApp({ cicDueBy: "2027-10-24", complete: true, markedComplete: MARK })],
+    });
+    await show(<AdultStaffApplicationsPage />);
+    expect(await screen.findByText("CIC by 24 Oct 2027")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Expand application for Daniel Okafor" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark complete" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Complete 1" }));
+    expect(screen.queryByText("CIC by 24 Oct 2027")).toBeNull();
   });
 
   it("won't add an applicant without a name", async () => {

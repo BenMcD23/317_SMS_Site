@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -78,6 +79,15 @@ type HistoryResp = {
   inspection_count: number;
   dates: string[];
   cadets: CadetHistory[];
+  since: string | null;
+};
+
+/** Leaderboard window: the last year by default, so the ranking reflects who is
+ * here now and the payload doesn't grow with every inspection ever held. */
+type HistoryWindow = "year" | "all";
+const HISTORY_PATH: Record<HistoryWindow, string> = {
+  year: "/inspections/history?days=365",
+  all: "/inspections/history",
 };
 
 type Uniform = "blues" | "mtp";
@@ -697,7 +707,11 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
 }
 
 function LeaderboardTab() {
-  const { data, isLoading, error } = useApiQuery<HistoryResp>(["inspection-history"], "/inspections/history");
+  const [span, setSpan] = useState<HistoryWindow>("year");
+  const { data, isLoading, error } = useApiQuery<HistoryResp>(
+    ["inspection-history", span],
+    HISTORY_PATH[span]
+  );
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("overall_rank");
   const [dir, setDir] = useState<"asc" | "desc">("asc");
@@ -734,19 +748,52 @@ function LeaderboardTab() {
     });
   }, [data, search, sort, dir]);
 
-  if (isLoading) return <Skeleton className="h-96 w-full" />;
+  const windowToggle = (
+    <ToggleGroup
+      type="single"
+      variant="outline"
+      size="sm"
+      aria-label="Inspections to rank"
+      value={span}
+      // Radix sends "" when the pressed item is clicked again: keep it pressed.
+      onValueChange={(v) => v && setSpan(v as HistoryWindow)}
+    >
+      <ToggleGroupItem value="year" className="px-3">
+        Last 12 months
+      </ToggleGroupItem>
+      <ToggleGroupItem value="all" className="px-3">
+        All time
+      </ToggleGroupItem>
+    </ToggleGroup>
+  );
+
+  if (isLoading)
+    return (
+      <div className="flex flex-col gap-4">
+        {windowToggle}
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
   if (error) return <ErrorAlert message={error.message} />;
   if ((data?.inspection_count ?? 0) === 0)
     return (
-      <EmptyState
-        icon={Shirt}
-        title="No inspections yet"
-        description="Submit an inspection marking sheet and per-cadet trends will appear here."
-      />
+      <div className="flex flex-col gap-4">
+        {windowToggle}
+        <EmptyState
+          icon={Shirt}
+          title={span === "year" ? "No inspections in the last 12 months" : "No inspections yet"}
+          description={
+            span === "year"
+              ? "Older inspections are under All time."
+              : "Submit an inspection marking sheet and per-cadet trends will appear here."
+          }
+        />
+      </div>
     );
 
   return (
     <div className="flex flex-col gap-4">
+      {windowToggle}
       <InputGroup className="max-w-sm">
         <InputGroupAddon>
           <Search />

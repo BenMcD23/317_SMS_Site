@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import CadetPage from "@/app/cadets/[cin]/page";
+import { renderWithQuery } from "@/tests/render-with-query";
 
 const SESSION = {
   data: { id_token: "tok", role: "staff", user: { email: "staff@317atc.co.uk", name: "Sam Staff" } },
@@ -62,7 +63,7 @@ function renderWith(body: unknown) {
       String(url).endsWith("/cadets/111") ? Response.json(body) : Response.json([])
     )
   );
-  render(<CadetPage />);
+  renderWithQuery(<CadetPage />);
 }
 
 describe("cadet page — Volunteer Portal data alongside everything else", () => {

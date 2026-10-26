@@ -38,10 +38,10 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
 import { ErrorAlert } from "@/components/error-alert";
 import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
-import { todayLocal } from "@/lib/format";
+import { formatDate, todayLocal } from "@/lib/format";
+import { sendOrQueue } from "@/lib/outbox";
 
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
@@ -376,7 +376,7 @@ export default function InspectionPage() {
   const [flightScores, setFlightScores] = useState<Record<string, FlightScore> | null>(null);
 
   async function submit() {
-    if (!session?.id_token) return;
+    if (!session?.id_token || !session.user?.email) return;
     setSubmitting(true);
     try {
       const marks = Object.entries(sheet.marks).map(([cin, m]) => ({
@@ -385,14 +385,24 @@ export default function InspectionPage() {
         absent: m.absent ?? absenceByCin.has(Number(cin)),
         comments: m.comments,
       }));
-      const res = await apiFetch(`${API_BASE}/inspections`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.id_token}`,
-          "Content-Type": "application/json",
+      // Without signal the sheet is kept on this phone and sent later
+      // (lib/outbox.ts). Safe to send twice: the API keeps one sheet per date.
+      const sent = await sendOrQueue(
+        {
+          url: `${API_BASE}/inspections`,
+          method: "POST",
+          body: { date: sheet.date, marks, uniform },
+          label: `Inspection — ${formatDate(sheet.date)}`,
         },
-        body: JSON.stringify({ date: sheet.date, marks, uniform }),
-      });
+        { token: session.id_token, owner: session.user.email }
+      );
+      if (sent.queued) {
+        toast.success(
+          "No signal. The inspection is saved on this phone and sends by itself when you're back online."
+        );
+        return;
+      }
+      const res = sent.res;
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail ?? res.statusText);
       const { awol, flight_scores } = (await res.json()) as {
         awol: number[];

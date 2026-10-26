@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +40,7 @@ import { FlyingCard, type Flight, type FlyingStage } from "@/components/flying-c
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 
 type Qualification = {
   id: number;
@@ -249,30 +250,17 @@ export default function CadetOverviewPage() {
   // ?tab=qualifications|uniform|… — links from the stores order pages open a tab directly.
   const initialTab = useSearchParams().get("tab") ?? "overview";
 
-  const [cadet, setCadet] = useState<CadetDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const token = session?.id_token;
-
-  const fetchCadet = async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const cadetRes = await apiFetch(`${API_BASE}/cadets/${cin}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!cadetRes.ok) throw new Error((await cadetRes.json()).detail ?? cadetRes.statusText);
-      setCadet(await cadetRes.json());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load cadet");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCadet();
-  }, [token, cin]);
+  const cadetKey = ["cadet", cin];
+  const query = useApiQuery<CadetDetail>(cadetKey, `/cadets/${cin}`);
+  const cadet = query.data ?? null;
+  const error = query.error?.message ?? null;
+  const loading = query.isPending && !error;
+  // Edits update the cached record in place: the page answers straight away
+  // and coming back to this cadet shows them without a refetch.
+  const setCached = useSetApiQueryData<CadetDetail>(cadetKey);
+  const setCadet = (update: (prev: CadetDetail | null) => CadetDetail | null) =>
+    setCached((prev) => update(prev ?? null) ?? undefined);
 
   const patchField = async (field: string, value: string) => {
     const res = await apiFetch(`${API_BASE}/cadets/${cin}`, {

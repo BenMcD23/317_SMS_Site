@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { canAccess } from "@/lib/access";
 import { OWNER_EMAIL } from "@/lib/config";
@@ -10,7 +10,9 @@ import {
   flattenLinks,
   isGroup,
   isGroupActive,
+  activeMobileTab,
   isLinkActive,
+  mobileTabsFor,
   NAV_SECTIONS,
   visibleSections,
 } from "@/lib/navigation";
@@ -64,25 +66,17 @@ describe("visibleSections", () => {
     expect(gated.every((h) => hrefs("staff", OWNER_EMAIL.toUpperCase()).includes(h))).toBe(true);
   });
 
-  it("hides the OC dashboard unless the OC is configured and signed in", async () => {
+  it("hides the OC dashboard unless the API says this is the OC", () => {
     expect(hrefs("staff", "oc@317atc.co.uk")).not.toContain("/oc");
     expect(hrefs("staff", "oc@317atc.co.uk")).not.toContain("/oc/custom");
-    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
-    vi.resetModules();
-    const nav = await import("@/lib/navigation");
-    const ocLinks = nav.flattenLinks(nav.visibleSections("staff", "OC@317atc.co.uk")).map((l) => l.href);
+    const ocLinks = flattenLinks(visibleSections("staff", "oc@317atc.co.uk", true)).map((l) => l.href);
     expect(ocLinks).toContain("/oc");
     expect(ocLinks).toContain("/oc/leaving");
     expect(ocLinks).toContain("/oc/custom");
   });
 
-  it("puts the OC dashboard and leaving process together under an OC group", async () => {
-    vi.stubEnv("NEXT_PUBLIC_OC_EMAIL", "oc@317atc.co.uk");
-    vi.resetModules();
-    const nav = await import("@/lib/navigation");
-    const groups = nav
-      .visibleSections("staff", "oc@317atc.co.uk")
-      .flatMap((s) => s.items.filter(nav.isGroup));
+  it("puts the OC dashboard and leaving process together under an OC group", () => {
+    const groups = visibleSections("staff", "oc@317atc.co.uk", true).flatMap((s) => s.items.filter(isGroup));
     const oc = groups.find((g) => g.label === "OC");
     expect(oc?.links.map((l) => l.href)).toEqual(["/oc", "/oc/custom", "/oc/leaving", "/staff/overview"]);
     // Nobody else gets an empty OC group.
@@ -156,5 +150,50 @@ describe("breadcrumbsFor", () => {
   it("picks the deepest match, not the first", () => {
     const crumbs = breadcrumbsFor("/cadets/audit");
     expect(crumbs[crumbs.length - 1].label).toBe("Audit");
+  });
+});
+
+describe("mobile tab bar", () => {
+  const labels = (role: string | undefined) => mobileTabsFor(role).map((t) => t.label);
+
+  it.each([
+    ["staff", ["Home", "Cadets", "Marking", "Orders"]],
+    ["snco", ["Home", "Marking", "Plans", "Results"]],
+    ["nco", ["Home", "Marking", "Plans", "Results"]],
+  ])("%s gets its parade-night tabs", (role, expected) => {
+    expect(labels(role)).toEqual(expected);
+  });
+
+  it.each(["staff", "snco", "nco"])("every %s tab is a real page the role can open", (role) => {
+    for (const tab of mobileTabsFor(role)) {
+      expect(canAccess(role, tab.href), tab.href).toBe(true);
+      expect(fs.existsSync(path.join(process.cwd(), "app", tab.href, "page.tsx")), tab.href).toBe(true);
+    }
+  });
+
+  it("an NCO's marking tab never opens the inspection sheet they can't use", () => {
+    const marking = mobileTabsFor("nco").find((t) => t.label === "Marking")!;
+    expect(marking.href).toBe("/assessments/leadership");
+  });
+
+  it("a signed-out or unknown role gets only Home", () => {
+    expect(labels(undefined)).toEqual(["Home"]);
+    expect(labels("cadet")).toEqual(["Home"]);
+  });
+
+  it.each([
+    ["staff", "/", "Home"],
+    ["staff", "/cadets/1234", "Cadets"],
+    ["staff", "/recruits", "Cadets"],
+    ["staff", "/assessments/moi", "Marking"],
+    ["staff", "/stores/badges/stock", "Orders"],
+    ["staff", "/texts/messages", null],
+    ["nco", "/cadets/assessments", "Results"],
+    ["nco", "/session-plans/12", "Plans"],
+    ["nco", "/settings", null],
+    // "/" only matches itself, or every page would light Home.
+    ["nco", "/nco-holidays", null],
+  ])("%s on %s lights %s", (role, pathname, expected) => {
+    expect(activeMobileTab(pathname, mobileTabsFor(role))?.label ?? null).toBe(expected);
   });
 });
