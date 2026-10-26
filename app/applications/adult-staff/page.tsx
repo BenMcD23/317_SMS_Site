@@ -144,6 +144,7 @@ export default function AdultStaffApplicationsPage() {
       <AddApplicantDialog
         open={adding}
         onOpenChange={setAdding}
+        taken={ok?.applications.map((a) => a.name)}
         onAdded={(app) => {
           toast.success(app.complete ? `${app.name} added as complete.` : `${app.name} added.`);
           setTab(app.complete ? "complete" : "progress");

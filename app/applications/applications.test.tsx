@@ -153,6 +153,8 @@ beforeEach(() => {
     addEventListener() {},
     removeEventListener() {},
   })) as unknown as typeof window.matchMedia;
+  // cmdk scrolls the highlighted staff member into view; jsdom has no layout.
+  Element.prototype.scrollIntoView = vi.fn();
   // Radix's checkbox measures itself inside a form; jsdom has no ResizeObserver.
   vi.stubGlobal(
     "ResizeObserver",
@@ -443,17 +445,34 @@ const adults = (over: Partial<UniformedResponse> = {}): UniformedResponse => ({
   ...over,
 });
 
+const STAFF = [
+  { cin: 3100001, firstName: "Rachel", lastName: "Kowalski", rank: "CI" },
+  { cin: 3100002, firstName: "Grace", lastName: "Mensah", rank: null },
+  { cin: 3100003, firstName: "Daniel", lastName: "Okafor", rank: "CI" },
+  { cin: 3100004, firstName: "Siobhán", lastName: "Ní Bhriain", rank: "Mrs" },
+];
+
+/** Opens the Add applicant dialog and waits for the staff list to arrive. */
+async function openAdd() {
+  await userEvent.click((await screen.findAllByRole("button", { name: "Add applicant" }))[0]);
+  const dialog = screen.getByRole("dialog");
+  await within(dialog).findByRole("combobox");
+  return dialog;
+}
+
 describe("Adult staff applications", () => {
-  it("adds an applicant with a name and route", async () => {
+  it("adds an applicant picked from the staff list, with a route", async () => {
     const fetch = stubApi({
       "GET /applications/uniformed": [adults()],
+      "GET /staff": [STAFF],
       "POST /applications/uniformed": [adultApp({ name: "Rachel Kowalski", route: "cfc" }), 201],
     });
     await show(<AdultStaffApplicationsPage />);
     expect(await screen.findByText("No applications in progress")).toBeTruthy();
-    await userEvent.click(screen.getAllByRole("button", { name: "Add applicant" })[0]);
-    const dialog = screen.getByRole("dialog");
-    await userEvent.type(within(dialog).getByLabelText("Name"), "Rachel Kowalski");
+    const dialog = await openAdd();
+    await userEvent.type(within(dialog).getByRole("combobox"), "kowal");
+    expect(within(dialog).queryByRole("option", { name: /Grace Mensah/ })).toBeNull();
+    await userEvent.click(within(dialog).getByRole("option", { name: /Rachel Kowalski/ }));
     await userEvent.click(within(dialog).getByRole("radio", { name: "Officer (CFC)" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Add applicant" }));
     await waitFor(() => expect(calls(fetch, "POST", "/applications/uniformed")).toHaveLength(1));
@@ -467,15 +486,15 @@ describe("Adult staff applications", () => {
   it("adds an applicant who's already finished straight to Complete", async () => {
     const fetch = stubApi({
       "GET /applications/uniformed": [adults()],
+      "GET /staff": [STAFF],
       "POST /applications/uniformed": [
         adultApp({ name: "Grace Mensah", complete: true, markedComplete: MARK }),
         201,
       ],
     });
     await show(<AdultStaffApplicationsPage />);
-    await userEvent.click((await screen.findAllByRole("button", { name: "Add applicant" }))[0]);
-    const dialog = screen.getByRole("dialog");
-    await userEvent.type(within(dialog).getByLabelText("Name"), "Grace Mensah");
+    const dialog = await openAdd();
+    await userEvent.click(within(dialog).getByRole("option", { name: /Grace Mensah/ }));
     await userEvent.click(within(dialog).getByRole("checkbox", { name: "Already complete" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Add applicant" }));
     await waitFor(() => expect(calls(fetch, "POST", "/applications/uniformed")).toHaveLength(1));
@@ -501,14 +520,61 @@ describe("Adult staff applications", () => {
     expect(screen.queryByText("CIC by 24 Oct 2027")).toBeNull();
   });
 
-  it("won't add an applicant without a name", async () => {
-    const fetch = stubApi({ "GET /applications/uniformed": [adults()] });
+  it("won't add an applicant until someone is picked", async () => {
+    const fetch = stubApi({ "GET /applications/uniformed": [adults()], "GET /staff": [STAFF] });
+    await show(<AdultStaffApplicationsPage />);
+    const dialog = await openAdd();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add applicant" }));
+    expect(await within(dialog).findByText("Pick who's applying")).toBeTruthy();
+    expect(calls(fetch, "POST", "/applications/uniformed")).toHaveLength(0);
+  });
+
+  it("finds staff by rank and keeps non-ASCII names intact", async () => {
+    const fetch = stubApi({
+      "GET /applications/uniformed": [adults()],
+      "GET /staff": [STAFF],
+      "POST /applications/uniformed": [adultApp({ name: "Siobhán Ní Bhriain" }), 201],
+    });
+    await show(<AdultStaffApplicationsPage />);
+    const dialog = await openAdd();
+    await userEvent.type(within(dialog).getByRole("combobox"), "mrs");
+    expect(within(dialog).getAllByRole("option")).toHaveLength(1);
+    await userEvent.click(within(dialog).getByRole("option", { name: /Siobhán Ní Bhriain/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add applicant" }));
+    await waitFor(() => expect(calls(fetch, "POST", "/applications/uniformed")).toHaveLength(1));
+    expect(bodyOf(calls(fetch, "POST", "/applications/uniformed")[0]).name).toBe("Siobhán Ní Bhriain");
+  });
+
+  it("leaves staff who already have an application off the list", async () => {
+    stubApi({
+      "GET /applications/uniformed": [adults({ applications: [adultApp()] })],
+      "GET /staff": [STAFF],
+    });
+    await show(<AdultStaffApplicationsPage />);
+    const dialog = await openAdd();
+    expect(within(dialog).getByRole("option", { name: /Rachel Kowalski/ })).toBeTruthy();
+    expect(within(dialog).queryByRole("option", { name: /Daniel Okafor/ })).toBeNull();
+  });
+
+  it("an empty staff list says why there's nobody to pick", async () => {
+    stubApi({ "GET /applications/uniformed": [adults()], "GET /staff": [[]] });
+    await show(<AdultStaffApplicationsPage />);
+    const dialog = await openAdd();
+    expect(within(dialog).getByText(/Nobody on the staff list yet/)).toBeTruthy();
+    expect(within(dialog).queryAllByRole("option")).toHaveLength(0);
+  });
+
+  it("a staff list that won't load says so instead of offering nobody", async () => {
+    const fetch = stubApi({
+      "GET /applications/uniformed": [adults()],
+      "GET /staff": [{ detail: "Staff access required" }, 403],
+    });
     await show(<AdultStaffApplicationsPage />);
     await userEvent.click((await screen.findAllByRole("button", { name: "Add applicant" }))[0]);
     const dialog = screen.getByRole("dialog");
-    await userEvent.type(within(dialog).getByLabelText("Name"), "   ");
+    expect(await within(dialog).findByText("Could not load the staff list")).toBeTruthy();
+    expect(within(dialog).getByText("Staff access required")).toBeTruthy();
     await userEvent.click(within(dialog).getByRole("button", { name: "Add applicant" }));
-    expect(await within(dialog).findByText("Enter their name")).toBeTruthy();
     expect(calls(fetch, "POST", "/applications/uniformed")).toHaveLength(0);
   });
 
