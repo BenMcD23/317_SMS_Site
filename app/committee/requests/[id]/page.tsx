@@ -465,7 +465,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Description</TableHead>
+                <TableHead>Item</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Unit cost</TableHead>
                 <TableHead className="text-right">Total</TableHead>
@@ -474,7 +474,14 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
             <TableBody>
               {req.items.map((item, i) => (
                 <TableRow key={i}>
-                  <TableCell className="whitespace-normal">{item.description}</TableCell>
+                  <TableCell className="whitespace-normal">
+                    {item.description}
+                    {item.details && (
+                      <p className="text-muted-foreground mt-0.5 text-xs whitespace-pre-wrap">
+                        {item.details}
+                      </p>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">{item.quantity}</TableCell>
                   <TableCell className="text-right">{formatGBP(item.unit_cost)}</TableCell>
                   <TableCell className="text-right">{formatGBP(item.cost)}</TableCell>

@@ -78,7 +78,7 @@ export function CommitteeRequestFields({
                   <div className="flex items-start gap-2">
                     <Input
                       id={id(`item-${index}-description`)}
-                      placeholder="What is it?"
+                      placeholder="Item name"
                       aria-invalid={!!errors?.description || undefined}
                       {...register(`items.${index}.description`)}
                     />
@@ -95,6 +95,15 @@ export function CommitteeRequestFields({
                     </Button>
                   </div>
                   <FieldError>{errors?.description?.message}</FieldError>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={id(`item-${index}-details`)}>Description</FieldLabel>
+                  <Textarea
+                    id={id(`item-${index}-details`)}
+                    rows={2}
+                    placeholder="Model, size, supplier or link"
+                    {...register(`items.${index}.details`)}
+                  />
                 </Field>
                 <div className="grid grid-cols-[4.5rem_1fr_1fr] gap-2">
                   <Field data-invalid={!!errors?.quantity || undefined}>

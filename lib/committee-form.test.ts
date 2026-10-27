@@ -31,7 +31,7 @@ describe("committeeRequestSchema", () => {
   const valid = {
     title: "Radios",
     justification: "",
-    items: [{ description: "Radio", quantity: 2, unitCost: 10, total: 20 }],
+    items: [{ description: "Radio", details: "", quantity: 2, unitCost: 10, total: 20 }],
   };
   const messages = (v: unknown) => {
     const r = committeeRequestSchema.safeParse(v);
@@ -60,13 +60,17 @@ it("round-trips a stored request into the form and back into the API's shape", (
   const req = {
     title: "Radios",
     justification: "For the radio badge",
-    items: [{ description: "Radio", quantity: 3, unit_cost: 25, cost: 70 }],
+    items: [{ description: "Radio", details: "Licence-free", quantity: 3, unit_cost: 25, cost: 70 }],
   } as CommitteeRequestDetail;
   const form = requestToForm(req);
-  expect(form.items).toEqual([{ description: "Radio", quantity: 3, unitCost: 25, total: 70 }]);
-  expect(formToPayload({ ...form, title: "  Radios  " })).toEqual({
+  expect(form.items).toEqual([
+    { description: "Radio", details: "Licence-free", quantity: 3, unitCost: 25, total: 70 },
+  ]);
+  // Trims the item's description as well as its name.
+  const padded = { ...form, title: "  Radios  ", items: [{ ...form.items[0], details: " Licence-free " }] };
+  expect(formToPayload(padded)).toEqual({
     title: "Radios",
     justification: "For the radio badge",
-    items: [{ description: "Radio", quantity: 3, unit_cost: 25, cost: 70 }],
+    items: [{ description: "Radio", details: "Licence-free", quantity: 3, unit_cost: 25, cost: 70 }],
   });
 });

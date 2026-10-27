@@ -19,7 +19,7 @@ const REQ = {
   justification: "For the radio badge",
   status: "submitted",
   rejection_reason: null,
-  items: [{ description: "Radio", quantity: 2, unit_cost: 25, cost: 50 }],
+  items: [{ description: "Radio", details: "Licence-free", quantity: 2, unit_cost: 25, cost: 50 }],
 } as unknown as CommitteeRequestDetail;
 
 function stubFetch(reply: () => Promise<Response>) {
@@ -46,12 +46,14 @@ describe("EditCommitteeRequestDialog", () => {
     expect(screen.getByLabelText("Title")).toHaveProperty("value", "Radios");
     expect(screen.getByLabelText("Justification")).toHaveProperty("value", "For the radio badge");
     expect(screen.getByLabelText("Total")).toHaveProperty("value", "50");
+    expect(screen.getByLabelText("Description")).toHaveProperty("value", "Licence-free");
     // Only a rejected request has a reason to edit.
     expect(screen.queryByLabelText("Reason for rejection")).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Better radios" } });
     fireEvent.change(screen.getByLabelText("Justification"), { target: { value: "Ours broke" } });
     fireEvent.change(screen.getByLabelText("Item 1"), { target: { value: "Handheld radio" } });
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Motorola XT420" } });
     fireEvent.change(screen.getByLabelText("Qty"), { target: { value: "3" } });
     save();
 
@@ -63,7 +65,9 @@ describe("EditCommitteeRequestDialog", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       title: "Better radios",
       justification: "Ours broke",
-      items: [{ description: "Handheld radio", quantity: 3, unit_cost: 25, cost: 75 }],
+      items: [
+        { description: "Handheld radio", details: "Motorola XT420", quantity: 3, unit_cost: 25, cost: 75 },
+      ],
     });
   });
 

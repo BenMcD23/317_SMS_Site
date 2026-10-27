@@ -39,6 +39,7 @@ describe("CommitteeRequestFields", () => {
     render(<Harness onSubmit={onSubmit} />);
     type("Title", "Batteries");
     type("Item 1", "AA batteries");
+    type("Description", "Duracell, pack of 4");
     type("Qty", "4");
     type("Unit cost", "2.50");
     type("Total", "8");
@@ -47,7 +48,7 @@ describe("CommitteeRequestFields", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     await vi.waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit.mock.calls[0][0].items).toEqual([
-      { description: "AA batteries", quantity: 4, unitCost: 2.5, total: 8 },
+      { description: "AA batteries", details: "Duracell, pack of 4", quantity: 4, unitCost: 2.5, total: 8 },
     ]);
 
     type("Qty", "5");

@@ -17,6 +17,7 @@ export const committeeRequestSchema = z.object({
     .array(
       z.object({
         description: z.string().trim().min(1, "Say what the item is"),
+        details: z.string(),
         quantity: z.number({ error: "Enter a quantity" }).int("Whole numbers only").min(1, "At least 1"),
         unitCost: money,
         total: money,
@@ -42,6 +43,7 @@ export function requestTotal(items: Pick<CommitteeItemForm, "total">[]): number 
 // NaN leaves the number inputs empty for a fresh row, rather than showing 0.
 export const emptyItem = (): CommitteeItemForm => ({
   description: "",
+  details: "",
   quantity: 1,
   unitCost: NaN,
   total: NaN,
@@ -59,6 +61,7 @@ export function requestToForm(req: CommitteeRequestDetail): CommitteeRequestForm
     justification: req.justification,
     items: req.items.map((i) => ({
       description: i.description,
+      details: i.details ?? "",
       quantity: i.quantity,
       unitCost: i.unit_cost,
       total: i.cost,
@@ -73,6 +76,7 @@ export function formToPayload(v: CommitteeRequestForm) {
     justification: v.justification,
     items: v.items.map((i) => ({
       description: i.description.trim(),
+      details: i.details.trim(),
       quantity: i.quantity,
       unit_cost: i.unitCost,
       cost: i.total,

@@ -27,8 +27,8 @@ const REQ = {
   created_at: "2026-10-01T10:00:00",
   receipt_count: 0,
   items: [
-    { description: "Handheld radio", quantity: 2, unit_cost: 24.99, cost: 49.98 },
-    { description: "Batteries", quantity: 4, unit_cost: 2.5, cost: 10 },
+    { description: "Handheld radio", details: "Motorola XT420", quantity: 2, unit_cost: 24.99, cost: 49.98 },
+    { description: "Batteries", details: "", quantity: 4, unit_cost: 2.5, cost: 10 },
   ],
   justification: "For the radio badge",
   rejection_reason: null,
@@ -84,13 +84,13 @@ describe("committee request page", () => {
     const headings = within(table)
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headings).toEqual(["Description", "Qty", "Unit cost", "Total"]);
+    expect(headings).toEqual(["Item", "Qty", "Unit cost", "Total"]);
     const radio = within(table).getByRole("row", { name: /Handheld radio/ });
     expect(
       within(radio)
         .getAllByRole("cell")
         .map((c) => c.textContent)
-    ).toEqual(["Handheld radio", "2", "£24.99", "£49.98"]);
+    ).toEqual(["Handheld radioMotorola XT420", "2", "£24.99", "£49.98"]);
     // The justification reads before the table, as it does on the PDF.
     const justification = screen.getByText("For the radio badge");
     expect(justification.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

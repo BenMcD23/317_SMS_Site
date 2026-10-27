@@ -33,6 +33,7 @@ function fillIn() {
   type("Title", "Radios");
   type("Justification", "For the radio badge");
   type("Item 1", "Handheld radio");
+  type("Description", "Motorola XT420, licence-free");
   type("Qty", "2");
   type("Unit cost", "24.99");
   fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
@@ -50,7 +51,15 @@ describe("new committee request", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       title: "Radios",
       justification: "For the radio badge",
-      items: [{ description: "Handheld radio", quantity: 2, unit_cost: 24.99, cost: 49.98 }],
+      items: [
+        {
+          description: "Handheld radio",
+          details: "Motorola XT420, licence-free",
+          quantity: 2,
+          unit_cost: 24.99,
+          cost: 49.98,
+        },
+      ],
     });
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("CR-2026-009"));
   });
