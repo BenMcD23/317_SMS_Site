@@ -4,7 +4,13 @@ export type CommitteeRequestStatus =
   "submitted" | "sent_to_committee" | "approved" | "rejected" | "sent_for_payment" | "paid" | "withdrawn";
 
 export interface CommitteeRequestItem {
+  /** The item's name (the key older requests already use). */
   description: string;
+  /** Its longer description: model, supplier, why this one. May be empty. */
+  details: string;
+  quantity: number;
+  unit_cost: number;
+  /** The line total: quantity × unit cost unless the requester typed their own. */
   cost: number;
 }
 
