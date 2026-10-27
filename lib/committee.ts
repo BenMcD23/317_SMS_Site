@@ -5,6 +5,9 @@ export type CommitteeRequestStatus =
 
 export interface CommitteeRequestItem {
   description: string;
+  quantity: number;
+  unit_cost: number;
+  /** The line total: quantity × unit cost unless the requester typed their own. */
   cost: number;
 }
 

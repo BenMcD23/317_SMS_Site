@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +37,7 @@ import {
   CircleDollarSign,
   BadgePoundSterling,
   Undo2,
+  Pencil,
 } from "lucide-react";
 import {
   type CommitteeRequestDetail,
@@ -47,6 +48,7 @@ import {
 } from "@/lib/committee";
 import { ErrorAlert } from "@/components/error-alert";
 import { usePrivateText } from "@/components/private";
+import { EditCommitteeRequestDialog } from "@/components/committee/edit-request-dialog";
 
 const RECEIPT_ACCEPT = "image/png,image/jpeg,application/pdf";
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
@@ -67,6 +69,7 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const {
     data: req,
@@ -238,6 +241,8 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
   const isRequester = req.is_requester;
 
   const ocHasActions = isOc && ["submitted", "sent_to_committee", "sent_for_payment"].includes(req.status);
+  // Matches the API: a paid or withdrawn request is a closed record.
+  const canEdit = isOc && req.status !== "paid" && req.status !== "withdrawn";
   const requesterHasActions = isRequester && req.status !== "paid" && req.status !== "withdrawn";
   const showActions = ocHasActions || requesterHasActions;
 
@@ -255,6 +260,11 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
         description={req.title}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Pencil /> Edit
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={downloadPdf} disabled={busy === "pdf"}>
               {busy === "pdf" ? <Loader2 className="animate-spin" /> : <Download />} PDF
             </Button>
@@ -443,29 +453,39 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
       {/* Items */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Items</CardTitle>
+          <CardTitle className="text-base">Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableBody>
-              {req.items.map((item, i) => (
-                <TableRow key={i}>
-                  <TableCell>{item.description}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatGBP(item.cost)}</TableCell>
-                </TableRow>
-              ))}
-              <TableRow className="font-semibold">
-                <TableCell>Total</TableCell>
-                <TableCell className="text-right tabular-nums">{formatGBP(req.total)}</TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
           {req.justification && (
-            <div className="mt-4">
+            <div className="mb-4">
               <p className="text-muted-foreground text-xs">Justification</p>
               <p className="text-sm whitespace-pre-wrap">{req.justification}</p>
             </div>
           )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Unit cost</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {req.items.map((item, i) => (
+                <TableRow key={i}>
+                  <TableCell className="whitespace-normal">{item.description}</TableCell>
+                  <TableCell className="text-right">{item.quantity}</TableCell>
+                  <TableCell className="text-right">{formatGBP(item.unit_cost)}</TableCell>
+                  <TableCell className="text-right">{formatGBP(item.cost)}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="font-semibold">
+                <TableCell colSpan={3}>Total</TableCell>
+                <TableCell className="text-right">{formatGBP(req.total)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
           {req.status === "rejected" && req.rejection_reason && (
             <div className="border-destructive/30 bg-destructive/10 text-destructive mt-4 rounded-md border px-3 py-2 text-sm">
               <span className="font-medium">Rejected: </span>
@@ -542,6 +562,19 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
           )}
         </CardContent>
       </Card>
+
+      {canEdit && (
+        <EditCommitteeRequestDialog
+          req={req}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          onSaved={(saved) => {
+            queryClient.setQueryData(["committee-request", id], saved);
+            refresh();
+            toast.success("Request updated.");
+          }}
+        />
+      )}
     </div>
   );
 }
