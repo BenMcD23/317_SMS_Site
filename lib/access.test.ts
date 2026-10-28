@@ -37,6 +37,7 @@ describe("canAccess", () => {
     "/committee/requests",
     "/oc",
     "/backups",
+    "/assistant",
   ])("keeps NCOs and SNCOs out of %s", (path) => {
     expect(canAccess("nco", path)).toBe(false);
     expect(canAccess("snco", path)).toBe(false);
