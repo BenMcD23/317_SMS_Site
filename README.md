@@ -17,6 +17,7 @@ scripts/preview.sh                 # API :8000, this site :3000, cadet portal :3
 scripts/preview.sh --reset         # re-seed the API database
 scripts/preview.sh --no-portal     # API and this site only
 scripts/preview.sh status | stop
+scripts/preview.sh logs [api|site|portal|website]   # follow the logs, errors in red
 ```
 
 This starts the API on a seeded SQLite database, this site and the cadet

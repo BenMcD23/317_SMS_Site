@@ -11,6 +11,7 @@
 #   scripts/preview.sh --no-portal  skip the cadet portal and the website (API and this site only)
 #   scripts/preview.sh stop         stop everything
 #   scripts/preview.sh status       what's up?
+#   scripts/preview.sh logs [name…] follow every log (or just api/site/portal/website) in one stream
 #
 # Expects the API checked out beside this repo (../SMS_Scrapers_API) or at
 # $SMS_API_DIR, the portal at ../317_Cadet_Portal or $PORTAL_DIR, and the website
@@ -80,6 +81,32 @@ status() {
   fi
 }
 
+# All the servers' logs as one stream, each line tagged with its server and
+# error lines in red, so a traceback in the API shows up beside the request
+# that caused it. Ctrl-C stops following; the servers keep running.
+logs() {  # [name…]
+  local names=("$@") colour=1 n
+  [[ ${#names[@]} -gt 0 ]] || names=(api site portal website)
+  [[ -t 1 ]] || colour=0
+  for n in "${names[@]}"; do
+    case "$n" in api | site | portal | website) ;; *) echo "No server called $n (api, site, portal, website)." >&2; exit 1 ;; esac
+    [[ -f "$STATE/$n.log" ]] || continue
+    local tag
+    tag="$(printf '%-7s|' "$n")"
+    if [[ $colour == 1 ]]; then
+      local c
+      case "$n" in api) c=36 ;; site) c=35 ;; portal) c=34 ;; *) c=33 ;; esac
+      tail -n 30 -F "$STATE/$n.log" 2>/dev/null | sed -u -E \
+        -e "/(ERROR|Error|error|Traceback|Exception|FAILED| 5[0-9]{2} )/{s/^/\x1b[${c}m${tag}\x1b[0m \x1b[31m/;s/\$/\x1b[0m/;b}" \
+        -e "s/^/\x1b[${c}m${tag}\x1b[0m /" &
+    else
+      tail -n 30 -F "$STATE/$n.log" 2>/dev/null | sed -u "s/^/${tag} /" &
+    fi
+  done
+  trap 'kill 0' INT TERM
+  wait
+}
+
 wait_for() {  # url, name, seconds
   for _ in $(seq "$3"); do
     up "$1" && return 0
@@ -94,7 +121,8 @@ case "${1:-start}" in
   stop) stop; exit 0 ;;
   status) status; exit 0 ;;
   start | --reset | --no-portal) ;;
-  *) sed -n '2,27p' "$0"; exit 1 ;;
+  logs) shift; logs "$@"; exit 0 ;;
+  *) sed -n '2,28p' "$0"; exit 1 ;;
 esac
 [[ "${1:-}" == "--no-portal" ]] && with_portal=0 with_website=0
 
@@ -169,7 +197,8 @@ launch() {  # name, dir, command…
   setsid bash -c 'echo $$ > "$0"; cd "$1"; shift 2; exec "$@"' "$STATE/$name.pid" "$dir" -- "$@" \
     < /dev/null > "$STATE/$name.log" 2>&1 &
 }
-launch api "$API" "$API/venv/bin/python" app/scripts/dev_server.py --port "$API_PORT" --db "$API_DB" "${reset[@]}"
+# Unbuffered, so prints and tracebacks reach api.log as they happen.
+launch api "$API" env PYTHONUNBUFFERED=1 "$API/venv/bin/python" app/scripts/dev_server.py --port "$API_PORT" --db "$API_DB" "${reset[@]}"
 launch site "$SITE" npx next dev -p "$SITE_PORT"
 # The portal's own dev script (ipv4-first DNS) runs on 3001; the env vars point
 # it at this API and switch dev sign-in on whatever its .env.local says, so a
@@ -185,4 +214,5 @@ wait_for "http://localhost:$SITE_PORT/login" site 120
 [[ $with_portal == 1 ]] && wait_for "http://localhost:$PORTAL_PORT/login" portal 120
 [[ $with_website == 1 ]] && wait_for "http://localhost:$WEBSITE_PORT/" website 60
 status
-echo "Sign in with the STAFF / SNCO / NCO buttons on /login (the portal's CADET is Cdt Kian Ashworth). Stop with: scripts/preview.sh stop"
+echo "Sign in with the STAFF / SNCO / NCO buttons on /login (the portal's CADET is Cdt Kian Ashworth)."
+echo "Follow every log with: scripts/preview.sh logs   Stop with: scripts/preview.sh stop"

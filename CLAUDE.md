@@ -237,6 +237,7 @@ scripts/preview.sh                 # API :8000 + site :3000 + portal :3001; inst
 scripts/preview.sh --reset         # re-seed the API database from scratch
 scripts/preview.sh --no-portal     # API and this site only
 scripts/preview.sh status | stop
+scripts/preview.sh logs [api|site|portal|website]   # follow the logs, errors in red
 node scripts/screenshot.mjs /cadets/overview /stats          # → .preview/shots/*.png
 node scripts/screenshot.mjs --mobile --role nco /session-plans
 node scripts/screenshot.mjs --full --theme light /stores/uniform/orders
