@@ -23,6 +23,7 @@ import { ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { todayLocal } from "@/lib/format";
 import { Private } from "@/components/private";
 import { usePersonalDataHidden } from "@/lib/privacy";
+import { WhtAuditTab } from "./wht-tab";
 
 const LEVEL_STYLES: Record<string, string> = {
   blue: "border-blue-200 bg-blue-50 text-blue-700",
@@ -946,12 +947,16 @@ export default function AuditPage() {
         <TabsList>
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>
           <TabsTrigger value="event-check">Event Audit</TabsTrigger>
+          <TabsTrigger value="whts">WHTs</TabsTrigger>
         </TabsList>
         <TabsContent value="cadet-check" className="mt-4">
           <CadetCheckTab />
         </TabsContent>
         <TabsContent value="event-check" className="mt-4">
           <EventCheckTab />
+        </TabsContent>
+        <TabsContent value="whts" className="mt-4">
+          <WhtAuditTab />
         </TabsContent>
       </Tabs>
     </div>

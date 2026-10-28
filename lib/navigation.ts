@@ -172,7 +172,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Audit",
         href: "/cadets/audit",
         icon: ShieldCheck,
-        keywords: ["qualifications", "medical", "dietary"],
+        keywords: ["qualifications", "medical", "dietary", "wht", "weapon handling", "l98a2", "scorpion"],
       },
     ],
   },
