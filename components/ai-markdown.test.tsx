@@ -53,4 +53,27 @@ describe("AiMarkdown", () => {
     const empty = render(<AiMarkdown text="" />);
     expect(empty.container.textContent).toBe("");
   });
+
+  it("decorate turns plain runs into something richer, inside bold and lists too, but never sees markup", () => {
+    const seen: string[] = [];
+    render(
+      <AiMarkdown
+        text={"Amy is **Amy** here.\n- Amy again"}
+        decorate={(t) => {
+          seen.push(t);
+          return t.split(/(Amy)/).map((part, i) =>
+            part === "Amy" ? (
+              <a key={i} href="/x">
+                Amy
+              </a>
+            ) : (
+              part
+            )
+          );
+        }}
+      />
+    );
+    expect(screen.getAllByRole("link", { name: "Amy" })).toHaveLength(3);
+    expect(seen.some((t) => t.includes("**"))).toBe(false);
+  });
 });

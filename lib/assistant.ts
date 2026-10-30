@@ -5,6 +5,7 @@
  * personal-data columns are tested on their own.
  */
 
+import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { FLIGHT_ORDER } from "@/lib/cadet-format";
 import { SERIES_COLOURS } from "@/lib/custom-dashboard";
 import { flightColor } from "@/lib/stats";
@@ -35,15 +36,25 @@ export type AnswerMessage = {
   charts: AssistantChart[];
   tables: AssistantTable[];
   follow_ups: string[];
+  /** Cadets the answer names, to link to their records. */
+  cadets: { cin: number; name: string }[];
   calls: AssistantCall[];
   model: string;
   model_label: string;
   fallback: boolean;
+  /** The asker's rating: 1 up, -1 down, null not rated. */
+  feedback: 1 | -1 | null;
 };
 
 export type ChatMessage = UserMessage | AnswerMessage;
 
-export type ChatSummary = { id: number; title: string; created_at: string; updated_at: string };
+export type ChatSummary = {
+  id: number;
+  title: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+};
 
 export type ChatDetail = ChatSummary & { messages: ChatMessage[] };
 
@@ -161,4 +172,87 @@ export function csvName(title: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   return `${slug || "table"}.csv`;
+}
+
+/**
+ * Asks over /assistant/ask/stream: the API sends one JSON line per step
+ * ("Checking attendance") while it works, then the saved answer. `onStep`
+ * gets each label as it arrives, so the page can show the assistant's
+ * working instead of a 30-second spinner. Rejects with the API's own message,
+ * like apiRequest, for a refusal before the stream starts (403, 404, 422) or
+ * an error line in it.
+ */
+export async function askStream(
+  url: string,
+  token: string,
+  body: { question: string; chat_id: number | null; hide_personal: boolean },
+  onStep: (label: string) => void
+): Promise<AskReply> {
+  let res: Response;
+  try {
+    res = await apiFetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Server unreachable.");
+  }
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => null);
+    throw new Error(errorDetail(data) ?? "The assistant couldn't answer.");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = "";
+  let reply: AskReply | null = null;
+  const handle = (line: string) => {
+    if (!line.trim()) return;
+    let event: { type?: string; label?: string; detail?: string } & Partial<AskReply>;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      throw new Error("The assistant sent back an answer it couldn't read.");
+    }
+    if (event.type === "step" && typeof event.label === "string") onStep(event.label);
+    else if (event.type === "error") throw new Error(event.detail || "The assistant couldn't answer.");
+    else if (event.type === "done") {
+      if (!isAskReply(event)) throw new Error("The assistant sent back an answer it couldn't read.");
+      reply = event;
+    }
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    buffered += decoder.decode(value, { stream: !done });
+    const lines = buffered.split("\n");
+    buffered = lines.pop() ?? "";
+    lines.forEach(handle);
+    if (done) break;
+  }
+  handle(buffered);
+  // The connection dropped (or a proxy cut it) before the answer came.
+  if (!reply) throw new Error("The assistant stopped before it answered. Try again.");
+  return reply;
+}
+
+/**
+ * Splits text around the names of linked cadets, so each mention can be a
+ * link to their record. Longest names first, so "Amy Ashworth-Smith" isn't
+ * matched as "Amy Ashworth".
+ */
+export function linkCadets(
+  text: string,
+  cadets: { cin: number; name: string }[]
+): ({ kind: "text"; text: string } | { kind: "cadet"; text: string; cin: number })[] {
+  const names = [...cadets].filter((c) => c.name).sort((a, b) => b.name.length - a.name.length);
+  if (!names.length || !text) return [{ kind: "text", text }];
+  const escaped = names.map((c) => c.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const byName = new Map(names.map((c) => [c.name, c.cin]));
+  return text
+    .split(new RegExp(`(${escaped.join("|")})`, "g"))
+    .filter((part) => part !== "")
+    .map((part) =>
+      byName.has(part) ? { kind: "cadet", text: part, cin: byName.get(part)! } : { kind: "text", text: part }
+    );
 }

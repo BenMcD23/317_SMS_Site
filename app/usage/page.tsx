@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { RefreshCw, ShieldX } from "lucide-react";
 
+import { AssistantUsageView } from "@/components/assistant/assistant-usage";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -180,6 +181,7 @@ export default function UsagePage() {
                 <TabsTrigger value="people">People ({usage.users.length})</TabsTrigger>
               </Private>
               <TabsTrigger value="unused">Unused ({usage.unused.length})</TabsTrigger>
+              <TabsTrigger value="assistant">Assistant</TabsTrigger>
             </TabsList>
 
             <TabsContent value="endpoints">
@@ -273,6 +275,10 @@ export default function UsagePage() {
                   ))}
                 </ul>
               )}
+            </TabsContent>
+
+            <TabsContent value="assistant">
+              <AssistantUsageView days={days} />
             </TabsContent>
           </Tabs>
         </>

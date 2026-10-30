@@ -2,15 +2,17 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, Bot, Check, Copy, History, Plus } from "lucide-react";
+import { ArrowUp, Bot, Check, Copy, History, Plus, Printer, ThumbsDown, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { AiMarkdown } from "@/components/ai-markdown";
 import { AnswerChart } from "@/components/assistant/answer-chart";
 import { AnswerTable } from "@/components/assistant/answer-table";
 import { ChatList } from "@/components/assistant/chat-list";
+import { RenameChatDialog } from "@/components/assistant/rename-chat-dialog";
 import { useConfirm } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
@@ -23,21 +25,22 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/api-fetch";
 import {
-  isAskReply,
+  askStream,
+  linkCadets,
   sourcesLine,
   type AnswerMessage,
-  type AskReply,
   type ChatDetail,
   type ChatSummary,
 } from "@/lib/assistant";
 import { API_BASE } from "@/lib/config";
+import { formatTimestamp } from "@/lib/format";
 import { usePersonalDataHidden } from "@/lib/privacy";
 import { useApiQuery } from "@/lib/use-api-query";
 
 const EXAMPLES = [
   "Give me a report on parade turnout by month this year",
   "Whose first aid or WHTs run out in the next three months?",
-  "Chart the squadron by flight and rank",
+  "Which NCOs are overdue an appraisal?",
   "Which cadets turn 18 in the next year?",
 ];
 
@@ -50,14 +53,20 @@ export default function AssistantPage() {
   );
 }
 
-/** The open chat lives in the URL (?chat=12), so a reload or a link reopens it. */
+/**
+ * The open chat lives in the URL (?chat=12), so a reload or a link reopens
+ * it. Read from the URL once, then held in state: switching chats re-renders
+ * straight away rather than waiting on Next to notice the URL change.
+ */
 function useChatParam(): [number | null, (id: number | null) => void] {
   const params = useSearchParams();
   const pathname = usePathname();
-  const raw = Number(params.get("chat"));
-  const id = Number.isInteger(raw) && raw > 0 ? raw : null;
+  const [id, setId] = useState<number | null>(() => {
+    const raw = Number(params.get("chat"));
+    return Number.isInteger(raw) && raw > 0 ? raw : null;
+  });
   const set = (next: number | null) => {
-    // Native replaceState is synchronous and Next syncs useSearchParams to it.
+    setId(next);
     window.history.replaceState(null, "", next ? `${pathname}?chat=${next}` : pathname);
   };
   return [id, set];
@@ -71,8 +80,10 @@ function Assistant() {
   const [chatId, setChatId] = useChatParam();
   const [question, setQuestion] = useState("");
   const [pending, setPending] = useState<string | null>(null);
+  const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
+  const [renaming, setRenaming] = useState<ChatSummary | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const latest = useRef<HTMLElement>(null);
 
@@ -98,19 +109,21 @@ function Assistant() {
     input.current?.focus();
   };
 
+  const refreshList = () => queryClient.invalidateQueries({ queryKey: ["assistant-chats"] });
+
   const ask = async (text = question) => {
     const q = text.trim();
     if (!q || !token || pending) return;
     setPending(q);
+    setStep(null);
     setError(null);
     try {
-      const reply = await apiRequest<AskReply>(
+      const reply = await askStream(
+        `${API_BASE}/assistant/ask/stream`,
         token,
-        `${API_BASE}/assistant/ask`,
-        { method: "POST", body: { question: q, chat_id: chatId, hide_personal: hidePersonal } },
-        "The assistant couldn't answer."
+        { question: q, chat_id: chatId, hide_personal: hidePersonal },
+        setStep
       );
-      if (!isAskReply(reply)) throw new Error("The assistant sent back an answer it couldn't read.");
       // Shown straight away from the reply rather than refetched: the chat on
       // the server is exactly what was there plus these two messages.
       queryClient.setQueryData<ChatDetail>(["assistant-chat", reply.chat.id], (old) => ({
@@ -121,7 +134,7 @@ function Assistant() {
           reply.answer,
         ],
       }));
-      queryClient.invalidateQueries({ queryKey: ["assistant-chats"] });
+      refreshList();
       if (chatId !== reply.chat.id) setChatId(reply.chat.id);
       // Cleared only on success, so a failed question is still there to retry.
       setQuestion("");
@@ -129,7 +142,28 @@ function Assistant() {
       setError((e as Error).message);
     } finally {
       setPending(null);
+      setStep(null);
       input.current?.focus();
+    }
+  };
+
+  const updateChat = async (target: ChatSummary, change: { title?: string; pinned?: boolean }) => {
+    if (!token) return;
+    await apiRequest(
+      token,
+      `${API_BASE}/assistant/chats/${target.id}`,
+      { method: "PATCH", body: change },
+      "Couldn't update the chat."
+    );
+    refreshList();
+    queryClient.invalidateQueries({ queryKey: ["assistant-chat", target.id] });
+  };
+
+  const togglePin = async (target: ChatSummary) => {
+    try {
+      await updateChat(target, { pinned: !target.pinned });
+    } catch (e) {
+      toast.error((e as Error).message);
     }
   };
 
@@ -144,12 +178,37 @@ function Assistant() {
           "Couldn't delete the chat."
         );
         queryClient.removeQueries({ queryKey: ["assistant-chat", target.id] });
-        queryClient.invalidateQueries({ queryKey: ["assistant-chats"] });
+        refreshList();
         if (target.id === chatId) open(null);
       } catch (e) {
         toast.error((e as Error).message);
       }
     });
+
+  const rate = async (answer: AnswerMessage, value: 1 | -1) => {
+    if (!token || chatId === null) return;
+    // Pressing the same thumb again takes the rating back.
+    const next = answer.feedback === value ? null : value;
+    const key = ["assistant-chat", chatId];
+    const setFeedback = (feedback: 1 | -1 | null) =>
+      queryClient.setQueryData<ChatDetail>(key, (old) =>
+        old
+          ? { ...old, messages: old.messages.map((m) => (m.id === answer.id ? { ...m, feedback } : m)) }
+          : old
+      );
+    setFeedback(next);
+    try {
+      await apiRequest(
+        token,
+        `${API_BASE}/assistant/messages/${answer.id}/feedback`,
+        { method: "PUT", body: { value: next } },
+        "Couldn't save your rating."
+      );
+    } catch (e) {
+      setFeedback(answer.feedback);
+      toast.error((e as Error).message);
+    }
+  };
 
   const list = (
     <ChatList
@@ -158,32 +217,49 @@ function Assistant() {
       error={chats.error}
       activeId={chatId}
       onOpen={open}
+      onRename={setRenaming}
+      onTogglePin={togglePin}
       onDelete={onDelete}
     />
   );
   const lastAnswer = [...messages].reverse().find((m): m is AnswerMessage => m.role === "assistant");
+  const title = chat.data?.title;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Assistant"
-        description="Ask about cadets, attendance, qualifications, stores and events, or ask for a report or a chart. Answers come from the squadron's records, and it can't change anything."
+        description="Ask about cadets, attendance, qualifications, stores, events and policy, or ask for a report or a chart. Answers come from the squadron's records, and it can't change anything."
         actions={
-          <>
+          <div className="no-print flex flex-wrap gap-2">
             <Button variant="outline" className="lg:hidden" onClick={() => setListOpen(true)}>
               <History data-icon="inline-start" />
               Chats
             </Button>
+            {messages.length > 0 && (
+              <Button variant="outline" onClick={() => window.print()}>
+                <Printer data-icon="inline-start" />
+                Print
+              </Button>
+            )}
             <Button variant="outline" onClick={() => open(null)} disabled={!!pending || chatId === null}>
               <Plus data-icon="inline-start" />
               New chat
             </Button>
-          </>
+          </div>
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <aside aria-label="Saved chats" className="hidden lg:block">
+      {/* On paper, the chat's name and when, in place of the list and buttons. */}
+      {title && (
+        <p className="print-only text-sm">
+          <strong>{title}</strong>
+          {chat.data && ` · ${formatTimestamp(chat.data.updated_at)}`}
+        </p>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] print:grid-cols-1">
+        <aside aria-label="Saved chats" className="no-print hidden lg:block">
           {list}
         </aside>
 
@@ -203,7 +279,7 @@ function Assistant() {
             <EmptyState
               icon={Bot}
               title="Ask a question"
-              description="It looks things up in the records and can draw charts and tables. Follow-up questions carry on from the last answer."
+              description="It looks things up in the records and the RAFAC documents, and can draw charts and tables. Follow-up questions carry on from the last answer."
             >
               <div className="flex flex-wrap justify-center gap-2">
                 {EXAMPLES.map((ex) => (
@@ -235,6 +311,7 @@ function Assistant() {
                     <Answer
                       message={m}
                       question={messages[i - 1]?.content ?? ""}
+                      onRate={(v) => rate(m, v)}
                       ref={i === messages.length - 1 && !pending ? latest : undefined}
                     />
                   )}
@@ -243,10 +320,10 @@ function Assistant() {
             </ol>
           )}
 
-          {pending && <PendingTurn question={pending} ref={latest} />}
+          {pending && <PendingTurn question={pending} step={step} ref={latest} />}
 
           {!pending && lastAnswer && lastAnswer.follow_ups.length > 0 && (
-            <section aria-label="Suggested questions" className="flex flex-wrap gap-2">
+            <section aria-label="Suggested questions" className="no-print flex flex-wrap gap-2">
               {lastAnswer.follow_ups.map((f) => (
                 <Button
                   key={f}
@@ -264,6 +341,7 @@ function Assistant() {
           <ErrorAlert title="No answer" message={error} />
 
           <form
+            className="no-print"
             onSubmit={(e) => {
               e.preventDefault();
               ask();
@@ -316,6 +394,12 @@ function Assistant() {
         </SheetContent>
       </Sheet>
 
+      <RenameChatDialog
+        key={renaming?.id ?? "closed"}
+        chat={renaming}
+        onOpenChange={(o) => !o && setRenaming(null)}
+        onSave={(target, newTitle) => updateChat(target, { title: newTitle })}
+      />
       {confirmDialog}
     </div>
   );
@@ -335,14 +419,17 @@ function QuestionBubble({ text }: { text: string }) {
 function Answer({
   message,
   question,
+  onRate,
   ref,
 }: {
   message: AnswerMessage;
   question: string;
+  onRate: (value: 1 | -1) => void;
   ref?: React.Ref<HTMLElement>;
 }) {
   const [copied, setCopied] = useState(false);
   const sources = sourcesLine(message.calls);
+  const cadets = message.cadets ?? [];
 
   const copy = async () => {
     try {
@@ -354,39 +441,81 @@ function Answer({
     }
   };
 
+  // Each cadet the answer names opens their record.
+  const decorate = (text: string) =>
+    linkCadets(text, cadets).map((part, i) =>
+      part.kind === "cadet" ? (
+        <Link key={i} href={`/cadets/${part.cin}`} className="underline underline-offset-4">
+          {part.text}
+        </Link>
+      ) : (
+        part.text
+      )
+    );
+
   return (
     <article ref={ref} aria-label={`Answer to: ${question}`} className="flex scroll-mt-20 flex-col gap-3">
       <div className="[&_p]:text-foreground">
-        <AiMarkdown text={message.content} />
+        <AiMarkdown text={message.content} decorate={decorate} />
       </div>
       {message.charts.map((c, i) => (
         <AnswerChart key={`c${i}`} chart={c} />
       ))}
       {message.tables.map((t, i) => (
-        <AnswerTable key={`t${i}`} table={t} />
+        <AnswerTable key={`t${i}`} table={t} cadets={cadets} />
       ))}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <p className="text-muted-foreground text-xs">
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+        <p className="text-muted-foreground mr-1 text-xs">
           {sources ?? "Answered without checking the records"}
           {message.model_label && ` · ${message.model_label}`}
           {message.fallback && " (backup model)"}
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground h-8"
-          onClick={copy}
-          aria-label="Copy answer"
-        >
-          {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
-          {copied ? "Copied" : "Copy"}
-        </Button>
+        <div className="no-print flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground size-8"
+            aria-label="Good answer"
+            aria-pressed={message.feedback === 1}
+            onClick={() => onRate(1)}
+          >
+            <ThumbsUp className={message.feedback === 1 ? "text-primary fill-current" : undefined} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground size-8"
+            aria-label="Bad answer"
+            aria-pressed={message.feedback === -1}
+            onClick={() => onRate(-1)}
+          >
+            <ThumbsDown className={message.feedback === -1 ? "text-primary fill-current" : undefined} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground h-8"
+            onClick={copy}
+            aria-label="Copy answer"
+          >
+            {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
       </div>
     </article>
   );
 }
 
-function PendingTurn({ question, ref }: { question: string; ref?: React.Ref<HTMLElement> }) {
+function PendingTurn({
+  question,
+  step,
+  ref,
+}: {
+  question: string;
+  step: string | null;
+  ref?: React.Ref<HTMLElement>;
+}) {
   return (
     <section
       ref={ref}
@@ -400,8 +529,10 @@ function PendingTurn({ question, ref }: { question: string; ref?: React.Ref<HTML
         <Skeleton className="h-4 w-11/12" />
         <Skeleton className="h-4 w-2/3" />
       </div>
-      <p className="text-muted-foreground text-xs">
-        Looking it up in the squadron&apos;s records. This usually takes 10 to 40 seconds.
+      {/* Announced as it changes, so a screen reader hears the progress too. */}
+      <p className="text-muted-foreground flex items-center gap-2 text-sm" role="status">
+        <Spinner />
+        {step ? `${step}…` : "Starting…"}
       </p>
     </section>
   );

@@ -1,19 +1,26 @@
 "use client";
 
-import { MessageSquare, Trash2 } from "lucide-react";
+import { MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { ChatSummary } from "@/lib/assistant";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
- * The signed-in person's saved assistant chats, most recent first. A whole
- * row opens its chat; the delete button sits beside it, always visible (a
- * phone has no hover). Rendered beside the chat on a laptop and in a sheet on
- * a phone, so it takes everything it shows and does as props.
+ * The signed-in person's saved assistant chats: pinned first, then most
+ * recent. A whole row opens its chat; its menu (always visible, as a phone
+ * has no hover) renames, pins or deletes it. Rendered beside the chat on a
+ * laptop and in a sheet on a phone, so it takes everything it shows and does
+ * as props.
  */
 export function ChatList({
   chats,
@@ -21,6 +28,8 @@ export function ChatList({
   error,
   activeId,
   onOpen,
+  onRename,
+  onTogglePin,
   onDelete,
 }: {
   chats: ChatSummary[] | undefined;
@@ -28,6 +37,8 @@ export function ChatList({
   error: Error | null;
   activeId: number | null;
   onOpen: (id: number) => void;
+  onRename: (chat: ChatSummary) => void;
+  onTogglePin: (chat: ChatSummary) => void;
   onDelete: (chat: ChatSummary) => void;
 }) {
   if (error) return <ErrorAlert title="Couldn't load your chats" message={error.message} />;
@@ -55,18 +66,40 @@ export function ChatList({
                 active && "bg-muted"
               )}
             >
-              <span className="w-full truncate text-sm font-medium">{chat.title}</span>
+              <span className="flex w-full items-center gap-1.5">
+                {chat.pinned && (
+                  <Pin aria-label="Pinned" className="text-muted-foreground size-3.5 shrink-0" />
+                )}
+                <span className="truncate text-sm font-medium">{chat.title}</span>
+              </span>
               <span className="text-muted-foreground text-xs">{formatTimestamp(chat.updated_at)}</span>
             </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground size-8 shrink-0"
-              aria-label={`Delete chat "${chat.title}"`}
-              onClick={() => onDelete(chat)}
-            >
-              <Trash2 />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground size-8 shrink-0"
+                  aria-label={`More for "${chat.title}"`}
+                >
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => onRename(chat)}>
+                  <Pencil />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onTogglePin(chat)}>
+                  {chat.pinned ? <PinOff /> : <Pin />}
+                  {chat.pinned ? "Unpin" : "Pin to top"}
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onSelect={() => onDelete(chat)}>
+                  <Trash2 />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </li>
         );
       })}

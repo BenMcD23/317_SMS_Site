@@ -41,11 +41,14 @@ const answer = (id: number, content: string, extra: Partial<AnswerMessage> = {})
   model: "z-ai/glm-5.3",
   model_label: "GLM 5.3",
   fallback: false,
+  cadets: [],
+  feedback: null,
   ...extra,
 });
-const summary = (id: number, title: string): ChatSummary => ({
+const summary = (id: number, title: string, pinned = false): ChatSummary => ({
   id,
   title,
+  pinned,
   created_at: "2026-10-30T19:00:00",
   updated_at: "2026-10-30T19:00:00",
 });
@@ -79,6 +82,15 @@ const SAVED: ChatDetail = {
   ],
 };
 
+/** The API's streamed answer: a line per step, then the reply (or an error line). */
+const ndjson = (events: unknown[]) => events.map((e) => JSON.stringify(e)).join("\n") + "\n";
+const streamed =
+  (r: AskReply, steps: string[] = ["Thinking", "Checking attendance"]) =>
+  () =>
+    new Response(ndjson([...steps.map((label) => ({ type: "step", label })), { type: "done", ...r }]), {
+      headers: { "Content-Type": "application/x-ndjson" },
+    });
+
 type Route = { status?: number; body: unknown } | (() => Response | Promise<Response>);
 
 /** A fake API: answers by method and path, recording every call. */
@@ -100,7 +112,7 @@ function stubApi(routes: Record<string, Route | Route[]>) {
 }
 
 const asks = (calls: { method: string; path: string; body: unknown }[]) =>
-  calls.filter((c) => c.method === "POST" && c.path.endsWith("/assistant/ask")).map((c) => c.body);
+  calls.filter((c) => c.method === "POST" && c.path.endsWith("/assistant/ask/stream")).map((c) => c.body);
 
 async function renderPage(url = "/assistant") {
   window.history.replaceState(null, "", url);
@@ -129,7 +141,9 @@ describe("Assistant: asking", () => {
   it("a first question starts a new chat, shows the answer and puts the chat in the URL", async () => {
     const calls = stubApi({
       "GET /assistant/chats": [{ body: [] }, { body: [summary(3, "Who is missing parades?")] }],
-      "POST /assistant/ask": { body: reply(3, "Who is missing parades?", answer(2, "**Ben Brook** (B).")) },
+      "POST /assistant/ask/stream": streamed(
+        reply(3, "Who is missing parades?", answer(2, "**Ben Brook** (B)."))
+      ),
     });
     await renderPage();
     await ask("  Who is missing parades?  ");
@@ -150,7 +164,7 @@ describe("Assistant: asking", () => {
     const calls = stubApi({
       "GET /assistant/chats": { body: [summary(7, "Report on flights")] },
       "GET /assistant/chats/7": { body: SAVED },
-      "POST /assistant/ask": { body: reply(7, "And by rank?", answer(4, "Mostly cadets.")) },
+      "POST /assistant/ask/stream": streamed(reply(7, "And by rank?", answer(4, "Mostly cadets."))),
     });
     await renderPage("/assistant?chat=7");
     await screen.findByRole("article", { name: "Answer to: Report on flights" });
@@ -169,7 +183,7 @@ describe("Assistant: asking", () => {
     const calls = stubApi({
       "GET /assistant/chats": { body: [] },
       "GET /assistant/chats/7": { body: SAVED },
-      "POST /assistant/ask": { body: reply(7, "Show turnout by month", answer(4, "Steady.")) },
+      "POST /assistant/ask/stream": streamed(reply(7, "Show turnout by month", answer(4, "Steady."))),
     });
     await renderPage("/assistant?chat=7");
     await userEvent.setup().click(await screen.findByRole("button", { name: "Show turnout by month" }));
@@ -183,14 +197,16 @@ describe("Assistant: asking", () => {
   it("an example question asks straight away in a new chat", async () => {
     const calls = stubApi({
       "GET /assistant/chats": { body: [] },
-      "POST /assistant/ask": { body: reply(1, "Chart the squadron by flight and rank", answer(2, "Here.")) },
+      "POST /assistant/ask/stream": streamed(
+        reply(1, "Which NCOs are overdue an appraisal?", answer(2, "Here."))
+      ),
     });
     await renderPage();
     await userEvent
       .setup()
-      .click(screen.getByRole("button", { name: "Chart the squadron by flight and rank" }));
+      .click(screen.getByRole("button", { name: "Which NCOs are overdue an appraisal?" }));
 
-    await screen.findByRole("article", { name: /Chart the squadron/ });
+    await screen.findByRole("article", { name: /overdue an appraisal/ });
     expect(asks(calls)[0]).toMatchObject({ chat_id: null });
   });
 
@@ -198,7 +214,7 @@ describe("Assistant: asking", () => {
     setPersonalDataHidden(true);
     const calls = stubApi({
       "GET /assistant/chats": { body: [] },
-      "POST /assistant/ask": { body: reply(1, "q", answer(2, "ok")) },
+      "POST /assistant/ask/stream": streamed(reply(1, "q", answer(2, "ok"))),
     });
     await renderPage();
     expect(screen.getByText(/Personal data is hidden/)).toBeInTheDocument();
@@ -207,24 +223,38 @@ describe("Assistant: asking", () => {
     expect(asks(calls)[0]).toMatchObject({ hide_personal: true });
   });
 
-  it("shows a loading placeholder while it looks things up, and can't be asked twice", async () => {
-    let respond!: (r: Response) => void;
+  it("shows each step as it works, then the answer, and can't be asked twice", async () => {
+    // A stream the test feeds line by line, as the API sends them.
+    let push!: (event: unknown) => void;
+    let end!: () => void;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const enc = new TextEncoder();
+        push = (event) => controller.enqueue(enc.encode(JSON.stringify(event) + "\n"));
+        end = () => controller.close();
+      },
+    });
     stubApi({
       "GET /assistant/chats": { body: [] },
-      "POST /assistant/ask": () => new Promise<Response>((resolve) => (respond = resolve)),
+      "POST /assistant/ask/stream": () => new Response(body),
     });
     await renderPage();
     await ask("Who is missing parades?");
 
-    expect(screen.getByRole("region", { name: "Answer loading" })).toHaveTextContent(
-      "Who is missing parades?"
-    );
+    const loading = await screen.findByRole("region", { name: "Answer loading" });
+    expect(loading).toHaveTextContent("Who is missing parades?");
     expect(screen.getByRole("button", { name: /Looking it up/ })).toBeDisabled();
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
 
-    await act(async () =>
-      respond(new Response(JSON.stringify(reply(1, "Who is missing parades?", answer(2, "Ben.")))))
-    );
+    await act(async () => push({ type: "step", label: "Checking attendance" }));
+    expect(await within(loading).findByText(/Checking attendance…/)).toBeInTheDocument();
+    await act(async () => push({ type: "step", label: "Writing the answer" }));
+    expect(await within(loading).findByText(/Writing the answer…/)).toBeInTheDocument();
+
+    await act(async () => {
+      push({ type: "done", ...reply(1, "Who is missing parades?", answer(2, "Ben.")) });
+      end();
+    });
     expect(await screen.findByRole("article")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Answer loading" })).not.toBeInTheDocument();
   });
@@ -269,7 +299,7 @@ describe("Assistant: answers", () => {
   it("says when nothing was looked up", async () => {
     stubApi({
       "GET /assistant/chats": { body: [] },
-      "POST /assistant/ask": { body: reply(1, "Hi", answer(2, "Hello.", { calls: [] })) },
+      "POST /assistant/ask/stream": streamed(reply(1, "Hi", answer(2, "Hello.", { calls: [] }))),
     });
     await renderPage();
     await ask("Hi");
@@ -287,6 +317,72 @@ describe("Assistant: answers", () => {
     writeText.mockRejectedValue(new Error("denied"));
     await user.click(screen.getByRole("button", { name: "Copy answer" }));
     expect(toastError).toHaveBeenCalledWith(expect.stringContaining("Couldn't copy"));
+  });
+});
+
+describe("Assistant: links, ratings and printing", () => {
+  const LINKED: ChatDetail = {
+    ...SAVED,
+    messages: [
+      SAVED.messages[0],
+      answer(2, "**Amy Ashworth** and Ben Brook lead.", {
+        cadets: [
+          { cin: 1001, name: "Amy Ashworth" },
+          { cin: 1002, name: "Ben Brook" },
+        ],
+        tables: [{ title: "Leaders", columns: ["Name", "Flight"], rows: [["Ben Brook", "B"]] }],
+      }),
+    ],
+  };
+
+  it("cadets named in the answer and its tables link to their records", async () => {
+    stubApi({ "GET /assistant/chats": { body: [] }, "GET /assistant/chats/7": { body: LINKED } });
+    await renderPage("/assistant?chat=7");
+    const a = await screen.findByRole("article");
+    expect(within(a).getByRole("link", { name: "Amy Ashworth" })).toHaveAttribute("href", "/cadets/1001");
+    const links = within(a).getAllByRole("link", { name: "Ben Brook" });
+    expect(links).toHaveLength(2); // in the text and in the table
+    expect(links.every((l) => l.getAttribute("href") === "/cadets/1002")).toBe(true);
+  });
+
+  it("a thumb rates the answer, pressing it again takes it back, and a failure undoes it", async () => {
+    const calls = stubApi({
+      "GET /assistant/chats": { body: [] },
+      "GET /assistant/chats/7": { body: SAVED },
+      "PUT /assistant/messages/2/feedback": [
+        { body: { id: 2, feedback: -1 } },
+        { body: { id: 2, feedback: null } },
+        { status: 500, body: { detail: "Database down" } },
+      ],
+    });
+    await renderPage("/assistant?chat=7");
+    const user = userEvent.setup();
+    const down = await screen.findByRole("button", { name: "Bad answer" });
+
+    await user.click(down);
+    expect(down).toHaveAttribute("aria-pressed", "true");
+    await user.click(down);
+    expect(down).toHaveAttribute("aria-pressed", "false");
+    const puts = calls.filter((c) => c.method === "PUT").map((c) => c.body);
+    expect(puts).toEqual([{ value: -1 }, { value: null }]);
+
+    await user.click(screen.getByRole("button", { name: "Good answer" }));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("Database down"));
+    expect(screen.getByRole("button", { name: "Good answer" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("Print prints the chat", async () => {
+    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    stubApi({ "GET /assistant/chats": { body: [] }, "GET /assistant/chats/7": { body: SAVED } });
+    await renderPage("/assistant?chat=7");
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Print" }));
+    expect(print).toHaveBeenCalled();
+  });
+
+  it("there's nothing to print in a new chat", async () => {
+    stubApi({ "GET /assistant/chats": { body: [] } });
+    await renderPage();
+    expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
   });
 });
 
@@ -314,7 +410,7 @@ describe("Assistant: saved chats", () => {
   it("a list that fails to load says so, and asking still works", async () => {
     stubApi({
       "GET /assistant/chats": { status: 500, body: { detail: "Database down" } },
-      "POST /assistant/ask": { body: reply(1, "q", answer(2, "ok")) },
+      "POST /assistant/ask/stream": streamed(reply(1, "q", answer(2, "ok"))),
     });
     await renderPage();
     expect(await screen.findByText("Database down")).toBeInTheDocument();
@@ -341,7 +437,8 @@ describe("Assistant: saved chats", () => {
     });
     await renderPage("/assistant?chat=7");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: 'Delete chat "Report on flights"' }));
+    await user.click(await screen.findByRole("button", { name: 'More for "Report on flights"' }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     expect(calls.some((c) => c.method === "DELETE")).toBe(false);
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm" }));
 
@@ -358,11 +455,60 @@ describe("Assistant: saved chats", () => {
     });
     await renderPage("/assistant?chat=7");
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: 'Delete chat "Report on flights"' }));
+    await user.click(await screen.findByRole("button", { name: 'More for "Report on flights"' }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm" }));
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("Database down"));
     expect(screen.getByRole("article", { name: "Answer to: Report on flights" })).toBeInTheDocument();
+  });
+
+  it("pinning a chat asks the API and refreshes the list", async () => {
+    const calls = stubApi({
+      "GET /assistant/chats": [
+        { body: [summary(7, "Report on flights")] },
+        { body: [summary(7, "Report on flights", true)] },
+      ],
+      "PATCH /assistant/chats/7": { body: summary(7, "Report on flights", true) },
+    });
+    await renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: 'More for "Report on flights"' }));
+    await user.click(await screen.findByRole("menuitem", { name: "Pin to top" }));
+
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ pinned: true }));
+    expect(await screen.findByLabelText("Pinned")).toBeInTheDocument();
+  });
+
+  it("renaming a chat checks the name, saves it, and shows the API's refusal", async () => {
+    const calls = stubApi({
+      "GET /assistant/chats": { body: [summary(7, "Report on flights")] },
+      "PATCH /assistant/chats/7": [
+        { status: 422, body: { detail: "Give the chat a name" } },
+        { body: summary(7, "Flight report") },
+      ],
+    });
+    await renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: 'More for "Report on flights"' }));
+    await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
+    const name = await screen.findByRole("textbox", { name: "Name" });
+    expect(name).toHaveValue("Report on flights");
+
+    await user.clear(name);
+    await user.click(screen.getByRole("button", { name: "Save name" }));
+    expect(await screen.findByText("Give the chat a name")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+
+    await user.type(name, "Flight report");
+    await user.click(screen.getByRole("button", { name: "Save name" }));
+    expect(await screen.findByText("Not renamed")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save name" }));
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: "Name" })).not.toBeInTheDocument());
+    expect(calls.filter((c) => c.method === "PATCH").map((c) => c.body)).toEqual([
+      { title: "Flight report" },
+      { title: "Flight report" },
+    ]);
   });
 
   it("a chat that's gone (or someone else's) says it may have been deleted", async () => {
@@ -392,7 +538,7 @@ describe("Assistant: errors", () => {
   ])("an API %s shows its reason and keeps the question to retry", async (status, body, message) => {
     stubApi({
       "GET /assistant/chats": { body: [] },
-      "POST /assistant/ask": () =>
+      "POST /assistant/ask/stream": () =>
         new Response(typeof body === "string" ? body : JSON.stringify(body), { status }),
     });
     await renderPage();
@@ -406,11 +552,48 @@ describe("Assistant: errors", () => {
   it("an error body that arrives as a 200 is an error, not half an answer", async () => {
     stubApi({
       "GET /assistant/chats": { body: [] },
-      "POST /assistant/ask": { body: { detail: "proxy says no" } },
+      "POST /assistant/ask/stream": { body: { detail: "proxy says no" } },
     });
     await renderPage();
     await ask("q");
-    expect(await screen.findByRole("alert")).toHaveTextContent("an answer it couldn't read");
+    expect(await screen.findByRole("alert")).toHaveTextContent("stopped before it answered");
+  });
+
+  it("an error part-way through the stream shows its reason", async () => {
+    stubApi({
+      "GET /assistant/chats": { body: [] },
+      "POST /assistant/ask/stream": () =>
+        new Response(
+          ndjson([
+            { type: "step", label: "Thinking" },
+            { type: "error", detail: "The assistant is unavailable. Try again in a minute." },
+          ])
+        ),
+    });
+    await renderPage();
+    await ask("q");
+    expect(await screen.findByRole("alert")).toHaveTextContent("The assistant is unavailable");
+    expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("q");
+  });
+
+  it("a stream cut off before the answer says so", async () => {
+    stubApi({
+      "GET /assistant/chats": { body: [] },
+      "POST /assistant/ask/stream": () => new Response(ndjson([{ type: "step", label: "Thinking" }])),
+    });
+    await renderPage();
+    await ask("q");
+    expect(await screen.findByRole("alert")).toHaveTextContent("stopped before it answered");
+  });
+
+  it("a garbled line is an error, not a crash", async () => {
+    stubApi({
+      "GET /assistant/chats": { body: [] },
+      "POST /assistant/ask/stream": () => new Response("{not json\n"),
+    });
+    await renderPage();
+    await ask("q");
+    expect(await screen.findByRole("alert")).toHaveTextContent("couldn't read");
   });
 
   it("the API being unreachable says so", async () => {
@@ -428,7 +611,7 @@ describe("Assistant: errors", () => {
     const calls = stubApi({ "GET /assistant/chats": { body: [] } });
     await renderPage();
     expect(screen.getByRole("button", { name: "Ask" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /flight and rank/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /overdue an appraisal/ })).toBeDisabled();
     expect(calls).toEqual([]);
   });
 });

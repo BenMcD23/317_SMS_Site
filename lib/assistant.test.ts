@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  askStream,
   chartColours,
   chartRows,
   csvName,
@@ -8,6 +9,7 @@ import {
   formatChartValue,
   isAskReply,
   isPersonalColumn,
+  linkCadets,
   sourcesLine,
   tableCsvRows,
   withoutPersonalColumns,
@@ -192,5 +194,100 @@ describe("CSV", () => {
   it("names the file after the title", () => {
     expect(csvName("Parade turnout by month (2026)")).toBe("parade-turnout-by-month-2026.csv");
     expect(csvName("!!!")).toBe("table.csv");
+  });
+});
+
+describe("askStream", () => {
+  const done = {
+    type: "done",
+    chat: { id: 1, title: "t", pinned: false, created_at: "", updated_at: "" },
+    question: { id: 1, role: "user", content: "q", created_at: "" },
+    answer: { id: 2, role: "assistant", content: "a", charts: [], tables: [] },
+  };
+  const body = { question: "q", chat_id: null, hide_personal: false };
+
+  /** A response whose body arrives in the given chunks, split anywhere. */
+  function chunked(chunks: string[], status = 200) {
+    const enc = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        chunks.forEach((x) => c.enqueue(enc.encode(x)));
+        c.close();
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(stream, { status }))
+    );
+  }
+
+  it("reports each step and returns the answer, even with lines split across chunks", async () => {
+    const text = [{ type: "step", label: "Thinking" }, { type: "step", label: "Checking attendance" }, done]
+      .map((e) => JSON.stringify(e))
+      .join("\n");
+    chunked([text.slice(0, 7), text.slice(7, 40), text.slice(40)]);
+    const steps: string[] = [];
+    const reply = await askStream("/x", "tok", body, (s) => steps.push(s));
+    expect(steps).toEqual(["Thinking", "Checking attendance"]);
+    expect(reply.answer.content).toBe("a");
+  });
+
+  it("rejects with the error line's reason", async () => {
+    chunked([JSON.stringify({ type: "error", detail: "Down" }) + "\n"]);
+    await expect(askStream("/x", "tok", body, () => {})).rejects.toThrow("Down");
+  });
+
+  it("rejects with the API's reason when it refuses before streaming", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ detail: "Chat not found" }), { status: 404 }))
+    );
+    await expect(askStream("/x", "tok", body, () => {})).rejects.toThrow("Chat not found");
+  });
+
+  it("rejects when the stream ends without an answer, or sends garbage", async () => {
+    chunked([JSON.stringify({ type: "step", label: "Thinking" }) + "\n"]);
+    await expect(askStream("/x", "tok", body, () => {})).rejects.toThrow("stopped before it answered");
+    chunked(["<html>proxy error</html>"]);
+    await expect(askStream("/x", "tok", body, () => {})).rejects.toThrow("couldn't read");
+    chunked([JSON.stringify({ type: "done", chat: null }) + "\n"]);
+    await expect(askStream("/x", "tok", body, () => {})).rejects.toThrow("couldn't read");
+  });
+
+  it("an unreachable server says so", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      })
+    );
+    await expect(askStream("/x", "tok", body, () => {})).rejects.toThrow("Server unreachable.");
+  });
+});
+
+describe("linkCadets", () => {
+  const cadets = [
+    { cin: 1, name: "Amy Ash" },
+    { cin: 2, name: "Amy Ashworth" },
+    { cin: 3, name: "Ó Briain (Siân)" },
+  ];
+
+  it("splits text around each name, longest match first", () => {
+    expect(linkCadets("Amy Ashworth and Amy Ash.", cadets)).toEqual([
+      { kind: "cadet", text: "Amy Ashworth", cin: 2 },
+      { kind: "text", text: " and " },
+      { kind: "cadet", text: "Amy Ash", cin: 1 },
+      { kind: "text", text: "." },
+    ]);
+  });
+
+  it("treats names as text, not patterns, and leaves text with no names alone", () => {
+    expect(linkCadets("Ask Ó Briain (Siân)", cadets)[1]).toEqual({
+      kind: "cadet",
+      text: "Ó Briain (Siân)",
+      cin: 3,
+    });
+    expect(linkCadets("Nobody here", cadets)).toEqual([{ kind: "text", text: "Nobody here" }]);
+    expect(linkCadets("Amy", [])).toEqual([{ kind: "text", text: "Amy" }]);
   });
 });
