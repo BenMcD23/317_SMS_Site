@@ -23,7 +23,6 @@ import { ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { todayLocal } from "@/lib/format";
 import { Private } from "@/components/private";
 import { usePersonalDataHidden } from "@/lib/privacy";
-import { WhtAuditTab } from "./wht-tab";
 
 const LEVEL_STYLES: Record<string, string> = {
   blue: "border-blue-200 bg-blue-50 text-blue-700",
@@ -35,6 +34,9 @@ const LEVEL_STYLES: Record<string, string> = {
   intermediate: "border-indigo-200 bg-indigo-50 text-indigo-700",
   advanced: "border-emerald-200 bg-emerald-50 text-emerald-700",
   yes: "border-green-200 bg-green-50 text-green-700",
+  // Weapon handling tests.
+  current: "border-green-200 bg-green-50 text-green-700",
+  expired: "border-red-200 bg-red-50 text-red-700",
 };
 
 function levelLabel(level: string): string {
@@ -75,21 +77,28 @@ type DietaryEntry = {
   details: string | null;
 };
 
+// "wht" is a weapon handling test: levels "current" and "expired", one per weapon.
 type BadgeType = {
   key: string;
   name: string;
-  kind: "leveled" | "boolean";
+  kind: "leveled" | "boolean" | "wht";
   levels: string[];
 };
 
 type QualCheck = {
   qual_type: string;
   display_name: string;
-  kind: "leveled" | "boolean";
+  kind: "leveled" | "boolean" | "wht";
   level: string | null;
   has: boolean;
-  date_achieved: string | null; // ISO date, e.g. "2024-05-01"
+  date_achieved: string | null; // ISO date, e.g. "2024-05-01"; a WHT's pass date
+  date_expires?: string | null; // WHTs only
+  awarded_by?: string | null; // WHTs only
 };
+
+function columnName(b: BadgeType): string {
+  return b.kind === "wht" ? `${b.name} WHT` : b.name;
+}
 
 type AuditResult = Cadet & {
   qualifications_check?: QualCheck[];
@@ -176,6 +185,7 @@ function CriteriaSelector({
 }) {
   const leveled = badgeTypes.filter((b) => b.kind === "leveled");
   const boolean = badgeTypes.filter((b) => b.kind === "boolean");
+  const whts = badgeTypes.filter((b) => b.kind === "wht");
   const anySelected = Object.keys(selected).length > 0;
 
   function setLevels(key: string, levels: string[]) {
@@ -194,6 +204,33 @@ function CriteriaSelector({
     const actualSelected = cur.filter((l) => l !== "none");
     const allSel = actualSelected.length === b.levels.length && b.levels.length > 0;
     setLevels(b.key, allSel ? noneEntry : [...b.levels, ...noneEntry]);
+  }
+  function levelRow(b: BadgeType) {
+    const cur = selected[b.key] ?? [];
+    const actualSelected = cur.filter((l) => l !== "none");
+    const allSel = actualSelected.length === b.levels.length && b.levels.length > 0;
+    const noneSelected = cur.includes("none");
+    return (
+      <div
+        key={b.key}
+        className="flex flex-col gap-1.5 border-b pb-2.5 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+      >
+        <span className="text-sm">{b.name}</span>
+        <div className="flex flex-wrap gap-1">
+          <LevelChip active={allSel} onClick={() => toggleAllLevels(b)}>
+            All
+          </LevelChip>
+          <LevelChip active={noneSelected} onClick={() => toggleLevel(b, "none")}>
+            None
+          </LevelChip>
+          {b.levels.map((lvl) => (
+            <LevelChip key={lvl} active={cur.includes(lvl)} level={lvl} onClick={() => toggleLevel(b, lvl)}>
+              {levelLabel(lvl)}
+            </LevelChip>
+          ))}
+        </div>
+      </div>
+    );
   }
   function selectEverything() {
     const next: LevelSelection = {};
@@ -218,40 +255,15 @@ function CriteriaSelector({
         )}
       </div>
 
-      <div className="flex flex-col gap-2.5">
-        {leveled.map((b) => {
-          const cur = selected[b.key] ?? [];
-          const actualSelected = cur.filter((l) => l !== "none");
-          const allSel = actualSelected.length === b.levels.length && b.levels.length > 0;
-          const noneSelected = cur.includes("none");
-          return (
-            <div
-              key={b.key}
-              className="flex flex-col gap-1.5 border-b pb-2.5 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-            >
-              <span className="text-sm">{b.name}</span>
-              <div className="flex flex-wrap gap-1">
-                <LevelChip active={allSel} onClick={() => toggleAllLevels(b)}>
-                  All
-                </LevelChip>
-                <LevelChip active={noneSelected} onClick={() => toggleLevel(b, "none")}>
-                  None
-                </LevelChip>
-                {b.levels.map((lvl) => (
-                  <LevelChip
-                    key={lvl}
-                    active={cur.includes(lvl)}
-                    level={lvl}
-                    onClick={() => toggleLevel(b, lvl)}
-                  >
-                    {levelLabel(lvl)}
-                  </LevelChip>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <div className="flex flex-col gap-2.5">{leveled.map(levelRow)}</div>
+
+      {whts.length > 0 && (
+        <>
+          <p className="border-t pt-3 text-sm font-semibold">Weapon handling tests</p>
+          {/* "None" here means never tested on that weapon. */}
+          <div className="flex flex-col gap-2.5">{whts.map(levelRow)}</div>
+        </>
+      )}
 
       <p className="border-t pt-3 text-sm font-semibold">Other</p>
       <div className="flex flex-col gap-2.5">
@@ -381,8 +393,11 @@ function AuditResultsTable({
     return true;
   });
 
-  const dateFor = (r: AuditResult) =>
-    r.qualifications_check?.find((c) => c.qual_type === sort?.key)?.date_achieved ?? null;
+  // A WHT sorts by when it runs out, which is what a retest list needs.
+  const dateFor = (r: AuditResult) => {
+    const check = r.qualifications_check?.find((c) => c.qual_type === sort?.key);
+    return (check?.kind === "wht" ? check.date_expires : check?.date_achieved) ?? null;
+  };
   const sortedRows = sort
     ? [...rows].sort((a, b) => {
         const da = dateFor(a);
@@ -406,7 +421,16 @@ function AuditResultsTable({
       "Rank",
       "Flight",
       "Classification",
-      ...qualCols.flatMap((b) => [b.name, `${b.name} awarded`]),
+      ...qualCols.flatMap((b) =>
+        b.kind === "wht"
+          ? [
+              columnName(b),
+              `${columnName(b)} passed`,
+              `${columnName(b)} expires`,
+              `${columnName(b)} awarded by`,
+            ]
+          : [b.name, `${b.name} awarded`]
+      ),
       ...(includeMedical ? ["Allergies"] : []),
       ...(includeDietary ? ["Dietary"] : []),
       ...(includeMissingAttachments ? ["Missing attachments"] : []),
@@ -421,6 +445,16 @@ function AuditResultsTable({
       ...qualCols.flatMap((b) => {
         const check = r.qualifications_check?.find((c) => c.qual_type === b.key);
         const lvl = matchedLevel(check, selected[b.key] ?? []);
+        if (b.kind === "wht") {
+          if (lvl === "none") return ["Never tested", null, null, null];
+          if (!lvl) return [null, null, null, null];
+          return [
+            levelLabel(lvl),
+            check?.date_achieved ?? null,
+            check?.date_expires ?? null,
+            check?.awarded_by ?? null,
+          ];
+        }
         if (lvl === "none") return ["None", null];
         if (!lvl) return [null, null];
         return [check?.kind === "boolean" ? "Yes" : levelLabel(lvl), check?.date_achieved ?? null];
@@ -492,13 +526,13 @@ function AuditResultsTable({
                       className="hover:text-foreground mx-auto inline-flex items-center gap-1"
                       title={
                         !active
-                          ? `Sort by ${b.name} date awarded (newest first)`
+                          ? `Sort by ${columnName(b)} ${b.kind === "wht" ? "expiry" : "date awarded"} (newest first)`
                           : sort!.dir === "desc"
-                            ? `Sort by ${b.name} date awarded (oldest first)`
+                            ? `Sort by ${columnName(b)} ${b.kind === "wht" ? "expiry" : "date awarded"} (oldest first)`
                             : "Clear sorting"
                       }
                     >
-                      {b.name}
+                      {columnName(b)}
                       {active ? (
                         sort!.dir === "desc" ? (
                           <ArrowDown className="size-3" />
@@ -537,7 +571,28 @@ function AuditResultsTable({
                   return (
                     <TableCell key={b.key} className="text-center">
                       {lvl === "none" ? (
-                        <span className="text-muted-foreground text-xs">None</span>
+                        <span className="text-muted-foreground text-xs">
+                          {b.kind === "wht" ? "Never tested" : "None"}
+                        </span>
+                      ) : lvl && check?.kind === "wht" ? (
+                        <div
+                          className="flex flex-col items-center gap-0.5"
+                          title={[
+                            check.date_achieved && `Passed ${fmtDate(check.date_achieved)}`,
+                            check.awarded_by && `by ${check.awarded_by}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                            {levelLabel(lvl)}
+                          </Badge>
+                          <span className="text-muted-foreground text-xs">
+                            {check.date_expires
+                              ? `${lvl === "current" ? "until" : "expired"} ${fmtDate(check.date_expires)}`
+                              : "no expiry date"}
+                          </span>
+                        </div>
                       ) : lvl ? (
                         <div className="flex flex-col items-center gap-0.5">
                           <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
@@ -947,16 +1002,12 @@ export default function AuditPage() {
         <TabsList>
           <TabsTrigger value="cadet-check">Cadet Check</TabsTrigger>
           <TabsTrigger value="event-check">Event Audit</TabsTrigger>
-          <TabsTrigger value="whts">WHTs</TabsTrigger>
         </TabsList>
         <TabsContent value="cadet-check" className="mt-4">
           <CadetCheckTab />
         </TabsContent>
         <TabsContent value="event-check" className="mt-4">
           <EventCheckTab />
-        </TabsContent>
-        <TabsContent value="whts" className="mt-4">
-          <WhtAuditTab />
         </TabsContent>
       </Tabs>
     </div>
