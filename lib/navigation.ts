@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Award,
   BadgeCheck,
+  Bot,
   BookOpen,
   Calendar,
   CalendarCheck,
@@ -96,6 +97,13 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/stats",
         icon: ChartLine,
         keywords: ["badge progression", "trends", "strength", "expiring"],
+      },
+      // Staff-only: lib/access.ts doesn't list it for NCOs, and the API requires staff.
+      {
+        label: "Assistant",
+        href: "/assistant",
+        icon: Bot,
+        keywords: ["ai", "ask", "chat", "question", "who", "find"],
       },
       {
         kind: "group",

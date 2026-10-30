@@ -209,7 +209,7 @@ export function describeQuery(spec: QuerySpec, dataset: Dataset | undefined): st
 // The chart hues in the order that survives colour-vision checks in both
 // themes (the same order as flight colours). Four, and no more: a fifth
 // series is left to the table rather than given a hue that can't be told apart.
-const SERIES_COLOURS = ["var(--chart-1)", "var(--chart-4)", "var(--chart-5)", "var(--chart-3)"];
+export const SERIES_COLOURS = ["var(--chart-1)", "var(--chart-4)", "var(--chart-5)", "var(--chart-3)"];
 export const MAX_SERIES = SERIES_COLOURS.length;
 
 export interface ChartData {

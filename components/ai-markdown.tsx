@@ -1,31 +1,37 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+
+type Decorate = (text: string) => ReactNode;
 
 /** `**bold**` runs as <strong>; models bold the fault they're naming even when told not to. */
-function inline(text: string): ReactNode[] {
+function inline(text: string, decorate: Decorate): ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
     part.startsWith("**") && part.endsWith("**") && part.length > 4 ? (
       <strong key={i} className="text-foreground font-semibold">
-        {part.slice(2, -2)}
+        {decorate(part.slice(2, -2))}
       </strong>
     ) : (
-      part
+      <Fragment key={i}>{decorate(part)}</Fragment>
     )
   );
 }
+
+const plain: Decorate = (text) => text;
 
 /**
  * The small slice of markdown the AI write-ups use: `###` headings, `-` and
  * `1.` lists, `**bold**` and paragraphs. Shared by the cadet trend analysis and
  * the inspection audit. Hand-rolled rather than a markdown library so model
- * output can never inject HTML: everything renders as text.
+ * output can never inject HTML: everything renders as text. `decorate` turns
+ * a run of plain text into something richer (the assistant links cadets'
+ * names to their records); it gets text, never markup.
  */
-export function AiMarkdown({ text }: { text: string }) {
+export function AiMarkdown({ text, decorate = plain }: { text: string; decorate?: Decorate }) {
   const blocks: ReactNode[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
 
   const flush = (key: string) => {
     if (!list) return;
-    const items = list.items.map((b, i) => <li key={i}>{inline(b)}</li>);
+    const items = list.items.map((b, i) => <li key={i}>{inline(b, decorate)}</li>);
     blocks.push(
       list.ordered ? (
         <ol key={key} className="ml-4 list-decimal space-y-1 text-sm">
@@ -66,7 +72,7 @@ export function AiMarkdown({ text }: { text: string }) {
       flush(`l-${i}`);
       blocks.push(
         <p key={i} className="text-muted-foreground text-sm">
-          {inline(line)}
+          {inline(line, decorate)}
         </p>
       );
     }
