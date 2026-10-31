@@ -82,6 +82,7 @@ const TOOL_LABELS: Record<string, string> = {
   open_orders: "open uniform orders",
   upcoming_events: "upcoming events",
   aggregate: "squadron figures",
+  programme: "the programme",
 };
 
 /**

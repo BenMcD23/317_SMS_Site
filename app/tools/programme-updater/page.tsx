@@ -16,6 +16,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
+import { ProgrammeRecord } from "@/components/programme/programme-record";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -84,7 +85,7 @@ export default function ProgrammeUpdaterPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <PageHeader
         title="Programme"
-        description="Publish a month's programme from Google Drive to the squadron website"
+        description="Publish a month's programme from Google Drive to the squadron website, and copy it into the stats"
       />
 
       <Card>
@@ -146,6 +147,8 @@ export default function ProgrammeUpdaterPage() {
           </FieldGroup>
         </CardContent>
       </Card>
+
+      <ProgrammeRecord month={month} year={year} />
     </div>
   );
 }
