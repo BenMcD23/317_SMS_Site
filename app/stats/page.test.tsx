@@ -84,6 +84,7 @@ const OK: Routes = {
   "/stats/retention": [[]],
   "/stats/targets": [[]],
   "/stats/badge-levels": [{ first_aid: ["Blue", "Bronze", "Silver", "Gold"] }],
+  "/programme/stats": [{ days: 182, nights: [], categories: [], activities: [], categories_all: [] }],
 };
 
 // Keys are a path ("GET" implied) or "METHOD /path".
@@ -851,5 +852,22 @@ describe("training progress", () => {
     await renderStats();
     expect(screen.getByText("Classification funnel")).toBeTruthy();
     expect(screen.queryByText("Blue Flying")).toBeNull();
+  });
+});
+
+describe("turnout by programme", () => {
+  it("shows the programme section, following the page's time range", async () => {
+    const fetch = stubApi();
+    await renderStats("range=3m");
+    expect(screen.getByRole("region", { name: "Turnout by programme" })).toBeInTheDocument();
+    expect(screen.getByText("No programme for this period")).toBeInTheDocument();
+    expect(requested(fetch, "/programme/stats?days=91")).toBe(true);
+  });
+
+  it("a programme that fails to load doesn't take the rest of the page down", async () => {
+    stubApi({ "/programme/stats": [{ detail: "Database down" }, 500] });
+    await renderStats();
+    expect(screen.getByText("Couldn't load the programme turnout")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Badge progression" })).toBeInTheDocument();
   });
 });

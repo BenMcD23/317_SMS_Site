@@ -17,6 +17,7 @@ import {
   StrengthChart,
 } from "@/components/stats/charts";
 import { CsvButton } from "@/components/stats/csv-button";
+import { ProgrammeTurnout } from "@/components/stats/programme-turnout";
 import { SquadronKpis } from "@/components/stats/kpis";
 import { ClassificationFunnel, IntakeRetention } from "@/components/stats/progression";
 import { ExpiringQuals, RecentAwards } from "@/components/stats/qual-lists";
@@ -361,6 +362,8 @@ function Stats() {
               <ClassificationFunnel funnel={funnelData} flight={flight} onDrill={drillNow} />
               <IntakeRetention rows={Array.isArray(retentionData) ? retentionData : []} />
             </div>
+
+            <ProgrammeTurnout range={range} />
 
             {progress && (
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
