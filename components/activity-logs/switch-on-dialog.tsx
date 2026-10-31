@@ -16,7 +16,9 @@ import {
 } from "@/components/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { AssessorField, type AssessorMode } from "@/components/activity-logs/assessor-field";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { ErrorAlert } from "@/components/error-alert";
 import { LEVELS, switchOn, type CadetActivityLog, type Level } from "@/lib/activity-logs";
@@ -25,10 +27,24 @@ const schema = z.object({
   cin: z.number({ error: "Choose a cadet" }).int().positive("Choose a cadet"),
   name: z.string(),
   level: z.enum(["Bronze", "Silver", "Gold"]),
+  // Optional: a cadet can be switched on before they've been given a number.
+  dofe_number: z.string().trim(),
+  // Optional too: blank means no assessor yet. `cin` is null for someone outside SMS.
+  assessor_mode: z.enum(["staff", "other"]),
+  assessor_name: z.string().trim(),
+  assessor_cin: z.number().nullable(),
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY = { cin: undefined as unknown as number, name: "", level: "Bronze" as Level };
+const EMPTY = {
+  cin: undefined as unknown as number,
+  name: "",
+  level: "Bronze" as Level,
+  dofe_number: "",
+  assessor_mode: "staff" as AssessorMode,
+  assessor_name: "",
+  assessor_cin: null as number | null,
+};
 
 /**
  * Switches a cadet's activity log on, which is what makes the Activity Log
@@ -46,8 +62,11 @@ export function SwitchOnDialog({
 }) {
   const { data: session } = useSession();
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: EMPTY });
-  const { control, handleSubmit, reset, formState, setValue } = form;
-  const [cin, name] = useWatch({ control, name: ["cin", "name"] });
+  const { control, handleSubmit, reset, formState, setValue, register } = form;
+  const [cin, name, aMode, aName, aCin] = useWatch({
+    control,
+    name: ["cin", "name", "assessor_mode", "assessor_name", "assessor_cin"],
+  });
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   function close() {
@@ -59,7 +78,12 @@ export function SwitchOnDialog({
   const submit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      onDone(await switchOn(session?.id_token ?? "", values.cin, values.level));
+      onDone(
+        await switchOn(session?.id_token ?? "", values.cin, values.level, {
+          dofeNumber: values.dofe_number,
+          assessor: { name: values.assessor_name, cin: values.assessor_cin },
+        })
+      );
       close();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Couldn't switch the DofE activity log on.");
@@ -114,6 +138,25 @@ export function SwitchOnDialog({
               )}
             />
           </Field>
+          <Field>
+            <FieldLabel htmlFor="switch-on-dofe-number">DofE number</FieldLabel>
+            <Input
+              id="switch-on-dofe-number"
+              autoComplete="off"
+              inputMode="text"
+              {...register("dofe_number")}
+            />
+          </Field>
+          <AssessorField
+            mode={aMode}
+            onModeChange={(m) => setValue("assessor_mode", m)}
+            name={aName}
+            cin={aCin}
+            onChange={(n, c) => {
+              setValue("assessor_name", n);
+              setValue("assessor_cin", c);
+            }}
+          />
           <ErrorAlert message={submitError} title="Not switched on" />
         </form>
 

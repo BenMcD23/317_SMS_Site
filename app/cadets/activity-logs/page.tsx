@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, NotebookPen, Plus } from "lucide-react";
 
@@ -17,9 +18,10 @@ import { SwitchOnDialog } from "@/components/activity-logs/switch-on-dialog";
 import { WeekGrid, WeekGridKey } from "@/components/activity-logs/week-grid";
 import { GRID_WEEKS, shiftWeek, type WeekGrid as Grid } from "@/lib/activity-logs";
 import { formatShortDate } from "@/lib/format";
+import { useStaffUsers } from "@/lib/staff-users";
 import { useApiQuery } from "@/lib/use-api-query";
 
-type Show = "all" | "behind" | "ok";
+type Show = "all" | "behind" | "ok" | "report";
 
 /**
  * The DofE check: every cadet with their activity log switched on, against
@@ -32,7 +34,16 @@ export default function ActivityLogsPage() {
   const [end, setEnd] = useState<string | null>(null);
   const [show, setShow] = useState<Show>("all");
   const [flight, setFlight] = useState("");
+  const [mine, setMine] = useState(false);
   const [switching, setSwitching] = useState(false);
+  // Who "my reports" means: the staff member whose email is signed in.
+  const { data: session } = useSession();
+  const staff = useStaffUsers();
+  const myCin = useMemo(() => {
+    const email = session?.user?.email?.toLowerCase();
+    const rows = Array.isArray(staff.data) ? staff.data : [];
+    return (email && rows.find((u) => u.email?.toLowerCase() === email)?.cin) || null;
+  }, [session?.user?.email, staff.data]);
   const { data, isLoading, error } = useApiQuery<Grid>(
     ["activity-logs", "grid", end ?? "current"],
     `/activity-logs/grid?weeks=${GRID_WEEKS}${end ? `&end=${end}` : ""}`,
@@ -45,8 +56,12 @@ export default function ActivityLogsPage() {
   const behind = cadets.filter((c) => c.behind).length;
   const finished = cadets.flatMap((c) => c.sections).filter((s) => s.complete).length;
   const flights = [...new Set(cadets.map((c) => c.flight).filter((f): f is string => !!f))].sort();
+  const reportsDue = cadets.filter((c) => c.report_due).length;
   const shown = cadets.filter(
-    (c) => (show === "all" || (show === "behind") === c.behind) && (!flight || c.flight === flight)
+    (c) =>
+      (show === "all" || (show === "report" ? !!c.report_due : show === "behind" ? c.behind : !c.behind)) &&
+      (!flight || c.flight === flight) &&
+      (!mine || (myCin !== null && c.assessor_cin === myCin))
   );
 
   const first = grid?.weeks[0];
@@ -106,7 +121,20 @@ export default function ActivityLogsPage() {
                 <ToggleGroupItem value="ok" className="px-3">
                   Up to date
                 </ToggleGroupItem>
+                <ToggleGroupItem value="report" className="px-3">
+                  Report due{reportsDue ? ` ${reportsDue}` : ""}
+                </ToggleGroupItem>
               </ToggleGroup>
+              {myCin !== null && (
+                <Button
+                  variant={mine ? "default" : "outline"}
+                  size="sm"
+                  aria-pressed={mine}
+                  onClick={() => setMine((m) => !m)}
+                >
+                  My cadets
+                </Button>
+              )}
               <FlightFilter flights={flights} value={flight} onChange={setFlight} />
             </div>
             <div className="flex items-center gap-1">
@@ -140,7 +168,11 @@ export default function ActivityLogsPage() {
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              {show === "behind" ? "Nobody to chase. Everyone's up to date this week." : "No cadets match."}
+              {show === "behind"
+                ? "Nobody to chase. Everyone's up to date this week."
+                : show === "report"
+                  ? "No reports waiting."
+                  : "No cadets match."}
             </p>
           )}
         </>

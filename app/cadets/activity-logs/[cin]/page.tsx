@@ -24,6 +24,7 @@ import {
   LEVELS,
   WEEKLY_MINUTES,
   deleteEntry,
+  markReport,
   pdfUrl,
   switchOff,
   switchOn,
@@ -36,7 +37,7 @@ import {
 } from "@/lib/activity-logs";
 import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { saveResponseAsFile } from "@/lib/download";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatTimestamp } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
 
 /** This week's state of a section, worked out the same way as the dashboard. */
@@ -173,6 +174,51 @@ export default function CadetActivityLogPage() {
             Switch on (Bronze)
           </Button>
         </EmptyState>
+      )}
+
+      {log?.enabled && (
+        <section
+          aria-labelledby="report-heading"
+          className="bg-card flex flex-col gap-3 rounded-lg border p-4"
+        >
+          <SectionHeading
+            title={<span id="report-heading">Final report</span>}
+            description={
+              log.assessor_name
+                ? `Assessor: ${log.assessor_name}${log.assessor_cin ? " (staff)" : ""}`
+                : "No assessor chosen yet. Switch the cadet on again to set one."
+            }
+          />
+          {log.report_done_at ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="text-success font-medium">
+                Report done {formatTimestamp(log.report_done_at)}
+                {log.report_done_by ? ` by ${log.report_done_by}` : ""}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => run(() => markReport(token, cin, false), "Report marked as not done.")}
+              >
+                Undo
+              </Button>
+            </div>
+          ) : log.report_ready ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span>All three sections have run their full length. The report can be written.</span>
+              <Button
+                size="sm"
+                onClick={() => run(() => markReport(token, cin, true), "Report marked as done.")}
+              >
+                Mark report done
+              </Button>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Not ready yet: every section has to run its full length first.
+            </p>
+          )}
+        </section>
       )}
 
       {log?.enabled &&

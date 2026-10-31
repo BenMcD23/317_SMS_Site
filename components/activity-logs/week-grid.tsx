@@ -104,6 +104,15 @@ export function WeekGrid({
               <span className="text-muted-foreground text-xs">
                 {[c.level, c.flight && `${c.flight} Flt`].filter(Boolean).join(" · ")}
               </span>
+              {c.assessor_name && (
+                <span className="text-muted-foreground text-xs">Assessor: {c.assessor_name}</span>
+              )}
+              {c.report_due && (
+                <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary mt-1 w-fit">
+                  Report due
+                </Badge>
+              )}
+              {c.report_done && <span className="text-success mt-1 text-xs font-medium">Report done</span>}
               {/* The Chase column doesn't fit on a phone; the flag moves here. */}
               {c.behind && (
                 <Badge
