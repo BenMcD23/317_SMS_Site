@@ -124,6 +124,7 @@ export interface CadetActivityLog {
   cin: number;
   name: string;
   level?: Level;
+  dofe_number?: string | null;
   sections: { section: SectionKey; label: string; log: SectionLog | null }[];
 }
 
@@ -171,11 +172,15 @@ export function shiftWeek(weekStart: string, weeks: number): string {
 
 const base = (cin: number) => `${API_BASE}/activity-logs/cadets/${cin}`;
 
-export function switchOn(token: string, cin: number, level: Level) {
+/**
+ * `dofeNumber` is only sent when given, so changing a level or re-switching on
+ * from the cadet's page never overwrites a number already on file.
+ */
+export function switchOn(token: string, cin: number, level: Level, dofeNumber?: string) {
   return apiRequest<CadetActivityLog>(
     token,
     `${base(cin)}/enrolment`,
-    { method: "PUT", body: { level } },
+    { method: "PUT", body: dofeNumber ? { level, dofe_number: dofeNumber } : { level } },
     "Couldn't switch the DofE activity log on."
   );
 }

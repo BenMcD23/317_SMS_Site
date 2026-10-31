@@ -6,6 +6,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { switchOn } from "@/lib/activity-logs";
 import ActivityLogsPage from "@/app/cadets/activity-logs/page";
 import CadetActivityLogPage from "@/app/cadets/activity-logs/[cin]/page";
 import type {
@@ -222,6 +223,26 @@ describe("week grid", () => {
     await user.click(dialog.getByRole("button", { name: "Switch on" }));
     expect(await dialog.findByText("Choose a cadet")).toBeInTheDocument();
     expect(calls(fetch, "PUT", "/enrolment")).toHaveLength(0);
+  });
+
+  it("asks for the DofE number when switching a cadet on", async () => {
+    stubApi({ "GET /activity-logs/grid": [GRID] });
+    await show(<ActivityLogsPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Switch on a cadet" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    await user.type(dialog.getByRole("textbox", { name: "DofE number" }), "1234567");
+    expect(dialog.getByRole("textbox", { name: "DofE number" })).toHaveValue("1234567");
+  });
+});
+
+describe("switchOn", () => {
+  it("sends the DofE number when given, and leaves it out otherwise", async () => {
+    const fetch = stubApi({ [`PUT ${BASE}/enrolment`]: [LOG, 200] });
+    await switchOn("tok", 2100001, "Silver", "1234567");
+    await switchOn("tok", 2100001, "Gold");
+    const bodies = calls(fetch, "PUT", "/enrolment").map(([, init]) => JSON.parse(String(init?.body)));
+    expect(bodies).toEqual([{ level: "Silver", dofe_number: "1234567" }, { level: "Gold" }]);
   });
 });
 

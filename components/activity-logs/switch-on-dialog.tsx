@@ -16,6 +16,7 @@ import {
 } from "@/components/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { ErrorAlert } from "@/components/error-alert";
@@ -25,10 +26,12 @@ const schema = z.object({
   cin: z.number({ error: "Choose a cadet" }).int().positive("Choose a cadet"),
   name: z.string(),
   level: z.enum(["Bronze", "Silver", "Gold"]),
+  // Optional: a cadet can be switched on before they've been given a number.
+  dofe_number: z.string().trim(),
 });
 type Values = z.infer<typeof schema>;
 
-const EMPTY = { cin: undefined as unknown as number, name: "", level: "Bronze" as Level };
+const EMPTY = { cin: undefined as unknown as number, name: "", level: "Bronze" as Level, dofe_number: "" };
 
 /**
  * Switches a cadet's activity log on, which is what makes the Activity Log
@@ -46,7 +49,7 @@ export function SwitchOnDialog({
 }) {
   const { data: session } = useSession();
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: EMPTY });
-  const { control, handleSubmit, reset, formState, setValue } = form;
+  const { control, handleSubmit, reset, formState, setValue, register } = form;
   const [cin, name] = useWatch({ control, name: ["cin", "name"] });
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -59,7 +62,7 @@ export function SwitchOnDialog({
   const submit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      onDone(await switchOn(session?.id_token ?? "", values.cin, values.level));
+      onDone(await switchOn(session?.id_token ?? "", values.cin, values.level, values.dofe_number));
       close();
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Couldn't switch the DofE activity log on.");
@@ -112,6 +115,15 @@ export function SwitchOnDialog({
                   ))}
                 </ToggleGroup>
               )}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="switch-on-dofe-number">DofE number</FieldLabel>
+            <Input
+              id="switch-on-dofe-number"
+              autoComplete="off"
+              inputMode="text"
+              {...register("dofe_number")}
             />
           </Field>
           <ErrorAlert message={submitError} title="Not switched on" />
