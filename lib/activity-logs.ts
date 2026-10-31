@@ -47,6 +47,16 @@ export interface GridSection {
   last_added: string | null;
 }
 
+/**
+ * Who writes the cadet's final DofE report: a staff member (`cin` set, so the
+ * report shows up under their name) or anyone else, such as someone outside
+ * SMS (`cin` null, name only).
+ */
+export interface Assessor {
+  name: string;
+  cin: number | null;
+}
+
 export interface GridCadet {
   cin: number;
   name: string;
@@ -55,6 +65,12 @@ export interface GridCadet {
   level: Level;
   /** This week: a section due is under an hour, or nothing is set up yet. */
   behind: boolean;
+  assessor_name?: string | null;
+  /** Set when the assessor is a staff member; what "my reports" filters on. */
+  assessor_cin?: number | null;
+  /** Every section is complete and the assessor hasn't marked the report done. */
+  report_due?: boolean;
+  report_done?: boolean;
   sections: GridSection[];
   /** Oldest first, matching `WeekGrid.weeks`. */
   weeks: { week_start: string; cells: Record<SectionKey, GridCell> }[];
@@ -125,6 +141,12 @@ export interface CadetActivityLog {
   name: string;
   level?: Level;
   dofe_number?: string | null;
+  assessor_name?: string | null;
+  assessor_cin?: number | null;
+  /** Every section has run its full length: the report can be written. */
+  report_ready?: boolean;
+  report_done_at?: string | null;
+  report_done_by?: string | null;
   sections: { section: SectionKey; label: string; log: SectionLog | null }[];
 }
 
@@ -173,14 +195,25 @@ export function shiftWeek(weekStart: string, weeks: number): string {
 const base = (cin: number) => `${API_BASE}/activity-logs/cadets/${cin}`;
 
 /**
- * `dofeNumber` is only sent when given, so changing a level or re-switching on
- * from the cadet's page never overwrites a number already on file.
+ * The DofE number and assessor are only sent when given, so changing a level
+ * or re-switching on from the cadet's page never overwrites what's on file.
  */
-export function switchOn(token: string, cin: number, level: Level, dofeNumber?: string) {
+export function switchOn(
+  token: string,
+  cin: number,
+  level: Level,
+  extra: { dofeNumber?: string; assessor?: Assessor | null } = {}
+) {
+  const body: Record<string, unknown> = { level };
+  if (extra.dofeNumber) body.dofe_number = extra.dofeNumber;
+  if (extra.assessor?.name) {
+    body.assessor_name = extra.assessor.name;
+    body.assessor_cin = extra.assessor.cin;
+  }
   return apiRequest<CadetActivityLog>(
     token,
     `${base(cin)}/enrolment`,
-    { method: "PUT", body: dofeNumber ? { level, dofe_number: dofeNumber } : { level } },
+    { method: "PUT", body },
     "Couldn't switch the DofE activity log on."
   );
 }
@@ -191,6 +224,16 @@ export function switchOff(token: string, cin: number) {
     `${base(cin)}/enrolment`,
     { method: "DELETE" },
     "Couldn't switch the DofE activity log off."
+  );
+}
+
+/** The assessor ticks the final report off once it's written (or undoes that). */
+export function markReport(token: string, cin: number, done: boolean) {
+  return apiRequest<CadetActivityLog>(
+    token,
+    `${base(cin)}/report`,
+    { method: done ? "PUT" : "DELETE" },
+    done ? "Couldn't mark the report as done." : "Couldn't undo the report."
   );
 }
 

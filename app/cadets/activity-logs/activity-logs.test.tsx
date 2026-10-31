@@ -225,6 +225,64 @@ describe("week grid", () => {
     expect(calls(fetch, "PUT", "/enrolment")).toHaveLength(0);
   });
 
+  it("narrows to reports due, and says so when none are waiting", async () => {
+    const due = {
+      ...GRID,
+      cadets: [{ ...GRID.cadets[0], report_due: true, assessor_name: "Maj Sam Staff" }, GRID.cadets[1]],
+    };
+    stubApi({ "GET /activity-logs/grid": [due], "GET /staff/users": [[]] });
+    await show(<ActivityLogsPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("radio", { name: /Report due/ }));
+    expect(screen.getByText("Cpl Cara Cadet")).toBeInTheDocument();
+    expect(screen.queryByText("Zoë Ó Briain")).toBeNull();
+    expect(screen.getByText("Assessor: Maj Sam Staff")).toBeInTheDocument();
+  });
+
+  it("'My cadets' shows only the signed-in staff member's assessees", async () => {
+    const mine = {
+      ...GRID,
+      cadets: [
+        { ...GRID.cadets[0], assessor_cin: 1000001 },
+        { ...GRID.cadets[1], assessor_cin: 1000002 },
+      ],
+    };
+    stubApi({
+      "GET /activity-logs/grid": [mine],
+      "GET /staff/users": [
+        [{ cin: 1000001, email: "Staff@317atc.co.uk", firstName: "Sam", lastName: "Staff" }],
+      ],
+    });
+    await show(<ActivityLogsPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "My cadets" }));
+    expect(screen.getByText("Cpl Cara Cadet")).toBeInTheDocument();
+    expect(screen.queryByText("Zoë Ó Briain")).toBeNull();
+  });
+
+  it("has no 'My cadets' button when the signed-in user isn't on the staff list", async () => {
+    stubApi({ "GET /activity-logs/grid": [GRID], "GET /staff/users": [{ detail: "Forbidden" }, 403] });
+    await show(<ActivityLogsPage />);
+    await screen.findByRole("table");
+    expect(screen.queryByRole("button", { name: "My cadets" })).toBeNull();
+  });
+
+  it("takes the assessor as a staff member or as a typed name", async () => {
+    stubApi({
+      "GET /activity-logs/grid": [GRID],
+      "GET /staff": [[{ cin: 1000001, firstName: "Sam", lastName: "Staff", rank: "Maj" }]],
+    });
+    await show(<ActivityLogsPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Switch on a cadet" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(await dialog.findByText("Sam Staff")).toBeInTheDocument();
+    await user.click(dialog.getByRole("radio", { name: "Someone else" }));
+    await user.type(dialog.getByRole("textbox", { name: "Assessor name" }), "Jo Bloggs");
+    expect(dialog.getByRole("textbox", { name: "Assessor name" })).toHaveValue("Jo Bloggs");
+    expect(dialog.queryByText("Sam Staff")).toBeNull();
+  });
+
   it("asks for the DofE number when switching a cadet on", async () => {
     stubApi({ "GET /activity-logs/grid": [GRID] });
     await show(<ActivityLogsPage />);
@@ -239,10 +297,16 @@ describe("week grid", () => {
 describe("switchOn", () => {
   it("sends the DofE number when given, and leaves it out otherwise", async () => {
     const fetch = stubApi({ [`PUT ${BASE}/enrolment`]: [LOG, 200] });
-    await switchOn("tok", 2100001, "Silver", "1234567");
+    await switchOn("tok", 2100001, "Silver", {
+      dofeNumber: "1234567",
+      assessor: { name: "Maj Sam Staff", cin: 1000001 },
+    });
     await switchOn("tok", 2100001, "Gold");
     const bodies = calls(fetch, "PUT", "/enrolment").map(([, init]) => JSON.parse(String(init?.body)));
-    expect(bodies).toEqual([{ level: "Silver", dofe_number: "1234567" }, { level: "Gold" }]);
+    expect(bodies).toEqual([
+      { level: "Silver", dofe_number: "1234567", assessor_name: "Maj Sam Staff", assessor_cin: 1000001 },
+      { level: "Gold" },
+    ]);
   });
 });
 
@@ -385,6 +449,41 @@ describe("one cadet's log", () => {
     await user.click(vol.getByRole("button", { name: "PDF" }));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Set up first."));
     expect(download.saveResponseAsFile).not.toHaveBeenCalled();
+  });
+
+  it("marks the final report done once every section has run its length", async () => {
+    const ready = { ...LOG, assessor_name: "Maj Sam Staff", assessor_cin: 1000001, report_ready: true };
+    const fetch = stubApi({
+      [`GET ${BASE}`]: [ready],
+      [`PUT ${BASE}/report`]: [
+        { ...ready, report_done_at: "2026-10-31T12:00:00", report_done_by: "Maj Sam Staff" },
+      ],
+    });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Mark report done" }));
+    await waitFor(() => expect(calls(fetch, "PUT", "/report")).toHaveLength(1));
+    expect(await screen.findByText(/Report done/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+  });
+
+  it("won't offer the report before the sections are finished", async () => {
+    stubApi({ [`GET ${BASE}`]: [{ ...LOG, report_ready: false }] });
+    await show(<CadetActivityLogPage />);
+    expect(await screen.findByText(/Not ready yet/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark report done" })).toBeNull();
+  });
+
+  it("a report the API refuses shows its reason and stays not done", async () => {
+    stubApi({
+      [`GET ${BASE}`]: [{ ...LOG, report_ready: true }],
+      [`PUT ${BASE}/report`]: [{ detail: "Sections aren't finished" }, 409],
+    });
+    await show(<CadetActivityLogPage />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Mark report done" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Sections aren't finished"));
+    expect(screen.getByRole("button", { name: "Mark report done" })).toBeInTheDocument();
   });
 
   it("switching off asks first, then shows the switched-off state", async () => {
