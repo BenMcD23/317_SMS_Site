@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import {
   addCounts,
   countStates,
+  displayLetter,
   EMPTY_COUNTS,
   rateExcludingAuthorised,
   rateOf,
@@ -88,7 +89,7 @@ function StateCell({ night }: { night: NcoNight | undefined }) {
       )}
       title={`${formatDate(night.date)} — ${night.status ?? STATE_LABEL[night.state]}`}
     >
-      {STATE_LETTER[night.state]}
+      {displayLetter(night.state, night.status)}
     </span>
   );
 }

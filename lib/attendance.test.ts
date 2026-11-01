@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addCounts,
   countStates,
+  displayLetter,
   EMPTY_COUNTS,
   rateExcludingAuthorised,
   rateOf,
@@ -47,5 +48,23 @@ describe("attendance tallies", () => {
       expect(STATE_BADGE[state]).toBeTruthy();
       expect(STATE_LETTER[state]).toHaveLength(1);
     }
+  });
+});
+
+describe("displayLetter", () => {
+  it("returns D for a duty absence", () => {
+    expect(displayLetter("absent", "Duty Absence")).toBe("D");
+    expect(displayLetter("absent", "duty absence")).toBe("D");
+    expect(displayLetter("absent", "DUTY ABSENCE")).toBe("D");
+  });
+
+  it("returns X for a plain absent with no status", () => {
+    expect(displayLetter("absent", null)).toBe("X");
+    expect(displayLetter("absent", "Unauthorised")).toBe("X");
+  });
+
+  it("falls through to STATE_LETTER for other states", () => {
+    expect(displayLetter("present", null)).toBe("P");
+    expect(displayLetter("authorised", "Medical")).toBe("A");
   });
 });
