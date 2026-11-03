@@ -45,12 +45,21 @@ const answer = (id: number, content: string, extra: Partial<AnswerMessage> = {})
   feedback: null,
   ...extra,
 });
-const summary = (id: number, title: string, pinned = false): ChatSummary => ({
+const summary = (
+  id: number,
+  title: string,
+  pinned = false,
+  over: Partial<ChatSummary> = {}
+): ChatSummary => ({
   id,
   title,
   pinned,
+  protected: false,
+  // Far enough off that no deletion warning shows unless a test wants one.
+  deletes_at: "2099-01-01T00:00:00",
   created_at: "2026-10-30T19:00:00",
   updated_at: "2026-10-30T19:00:00",
+  ...over,
 });
 const reply = (chatId: number, q: string, a: AnswerMessage): AskReply => ({
   chat: summary(chatId, q),
@@ -782,5 +791,75 @@ describe("Assistant: stopping, retrying and editing", () => {
     await renderPage();
     await screen.findByRole("navigation", { name: "Your chats" });
     expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  });
+});
+
+describe("Assistant: deletion after 30 days", () => {
+  const inDays = (days: number) => new Date(Date.now() + days * 86_400_000 + 60_000).toISOString();
+
+  it("a chat in its last week warns when it goes and can be protected from the warning", async () => {
+    const due = { ...SAVED, deletes_at: inDays(3) };
+    const calls = stubApi({
+      "GET /assistant/chats": [
+        { body: [summary(7, "Report on flights", false, { deletes_at: due.deletes_at })] },
+        { body: [summary(7, "Report on flights", false, { protected: true, deletes_at: null })] },
+      ],
+      "GET /assistant/chats/7": [{ body: due }, { body: { ...SAVED, protected: true, deletes_at: null } }],
+      "PATCH /assistant/chats/7": { body: summary(7, "Report on flights", false, { protected: true }) },
+    });
+    await renderPage("/assistant?chat=7");
+
+    const warning = await screen.findByRole("alert");
+    expect(warning).toHaveTextContent("This chat will be deleted in 4 days");
+    const nav = screen.getByRole("navigation", { name: "Your chats" });
+    expect(within(nav).getByText("Deletes in 4 days")).toBeInTheDocument();
+
+    await userEvent.setup().click(within(warning).getByRole("button", { name: "Protect chat" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ protected: true }));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Protected" })).toHaveAttribute("aria-pressed", "true");
+    expect(await within(nav).findByLabelText("Protected")).toBeInTheDocument();
+  });
+
+  it("a chat with more than a week left shows no warning", async () => {
+    stubApi({
+      "GET /assistant/chats": { body: [summary(7, "Report on flights", false, { deletes_at: inDays(8) })] },
+      "GET /assistant/chats/7": { body: { ...SAVED, deletes_at: inDays(8) } },
+    });
+    await renderPage("/assistant?chat=7");
+    await screen.findByRole("article");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Deletes/)).not.toBeInTheDocument();
+  });
+
+  it("the header button and the chat's menu both protect and unprotect", async () => {
+    const calls = stubApi({
+      "GET /assistant/chats": {
+        body: [summary(7, "Report on flights", false, { protected: true, deletes_at: null })],
+      },
+      "GET /assistant/chats/7": { body: { ...SAVED, protected: true, deletes_at: null } },
+      "PATCH /assistant/chats/7": { body: summary(7, "Report on flights") },
+    });
+    await renderPage("/assistant?chat=7");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Protected" }));
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === "PATCH").map((c) => c.body)).toEqual([{ protected: false }])
+    );
+
+    await user.click(screen.getByRole("button", { name: 'More for "Report on flights"' }));
+    await user.click(await screen.findByRole("menuitem", { name: "Stop protecting" }));
+    await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(2));
+  });
+
+  it("a failed protect says why", async () => {
+    stubApi({
+      "GET /assistant/chats": { body: [summary(7, "Report on flights")] },
+      "GET /assistant/chats/7": { body: { ...SAVED, deletes_at: inDays(2) } },
+      "PATCH /assistant/chats/7": { status: 404, body: { detail: "Chat not found" } },
+    });
+    await renderPage("/assistant?chat=7");
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Protect chat" }));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("Chat not found"));
   });
 });
