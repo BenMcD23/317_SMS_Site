@@ -29,6 +29,14 @@ export const STATE_LETTER: Record<AttendanceState, string> = {
   absent: "X",
 };
 
+/** Display letter for a single attendance record. Returns "D" for duty absences
+ *  (state === absent and status text contains "duty absence") so they are
+ *  visually distinct from a plain unexplained absence, which keeps showing "X". */
+export function displayLetter(state: AttendanceState, status: string | null): string {
+  if (state === "absent" && status?.toLowerCase().includes("duty absence")) return "D";
+  return STATE_LETTER[state];
+}
+
 export const EMPTY_COUNTS: StateCounts = { present: 0, authorised: 0, absent: 0 };
 
 /** Tally a set of records by state — the counting side of `STATE_*`, shared by
