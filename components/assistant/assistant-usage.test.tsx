@@ -32,6 +32,16 @@ const USAGE: AssistantUsage = {
       email: "s.hughes@example.com",
       question: "How many NCOs?",
       answer: "Seven.",
+      model_label: "Groq gpt-oss-120b",
+      fallback: true,
+    },
+    {
+      date: "2026-10-29T19:00:00",
+      email: "s.hughes@example.com",
+      question: "Who is oldest?",
+      answer: "Amy.",
+      model_label: "Nemotron 3 Ultra",
+      fallback: false,
     },
   ],
 };
@@ -64,6 +74,16 @@ describe("AssistantUsageView", () => {
     expect(within(bad).getByText("Seven.")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "What it looked up" })).toHaveTextContent("attendance9");
     expect(screen.getByRole("table", { name: "Who asks" })).toHaveTextContent("s.hughes@example.com");
+  });
+
+  it("each bad answer says which model gave it, and flags the backup", async () => {
+    stub(200, USAGE);
+    await show();
+    const bad = (await screen.findByRole("heading", { name: "Answers marked bad" })).parentElement!;
+    const [backup, primary] = within(bad).getAllByRole("listitem");
+    expect(backup).toHaveTextContent("Groq gpt-oss-120b (backup model)");
+    expect(primary).toHaveTextContent("Nemotron 3 Ultra");
+    expect(primary).not.toHaveTextContent("backup model");
   });
 
   it("'Hide personal data' takes the emails off", async () => {

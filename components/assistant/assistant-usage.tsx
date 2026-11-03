@@ -18,7 +18,14 @@ export type AssistantUsage = {
   fallback: number;
   thumbs_up: number;
   thumbs_down: number;
-  rated_down: { date: string; email: string; question: string; answer: string }[];
+  rated_down: {
+    date: string;
+    email: string;
+    question: string;
+    answer: string;
+    model_label: string;
+    fallback: boolean;
+  }[];
 };
 
 /**
@@ -65,7 +72,8 @@ export function AssistantUsageView({ days }: { days: string }) {
                 <p className="text-sm font-medium">{r.question}</p>
                 <p className="text-muted-foreground text-sm whitespace-pre-wrap">{r.answer}</p>
                 <p className="text-muted-foreground text-xs">
-                  {formatTimestamp(r.date)}
+                  {formatTimestamp(r.date)} · {r.model_label}
+                  {r.fallback && " (backup model)"}
                   <Private> · {r.email}</Private>
                 </p>
               </li>
