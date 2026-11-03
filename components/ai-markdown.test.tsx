@@ -11,10 +11,10 @@ describe("AiMarkdown", () => {
         text={[
           "### Top priorities",
           "1. **Shoes**: 8 cadets",
-          "2) Berets",
+          "2. Berets",
           "### Going well",
           "- Creases",
-          "* Hair",
+          "- Hair",
         ].join("\n")}
       />
     );
@@ -75,5 +75,30 @@ describe("AiMarkdown", () => {
     );
     expect(screen.getAllByRole("link", { name: "Amy" })).toHaveLength(3);
     expect(seen.some((t) => t.includes("**"))).toBe(false);
+  });
+
+  it("renders a markdown table as a real table, with decorate in its cells", () => {
+    render(
+      <AiMarkdown
+        text={"| Name | Flight |\n| --- | --- |\n| Amy | A |"}
+        decorate={(t) => (t === "Amy" ? <a href="/x">Amy</a> : t)}
+      />
+    );
+    const table = screen.getByRole("table");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent)
+    ).toEqual(["Name", "Flight"]);
+    expect(within(table).getByRole("link", { name: "Amy" })).toBeInTheDocument();
+  });
+
+  it("drops images and neuters javascript: links, so output can't load or run anything", () => {
+    const { container } = render(
+      <AiMarkdown text={"![x](https://evil.test/p.png) [go](javascript:alert(1))"} />
+    );
+    expect(container.querySelector("img")).toBeNull();
+    // The href is emptied, which also stops it being a link at all.
+    expect(screen.getByText("go").getAttribute("href") ?? "").not.toMatch(/javascript/);
   });
 });

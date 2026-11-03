@@ -39,7 +39,7 @@ const answer = (id: number, content: string, extra: Partial<AnswerMessage> = {})
   follow_ups: [],
   calls: [{ tool: "attendance", args: {}, ok: true }],
   model: "z-ai/glm-5.3",
-  model_label: "GLM 5.3",
+  model_label: "Nemotron 3 Ultra",
   fallback: false,
   cadets: [],
   feedback: null,
@@ -150,7 +150,7 @@ describe("Assistant: asking", () => {
 
     const a = await screen.findByRole("article", { name: "Answer to: Who is missing parades?" });
     expect(within(a).getByText("Ben Brook").tagName).toBe("STRONG");
-    expect(a).toHaveTextContent("Checked attendance · GLM 5.3");
+    expect(a).toHaveTextContent("Checked attendance · Nemotron 3 Ultra");
     expect(asks(calls)).toEqual([
       { question: "Who is missing parades?", chat_id: null, hide_personal: false },
     ]);
@@ -244,6 +244,8 @@ describe("Assistant: asking", () => {
     const loading = await screen.findByRole("region", { name: "Answer loading" });
     expect(loading).toHaveTextContent("Who is missing parades?");
     expect(screen.getByRole("button", { name: /Looking it up/ })).toBeDisabled();
+    // The question moves into the thread; the box is empty for the next one.
+    expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("");
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
 
     await act(async () => push({ type: "step", label: "Checking attendance" }));
