@@ -243,7 +243,9 @@ describe("Assistant: asking", () => {
 
     const loading = await screen.findByRole("region", { name: "Answer loading" });
     expect(loading).toHaveTextContent("Who is missing parades?");
-    expect(screen.getByRole("button", { name: /Looking it up/ })).toBeDisabled();
+    // Asking again waits; the button stops this one instead.
+    expect(screen.queryByRole("button", { name: "Ask" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
     // The question moves into the thread; the box is empty for the next one.
     expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("");
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
@@ -395,7 +397,7 @@ describe("Assistant: saved chats", () => {
       "GET /assistant/chats/7": { body: SAVED },
     });
     await renderPage();
-    const list = within(await screen.findByRole("list", { name: "Your chats" }));
+    const list = within(await screen.findByRole("navigation", { name: "Your chats" }));
     await userEvent.setup().click(list.getByRole("button", { name: /^Report on flights/ }));
 
     expect(await screen.findByRole("article", { name: "Answer to: Report on flights" })).toBeInTheDocument();
@@ -424,7 +426,8 @@ describe("Assistant: saved chats", () => {
     stubApi({ "GET /assistant/chats": { body: [] }, "GET /assistant/chats/7": { body: SAVED } });
     await renderPage("/assistant?chat=7");
     await screen.findByRole("article");
-    await userEvent.setup().click(screen.getByRole("button", { name: "New chat" }));
+    // One in the header for phones, one atop the chat list on a laptop; CSS shows one.
+    await userEvent.setup().click(screen.getAllByRole("button", { name: "New chat" })[0]);
 
     expect(screen.queryByRole("list", { name: "Conversation" })).not.toBeInTheDocument();
     expect(screen.getByText("Ask a question")).toBeInTheDocument();
@@ -479,7 +482,9 @@ describe("Assistant: saved chats", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Pin to top" }));
 
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ pinned: true }));
-    expect(await screen.findByLabelText("Pinned")).toBeInTheDocument();
+    const pinned = await screen.findByRole("region", { name: "Pinned" });
+    // Found once the menu has closed and stopped hiding the rest of the page.
+    expect(await within(pinned).findByRole("button", { name: /^Report on flights/ })).toBeInTheDocument();
   });
 
   it("renaming a chat checks the name, saves it, and shows the API's refusal", async () => {
@@ -615,5 +620,167 @@ describe("Assistant: errors", () => {
     expect(screen.getByRole("button", { name: "Ask" })).toBeDisabled();
     expect(screen.getByRole("button", { name: /overdue an appraisal/ })).toBeDisabled();
     expect(calls).toEqual([]);
+  });
+});
+
+describe("Assistant: stopping, retrying and editing", () => {
+  /** A stream that never finishes until the request is aborted, like a slow model. */
+  const hanging = () => (_url: string, init?: RequestInit) =>
+    new Promise<Response>((_, reject) =>
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")))
+    );
+
+  it("Stop abandons the question without an error and puts it back in the box", async () => {
+    stubApi({ "GET /assistant/chats": { body: [] } });
+    const fetchMock = vi.mocked(fetch);
+    const fallback = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url, init) =>
+      String(url).endsWith("/assistant/ask/stream") ? hanging()(String(url), init) : fallback(url, init)
+    );
+    await renderPage();
+    const user = await ask("Who is missing parades?");
+    await user.click(await screen.findByRole("button", { name: "Stop" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Question" })).toHaveValue("Who is missing parades?")
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Answer loading" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled();
+  });
+
+  it("Try again re-asks a question that failed", async () => {
+    const calls = stubApi({
+      "GET /assistant/chats": { body: [] },
+      "POST /assistant/ask/stream": [
+        () => new Response(JSON.stringify({ detail: "Busy" }), { status: 503 }),
+        streamed(reply(3, "Who is missing parades?", answer(2, "Nobody."))),
+      ],
+      // The page reloads the new chat after answering.
+      "GET /assistant/chats/3": {
+        body: {
+          ...summary(3, "Who is missing parades?"),
+          messages: [
+            { id: 1, role: "user", content: "Who is missing parades?", created_at: "2026-10-30T19:00:00" },
+            answer(2, "Nobody."),
+          ],
+        },
+      },
+    });
+    await renderPage();
+    const user = await ask("Who is missing parades?");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Busy");
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(
+      await screen.findByRole("article", { name: "Answer to: Who is missing parades?" })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(asks(calls).map((b) => (b as { question: string }).question)).toEqual([
+      "Who is missing parades?",
+      "Who is missing parades?",
+    ]);
+  });
+
+  it("Edit puts an earlier question back in the box to change", async () => {
+    stubApi({ "GET /assistant/chats": { body: [] }, "GET /assistant/chats/7": { body: SAVED } });
+    await renderPage("/assistant?chat=7");
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: "Edit and ask again: Report on flights" }));
+    const box = screen.getByRole("textbox", { name: "Follow-up question" });
+    expect(box).toHaveValue("Report on flights");
+    expect(box).toHaveFocus();
+  });
+
+  it("Ask again re-asks the newest answer's question in the same chat", async () => {
+    const calls = stubApi({
+      "GET /assistant/chats": { body: [] },
+      "GET /assistant/chats/7": { body: SAVED },
+      "POST /assistant/ask/stream": streamed(reply(7, "Report on flights", answer(4, "Still A."))),
+    });
+    await renderPage("/assistant?chat=7");
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Ask again" }));
+    await waitFor(() => expect(asks(calls)[0]).toMatchObject({ question: "Report on flights", chat_id: 7 }));
+  });
+
+  it("Download saves the chat as Markdown, without personal columns when they're hidden", async () => {
+    setPersonalDataHidden(true);
+    stubApi({ "GET /assistant/chats": { body: [] }, "GET /assistant/chats/7": { body: SAVED } });
+    let saved: Blob | undefined;
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL: (b: Blob) => ((saved = b), "blob:x"), revokeObjectURL: () => {} })
+    );
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement
+    ) {
+      expect(this.download).toBe("report-on-flights.md");
+    });
+    await renderPage("/assistant?chat=7");
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Download" }));
+
+    expect(click).toHaveBeenCalled();
+    const md = await saved!.text();
+    expect(md).toContain("## Report on flights");
+    expect(md).toContain("**Oldest cadets**");
+    expect(md).not.toContain("amy@example.com");
+  });
+
+  it("'/' jumps to the question box, but types normally inside a box", async () => {
+    stubApi({
+      "GET /assistant/chats": {
+        body: [
+          summary(1, "a"),
+          summary(2, "b"),
+          summary(3, "c"),
+          summary(4, "d"),
+          summary(5, "e"),
+          summary(6, "f"),
+        ],
+      },
+    });
+    await renderPage();
+    const user = userEvent.setup();
+    await user.keyboard("/");
+    const box = screen.getByRole("textbox", { name: "Question" });
+    expect(box).toHaveFocus();
+    expect(box).toHaveValue("");
+
+    const search = (await screen.findAllByRole("searchbox", { name: "Search your chats" }))[0];
+    await user.click(search);
+    await user.keyboard("/");
+    expect(search).toHaveValue("/");
+  });
+
+  it("searching chats narrows the list by name, and says when nothing matches", async () => {
+    stubApi({
+      "GET /assistant/chats": {
+        body: [
+          summary(1, "Turnout report"),
+          summary(2, "First aid expiries"),
+          summary(3, "NCO appraisals"),
+          summary(4, "Badges"),
+          summary(5, "Stores"),
+          summary(6, "Turnout by flight"),
+        ],
+      },
+    });
+    await renderPage();
+    const user = userEvent.setup();
+    const nav = await screen.findByRole("navigation", { name: "Your chats" });
+    await user.type(within(nav).getByRole("searchbox", { name: "Search your chats" }), "turnout");
+    expect(within(nav).getAllByRole("button", { name: /^Turnout/ })).toHaveLength(2);
+    expect(within(nav).queryByRole("button", { name: /^Badges/ })).not.toBeInTheDocument();
+
+    await user.type(within(nav).getByRole("searchbox", { name: "Search your chats" }), "zzz");
+    expect(within(nav).getByText(/No chats match/)).toBeInTheDocument();
+  });
+
+  it("a short chat list has no search box", async () => {
+    stubApi({ "GET /assistant/chats": { body: [summary(1, "Only one")] } });
+    await renderPage();
+    await screen.findByRole("navigation", { name: "Your chats" });
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
   });
 });

@@ -5,7 +5,21 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, Bot, Check, Copy, History, Plus, Printer, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  ArrowUp,
+  Bot,
+  Check,
+  Copy,
+  Download,
+  History,
+  Pencil,
+  Plus,
+  Printer,
+  RotateCcw,
+  Square,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { AiMarkdown } from "@/components/ai-markdown";
@@ -18,14 +32,22 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { FieldLabel } from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+  InputGroupTextarea,
+} from "@/components/ui/input-group";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/api-fetch";
 import {
   askStream,
+  chatMarkdown,
+  csvName,
   linkCadets,
   sourcesLine,
   type AnswerMessage,
@@ -33,9 +55,13 @@ import {
   type ChatSummary,
 } from "@/lib/assistant";
 import { API_BASE } from "@/lib/config";
+import { saveBlob } from "@/lib/download";
 import { formatTimestamp } from "@/lib/format";
 import { usePersonalDataHidden } from "@/lib/privacy";
 import { useApiQuery } from "@/lib/use-api-query";
+
+// The API's own limit on a question.
+const MAX_QUESTION = 2000;
 
 const EXAMPLES = [
   "Give me a report on parade turnout by month this year",
@@ -84,8 +110,11 @@ function Assistant() {
   const [error, setError] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const [renaming, setRenaming] = useState<ChatSummary | null>(null);
+  // The last question that failed, for the error's "Try again".
+  const [failed, setFailed] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const latest = useRef<HTMLElement>(null);
+  const abort = useRef<AbortController | null>(null);
 
   const chats = useApiQuery<ChatSummary[]>(["assistant-chats"], "/assistant/chats");
   const chat = useApiQuery<ChatDetail>(["assistant-chat", chatId], `/assistant/chats/${chatId}`, {
@@ -102,11 +131,40 @@ function Assistant() {
     latest.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [messages.length, pending]);
 
+  // "/" jumps to the question box from anywhere on the page, as on most chat sites.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (target?.closest("input, textarea, select, [contenteditable=true]")) return;
+      e.preventDefault();
+      input.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const open = (id: number | null) => {
     setChatId(id);
     setError(null);
+    setFailed(null);
     setListOpen(false);
     input.current?.focus();
+  };
+
+  // Puts an earlier question back in the box to change and ask again.
+  const edit = (text: string) => {
+    setQuestion(text);
+    input.current?.focus();
+  };
+
+  const download = () => {
+    if (!chat.data) return;
+    const md = chatMarkdown(chat.data, hidePersonal);
+    saveBlob(
+      new Blob([md], { type: "text/markdown;charset=utf-8" }),
+      csvName(chat.data.title).replace(/\.csv$/, ".md")
+    );
   };
 
   const refreshList = () => queryClient.invalidateQueries({ queryKey: ["assistant-chats"] });
@@ -117,14 +175,18 @@ function Assistant() {
     setPending(q);
     setStep(null);
     setError(null);
+    setFailed(null);
     // The question shows in the thread while it's answered, so the box empties now.
     setQuestion("");
+    const controller = new AbortController();
+    abort.current = controller;
     try {
       const reply = await askStream(
         `${API_BASE}/assistant/ask/stream`,
         token,
         { question: q, chat_id: chatId, hide_personal: hidePersonal },
-        setStep
+        setStep,
+        controller.signal
       );
       // Shown straight away from the reply rather than refetched: the chat on
       // the server is exactly what was there plus these two messages.
@@ -139,10 +201,18 @@ function Assistant() {
       refreshList();
       if (chatId !== reply.chat.id) setChatId(reply.chat.id);
     } catch (e) {
-      setError((e as Error).message);
-      // Put a failed question back to retry, unless they've started typing another.
+      // Put the question back to edit or retry, unless they've started typing another.
       setQuestion((typed) => typed || q);
+      if (controller.signal.aborted) {
+        // The API may still finish and save it, so pick up whatever it saved.
+        refreshList();
+        if (chatId !== null) queryClient.invalidateQueries({ queryKey: ["assistant-chat", chatId] });
+      } else {
+        setError((e as Error).message);
+        setFailed(q);
+      }
     } finally {
+      abort.current = null;
       setPending(null);
       setStep(null);
       input.current?.focus();
@@ -227,6 +297,14 @@ function Assistant() {
   const lastAnswer = [...messages].reverse().find((m): m is AnswerMessage => m.role === "assistant");
   const title = chat.data?.title;
 
+  const busy = !!pending;
+  const newChat = (
+    <Button variant="outline" onClick={() => open(null)} disabled={busy || chatId === null}>
+      <Plus data-icon="inline-start" />
+      New chat
+    </Button>
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
@@ -238,16 +316,19 @@ function Assistant() {
               <History data-icon="inline-start" />
               Chats
             </Button>
+            <div className="lg:hidden">{newChat}</div>
             {messages.length > 0 && (
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer data-icon="inline-start" />
-                Print
-              </Button>
+              <>
+                <Button variant="outline" onClick={download}>
+                  <Download data-icon="inline-start" />
+                  Download
+                </Button>
+                <Button variant="outline" onClick={() => window.print()}>
+                  <Printer data-icon="inline-start" />
+                  Print
+                </Button>
+              </>
             )}
-            <Button variant="outline" onClick={() => open(null)} disabled={!!pending || chatId === null}>
-              <Plus data-icon="inline-start" />
-              New chat
-            </Button>
           </div>
         }
       />
@@ -261,8 +342,14 @@ function Assistant() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] print:grid-cols-1">
-        <aside aria-label="Saved chats" className="no-print hidden lg:block">
-          {list}
+        {/* Stays in view as a long chat scrolls (below the 3.5rem app header),
+            and scrolls on its own once there are more chats than fit. */}
+        <aside
+          aria-label="Saved chats"
+          className="no-print hidden flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6.5rem)] lg:self-start"
+        >
+          <div className="[&>button]:w-full">{newChat}</div>
+          <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">{list}</div>
         </aside>
 
         <div className="flex min-w-0 flex-col gap-6">
@@ -305,12 +392,18 @@ function Assistant() {
               {messages.map((m, i) => (
                 <li key={m.id}>
                   {m.role === "user" ? (
-                    <QuestionBubble text={m.content} />
+                    <QuestionBubble text={m.content} onEdit={busy ? undefined : () => edit(m.content)} />
                   ) : (
                     <Answer
                       message={m}
                       question={messages[i - 1]?.content ?? ""}
                       onRate={(v) => rate(m, v)}
+                      // The newest answer can be asked again, e.g. after the backup model gave a poor one.
+                      onAskAgain={
+                        i === messages.length - 1 && !busy && messages[i - 1]
+                          ? () => ask(messages[i - 1].content)
+                          : undefined
+                      }
                       ref={i === messages.length - 1 && !pending ? latest : undefined}
                     />
                   )}
@@ -337,48 +430,88 @@ function Assistant() {
             </section>
           )}
 
-          <ErrorAlert title="No answer" message={error} />
+          {error && (
+            <div className="flex flex-col items-start gap-2">
+              <ErrorAlert title="No answer" message={error} />
+              {failed && (
+                <Button variant="outline" size="sm" className="no-print" onClick={() => ask(failed)}>
+                  <RotateCcw data-icon="inline-start" />
+                  Try again
+                </Button>
+              )}
+            </div>
+          )}
 
+          {/* Pinned to the bottom of the screen (above the phone's tab bar), so
+              a follow-up never means scrolling back down a long answer. */}
           <form
-            className="no-print"
+            className="no-print bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-col gap-1.5 px-4 pt-2 pb-3 backdrop-blur md:bottom-0 md:mx-0 md:px-0"
             onSubmit={(e) => {
               e.preventDefault();
               ask();
             }}
           >
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="question">
-                  {messages.length ? "Follow-up question" : "Question"}
-                </FieldLabel>
-                <Textarea
-                  id="question"
-                  ref={input}
-                  rows={2}
-                  maxLength={2000}
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  // Enter asks, Shift+Enter is a new line — same as a chat box.
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      ask();
-                    }
-                  }}
-                  placeholder="e.g. Who hasn't been to a parade in the last six weeks?"
-                />
-                <FieldDescription>
-                  {hidePersonal
-                    ? "Personal data is hidden, so it won't look up dates of birth or emails."
-                    : "It can see cadets' dates of birth and emails, but not phone numbers, parents' details or medical information."}{" "}
-                  Check anything important against the cadet&apos;s record.
-                </FieldDescription>
-              </Field>
-              <Button type="submit" className="h-9" disabled={!!pending || !session || !question.trim()}>
-                {pending ? <Spinner data-icon="inline-start" /> : <ArrowUp data-icon="inline-start" />}
-                {pending ? "Looking it up…" : "Ask"}
-              </Button>
-            </FieldGroup>
+            <FieldLabel htmlFor="question">{messages.length ? "Follow-up question" : "Question"}</FieldLabel>
+            <InputGroup className="bg-background">
+              <InputGroupTextarea
+                id="question"
+                ref={input}
+                rows={1}
+                maxLength={MAX_QUESTION}
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                // Enter asks, Shift+Enter is a new line — same as a chat box.
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    ask();
+                  }
+                }}
+                className="max-h-48 min-h-10 sm:min-h-12"
+                aria-describedby="question-help"
+                placeholder={messages.length ? "Ask a follow-up…" : "Ask about cadets, attendance, stores…"}
+              />
+              <InputGroupAddon align="block-end">
+                <InputGroupText className="text-xs">
+                  {question.length > MAX_QUESTION - 200 ? (
+                    `${question.length} / ${MAX_QUESTION}`
+                  ) : (
+                    <span className="hidden sm:inline">
+                      Enter to ask, Shift+Enter for a new line, / to type
+                    </span>
+                  )}
+                </InputGroupText>
+                {pending ? (
+                  <InputGroupButton
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto"
+                    onClick={() => abort.current?.abort()}
+                  >
+                    <Square className="fill-current" data-icon="inline-start" />
+                    Stop
+                  </InputGroupButton>
+                ) : (
+                  <InputGroupButton
+                    type="submit"
+                    variant="default"
+                    size="sm"
+                    className="ml-auto"
+                    disabled={!session || !question.trim()}
+                  >
+                    <ArrowUp data-icon="inline-start" />
+                    Ask
+                  </InputGroupButton>
+                )}
+              </InputGroupAddon>
+            </InputGroup>
+            {/* Hidden on a phone, where the pinned box has to stay small. */}
+            <p id="question-help" className="text-muted-foreground hidden text-xs sm:block">
+              {hidePersonal
+                ? "Personal data is hidden, so it won't look up dates of birth or emails."
+                : "It can see cadets' dates of birth and emails, but not phone numbers, parents' details or medical information."}{" "}
+              Check anything important against the cadet&apos;s record.
+            </p>
           </form>
         </div>
       </div>
@@ -404,13 +537,25 @@ function Assistant() {
   );
 }
 
-function QuestionBubble({ text }: { text: string }) {
+function QuestionBubble({ text, onEdit }: { text: string; onEdit?: () => void }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end gap-1">
       <p className="bg-muted max-w-[85%] rounded-2xl rounded-br-sm px-4 py-2 text-pretty whitespace-pre-wrap">
         <span className="sr-only">You asked: </span>
         {text}
       </p>
+      {onEdit && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="no-print text-muted-foreground h-8"
+          aria-label={`Edit and ask again: ${text}`}
+          onClick={onEdit}
+        >
+          <Pencil data-icon="inline-start" />
+          Edit
+        </Button>
+      )}
     </div>
   );
 }
@@ -419,11 +564,13 @@ function Answer({
   message,
   question,
   onRate,
+  onAskAgain,
   ref,
 }: {
   message: AnswerMessage;
   question: string;
   onRate: (value: 1 | -1) => void;
+  onAskAgain?: () => void;
   ref?: React.Ref<HTMLElement>;
 }) {
   const [copied, setCopied] = useState(false);
@@ -500,6 +647,12 @@ function Answer({
             {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
             {copied ? "Copied" : "Copy"}
           </Button>
+          {onAskAgain && (
+            <Button variant="ghost" size="sm" className="text-muted-foreground h-8" onClick={onAskAgain}>
+              <RotateCcw data-icon="inline-start" />
+              Ask again
+            </Button>
+          )}
         </div>
       </div>
     </article>
@@ -515,6 +668,12 @@ function PendingTurn({
   step: string | null;
   ref?: React.Ref<HTMLElement>;
 }) {
+  // A running count, so a slow answer reads as working rather than stuck.
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
   return (
     <section
       ref={ref}
@@ -532,6 +691,7 @@ function PendingTurn({
       <p className="text-muted-foreground flex items-center gap-2 text-sm" role="status">
         <Spinner />
         {step ? `${step}…` : "Starting…"}
+        <span className="tabular-nums">{seconds}s</span>
       </p>
     </section>
   );
