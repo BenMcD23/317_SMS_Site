@@ -1,6 +1,7 @@
 "use client";
 
-import { MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Search, Trash2 } from "lucide-react";
 
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -11,13 +12,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { ChatSummary } from "@/lib/assistant";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { chatGroups, type ChatSummary } from "@/lib/assistant";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
- * The signed-in person's saved assistant chats: pinned first, then most
- * recent. A whole row opens its chat; its menu (always visible, as a phone
+ * The signed-in person's saved assistant chats, grouped (Pinned, Today,
+ * Yesterday, Previous 7 days, Earlier) with a search over their names once
+ * there are enough to need one. A whole row opens its chat; its menu (always visible, as a phone
  * has no hover) renames, pins or deletes it. Rendered beside the chat on a
  * laptop and in a sheet on a phone, so it takes everything it shows and does
  * as props.
@@ -41,6 +44,7 @@ export function ChatList({
   onTogglePin: (chat: ChatSummary) => void;
   onDelete: (chat: ChatSummary) => void;
 }) {
+  const [query, setQuery] = useState("");
   if (error) return <ErrorAlert title="Couldn't load your chats" message={error.message} />;
   if (loading || !chats) return <ListSkeleton rows={4} className="h-10" />;
   if (!chats.length)
@@ -51,58 +55,107 @@ export function ChatList({
       </p>
     );
 
+  const q = query.trim().toLowerCase();
+  const groups = chatGroups(q ? chats.filter((c) => c.title.toLowerCase().includes(q)) : chats);
+
   return (
-    <ul aria-label="Your chats" className="flex flex-col gap-1">
-      {chats.map((chat) => {
-        const active = chat.id === activeId;
-        return (
-          <li key={chat.id} className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onOpen(chat.id)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "hover:bg-muted flex min-h-10 min-w-0 flex-1 flex-col items-start rounded-md px-2 py-1.5 text-left",
-                active && "bg-muted"
-              )}
-            >
-              <span className="flex w-full items-center gap-1.5">
-                {chat.pinned && (
-                  <Pin aria-label="Pinned" className="text-muted-foreground size-3.5 shrink-0" />
-                )}
-                <span className="truncate text-sm font-medium">{chat.title}</span>
-              </span>
-              <span className="text-muted-foreground text-xs">{formatTimestamp(chat.updated_at)}</span>
-            </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground size-8 shrink-0"
-                  aria-label={`More for "${chat.title}"`}
-                >
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => onRename(chat)}>
-                  <Pencil />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onTogglePin(chat)}>
-                  {chat.pinned ? <PinOff /> : <Pin />}
-                  {chat.pinned ? "Unpin" : "Pin to top"}
-                </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onSelect={() => onDelete(chat)}>
-                  <Trash2 />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </li>
-        );
-      })}
-    </ul>
+    <nav aria-label="Your chats" className="flex flex-col gap-3">
+      {chats.length > 5 && (
+        <InputGroup>
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput
+            type="search"
+            aria-label="Search your chats"
+            placeholder="Search chats"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </InputGroup>
+      )}
+      {!groups.length && (
+        <p className="text-muted-foreground px-1 text-sm">No chats match “{query.trim()}”.</p>
+      )}
+      {groups.map((group) => (
+        <section key={group.label} aria-label={group.label} className="flex flex-col gap-1">
+          <h3 className="text-muted-foreground px-2 text-xs font-medium">{group.label}</h3>
+          <ul className="flex flex-col gap-1">
+            {group.chats.map((chat) => (
+              <ChatRow
+                key={chat.id}
+                chat={chat}
+                active={chat.id === activeId}
+                onOpen={onOpen}
+                onRename={onRename}
+                onTogglePin={onTogglePin}
+                onDelete={onDelete}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </nav>
+  );
+}
+
+function ChatRow({
+  chat,
+  active,
+  onOpen,
+  onRename,
+  onTogglePin,
+  onDelete,
+}: {
+  chat: ChatSummary;
+  active: boolean;
+  onOpen: (id: number) => void;
+  onRename: (chat: ChatSummary) => void;
+  onTogglePin: (chat: ChatSummary) => void;
+  onDelete: (chat: ChatSummary) => void;
+}) {
+  return (
+    <li className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onOpen(chat.id)}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "hover:bg-muted flex min-h-10 min-w-0 flex-1 flex-col items-start rounded-md px-2 py-1.5 text-left",
+          active && "bg-muted"
+        )}
+      >
+        <span className="flex w-full items-center gap-1.5">
+          <span className="truncate text-sm font-medium">{chat.title}</span>
+        </span>
+        <span className="text-muted-foreground text-xs">{formatTimestamp(chat.updated_at)}</span>
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground size-8 shrink-0"
+            aria-label={`More for "${chat.title}"`}
+          >
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onRename(chat)}>
+            <Pencil />
+            Rename
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onTogglePin(chat)}>
+            {chat.pinned ? <PinOff /> : <Pin />}
+            {chat.pinned ? "Unpin" : "Pin to top"}
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => onDelete(chat)}>
+            <Trash2 />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
   );
 }

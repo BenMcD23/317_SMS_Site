@@ -187,7 +187,8 @@ export async function askStream(
   url: string,
   token: string,
   body: { question: string; chat_id: number | null; hide_personal: boolean },
-  onStep: (label: string) => void
+  onStep: (label: string) => void,
+  signal?: AbortSignal
 ): Promise<AskReply> {
   let res: Response;
   try {
@@ -195,8 +196,11 @@ export async function askStream(
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal,
     });
-  } catch {
+  } catch (e) {
+    // Stopped by the asker: the page tells that apart from the server being down.
+    if (signal?.aborted) throw e;
     throw new Error("Server unreachable.");
   }
   if (!res.ok || !res.body) {
@@ -256,4 +260,67 @@ export function linkCadets(
     .map((part) =>
       byName.has(part) ? { kind: "cadet", text: part, cin: byName.get(part)! } : { kind: "text", text: part }
     );
+}
+
+export type ChatGroup = { label: string; chats: ChatSummary[] };
+
+/**
+ * Saved chats in the groups the list shows: pinned first, then by when they
+ * were last used (Today, Yesterday, Previous 7 days, Earlier), each newest
+ * first. Empty groups are left out. `now` is a parameter so tests can pin it.
+ */
+export function chatGroups(chats: ChatSummary[], now = new Date()): ChatGroup[] {
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = 86_400_000;
+  const groups: ChatGroup[] = [
+    { label: "Pinned", chats: [] },
+    { label: "Today", chats: [] },
+    { label: "Yesterday", chats: [] },
+    { label: "Previous 7 days", chats: [] },
+    { label: "Earlier", chats: [] },
+  ];
+  const sorted = [...chats].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  for (const chat of sorted) {
+    const t = new Date(chat.updated_at).getTime();
+    const i = chat.pinned ? 0 : t >= midnight ? 1 : t >= midnight - day ? 2 : t >= midnight - 7 * day ? 3 : 4;
+    groups[i].chats.push(chat);
+  }
+  return groups.filter((g) => g.chats.length);
+}
+
+const mdCell = (cell: string | number | null) =>
+  String(cell ?? "")
+    .replace(/\|/g, "\\|")
+    .replace(/\n/g, " ");
+
+/**
+ * A chat as a Markdown document, to keep or paste into an email: each
+ * question as a heading, the answer, its tables as Markdown tables and its
+ * charts as tables of their figures. `hidePersonal` drops the date of birth,
+ * age and email columns, as the page does.
+ */
+export function chatMarkdown(chat: ChatDetail, hidePersonal: boolean): string {
+  const out = [`# ${chat.title}`, ""];
+  for (const m of chat.messages) {
+    if (m.role === "user") {
+      out.push(`## ${m.content.replace(/\s+/g, " ")}`, "");
+      continue;
+    }
+    out.push(m.content, "");
+    const tables = [
+      ...m.charts.map((c) => ({
+        title: c.title,
+        columns: ["", ...c.series.map((s) => s.name)],
+        rows: c.labels.map((label, i) => [label, ...c.series.map((s) => s.values[i] ?? null)]),
+      })),
+      ...m.tables.map((t) => (hidePersonal ? withoutPersonalColumns(t) : t)),
+    ];
+    for (const t of tables) {
+      out.push(`**${t.title}**`, "");
+      out.push(`| ${t.columns.map(mdCell).join(" | ")} |`, `|${t.columns.map(() => " --- |").join("")}`);
+      for (const row of t.rows) out.push(`| ${row.map(mdCell).join(" | ")} |`);
+      out.push("");
+    }
+  }
+  return out.join("\n").trimEnd() + "\n";
 }

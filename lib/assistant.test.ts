@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   askStream,
+  chatGroups,
+  chatMarkdown,
   chartColours,
   chartRows,
   csvName,
@@ -16,6 +18,8 @@ import {
   type AssistantCall,
   type AssistantChart,
   type AssistantTable,
+  type ChatDetail,
+  type ChatSummary,
 } from "@/lib/assistant";
 
 const call = (tool: string, ok = true): AssistantCall => ({ tool, args: {}, ok });
@@ -237,6 +241,20 @@ describe("askStream", () => {
     await expect(askStream("/x", "tok", body, () => {})).rejects.toThrow("Down");
   });
 
+  it("a stop from the asker rejects as an abort, not as the server being down", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => {
+        controller.abort();
+        return Promise.reject(new DOMException("aborted", "AbortError"));
+      })
+    );
+    const err = await askStream("/x", "tok", body, () => {}, controller.signal).catch((e) => e);
+    expect(err.name).toBe("AbortError");
+    expect(err.message).not.toBe("Server unreachable.");
+  });
+
   it("rejects with the API's reason when it refuses before streaming", async () => {
     vi.stubGlobal(
       "fetch",
@@ -289,5 +307,109 @@ describe("linkCadets", () => {
     });
     expect(linkCadets("Nobody here", cadets)).toEqual([{ kind: "text", text: "Nobody here" }]);
     expect(linkCadets("Amy", [])).toEqual([{ kind: "text", text: "Amy" }]);
+  });
+});
+
+describe("chatGroups", () => {
+  const chat = (id: number, updated_at: string, pinned = false): ChatSummary => ({
+    id,
+    title: `c${id}`,
+    pinned,
+    created_at: updated_at,
+    updated_at,
+  });
+  const now = new Date("2026-11-03T15:00:00");
+
+  it("puts pinned chats first, then Today, Yesterday, Previous 7 days and Earlier, newest first", () => {
+    const groups = chatGroups(
+      [
+        chat(1, "2026-11-03T09:00:00"),
+        chat(2, "2026-11-03T14:00:00"),
+        chat(3, "2026-11-02T23:59:00"),
+        chat(4, "2026-10-29T10:00:00"),
+        chat(5, "2026-09-01T10:00:00"),
+        chat(6, "2026-01-01T10:00:00", true),
+      ],
+      now
+    );
+    expect(groups.map((g) => [g.label, g.chats.map((c) => c.id)])).toEqual([
+      ["Pinned", [6]],
+      ["Today", [2, 1]],
+      ["Yesterday", [3]],
+      ["Previous 7 days", [4]],
+      ["Earlier", [5]],
+    ]);
+  });
+
+  it("leaves out empty groups, and gives none for no chats", () => {
+    expect(chatGroups([chat(1, "2026-11-03T09:00:00")], now).map((g) => g.label)).toEqual(["Today"]);
+    expect(chatGroups([], now)).toEqual([]);
+  });
+});
+
+describe("chatMarkdown", () => {
+  const detail: ChatDetail = {
+    id: 1,
+    title: "Oldest cadets",
+    pinned: false,
+    created_at: "",
+    updated_at: "",
+    messages: [
+      { id: 1, role: "user", content: "Who is\noldest?", created_at: "" },
+      {
+        id: 2,
+        role: "assistant",
+        content: "**Zoë Ashworth** is.",
+        created_at: "",
+        charts: [chart({ labels: ["A", "B"], series: [{ name: "Cadets", values: [3, null] }] })],
+        tables: [
+          {
+            title: "Oldest",
+            columns: ["Name", "Email", "Note"],
+            rows: [["Zoë Ashworth", "z@x.uk", "a | b"]],
+          },
+        ],
+        follow_ups: [],
+        cadets: [],
+        calls: [],
+        model: "",
+        model_label: "",
+        fallback: false,
+        feedback: null,
+      },
+    ],
+  };
+
+  it("writes each question as a heading, then the answer, its chart figures and its tables", () => {
+    expect(chatMarkdown(detail, false)).toBe(
+      [
+        "# Oldest cadets",
+        "",
+        "## Who is oldest?",
+        "",
+        "**Zoë Ashworth** is.",
+        "",
+        "**Cadets by flight**",
+        "",
+        "|  | Cadets |",
+        "| --- | --- |",
+        "| A | 3 |",
+        "| B |  |",
+        "",
+        "**Oldest**",
+        "",
+        "| Name | Email | Note |",
+        "| --- | --- | --- |",
+        // A pipe in a cell is escaped, or it would split the column.
+        "| Zoë Ashworth | z@x.uk | a \\| b |",
+        "",
+      ].join("\n")
+    );
+  });
+
+  it("drops personal columns when personal data is hidden", () => {
+    const md = chatMarkdown(detail, true);
+    expect(md).not.toContain("z@x.uk");
+    expect(md).toContain("| Name | Note |");
   });
 });
