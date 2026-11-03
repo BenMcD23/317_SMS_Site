@@ -1,83 +1,66 @@
-import { Fragment, type ReactNode } from "react";
+import { Children, type ReactNode } from "react";
+import Markdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Decorate = (text: string) => ReactNode;
-
-/** `**bold**` runs as <strong>; models bold the fault they're naming even when told not to. */
-function inline(text: string, decorate: Decorate): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") && part.length > 4 ? (
-      <strong key={i} className="text-foreground font-semibold">
-        {decorate(part.slice(2, -2))}
-      </strong>
-    ) : (
-      <Fragment key={i}>{decorate(part)}</Fragment>
-    )
-  );
-}
 
 const plain: Decorate = (text) => text;
 
 /**
- * The small slice of markdown the AI write-ups use: `###` headings, `-` and
- * `1.` lists, `**bold**` and paragraphs. Shared by the cadet trend analysis and
- * the inspection audit. Hand-rolled rather than a markdown library so model
- * output can never inject HTML: everything renders as text. `decorate` turns
- * a run of plain text into something richer (the assistant links cadets'
- * names to their records); it gets text, never markup.
+ * Markdown from the AI write-ups (the assistant, the cadet trend analysis and
+ * the inspection audit), GitHub-flavoured so the tables, code and links
+ * models write anyway come out as tables, code and links. Raw HTML is never
+ * rendered (react-markdown escapes it without rehype-raw) and images are
+ * dropped, so model output can't inject markup or load anything. `decorate`
+ * turns a run of plain text into something richer (the assistant links
+ * cadets' names to their records); it gets text, never markup.
  */
 export function AiMarkdown({ text, decorate = plain }: { text: string; decorate?: Decorate }) {
-  const blocks: ReactNode[] = [];
-  let list: { ordered: boolean; items: string[] } | null = null;
+  const d = (children: ReactNode) => Children.map(children, (c) => (typeof c === "string" ? decorate(c) : c));
 
-  const flush = (key: string) => {
-    if (!list) return;
-    const items = list.items.map((b, i) => <li key={i}>{inline(b, decorate)}</li>);
-    blocks.push(
-      list.ordered ? (
-        <ol key={key} className="ml-4 list-decimal space-y-1 text-sm">
-          {items}
-        </ol>
-      ) : (
-        <ul key={key} className="ml-4 list-disc space-y-1 text-sm">
-          {items}
-        </ul>
-      )
-    );
-    list = null;
+  const components: Components = {
+    h1: ({ children }) => <h4 className="mt-3 text-sm font-semibold first:mt-0">{d(children)}</h4>,
+    h2: ({ children }) => <h4 className="mt-3 text-sm font-semibold first:mt-0">{d(children)}</h4>,
+    h3: ({ children }) => <h4 className="mt-3 text-sm font-semibold first:mt-0">{d(children)}</h4>,
+    h4: ({ children }) => <h4 className="mt-3 text-sm font-semibold first:mt-0">{d(children)}</h4>,
+    p: ({ children }) => <p className="text-muted-foreground text-sm">{d(children)}</p>,
+    ul: ({ children }) => <ul className="ml-4 list-disc space-y-1 text-sm">{children}</ul>,
+    ol: ({ children }) => <ol className="ml-4 list-decimal space-y-1 text-sm">{children}</ol>,
+    li: ({ children }) => <li>{d(children)}</li>,
+    strong: ({ children }) => <strong className="text-foreground font-semibold">{d(children)}</strong>,
+    em: ({ children }) => <em>{d(children)}</em>,
+    a: ({ children, href }) => (
+      <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+        {children}
+      </a>
+    ),
+    code: ({ children }) => (
+      <code className="bg-muted rounded px-1 py-0.5 font-mono text-xs">{children}</code>
+    ),
+    pre: ({ children }) => (
+      <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs [&_code]:bg-transparent [&_code]:p-0">
+        {children}
+      </pre>
+    ),
+    table: ({ children }) => (
+      <div className="rounded-lg border">
+        <Table>{children}</Table>
+      </div>
+    ),
+    thead: ({ children }) => <TableHeader>{children}</TableHeader>,
+    tbody: ({ children }) => <TableBody>{children}</TableBody>,
+    tr: ({ children }) => <TableRow>{children}</TableRow>,
+    th: ({ children }) => <TableHead>{d(children)}</TableHead>,
+    td: ({ children }) => <TableCell>{d(children)}</TableCell>,
   };
 
-  const addItem = (ordered: boolean, item: string, key: string) => {
-    if (list && list.ordered !== ordered) flush(key);
-    list ??= { ordered, items: [] };
-    list.items.push(item);
-  };
-
-  text.split("\n").forEach((raw, i) => {
-    const line = raw.trim();
-    const numbered = line.match(/^\d+[.)]\s+(.*)$/);
-    if (!line) {
-      flush(`l-${i}`);
-    } else if (line.startsWith("#")) {
-      flush(`l-${i}`);
-      blocks.push(
-        <h4 key={i} className="mt-3 text-sm font-semibold first:mt-0">
-          {line.replace(/^#+\s*/, "")}
-        </h4>
-      );
-    } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      addItem(false, line.slice(2), `l-${i}`);
-    } else if (numbered) {
-      addItem(true, numbered[1], `l-${i}`);
-    } else {
-      flush(`l-${i}`);
-      blocks.push(
-        <p key={i} className="text-muted-foreground text-sm">
-          {inline(line, decorate)}
-        </p>
-      );
-    }
-  });
-  flush("l-end");
-
-  return <div className="space-y-2">{blocks}</div>;
+  return (
+    <div className="space-y-2">
+      <Markdown remarkPlugins={[remarkGfm]} components={components} disallowedElements={["img"]}>
+        {text}
+      </Markdown>
+    </div>
+  );
 }

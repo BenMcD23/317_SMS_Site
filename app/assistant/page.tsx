@@ -117,6 +117,8 @@ function Assistant() {
     setPending(q);
     setStep(null);
     setError(null);
+    // The question shows in the thread while it's answered, so the box empties now.
+    setQuestion("");
     try {
       const reply = await askStream(
         `${API_BASE}/assistant/ask/stream`,
@@ -136,10 +138,10 @@ function Assistant() {
       }));
       refreshList();
       if (chatId !== reply.chat.id) setChatId(reply.chat.id);
-      // Cleared only on success, so a failed question is still there to retry.
-      setQuestion("");
     } catch (e) {
       setError((e as Error).message);
+      // Put a failed question back to retry, unless they've started typing another.
+      setQuestion((typed) => typed || q);
     } finally {
       setPending(null);
       setStep(null);
@@ -289,10 +291,7 @@ function Assistant() {
                     size="sm"
                     className="h-auto min-h-9 max-w-full shrink py-1.5 whitespace-normal"
                     disabled={!session}
-                    onClick={() => {
-                      setQuestion(ex);
-                      ask(ex);
-                    }}
+                    onClick={() => ask(ex)}
                   >
                     {ex}
                   </Button>
