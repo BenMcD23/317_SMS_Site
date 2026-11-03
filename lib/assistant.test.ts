@@ -5,6 +5,8 @@ import {
   chatGroups,
   chatMarkdown,
   chartColours,
+  daysUntilDeletion,
+  deletionWhen,
   chartRows,
   csvName,
   flightBarColours,
@@ -314,6 +316,8 @@ describe("chatGroups", () => {
   const chat = (id: number, updated_at: string, pinned = false): ChatSummary => ({
     id,
     title: `c${id}`,
+    protected: false,
+    deletes_at: null,
     pinned,
     created_at: updated_at,
     updated_at,
@@ -351,6 +355,8 @@ describe("chatMarkdown", () => {
   const detail: ChatDetail = {
     id: 1,
     title: "Oldest cadets",
+    protected: false,
+    deletes_at: null,
     pinned: false,
     created_at: "",
     updated_at: "",
@@ -411,5 +417,29 @@ describe("chatMarkdown", () => {
     const md = chatMarkdown(detail, true);
     expect(md).not.toContain("z@x.uk");
     expect(md).toContain("| Name | Note |");
+  });
+});
+
+describe("daysUntilDeletion", () => {
+  const now = new Date("2026-11-03T12:00:00");
+  const at = (iso: string | null) => daysUntilDeletion({ deletes_at: iso }, now);
+
+  it("counts whole days left, rounding a part day up", () => {
+    expect(at("2026-11-10T12:00:00")).toBe(7);
+    expect(at("2026-11-04T09:00:00")).toBe(1);
+  });
+
+  it("is 0 once it's due, never negative", () => {
+    expect(at("2026-11-03T11:00:00")).toBe(0);
+    expect(at("2026-10-01T00:00:00")).toBe(0);
+  });
+
+  it("is null when protected or more than a week away, so nothing warns", () => {
+    expect(at(null)).toBeNull();
+    expect(at("2026-11-10T12:00:01")).toBeNull();
+  });
+
+  it("reads as today, tomorrow or in N days", () => {
+    expect([0, 1, 5].map(deletionWhen)).toEqual(["today", "tomorrow", "in 5 days"]);
   });
 });

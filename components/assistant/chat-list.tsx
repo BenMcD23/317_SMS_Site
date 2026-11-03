@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, MoreHorizontal, Pencil, Pin, PinOff, Search, Trash2 } from "lucide-react";
+import {
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Pin,
+  PinOff,
+  Search,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+} from "lucide-react";
 
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -13,14 +23,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { chatGroups, type ChatSummary } from "@/lib/assistant";
+import { chatGroups, daysUntilDeletion, deletionWhen, type ChatSummary } from "@/lib/assistant";
 import { formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
  * The signed-in person's saved assistant chats, grouped (Pinned, Today,
  * Yesterday, Previous 7 days, Earlier) with a search over their names once
- * there are enough to need one. A whole row opens its chat; its menu (always visible, as a phone
+ * there are enough to need one. A protected chat is marked, and one in its
+ * last week before the 30-day cleanup says when it goes. A whole row opens its chat; its menu (always visible, as a phone
  * has no hover) renames, pins or deletes it. Rendered beside the chat on a
  * laptop and in a sheet on a phone, so it takes everything it shows and does
  * as props.
@@ -33,6 +44,7 @@ export function ChatList({
   onOpen,
   onRename,
   onTogglePin,
+  onToggleProtect,
   onDelete,
 }: {
   chats: ChatSummary[] | undefined;
@@ -42,6 +54,7 @@ export function ChatList({
   onOpen: (id: number) => void;
   onRename: (chat: ChatSummary) => void;
   onTogglePin: (chat: ChatSummary) => void;
+  onToggleProtect: (chat: ChatSummary) => void;
   onDelete: (chat: ChatSummary) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -89,6 +102,7 @@ export function ChatList({
                 onOpen={onOpen}
                 onRename={onRename}
                 onTogglePin={onTogglePin}
+                onToggleProtect={onToggleProtect}
                 onDelete={onDelete}
               />
             ))}
@@ -105,6 +119,7 @@ function ChatRow({
   onOpen,
   onRename,
   onTogglePin,
+  onToggleProtect,
   onDelete,
 }: {
   chat: ChatSummary;
@@ -112,8 +127,10 @@ function ChatRow({
   onOpen: (id: number) => void;
   onRename: (chat: ChatSummary) => void;
   onTogglePin: (chat: ChatSummary) => void;
+  onToggleProtect: (chat: ChatSummary) => void;
   onDelete: (chat: ChatSummary) => void;
 }) {
+  const days = daysUntilDeletion(chat);
   return (
     <li className="flex items-center gap-1">
       <button
@@ -128,7 +145,14 @@ function ChatRow({
         <span className="flex w-full items-center gap-1.5">
           <span className="truncate text-sm font-medium">{chat.title}</span>
         </span>
-        <span className="text-muted-foreground text-xs">{formatTimestamp(chat.updated_at)}</span>
+        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+          {chat.protected && <ShieldCheck aria-label="Protected" className="size-3.5 shrink-0" />}
+          {days === null ? (
+            formatTimestamp(chat.updated_at)
+          ) : (
+            <span className="text-warning font-medium">Deletes {deletionWhen(days)}</span>
+          )}
+        </span>
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -149,6 +173,10 @@ function ChatRow({
           <DropdownMenuItem onSelect={() => onTogglePin(chat)}>
             {chat.pinned ? <PinOff /> : <Pin />}
             {chat.pinned ? "Unpin" : "Pin to top"}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onToggleProtect(chat)}>
+            {chat.protected ? <ShieldOff /> : <ShieldCheck />}
+            {chat.protected ? "Stop protecting" : "Protect chat"}
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => onDelete(chat)}>
             <Trash2 />

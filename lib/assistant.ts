@@ -52,6 +52,10 @@ export type ChatSummary = {
   id: number;
   title: string;
   pinned: boolean;
+  /** Kept for ever rather than deleted after 30 days unused. */
+  protected: boolean;
+  /** When the API's cleanup deletes it; null while protected. */
+  deletes_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -323,4 +327,23 @@ export function chatMarkdown(chat: ChatDetail, hidePersonal: boolean): string {
     }
   }
   return out.join("\n").trimEnd() + "\n";
+}
+
+/** How close to deletion a chat has to be before the site warns about it. */
+export const DELETION_WARNING_DAYS = 7;
+
+/**
+ * Whole days until an unprotected chat is deleted (0 once it's due, as the
+ * cleanup runs daily), or null when it's protected or not due within
+ * DELETION_WARNING_DAYS, so there's nothing to warn about.
+ */
+export function daysUntilDeletion(chat: Pick<ChatSummary, "deletes_at">, now = new Date()): number | null {
+  if (!chat.deletes_at) return null;
+  const days = Math.max(0, Math.ceil((new Date(chat.deletes_at).getTime() - now.getTime()) / 86_400_000));
+  return days <= DELETION_WARNING_DAYS ? days : null;
+}
+
+/** "today", "tomorrow" or "in 5 days", for the deletion warnings. */
+export function deletionWhen(days: number): string {
+  return days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
 }

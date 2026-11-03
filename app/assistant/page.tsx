@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUp,
   Bot,
+  Clock,
   Check,
   Copy,
   Download,
@@ -16,6 +17,8 @@ import {
   Plus,
   Printer,
   RotateCcw,
+  Shield,
+  ShieldCheck,
   Square,
   ThumbsDown,
   ThumbsUp,
@@ -31,6 +34,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
 import {
@@ -48,6 +52,8 @@ import {
   askStream,
   chatMarkdown,
   csvName,
+  daysUntilDeletion,
+  deletionWhen,
   linkCadets,
   sourcesLine,
   type AnswerMessage,
@@ -219,7 +225,10 @@ function Assistant() {
     }
   };
 
-  const updateChat = async (target: ChatSummary, change: { title?: string; pinned?: boolean }) => {
+  const updateChat = async (
+    target: ChatSummary,
+    change: { title?: string; pinned?: boolean; protected?: boolean }
+  ) => {
     if (!token) return;
     await apiRequest(
       token,
@@ -234,6 +243,14 @@ function Assistant() {
   const togglePin = async (target: ChatSummary) => {
     try {
       await updateChat(target, { pinned: !target.pinned });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const toggleProtect = async (target: ChatSummary) => {
+    try {
+      await updateChat(target, { protected: !target.protected });
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -291,11 +308,13 @@ function Assistant() {
       onOpen={open}
       onRename={setRenaming}
       onTogglePin={togglePin}
+      onToggleProtect={toggleProtect}
       onDelete={onDelete}
     />
   );
   const lastAnswer = [...messages].reverse().find((m): m is AnswerMessage => m.role === "assistant");
   const title = chat.data?.title;
+  const deletionDays = chat.data ? daysUntilDeletion(chat.data) : null;
 
   const busy = !!pending;
   const newChat = (
@@ -317,6 +336,20 @@ function Assistant() {
               Chats
             </Button>
             <div className="lg:hidden">{newChat}</div>
+            {chat.data && (
+              <Button
+                variant="outline"
+                aria-pressed={chat.data.protected}
+                onClick={() => chat.data && toggleProtect(chat.data)}
+              >
+                {chat.data.protected ? (
+                  <ShieldCheck data-icon="inline-start" />
+                ) : (
+                  <Shield data-icon="inline-start" />
+                )}
+                {chat.data.protected ? "Protected" : "Protect"}
+              </Button>
+            )}
             {messages.length > 0 && (
               <>
                 <Button variant="outline" onClick={download}>
@@ -364,11 +397,28 @@ function Assistant() {
 
           {chatId !== null && chat.isLoading && <ThreadSkeleton />}
 
+          {chat.data && deletionDays !== null && (
+            <Alert className="border-warning/40 bg-warning/10 no-print">
+              <Clock />
+              <AlertTitle>This chat will be deleted {deletionWhen(deletionDays)}</AlertTitle>
+              <AlertDescription className="flex flex-col items-start gap-3">
+                <p>
+                  Chats are deleted after 30 days without a question, as they can hold cadets&apos; details.
+                  Protect it to keep it, or ask another question to keep it for 30 more days.
+                </p>
+                <Button size="sm" onClick={() => chat.data && toggleProtect(chat.data)}>
+                  <ShieldCheck data-icon="inline-start" />
+                  Protect chat
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {chatId === null && !pending && (
             <EmptyState
               icon={Bot}
               title="Ask a question"
-              description="It looks things up in the records and the RAFAC documents, and can draw charts and tables. Follow-up questions carry on from the last answer."
+              description="It looks things up in the records and the RAFAC documents, and can draw charts and tables. Follow-up questions carry on from the last answer. Chats are deleted after 30 days unused unless you protect them."
             >
               <div className="flex flex-wrap justify-center gap-2">
                 {EXAMPLES.map((ex) => (
