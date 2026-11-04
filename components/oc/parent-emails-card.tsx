@@ -92,8 +92,8 @@ export function ParentEmailsCard() {
             />
             {cadets.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                Nobody is waiting to be contacted. Cadets appear here once they&apos;ve missed eight weeks of
-                parades.
+                Nobody is waiting to be contacted. Cadets appear here once they&apos;re under 40% of the last
+                eight weeks&apos; parade nights.
               </p>
             ) : (
               <>
@@ -258,8 +258,8 @@ function LeaverRow({
   account: string | null | undefined;
   template: LeavingEmailTemplate;
 }) {
-  const subject = fillLeavingEmail(template.subject, cadet.name, cadet.weeksAbsent);
-  const body = fillLeavingEmail(template.body, cadet.name, cadet.weeksAbsent);
+  const subject = fillLeavingEmail(template.subject, cadet.name, cadet.weeksAbsent, cadet);
+  const body = fillLeavingEmail(template.body, cadet.name, cadet.weeksAbsent, cadet);
   const bcc = cadet.parentEmails.join(";");
 
   async function copyMessage() {

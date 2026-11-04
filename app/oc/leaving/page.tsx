@@ -18,8 +18,8 @@ export default function OcLeavingPage() {
           title="Leaving process"
           description={
             personalHidden
-              ? "Cadets who haven't paraded for eight weeks."
-              : "Cadets who haven't paraded for eight weeks, and the email to send their parents from your own account."
+              ? "Cadets at under 40% of parade nights over the last eight weeks."
+              : "Cadets at under 40% of parade nights over the last eight weeks, and the email to send their parents from your own account."
           }
         />
         <div className={cn("grid items-start gap-4 *:min-w-0", !personalHidden && "lg:grid-cols-2")}>
