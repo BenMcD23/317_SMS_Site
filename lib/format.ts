@@ -35,6 +35,11 @@ export function formatTimestamp(ts: string): string {
   });
 }
 
+/** "19:30" — the time of day alone, for "saved at" notes on a page in use. */
+export function formatTime(ts: string): string {
+  return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
 /** Today as "YYYY-MM-DD" in the user's local time — the value a date <input>
  *  wants. `toISOString()` is UTC, so between midnight and 1am in summer it
  *  hands back yesterday. */

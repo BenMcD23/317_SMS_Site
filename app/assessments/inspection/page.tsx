@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
@@ -40,20 +40,30 @@ import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { ErrorAlert } from "@/components/error-alert";
 import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
-import { formatDate, todayLocal } from "@/lib/format";
+import { formatDate, formatTime, todayLocal } from "@/lib/format";
 import { sendOrQueue } from "@/lib/outbox";
+import {
+  clearServerDraft,
+  loadServerDraft,
+  saveServerDraft,
+  serverDraftIsNewer,
+} from "@/lib/inspection-draft";
 
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
 type Mark = { score: string; comments: Comment[]; absent?: boolean };
 type Uniform = "blues" | "mtp";
 // order: cins in the sequence they were submitted, most-recent first (LIFO).
+// saved_at: when a cadet was last recorded, to tell the phone's copy and the
+// server's apart (lib/inspection-draft.ts).
 type Sheet = {
   date: string;
   marks: Record<number, Mark>;
   order?: number[];
   uniform?: Uniform;
+  saved_at?: string;
 };
+type ServerSave = { state: "saving" } | { state: "saved"; at: string } | { state: "failed" };
 type Absence = { cin: number; date_from: string; date_to: string; reason: string | null };
 type FlightScore = { total: number; present_count: number; awol_count: number };
 
@@ -372,6 +382,44 @@ export default function InspectionPage() {
   );
   const absenceByCin = useMemo(() => new Map(absences.map((a) => [a.cin, a])), [absences]);
 
+  // The server's copy of the sheet: restored on load if it's newer than the
+  // phone's, saved each time a cadet is recorded or removed.
+  const token = session?.id_token;
+  const [serverSave, setServerSave] = useState<ServerSave | null>(null);
+  const [restoredFromServer, setRestoredFromServer] = useState(false);
+  const sheetRef = useRef(sheet);
+  useEffect(() => {
+    sheetRef.current = sheet;
+  }, [sheet]);
+  const serverChecked = useRef(false);
+  useEffect(() => {
+    if (!token || serverChecked.current) return;
+    serverChecked.current = true;
+    loadServerDraft<Sheet>(token)
+      .then((saved) => {
+        // Compared against the latest sheet, not the one at mount: the
+        // phone's own draft may have been restored, or marking started, while
+        // this was loading.
+        if (saved && serverDraftIsNewer(sheetRef.current, saved)) {
+          setSheet(saved);
+          setRestoredFromServer(true);
+        }
+      })
+      // Unreachable server: carry on with the phone's copy, which is what the
+      // page did before there was a server copy at all.
+      .catch(() => {});
+  }, [token, setSheet]);
+
+  function saveToServer(next: Sheet) {
+    if (!token) return;
+    setServerSave({ state: "saving" });
+    saveServerDraft(token, next)
+      .then(() => setServerSave({ state: "saved", at: next.saved_at ?? new Date().toISOString() }))
+      // Not retried on its own: the next recorded cadet sends the whole sheet
+      // again, and the phone keeps its own copy meanwhile.
+      .catch(() => setServerSave({ state: "failed" }));
+  }
+
   const [submitting, setSubmitting] = useState(false);
   const [flightScores, setFlightScores] = useState<Record<string, FlightScore> | null>(null);
 
@@ -477,11 +525,14 @@ export default function InspectionPage() {
   function submitCadet() {
     if (selectedCin == null) return;
     const cin = selectedCin;
-    setSheet((s) => ({
-      ...s,
-      marks: s.marks[cin] ? s.marks : { ...s.marks, [cin]: emptyMark() },
-      order: [cin, ...(s.order ?? []).filter((c) => c !== cin)],
-    }));
+    const next: Sheet = {
+      ...sheet,
+      marks: sheet.marks[cin] ? sheet.marks : { ...sheet.marks, [cin]: emptyMark() },
+      order: [cin, ...(sheet.order ?? []).filter((c) => c !== cin)],
+      saved_at: new Date().toISOString(),
+    };
+    setSheet(next);
+    saveToServer(next);
     const c = flightCadets.find((c) => c.cin === cin);
     if (c) toast.success(`${c.first_name} ${c.last_name} recorded`);
     setSelectedCin(null);
@@ -489,11 +540,16 @@ export default function InspectionPage() {
 
   // Remove a recorded cadet from the sheet entirely.
   function removeCadet(cin: number) {
-    setSheet((s) => {
-      const marks = { ...s.marks };
-      delete marks[cin];
-      return { ...s, marks, order: (s.order ?? []).filter((c) => c !== cin) };
-    });
+    const marks = { ...sheet.marks };
+    delete marks[cin];
+    const next: Sheet = {
+      ...sheet,
+      marks,
+      order: (sheet.order ?? []).filter((c) => c !== cin),
+      saved_at: new Date().toISOString(),
+    };
+    setSheet(next);
+    saveToServer(next);
     if (selectedCin === cin) setSelectedCin(null);
   }
 
@@ -502,7 +558,18 @@ export default function InspectionPage() {
     clearDraft();
     setSelectedCin(null);
     setFlightScores(null);
-    toast.success("Draft cleared");
+    setServerSave(null);
+    setRestoredFromServer(false);
+    if (token) {
+      clearServerDraft(token)
+        .then(() => toast.success("Draft cleared"))
+        // Left on the server, it would come back on the next load.
+        .catch(() =>
+          toast.error("Cleared on this phone, but the server copy couldn't be removed. Try again.")
+        );
+    } else {
+      toast.success("Draft cleared");
+    }
   }
 
   return (
@@ -566,7 +633,24 @@ export default function InspectionPage() {
         }
       />
 
-      {restored && <p className="text-muted-foreground text-xs">Restored your unsaved marking session.</p>}
+      {(restored || restoredFromServer) && !serverSave && (
+        <p className="text-muted-foreground text-xs">
+          {restoredFromServer
+            ? "Restored your marking session from the server."
+            : "Restored your unsaved marking session."}
+        </p>
+      )}
+      {serverSave && (
+        <p
+          role="status"
+          className={cn("text-xs", serverSave.state === "failed" ? "text-warning" : "text-muted-foreground")}
+        >
+          {serverSave.state === "saving" && "Saving to the server…"}
+          {serverSave.state === "saved" && `Saved to the server at ${formatTime(serverSave.at)}`}
+          {serverSave.state === "failed" &&
+            "Couldn't reach the server. Saved on this phone only; it saves again with the next cadet."}
+        </p>
+      )}
 
       {flightScores && (
         <Card>
@@ -627,6 +711,7 @@ export default function InspectionPage() {
                 variant="outline"
                 role="combobox"
                 aria-expanded={searchOpen}
+                aria-label={`Search cadet in ${activeFlight} Flight`}
                 className="text-muted-foreground w-full justify-between sm:w-96"
               >
                 <span className="flex items-center gap-2">

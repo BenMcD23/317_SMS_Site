@@ -5,6 +5,7 @@ import {
   formatMinutes,
   formatMonth,
   formatShortDate,
+  formatTime,
   formatTimestamp,
   timeSince,
 } from "@/lib/format";
@@ -42,6 +43,14 @@ describe("formatTimestamp", () => {
   it("shows UK local time across the clocks changing", () => {
     // 01:30 UTC on the first day of BST is 02:30 in London.
     expect(formatTimestamp("2026-03-29T01:30:00Z")).toBe("29 Mar 2026, 02:30");
+  });
+});
+
+describe("formatTime", () => {
+  it("is the 24-hour time of day in UK local time", () => {
+    expect(formatTime("2026-01-05T19:05:00Z")).toBe("19:05");
+    // BST: 18:45 UTC in July is 19:45 in London.
+    expect(formatTime("2026-07-01T18:45:00Z")).toBe("19:45");
   });
 });
 
