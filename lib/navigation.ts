@@ -25,6 +25,7 @@ import {
   MessageSquareText,
   NotebookPen,
   Images,
+  SquareUser,
   Newspaper,
   Orbit,
   Package,
@@ -268,6 +269,12 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper, keywords: ["website"] },
       { label: "Gallery", href: "/tools/gallery-updater", icon: Images, keywords: ["website", "photos"] },
+      {
+        label: "Staff & NCO Photos",
+        href: "/tools/website-people",
+        icon: SquareUser,
+        keywords: ["website", "photos", "our staff", "our ncos", "promotion"],
+      },
     ],
   },
   {
