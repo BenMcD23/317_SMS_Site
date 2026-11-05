@@ -25,6 +25,9 @@ const cadet = (over: Partial<LeavingCadet> = {}): LeavingCadet => ({
   lastAttended: "2026-08-03T00:00:00",
   gapDays: 63,
   weeksAbsent: 9,
+  attended: 0,
+  possible: 8,
+  attendancePct: 0,
   status: "flagged",
   daysLeft: null,
   returned: false,
@@ -83,19 +86,20 @@ beforeEach(() => {
 });
 
 describe("LeavingProcessCard", () => {
-  it("lists lapsed cadets with weeks absent and what's next", async () => {
+  it("lists lapsed cadets with their attendance and what's next", async () => {
     stubApi(leaving([cadet(), cadet({ cin: 2, name: "Other One", status: "waiting", daysLeft: 6 })]));
     await show(<LeavingProcessCard />);
     expect(screen.getByRole("button", { name: "Gone Away" })).toBeTruthy();
-    expect(screen.getAllByText("9 wks")).toHaveLength(2);
+    expect(screen.getAllByText(/^0%/)).toHaveLength(2);
+    expect(screen.getAllByText("(0/8)")).toHaveLength(2);
     expect(screen.getByText("Parents not contacted")).toBeTruthy();
     expect(screen.getByText("6 days left")).toBeTruthy();
   });
 
-  it("says so when nobody has missed eight weeks", async () => {
+  it("says so when nobody is under 40%", async () => {
     stubApi(leaving([]));
     await show(<LeavingProcessCard />);
-    expect(screen.getByText(/Nobody has missed eight weeks/)).toBeTruthy();
+    expect(screen.getByText(/Nobody is under 40%/)).toBeTruthy();
   });
 
   it("an error body shows a message instead of crashing", async () => {
@@ -238,7 +242,9 @@ describe("ParentEmailsCard", () => {
     expect(url.searchParams.get("authuser")).toBe("oc@317atc.co.uk");
     expect(url.searchParams.get("bcc")).toBe("mum@x.co,dad@x.co");
     expect(url.searchParams.get("su")).toContain("Zoë Ó Briain");
-    expect(url.searchParams.get("body")).toContain("Zoë Ó Briain hasn't been on parade for around 9 weeks");
+    expect(url.searchParams.get("body")).toContain(
+      "Zoë Ó Briain's attendance has dropped — they've been to 0 of the last 8 parade nights"
+    );
     expect(url.searchParams.get("body")).not.toContain("{{");
     expect(link.getAttribute("target")).toBe("_blank");
   });

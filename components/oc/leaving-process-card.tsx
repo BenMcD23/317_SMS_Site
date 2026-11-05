@@ -20,7 +20,13 @@ import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
 import { copyText } from "@/lib/clipboard";
 import { formatDate } from "@/lib/format";
-import { type LeavingCadet, type LeavingResponse, STATUS_LABEL, leaverQueryDraft } from "@/lib/leaving";
+import {
+  type LeavingCadet,
+  type LeavingResponse,
+  STATUS_LABEL,
+  attendanceText,
+  leaverQueryDraft,
+} from "@/lib/leaving";
 import { useLeavingEmail } from "@/lib/use-leaving-email";
 import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
@@ -37,7 +43,7 @@ const STATUS_BADGE: Record<LeavingCadet["status"], string> = {
 const STATUS_ORDER: Record<LeavingCadet["status"], number> = { start_leaving: 0, flagged: 1, waiting: 2 };
 
 /**
- * Cadets who haven't paraded for eight weeks. Click one to copy their parents'
+ * Cadets at under 40% of the last eight weeks' parade nights. Click one to copy their parents'
  * addresses (the OC sends the query from their own account), record that it
  * went — which starts the two weeks' notice — and then ask the adjutant, by
  * email from here, to remove them.
@@ -49,7 +55,7 @@ export function LeavingProcessCard() {
   const cadets = [...(data?.cadets ?? [])].sort((a, b) => {
     if (a.returned !== b.returned) return a.returned ? -1 : 1;
     const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
-    return byStatus !== 0 ? byStatus : (b.gapDays ?? 0) - (a.gapDays ?? 0);
+    return byStatus !== 0 ? byStatus : (a.attendancePct ?? 0) - (b.attendancePct ?? 0);
   });
   const selected = cadets.find((c) => c.cin === openCin) ?? null;
   const ready = cadets.filter((c) => c.status === "start_leaving" && !c.returned && !c.adjRequestedAt).length;
@@ -68,8 +74,8 @@ export function LeavingProcessCard() {
         </CardTitle>
         <CardDescription>
           {data?.currentParadeNight
-            ? `Cadets whose last parade is eight weeks or more before ${formatDate(data.currentParadeNight)}. Click one to take it forward.`
-            : "Cadets who haven't been to parade for eight weeks."}
+            ? `Cadets at under 40% of parade nights in the eight weeks to ${formatDate(data.currentParadeNight)}. Click one to take it forward.`
+            : "Cadets at under 40% of parade nights over the last eight weeks."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 p-0">
@@ -83,8 +89,8 @@ export function LeavingProcessCard() {
           </div>
         ) : cadets.length === 0 ? (
           <p className="text-muted-foreground px-6 pb-6 text-sm">
-            Nobody has missed eight weeks of parades. Cadets appear here once their last parade is two months
-            behind the current parade night.
+            Nobody is under 40% over the last eight weeks. Cadets appear here once they&apos;ve been to fewer
+            than 40% of the parade nights in that time.
           </p>
         ) : (
           <>
@@ -105,7 +111,7 @@ export function LeavingProcessCard() {
                   <TableRow>
                     <TableHead className="pl-6">Cadet</TableHead>
                     <TableHead>Last parade</TableHead>
-                    <TableHead>Absent</TableHead>
+                    <TableHead>Attendance</TableHead>
                     <TableHead className="pr-6">Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -129,7 +135,13 @@ export function LeavingProcessCard() {
                         {formatDate(c.lastAttended)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap tabular-nums">
-                        {c.weeksAbsent === null ? "—" : `${c.weeksAbsent} wks`}
+                        {c.attendancePct === null ? "—" : `${c.attendancePct}%`}
+                        {c.attendancePct !== null && (
+                          <span className="text-muted-foreground text-xs">
+                            {" "}
+                            ({c.attended}/{c.possible})
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="pr-6">
                         <StatusBadge cadet={c} />
@@ -235,7 +247,8 @@ function LeavingDialogBody({
         <DialogTitle>{cadet.name}</DialogTitle>
         <DialogDescription>
           Last on parade {formatDate(cadet.lastAttended)}
-          {cadet.weeksAbsent !== null && ` — ${cadet.weeksAbsent} weeks ago`}.
+          {cadet.weeksAbsent !== null && ` — ${cadet.weeksAbsent} weeks ago`}. They&apos;ve been to{" "}
+          {attendanceText(cadet)}.
         </DialogDescription>
       </DialogHeader>
 
@@ -271,7 +284,9 @@ function LeavingDialogBody({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => copy(leaverQueryDraft(cadet.name, cadet.weeksAbsent, template), "draft email")}
+            onClick={() =>
+              copy(leaverQueryDraft(cadet.name, cadet.weeksAbsent, template, cadet), "draft email")
+            }
           >
             <Copy data-icon="inline-start" />
             Copy draft message

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   type LeavingCadet,
+  attendanceText,
   bccFor,
   cadetsToEmail,
   fillLeavingEmail,
@@ -18,6 +19,9 @@ const c = (over: Partial<LeavingCadet>): LeavingCadet => ({
   lastAttended: null,
   gapDays: null,
   weeksAbsent: null,
+  attended: 0,
+  possible: 0,
+  attendancePct: null,
   status: "flagged",
   daysLeft: null,
   returned: false,
@@ -28,14 +32,34 @@ const c = (over: Partial<LeavingCadet>): LeavingCadet => ({
 });
 
 describe("leaverQueryDraft", () => {
-  it("names the cadet, the weeks absent and the two weeks' notice", () => {
-    const draft = leaverQueryDraft("Zoë Ó Briain", 9);
-    expect(draft).toContain("Zoë Ó Briain hasn't been on parade for around 9 weeks");
+  it("names the cadet, their attendance and the two weeks' notice", () => {
+    const draft = leaverQueryDraft("Zoë Ó Briain", 9, undefined, { attended: 2, possible: 8 });
+    expect(draft).toContain(
+      "Zoë Ó Briain's attendance has dropped — they've been to 2 of the last 8 parade nights"
+    );
     expect(draft).toContain("within two weeks");
   });
 
-  it("copes with a cadet who has no parade on record", () => {
-    expect(leaverQueryDraft("Sam Smith", null)).toContain("on parade for some time");
+  it("copes with a cadet with nothing to measure", () => {
+    expect(leaverQueryDraft("Sam Smith", null)).toContain("to very few recent parade nights");
+    expect(leaverQueryDraft("Sam Smith", null, undefined, { attended: 0, possible: 0 })).toContain(
+      "to very few recent parade nights"
+    );
+  });
+
+  it("says 'night' for a cadet who has only had one parade night to attend", () => {
+    expect(attendanceText({ attended: 1, possible: 1 })).toBe("1 of the last 1 parade night");
+  });
+
+  it("still fills the weeks_absent placeholder in an OC's saved template", () => {
+    expect(
+      leaverQueryDraft(
+        "Sam",
+        9,
+        { subject: "", body: "Away {{ weeks_absent }}" },
+        { attended: 0, possible: 8 }
+      )
+    ).toBe("Away around 9 weeks");
   });
 
   it("uses the OC's own template when given one", () => {

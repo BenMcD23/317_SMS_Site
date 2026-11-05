@@ -1,5 +1,5 @@
-/** Types and wording for the OC dashboard's leaving process. The eight-week and
- *  two-week rules live in the API (core/leaving.py); this only displays them. */
+/** Types and wording for the OC dashboard's leaving process. The eight-week
+ *  attendance rule (under 40%) and the two-week notice live in the API (core/leaving.py); this only displays them. */
 
 export type LeavingStatus = "flagged" | "waiting" | "start_leaving";
 
@@ -12,6 +12,10 @@ export type LeavingCadet = {
   lastAttended: string | null;
   gapDays: number | null;
   weeksAbsent: number | null;
+  /** Parade nights attended / held in the last eight weeks (nights before they joined excluded). */
+  attended: number;
+  possible: number;
+  attendancePct: number | null;
   status: LeavingStatus;
   daysLeft: number | null;
   returned: boolean;
@@ -53,7 +57,7 @@ export const DEFAULT_LEAVING_EMAIL: LeavingEmailTemplate = {
   body: [
     "Dear Parent/Guardian,",
     "",
-    "{{ cadet_name }} hasn't been on parade for {{ weeks_absent }}, and we wanted to check in before doing anything else.",
+    "{{ cadet_name }}'s attendance has dropped — they've been to {{ attendance }} — and we wanted to check in before doing anything else.",
     "",
     "If they would like to stay with 317 Squadron, they're very welcome back on the next parade night — there's nothing else you need to do.",
     "If they have decided to leave, or something is making it hard to attend, please reply to let us know.",
@@ -68,14 +72,33 @@ export const DEFAULT_LEAVING_EMAIL: LeavingEmailTemplate = {
 /** The placeholders the OC can put in the template, shown beside the editor. */
 export const LEAVING_EMAIL_PLACEHOLDERS = [
   { token: "{{ cadet_name }}", hint: "the cadet's name" },
-  { token: "{{ weeks_absent }}", hint: "how long they've been away, e.g. “around 9 weeks”" },
+  { token: "{{ attendance }}", hint: "their last eight weeks, e.g. “2 of the last 8 parade nights”" },
+  { token: "{{ weeks_absent }}", hint: "how long since their last parade, e.g. “around 9 weeks”" },
 ] as const;
+
+export type Attendance = Pick<LeavingCadet, "attended" | "possible">;
+
+/** "2 of the last 8 parade nights" — shared by the email and the dialog so the
+ *  wording agrees. Nothing to measure reads as "very few recent parade nights". */
+export function attendanceText(a: Attendance | null): string {
+  if (!a || a.possible <= 0) return "very few recent parade nights";
+  return `${a.attended} of the last ${a.possible} parade night${a.possible === 1 ? "" : "s"}`;
+}
 
 /** Fill a template for one cadet. Unknown placeholders are left as typed so a
  *  typo is visible in the preview rather than silently vanishing. */
-export function fillLeavingEmail(text: string, cadetName: string, weeksAbsent: number | null): string {
+export function fillLeavingEmail(
+  text: string,
+  cadetName: string,
+  weeksAbsent: number | null,
+  attendance: Attendance | null = null
+): string {
   const absent = weeksAbsent === null ? "some time" : `around ${weeksAbsent} weeks`;
-  const values: Record<string, string> = { cadet_name: cadetName, weeks_absent: absent };
+  const values: Record<string, string> = {
+    cadet_name: cadetName,
+    weeks_absent: absent,
+    attendance: attendanceText(attendance),
+  };
   // A replacer function, not a string, so a "$&" in a name isn't treated as a pattern.
   return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (whole, key: string) => values[key] ?? whole);
 }
@@ -84,10 +107,11 @@ export function fillLeavingEmail(text: string, cadetName: string, weeksAbsent: n
 export function leaverQueryDraft(
   cadetName: string,
   weeksAbsent: number | null,
-  template: LeavingEmailTemplate = DEFAULT_LEAVING_EMAIL
+  template: LeavingEmailTemplate = DEFAULT_LEAVING_EMAIL,
+  attendance: Attendance | null = null
 ): string {
-  const subject = fillLeavingEmail(template.subject, cadetName, weeksAbsent);
-  const body = fillLeavingEmail(template.body, cadetName, weeksAbsent);
+  const subject = fillLeavingEmail(template.subject, cadetName, weeksAbsent, attendance);
+  const body = fillLeavingEmail(template.body, cadetName, weeksAbsent, attendance);
   return subject ? `Subject: ${subject}\n\n${body}` : body;
 }
 
