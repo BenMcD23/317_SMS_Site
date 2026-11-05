@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ import {
   cadetsToEmail,
   fillLeavingEmail,
   gmailComposeUrl,
+  mobileComposeUrl,
 } from "@/lib/leaving";
 import { LEAVING_EMAIL_KEY, useLeavingEmail } from "@/lib/use-leaving-email";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -261,6 +262,14 @@ function LeaverRow({
   const subject = fillLeavingEmail(template.subject, cadet.name, cadet.weeksAbsent, cadet);
   const body = fillLeavingEmail(template.body, cadet.name, cadet.weeksAbsent, cadet);
   const bcc = cadet.parentEmails.join(";");
+  // useSyncExternalStore so the server render (no user agent) and the first
+  // client render agree, then the phone's real one is read.
+  const userAgent = useSyncExternalStore(
+    () => () => {},
+    () => navigator.userAgent,
+    () => ""
+  );
+  const mobileUrl = mobileComposeUrl(userAgent, { bcc, subject, body });
 
   async function copyMessage() {
     const ok = await copyText(subject ? `Subject: ${subject}\n\n${body}` : body);
@@ -287,7 +296,15 @@ function LeaverRow({
       </div>
       {bcc && (
         <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm">
+          {mobileUrl && (
+            <Button asChild size="sm">
+              <a href={mobileUrl} aria-label={`Open email to ${cadet.name}'s parents in the Gmail app`}>
+                <Mail data-icon="inline-start" />
+                Open in Gmail app
+              </a>
+            </Button>
+          )}
+          <Button asChild size="sm" variant={mobileUrl ? "outline" : "default"}>
             <a
               href={gmailComposeUrl({ account, bcc, subject, body })}
               target="_blank"
@@ -308,6 +325,11 @@ function LeaverRow({
             Copy message
           </Button>
         </div>
+      )}
+      {bcc && mobileUrl && (
+        <p className="text-muted-foreground text-xs">
+          The app sends from the account it has open: check the From line says your @317atc.co.uk address.
+        </p>
       )}
     </li>
   );
