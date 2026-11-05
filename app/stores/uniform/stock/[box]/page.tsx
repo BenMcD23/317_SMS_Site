@@ -310,7 +310,7 @@ function ItemForm({
   boxes: string[];
   structure: Record<string, string[]>;
 }) {
-  const { itemTypes, noSizeItems } = useReference();
+  const { stockItemTypes, noSizeItems } = useReference();
   const sections = form.box ? (structure[form.box] ?? []) : [];
   const noSize = noSizeItems.has(form.itemType);
 
@@ -331,7 +331,7 @@ function ItemForm({
             <SelectValue placeholder="Select item type" />
           </SelectTrigger>
           <SelectContent>
-            {itemTypes.map((t) => (
+            {stockItemTypes.map((t) => (
               <SelectItem key={t} value={t}>
                 {t}
               </SelectItem>
