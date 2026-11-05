@@ -44,6 +44,10 @@ export function useAssessmentDraft<T extends object>(
   const [serverStatus, setServerStatus] = useState<ServerSaveStatus | null>(null);
   const emailRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The debounced local write still to happen, so leaving the page can do it
+  // at once instead of leaving a timer to fire later, after a clear or on
+  // another page's draft.
+  const pendingWriteRef = useRef<(() => void) | null>(null);
   const serverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedRef = useRef(false);
   const serverCheckedRef = useRef(false);
@@ -114,6 +118,9 @@ export function useAssessmentDraft<T extends object>(
   useEffect(
     () => () => {
       if (serverTimerRef.current) clearTimeout(serverTimerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      pendingWriteRef.current?.();
+      pendingWriteRef.current = null;
     },
     []
   );
@@ -198,7 +205,11 @@ export function useAssessmentDraft<T extends object>(
       const savedAt = isNewWork ? new Date().toISOString() : savedAtRef.current;
       savedAtRef.current = savedAt;
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => writeLocal(next, savedAt), LOCAL_DEBOUNCE_MS);
+      pendingWriteRef.current = () => writeLocal(next, savedAt);
+      timerRef.current = setTimeout(() => {
+        pendingWriteRef.current = null;
+        writeLocal(next, savedAt);
+      }, LOCAL_DEBOUNCE_MS);
       if (isNewWork && serverSave === "auto" && tokenRef.current) {
         if (serverTimerRef.current) clearTimeout(serverTimerRef.current);
         serverTimerRef.current = setTimeout(() => {
@@ -217,6 +228,7 @@ export function useAssessmentDraft<T extends object>(
    */
   function clearDraft(): Promise<boolean> {
     if (timerRef.current) clearTimeout(timerRef.current);
+    pendingWriteRef.current = null;
     if (serverTimerRef.current) clearTimeout(serverTimerRef.current);
     autosaveWaitingRef.current = false;
     savedAtRef.current = null;
