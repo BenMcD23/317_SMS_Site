@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LeavingProcessCard } from "@/components/oc/leaving-process-card";
@@ -238,8 +238,7 @@ describe("ParentEmailsCard", () => {
     await show(<ParentEmailsCard />);
     const link = screen.getByRole("link", { name: "Open email to Zoë Ó Briain's parents in Gmail" });
     const url = new URL(link.getAttribute("href")!);
-    // /a/317atc.co.uk/ pins the squadron Workspace account, not a personal Gmail.
-    expect(url.origin + url.pathname).toBe("https://mail.google.com/a/317atc.co.uk/mail/");
+    expect(url.origin + url.pathname).toBe("https://mail.google.com/mail/");
     expect(url.searchParams.get("authuser")).toBe("oc@317atc.co.uk");
     expect(url.searchParams.get("bcc")).toBe("mum@x.co,dad@x.co");
     expect(url.searchParams.get("su")).toContain("Zoë Ó Briain");
@@ -248,20 +247,6 @@ describe("ParentEmailsCard", () => {
     );
     expect(url.searchParams.get("body")).not.toContain("{{");
     expect(link.getAttribute("target")).toBe("_blank");
-  });
-
-  it("offers an Open in Gmail app button on a phone, and only there", async () => {
-    stubApi({ ...leaving([cadet({ name: "Zoë Ó Briain" })]), "GET /oc/leaving-email": NO_SAVED_EMAIL });
-    await show(<ParentEmailsCard />);
-    expect(screen.queryByRole("link", { name: /in the Gmail app/ })).toBeNull();
-    cleanup();
-
-    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)");
-    stubApi({ ...leaving([cadet({ name: "Zoë Ó Briain" })]), "GET /oc/leaving-email": NO_SAVED_EMAIL });
-    await show(<ParentEmailsCard />);
-    const app = await screen.findByRole("link", { name: /in the Gmail app/ });
-    expect(app.getAttribute("href")).toMatch(/^googlegmail:\/\/\/co\?bcc=mum%40x\.co%2Cdad%40x\.co/);
-    expect(screen.getByText(/check the From line/)).toBeTruthy();
   });
 
   it("uses the OC's saved message, with the cadet's name put in", async () => {

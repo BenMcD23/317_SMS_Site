@@ -128,25 +128,18 @@ export function bccFor(cadets: LeavingCadet[]): string {
   return [...unique.values()].join(";");
 }
 
-/** The squadron's Google Workspace domain. The OC sends from this account, never a personal one. */
-export const SQUADRON_EMAIL_DOMAIN = "317atc.co.uk";
-
-type ComposeOpts = { account?: string | null; bcc: string; subject: string; body: string };
-
-const isSquadronAccount = (account?: string | null): account is string =>
-  !!account && account.toLowerCase().endsWith(`@${SQUADRON_EMAIL_DOMAIN}`);
-
-const query = (pairs: string[][]) => pairs.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
-
 /**
- * A link that opens Gmail's compose window on the web, already addressed and
- * written. It goes through `/a/317atc.co.uk/`, which Google resolves to the
- * signed-in 317atc.co.uk account whichever other accounts the browser has open
- * (so a personal Gmail can't be picked by mistake). `authuser` also names the
- * OC's address when the sign-in is a squadron one; a personal address is never
- * passed on.
+ * A link that opens Gmail's compose window, already addressed and written.
+ * `authuser` picks the signed-in Google account, so it opens in the OC's own
+ * mailbox rather than whichever one the browser had open last. Gmail ignores it
+ * (and asks which account) if that address isn't signed in on the device.
  */
-export function gmailComposeUrl(opts: ComposeOpts): string {
+export function gmailComposeUrl(opts: {
+  account?: string | null;
+  bcc: string;
+  subject: string;
+  body: string;
+}): string {
   // encodeURIComponent, not URLSearchParams: that writes spaces as "+", which
   // Gmail shows literally in the body. Gmail wants commas between recipients.
   const parts = [
@@ -156,25 +149,6 @@ export function gmailComposeUrl(opts: ComposeOpts): string {
     ["su", opts.subject],
     ["body", opts.body],
   ];
-  if (isSquadronAccount(opts.account)) parts.push(["authuser", opts.account]);
-  return `https://mail.google.com/a/${SQUADRON_EMAIL_DOMAIN}/mail/?${query(parts)}`;
-}
-
-/**
- * A link that opens the compose screen in the phone's mail app, or null on a
- * computer. iPhones get the Gmail app's own scheme (their `mailto:` goes to Apple
- * Mail); Android's `mailto:` is handled by Gmail when that's the default mail app.
- * Neither can name the sending account — the app uses the one it has selected, so
- * the OC checks the From line is their 317atc.co.uk address.
- */
-export function mobileComposeUrl(userAgent: string, opts: ComposeOpts): string | null {
-  const bcc = opts.bcc.replaceAll(";", ",");
-  const pairs = [
-    ["bcc", bcc],
-    ["subject", opts.subject],
-    ["body", opts.body],
-  ];
-  if (/iPhone|iPad|iPod/i.test(userAgent)) return `googlegmail:///co?${query(pairs)}`;
-  if (/Android/i.test(userAgent)) return `mailto:?${query(pairs)}`;
-  return null;
+  if (opts.account) parts.push(["authuser", opts.account]);
+  return `https://mail.google.com/mail/?${parts.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&")}`;
 }
