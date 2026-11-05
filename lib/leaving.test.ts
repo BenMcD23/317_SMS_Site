@@ -7,6 +7,7 @@ import {
   cadetsToEmail,
   fillLeavingEmail,
   gmailComposeUrl,
+  mobileComposeUrl,
   leaverQueryDraft,
 } from "@/lib/leaving";
 
@@ -112,20 +113,50 @@ describe("cadetsToEmail and bccFor", () => {
 describe("gmailComposeUrl", () => {
   it("encodes spaces as %20 and newlines so Gmail keeps the layout", () => {
     const url = gmailComposeUrl({
-      account: "oc@x.co",
+      account: "oc@317atc.co.uk",
       bcc: "a@x.co;b@x.co",
       subject: "A & B",
       body: "Hi\nthere",
     });
     expect(url).toBe(
-      "https://mail.google.com/mail/?view=cm&fs=1&bcc=a%40x.co%2Cb%40x.co&su=A%20%26%20B&body=Hi%0Athere&authuser=oc%40x.co"
+      "https://mail.google.com/a/317atc.co.uk/mail/?view=cm&fs=1&bcc=a%40x.co%2Cb%40x.co&su=A%20%26%20B&body=Hi%0Athere&authuser=oc%40317atc.co.uk"
     );
     expect(url).not.toContain("+");
+  });
+
+  it("never passes a personal address as the account, but still pins the squadron domain", () => {
+    const url = gmailComposeUrl({ account: "me@gmail.com", bcc: "a@x.co", subject: "", body: "" });
+    expect(url).not.toContain("authuser");
+    expect(url).toContain("/a/317atc.co.uk/");
   });
 
   it("omits authuser when the account is unknown", () => {
     expect(gmailComposeUrl({ account: undefined, bcc: "a@x.co", subject: "", body: "" })).not.toContain(
       "authuser"
     );
+  });
+});
+
+describe("mobileComposeUrl", () => {
+  const opts = { bcc: "a@x.co;b@x.co", subject: "A & B", body: "Hi\nthere" };
+  const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15";
+  const ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/120 Mobile";
+  const DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120";
+
+  it("opens the Gmail app on an iPhone", () => {
+    expect(mobileComposeUrl(IPHONE, opts)).toBe(
+      "googlegmail:///co?bcc=a%40x.co%2Cb%40x.co&subject=A%20%26%20B&body=Hi%0Athere"
+    );
+  });
+
+  it("uses mailto on Android, where Gmail is usually the handler", () => {
+    expect(mobileComposeUrl(ANDROID, opts)).toBe(
+      "mailto:?bcc=a%40x.co%2Cb%40x.co&subject=A%20%26%20B&body=Hi%0Athere"
+    );
+  });
+
+  it("is null on a computer, and for an empty user agent", () => {
+    expect(mobileComposeUrl(DESKTOP, opts)).toBeNull();
+    expect(mobileComposeUrl("", opts)).toBeNull();
   });
 });
