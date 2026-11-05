@@ -24,13 +24,13 @@ const CADETS = [
 
 type Draft = { status: number; body?: unknown } | "offline";
 
-/** Fake API. `draft` is what GET /inspections/draft answers; `save` what a PUT
+/** Fake API. `draft` is what GET /assessment-drafts/inspection answers; `save` what a PUT
  *  answers. Every call is recorded so tests can check what was sent. */
 function api({ draft = { status: 404 } as Draft, save = { status: 200 } as Draft } = {}) {
   const fetch = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async (url, init) => {
     const path = new URL(url).pathname;
     const method = init?.method ?? "GET";
-    if (path === "/inspections/draft") {
+    if (path === "/assessment-drafts/inspection") {
       const answer = method === "GET" ? draft : method === "PUT" ? save : { status: 200 };
       if (answer === "offline") throw new TypeError("Failed to fetch");
       return new Response(JSON.stringify(answer.body ?? {}), { status: answer.status });
@@ -44,7 +44,8 @@ function api({ draft = { status: 404 } as Draft, save = { status: 200 } as Draft
 
 function calls(fetch: ReturnType<typeof api>, method: string) {
   return fetch.mock.calls.filter(
-    ([url, init]) => new URL(url).pathname === "/inspections/draft" && (init?.method ?? "GET") === method
+    ([url, init]) =>
+      new URL(url).pathname === "/assessment-drafts/inspection" && (init?.method ?? "GET") === method
   );
 }
 
@@ -82,8 +83,8 @@ describe("inspection sheet: saving to the server", () => {
 
     await waitFor(() => expect(calls(fetch, "PUT")).toHaveLength(1));
     const sent = JSON.parse(String(calls(fetch, "PUT")[0][1]!.body));
-    expect(Object.keys(sent.marks)).toEqual(["101"]);
-    expect(sent.order).toEqual([101]);
+    expect(Object.keys(sent.data.marks)).toEqual(["101"]);
+    expect(sent.data.order).toEqual([101]);
     expect(sent.saved_at).toEqual(expect.any(String));
     expect(await screen.findByText(/^Saved to the server at \d\d:\d\d$/)).toBeInTheDocument();
   });
@@ -96,8 +97,8 @@ describe("inspection sheet: saving to the server", () => {
 
     await waitFor(() => expect(calls(fetch, "PUT")).toHaveLength(2));
     const second = JSON.parse(String(calls(fetch, "PUT")[1][1]!.body));
-    expect(Object.keys(second.marks).sort()).toEqual(["101", "102"]);
-    expect(second.order).toEqual([102, 101]);
+    expect(Object.keys(second.data.marks).sort()).toEqual(["101", "102"]);
+    expect(second.data.order).toEqual([102, 101]);
   });
 
   it.each([
@@ -120,11 +121,23 @@ describe("inspection sheet: saving to the server", () => {
   it("removing a cadet saves the sheet without them", async () => {
     const fetch = api();
     renderWithQuery(<InspectionPage />);
+    let user = await recordCadet(/Zoë Ünal/);
+    user = await recordCadet(/Ben Baker/);
+    await user.click(screen.getByRole("button", { name: "Remove Zoë Ünal" }));
+
+    await waitFor(() => expect(calls(fetch, "PUT")).toHaveLength(3));
+    expect(Object.keys(JSON.parse(String(calls(fetch, "PUT")[2][1]!.body)).data.marks)).toEqual(["102"]);
+  });
+
+  it("removing the last cadet clears the server's copy rather than saving an empty sheet", async () => {
+    // An empty sheet left on the server would only come back as nothing.
+    const fetch = api();
+    renderWithQuery(<InspectionPage />);
     const user = await recordCadet(/Zoë Ünal/);
     await user.click(screen.getByRole("button", { name: "Remove Zoë Ünal" }));
 
-    await waitFor(() => expect(calls(fetch, "PUT")).toHaveLength(2));
-    expect(JSON.parse(String(calls(fetch, "PUT")[1][1]!.body)).marks).toEqual({});
+    await waitFor(() => expect(calls(fetch, "DELETE")).toHaveLength(1));
+    expect(calls(fetch, "PUT")).toHaveLength(1);
   });
 
   it("clearing the draft clears the server's copy too", async () => {
@@ -137,6 +150,35 @@ describe("inspection sheet: saving to the server", () => {
     );
 
     await waitFor(() => expect(calls(fetch, "DELETE")).toHaveLength(1));
+    expect(localStorage.getItem(LOCAL_KEY)).toBeNull();
+  });
+
+  it("a clear the server didn't get is sent again next time, instead of the sheet coming back", async () => {
+    const fetch = api();
+    fetch.mockImplementation(async (url, init) => {
+      const path = new URL(url).pathname;
+      if (path === "/assessment-drafts/inspection" && init?.method === "DELETE")
+        throw new TypeError("offline");
+      if (path === "/assessment-drafts/inspection" && (init?.method ?? "GET") === "GET")
+        return new Response("{}", { status: 404 });
+      if (path === "/cadets") return new Response(JSON.stringify(CADETS));
+      return new Response("[]");
+    });
+    const first = renderWithQuery(<InspectionPage />);
+    const user = await recordCadet(/Zoë Ünal/);
+    await user.click(screen.getByRole("button", { name: /Clear draft/ }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Clear draft" })
+    );
+    await waitFor(() => expect(localStorage.getItem(`${LOCAL_KEY}:clear_pending`)).toBe("1"));
+    first.unmount();
+
+    // Next visit, with signal: the clear goes first and nothing is restored.
+    const again = api({ draft: { status: 200, body: { data: { date: "2026-11-04", marks: { 101: {} } } } } });
+    renderWithQuery(<InspectionPage />);
+    await waitFor(() => expect(calls(again, "DELETE")).toHaveLength(1));
+    expect(calls(again, "GET")).toHaveLength(0);
+    expect(screen.queryByText(/^Restored/)).not.toBeInTheDocument();
   });
 });
 
@@ -146,11 +188,11 @@ describe("inspection sheet: restoring after a reload", () => {
     uniform: "blues",
     marks: { 101: { score: "8", comments: [], absent: null } },
     order: [101],
-    saved_at: "2026-11-04T19:40:00.000Z",
   };
+  const SERVER_SAVED_AT = "2026-11-04T19:40:00.000Z";
 
   it("a phone with nothing saved gets the server's sheet back", async () => {
-    api({ draft: { status: 200, body: { data: serverSheet, updated_at: "x" } } });
+    api({ draft: { status: 200, body: { data: serverSheet, saved_at: SERVER_SAVED_AT, updated_at: "x" } } });
     renderWithQuery(<InspectionPage />);
 
     expect(await screen.findByText("Restored your marking session from the server.")).toBeInTheDocument();
@@ -165,10 +207,12 @@ describe("inspection sheet: restoring after a reload", () => {
         ...serverSheet,
         marks: { 102: { score: "6", comments: [] } },
         order: [102],
-        saved_at: "2026-11-04T19:50:00.000Z",
       })
     );
-    const fetch = api({ draft: { status: 200, body: { data: serverSheet, updated_at: "x" } } });
+    localStorage.setItem(`${LOCAL_KEY}:saved_at`, "2026-11-04T19:50:00.000Z");
+    const fetch = api({
+      draft: { status: 200, body: { data: serverSheet, saved_at: SERVER_SAVED_AT, updated_at: "x" } },
+    });
     renderWithQuery(<InspectionPage />);
 
     await waitFor(() => expect(calls(fetch, "GET")).toHaveLength(1));

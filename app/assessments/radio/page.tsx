@@ -16,6 +16,7 @@ import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { useFillAssessorName, useSavedSignature } from "@/lib/assessor-defaults";
 import { sendOrQueue } from "@/lib/outbox";
+import { DraftSaveStatus } from "@/components/draft-save-status";
 import { SavedHeading } from "@/components/assessments/saved-heading";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
@@ -108,7 +109,14 @@ export default function RadioAssessmentPage() {
     setState: setForm,
     clearDraft,
     draftRestored,
-  } = useAssessmentDraft("radio", initialState(), session?.user?.email, (s) => s.cadetCin !== null);
+    restoredFromServer,
+    serverStatus,
+  } = useAssessmentDraft("radio", initialState(), session?.user?.email, (s) => s.cadetCin !== null, {
+    // Saved to the server a few seconds after each change, so a cleared cache
+    // or another phone doesn't lose a half-done assessment.
+    token: session?.id_token,
+    serverSave: "auto",
+  });
   const [draftBannerDismissed, setDraftBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -272,9 +280,13 @@ export default function RadioAssessmentPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-16">
       <SectionHeading title="Radio Assessment" description="Blue Badge — Basic Radio Operator Award" />
 
-      {draftRestored && !draftBannerDismissed && (
+      {(draftRestored || restoredFromServer) && !draftBannerDismissed && (
         <div className="border-warning/30 bg-warning/10 flex items-center justify-between rounded-lg border px-4 py-3 text-sm">
-          <span className="text-warning">Draft restored from your last session.</span>
+          <span className="text-warning">
+            {restoredFromServer
+              ? "Draft restored from the server."
+              : "Draft restored from your last session."}
+          </span>
           <Button
             variant="outline"
             size="sm"
@@ -285,6 +297,7 @@ export default function RadioAssessmentPage() {
           </Button>
         </div>
       )}
+      <DraftSaveStatus status={serverStatus} />
 
       {sigLoading ? (
         <div className="space-y-6">

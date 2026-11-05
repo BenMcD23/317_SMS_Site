@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
@@ -40,30 +40,21 @@ import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { ErrorAlert } from "@/components/error-alert";
 import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
-import { formatDate, formatTime, todayLocal } from "@/lib/format";
+import { formatDate, todayLocal } from "@/lib/format";
 import { sendOrQueue } from "@/lib/outbox";
-import {
-  clearServerDraft,
-  loadServerDraft,
-  saveServerDraft,
-  serverDraftIsNewer,
-} from "@/lib/inspection-draft";
+import { DraftSaveStatus } from "@/components/draft-save-status";
 
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
 type Mark = { score: string; comments: Comment[]; absent?: boolean };
 type Uniform = "blues" | "mtp";
 // order: cins in the sequence they were submitted, most-recent first (LIFO).
-// saved_at: when a cadet was last recorded, to tell the phone's copy and the
-// server's apart (lib/inspection-draft.ts).
 type Sheet = {
   date: string;
   marks: Record<number, Mark>;
   order?: number[];
   uniform?: Uniform;
-  saved_at?: string;
 };
-type ServerSave = { state: "saving" } | { state: "saved"; at: string } | { state: "failed" };
 type Absence = { cin: number; date_from: string; date_to: string; reason: string | null };
 type FlightScore = { total: number; present_count: number; awol_count: number };
 
@@ -361,16 +352,22 @@ export default function InspectionPage() {
   const { data: session } = useSession();
   const { data: cadets = [], isLoading, error: cadetsError } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
 
+  // Saved to the server as each cadet is recorded or removed (not on every
+  // keystroke), so a reload or another phone picks the night up again.
   const {
     state: sheet,
     setState: setSheet,
     clearDraft,
     draftRestored: restored,
+    restoredFromServer,
+    saveToServer,
+    serverStatus,
   } = useAssessmentDraft<Sheet>(
     "inspection",
     { date: todayLocal(), marks: {}, uniform: "blues" },
     session?.user?.email,
-    (s) => Object.keys(s.marks).length > 0
+    (s) => Object.keys(s.marks).length > 0,
+    { token: session?.id_token, serverSave: "manual" }
   );
   const uniform = sheet.uniform ?? "blues";
   const figureSrc = UNIFORMS.find((u) => u.id === uniform)?.figure ?? UNIFORMS[0].figure;
@@ -381,44 +378,6 @@ export default function InspectionPage() {
     `/absences?date=${sheet.date}`
   );
   const absenceByCin = useMemo(() => new Map(absences.map((a) => [a.cin, a])), [absences]);
-
-  // The server's copy of the sheet: restored on load if it's newer than the
-  // phone's, saved each time a cadet is recorded or removed.
-  const token = session?.id_token;
-  const [serverSave, setServerSave] = useState<ServerSave | null>(null);
-  const [restoredFromServer, setRestoredFromServer] = useState(false);
-  const sheetRef = useRef(sheet);
-  useEffect(() => {
-    sheetRef.current = sheet;
-  }, [sheet]);
-  const serverChecked = useRef(false);
-  useEffect(() => {
-    if (!token || serverChecked.current) return;
-    serverChecked.current = true;
-    loadServerDraft<Sheet>(token)
-      .then((saved) => {
-        // Compared against the latest sheet, not the one at mount: the
-        // phone's own draft may have been restored, or marking started, while
-        // this was loading.
-        if (saved && serverDraftIsNewer(sheetRef.current, saved)) {
-          setSheet(saved);
-          setRestoredFromServer(true);
-        }
-      })
-      // Unreachable server: carry on with the phone's copy, which is what the
-      // page did before there was a server copy at all.
-      .catch(() => {});
-  }, [token, setSheet]);
-
-  function saveToServer(next: Sheet) {
-    if (!token) return;
-    setServerSave({ state: "saving" });
-    saveServerDraft(token, next)
-      .then(() => setServerSave({ state: "saved", at: next.saved_at ?? new Date().toISOString() }))
-      // Not retried on its own: the next recorded cadet sends the whole sheet
-      // again, and the phone keeps its own copy meanwhile.
-      .catch(() => setServerSave({ state: "failed" }));
-  }
 
   const [submitting, setSubmitting] = useState(false);
   const [flightScores, setFlightScores] = useState<Record<string, FlightScore> | null>(null);
@@ -529,10 +488,9 @@ export default function InspectionPage() {
       ...sheet,
       marks: sheet.marks[cin] ? sheet.marks : { ...sheet.marks, [cin]: emptyMark() },
       order: [cin, ...(sheet.order ?? []).filter((c) => c !== cin)],
-      saved_at: new Date().toISOString(),
     };
     setSheet(next);
-    saveToServer(next);
+    void saveToServer(next);
     const c = flightCadets.find((c) => c.cin === cin);
     if (c) toast.success(`${c.first_name} ${c.last_name} recorded`);
     setSelectedCin(null);
@@ -546,30 +504,24 @@ export default function InspectionPage() {
       ...sheet,
       marks,
       order: (sheet.order ?? []).filter((c) => c !== cin),
-      saved_at: new Date().toISOString(),
     };
     setSheet(next);
-    saveToServer(next);
+    void saveToServer(next);
     if (selectedCin === cin) setSelectedCin(null);
   }
 
   function clearAll() {
     setSheet({ date: sheet.date, marks: {}, order: [], uniform });
-    clearDraft();
     setSelectedCin(null);
     setFlightScores(null);
-    setServerSave(null);
-    setRestoredFromServer(false);
-    if (token) {
-      clearServerDraft(token)
-        .then(() => toast.success("Draft cleared"))
-        // Left on the server, it would come back on the next load.
-        .catch(() =>
-          toast.error("Cleared on this phone, but the server copy couldn't be removed. Try again.")
-        );
-    } else {
-      toast.success("Draft cleared");
-    }
+    void clearDraft().then((cleared) =>
+      cleared
+        ? toast.success("Draft cleared")
+        : // The hook retries the server's copy on the next load.
+          toast.warning(
+            "Cleared on this phone. The server's copy goes next time this page opens with signal."
+          )
+    );
   }
 
   return (
@@ -633,24 +585,14 @@ export default function InspectionPage() {
         }
       />
 
-      {(restored || restoredFromServer) && !serverSave && (
+      {(restored || restoredFromServer) && !serverStatus && (
         <p className="text-muted-foreground text-xs">
           {restoredFromServer
             ? "Restored your marking session from the server."
             : "Restored your unsaved marking session."}
         </p>
       )}
-      {serverSave && (
-        <p
-          role="status"
-          className={cn("text-xs", serverSave.state === "failed" ? "text-warning" : "text-muted-foreground")}
-        >
-          {serverSave.state === "saving" && "Saving to the server…"}
-          {serverSave.state === "saved" && `Saved to the server at ${formatTime(serverSave.at)}`}
-          {serverSave.state === "failed" &&
-            "Couldn't reach the server. Saved on this phone only; it saves again with the next cadet."}
-        </p>
-      )}
+      <DraftSaveStatus status={serverStatus} nextSave="the next cadet" />
 
       {flightScores && (
         <Card>

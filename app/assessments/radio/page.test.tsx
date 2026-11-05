@@ -119,3 +119,51 @@ describe("radio assessment: submitting", () => {
     expect(readOutbox()).toEqual([]);
   });
 });
+
+describe("radio assessment: the draft on the server", () => {
+  function draftCalls(fetch: ReturnType<typeof api>, method: string) {
+    return fetch.mock.calls.filter(
+      ([url, init]) =>
+        new URL(url).pathname === "/assessment-drafts/radio" && (init?.method ?? "GET") === method
+    );
+  }
+
+  it("a sheet started on another phone comes back here", async () => {
+    localStorage.clear();
+    const fetch = api(async () => new Response("{}"));
+    fetch.mockImplementation(async (url) => {
+      const path = new URL(url).pathname;
+      if (path === "/assessment-drafts/radio")
+        return new Response(
+          JSON.stringify({
+            data: {
+              cadetCin: 1234,
+              cadetName: "Cdt Zoë Ünal",
+              criteria: {},
+              cyberSecDate: "",
+              comments: "Started on the other phone",
+              assessorName: "Sgt Dev",
+              assessorRole: "",
+              date: "2026-10-22",
+            },
+            saved_at: "2026-10-22T19:00:00.000Z",
+          })
+        );
+      return new Response(JSON.stringify([]));
+    });
+    renderWithQuery(<RadioAssessmentPage />);
+    expect(await screen.findByText("Draft restored from the server.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Started on the other phone")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["sending it", async () => new Response(JSON.stringify({ assessment_id: 42 }), { status: 201 })],
+    ["keeping it on the phone to send later", () => Promise.reject(new TypeError("Failed to fetch"))],
+  ])("submitting clears the server's copy as well, when %s", async (_, submit) => {
+    // Left on the server, it would come back as a draft and invite a duplicate.
+    const fetch = api(submit);
+    await submitSheet();
+    await screen.findByRole("heading", { name: /Saved/ });
+    expect(draftCalls(fetch, "DELETE")).toHaveLength(1);
+  });
+});
