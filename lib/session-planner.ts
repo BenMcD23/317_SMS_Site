@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { API_BASE } from "@/lib/config";
 import { apiRequest } from "@/lib/api-fetch";
+import type { Attendance } from "@/lib/classification-day";
 
 /**
  * Types, form rules and write calls for the session planner's task bank and
@@ -217,4 +218,96 @@ export function linkSheet(token: string, assessmentId: number, taskId: number): 
     { method: "POST", body: { task_id: taskId } },
     "Couldn't link the sheet."
   );
+}
+
+// ── planning a session ────────────────────────────────────────────────────────
+
+/** A cadet as the planner lists them for ticking. */
+export interface PlannerCadet {
+  cin: number;
+  first_name: string;
+  last_name: string;
+  rank: string | null;
+  flight: string | null;
+  attendance: Attendance;
+  /** Leadership badge held ("blue", "bronze"…), and sheets the bank can place. */
+  leadership: { level: string | null; led: number; passes: number };
+}
+
+export interface PlanPerson {
+  cin: number;
+  first_name: string;
+  last_name: string;
+  rank: string | null;
+  flight: string | null;
+}
+
+export interface PlanRun {
+  group: number;
+  task_id: number;
+  task_name: string;
+  task_number: string | null;
+  leader: PlanPerson | null;
+}
+
+export interface SessionPlan {
+  kind: SessionKind;
+  leadership: boolean;
+  groups: { number: number; cadets: PlanPerson[] }[];
+  rounds: { number: number; start: string; end: string; runs: PlanRun[]; idle_groups: number[] }[];
+  leads: { cin: number; count: number }[];
+  not_leading: PlanPerson[];
+  warnings: string[];
+}
+
+export interface PlanRequest {
+  kind: SessionKind;
+  date: string;
+  start: string;
+  end: string;
+  changeover_minutes: number;
+  stands: number;
+  task_ids: number[];
+  cins: number[];
+}
+
+export function planSession(token: string, body: PlanRequest): Promise<SessionPlan> {
+  return apiRequest(token, `${BASE}/plan`, { method: "POST", body }, "Couldn't plan the session.");
+}
+
+export function personName(p: { rank?: string | null; first_name: string; last_name: string }): string {
+  return `${p.rank ? `${p.rank} ` : ""}${p.first_name} ${p.last_name}`;
+}
+
+/** "Blue", "Bronze"… for the badge held, or null. */
+export function badgeLevel(level: string | null): string | null {
+  return level ? level.charAt(0).toUpperCase() + level.slice(1) : null;
+}
+
+/**
+ * The plan as plain text for pasting into a message or the session plan:
+ * each round's stands, then who's in each group. Rounds come first because
+ * that's what staff run the night from.
+ */
+export function planToText(plan: SessionPlan): string {
+  const lines: string[] = [];
+  for (const r of plan.rounds) {
+    lines.push(`Round ${r.number}, ${r.start}–${r.end}`);
+    for (const run of r.runs) {
+      const leader = plan.leadership
+        ? run.leader
+          ? `, led by ${personName(run.leader)}`
+          : ", no leader"
+        : "";
+      lines.push(
+        `  Group ${run.group}: ${taskLabel({ number: run.task_number, name: run.task_name })}${leader}`
+      );
+    }
+    for (const g of r.idle_groups) lines.push(`  Group ${g}: sits out`);
+  }
+  lines.push("");
+  for (const g of plan.groups) {
+    lines.push(`Group ${g.number}: ${g.cadets.map(personName).join(", ")}`);
+  }
+  return lines.join("\n");
 }

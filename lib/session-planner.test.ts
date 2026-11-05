@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   groupSizeLabel,
   kindLabel,
+  badgeLevel,
   kitSchema,
   kitSummary,
   taskFormFrom,
   taskLabel,
+  planToText,
   taskPayload,
   taskSchema,
   type BankTask,
@@ -121,5 +123,74 @@ describe("the kit form", () => {
     expect(kitSchema.safeParse({ name: " ", quantity: 1, notes: "" }).error?.issues[0].message).toBe(
       "Give the kit a name"
     );
+  });
+});
+
+describe("planToText", () => {
+  const person = (last: string) => ({ cin: 1, first_name: "Sam", last_name: last, rank: "Cpl", flight: "A" });
+
+  it("lists each round's stands, then the groups", () => {
+    const text = planToText({
+      kind: "leadership",
+      leadership: true,
+      groups: [
+        { number: 1, cadets: [person("Able"), person("Ørsted")] },
+        { number: 2, cadets: [person("Dunn")] },
+      ],
+      rounds: [
+        {
+          number: 1,
+          start: "19:30",
+          end: "19:45",
+          runs: [
+            { group: 1, task_id: 1, task_name: "Bridge", task_number: "1", leader: person("Able") },
+            { group: 2, task_id: 2, task_name: "Swamp", task_number: null, leader: null },
+          ],
+          idle_groups: [3],
+        },
+      ],
+      leads: [],
+      not_leading: [],
+      warnings: [],
+    });
+    expect(text).toBe(
+      [
+        "Round 1, 19:30–19:45",
+        "  Group 1: 1. Bridge, led by Cpl Sam Able",
+        "  Group 2: Swamp, no leader",
+        "  Group 3: sits out",
+        "",
+        "Group 1: Cpl Sam Able, Cpl Sam Ørsted",
+        "Group 2: Cpl Sam Dunn",
+      ].join("\n")
+    );
+  });
+
+  it("leaves leaders out of a session that isn't leadership", () => {
+    const text = planToText({
+      kind: "radio",
+      leadership: false,
+      groups: [],
+      rounds: [
+        {
+          number: 1,
+          start: "19:30",
+          end: "19:50",
+          runs: [{ group: 1, task_id: 1, task_name: "Net", task_number: "1", leader: null }],
+          idle_groups: [],
+        },
+      ],
+      leads: [],
+      not_leading: [],
+      warnings: [],
+    });
+    expect(text).toContain("  Group 1: 1. Net\n");
+  });
+});
+
+describe("badgeLevel", () => {
+  it("capitalises a held level and leaves none as null", () => {
+    expect(badgeLevel("blue")).toBe("Blue");
+    expect(badgeLevel(null)).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import SessionPlannerPage from "@/app/session-planner/page";
+import TaskBankPage from "@/app/session-planner/bank/page";
 import { canAccess } from "@/lib/access";
 import type { BankTask, KitItem, UnlinkedSheet } from "@/lib/session-planner";
 import { renderWithQuery } from "@/tests/render-with-query";
@@ -125,7 +125,7 @@ beforeEach(() => {
 describe("Session planner bank", () => {
   it("lists the tasks in use with their kit, and flags one the kit can't cover", async () => {
     api();
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
 
     const table = await screen.findByRole("table", { name: "Task bank" });
     expect(within(table).getByRole("button", { name: /Toxic Barrel/ })).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe("Session planner bank", () => {
 
   it("narrows the bank to one kind of session", async () => {
     api();
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     await screen.findByRole("table", { name: "Task bank" });
 
     await userEvent.click(screen.getByRole("radio", { name: "First aid" }));
@@ -153,7 +153,7 @@ describe("Session planner bank", () => {
 
   it("an empty bank says how to fill it", async () => {
     api({ tasks: [], kit: [], sheets: [] });
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     expect(await screen.findByText("No tasks yet")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("tab", { name: "Kit 0" }));
@@ -167,14 +167,14 @@ describe("Session planner bank", () => {
     vi.mocked(fetch).mockImplementation(async (input) =>
       String(input).includes("/tasks") ? json({ detail: "Database is down" }, 500) : json([])
     );
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     expect(await screen.findByText("Database is down")).toBeInTheDocument();
     expect(screen.queryByText("No tasks yet")).not.toBeInTheDocument();
   });
 
   it("adds kit with how many there are", async () => {
     const fetchMock = api({ write: () => json({ ...KIT[0], id: 3, name: "Cargo net", quantity: 1 }, 201) });
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     await userEvent.click(await screen.findByRole("tab", { name: "Kit 2" }));
     expect(screen.getByText("None working")).toBeInTheDocument();
 
@@ -199,7 +199,7 @@ describe("Session planner bank", () => {
 
   it("refuses kit with no name before sending anything", async () => {
     const fetchMock = api();
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     await userEvent.click(await screen.findByRole("tab", { name: "Kit 2" }));
     await userEvent.click(screen.getByRole("button", { name: "Add kit" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add kit" }));
@@ -212,7 +212,7 @@ describe("Session planner bank", () => {
     api({
       write: () => json({ detail: "Still needed by Toxic Barrel. Take it off those tasks first." }, 409),
     });
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     await userEvent.click(await screen.findByRole("tab", { name: "Kit 2" }));
     await userEvent.click(screen.getByRole("button", { name: "Oil drum" }));
     await userEvent.click(screen.getByRole("button", { name: "Delete kit" }));
@@ -227,7 +227,7 @@ describe("Session planner bank", () => {
 
   it("adds a task with the kit it needs", async () => {
     const fetchMock = api({ write: () => json(task({ id: 13, name: "Bridge" }), 201) });
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     await userEvent.click(await screen.findByRole("button", { name: "Add task" }));
 
     const dialog = screen.getByRole("dialog");
@@ -261,7 +261,7 @@ describe("Session planner bank", () => {
 
   it("a task cadets have led can't be deleted or change kind, only retired", async () => {
     api();
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     await userEvent.click(await screen.findByRole("button", { name: /Toxic Barrel/ }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).queryByRole("button", { name: "Delete task" })).not.toBeInTheDocument();
@@ -271,7 +271,7 @@ describe("Session planner bank", () => {
 
   it("links an old sheet to the task it was for", async () => {
     const fetchMock = api({ write: () => json({ assessment_id: 50, task_id: 10 }) });
-    renderWithQuery(<SessionPlannerPage />);
+    renderWithQuery(<TaskBankPage />);
     await userEvent.click(await screen.findByRole("tab", { name: "Unlinked sheets 1" }));
     expect(screen.getByText("Cpl Zoë Ó Briain")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Link" })).toBeDisabled();
@@ -302,6 +302,6 @@ describe("Session planner access", () => {
     ["nco", false],
     [undefined, false],
   ])("%s reaching it is %s", (role, allowed) => {
-    expect(canAccess(role, "/session-planner")).toBe(allowed);
+    expect(canAccess(role, "/session-planner/bank")).toBe(allowed);
   });
 });
