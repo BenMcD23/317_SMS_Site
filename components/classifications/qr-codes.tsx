@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import QRCode from "qrcode";
+import { useState } from "react";
 import { Download, Link2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { ErrorAlert } from "@/components/error-alert";
+import { downloadQr, QrImage } from "@/components/qr-code";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,46 +16,12 @@ import { categoriesOf, lessonLabel, lessonUrl, qrFileName, THEORY_KEYS, type Les
 import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
 
-// Big enough to stay sharp on a projected slide.
-const DOWNLOAD_PX = 1024;
-
-/** The QR drawn as an SVG image; empty while it renders. */
-function QrImage({ url, alt }: { url: string; alt: string }) {
-  const [svg, setSvg] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    QRCode.toString(url, { type: "svg", margin: 1, errorCorrectionLevel: "M" })
-      .then((s) => live && setSvg(s))
-      .catch(() => live && setSvg(null));
-    return () => {
-      live = false;
-    };
-  }, [url]);
-  if (!svg) return <Skeleton className="aspect-square w-full" />;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- a data: URI, nothing for next/image to optimise
-    <img
-      src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
-      alt={alt}
-      className="aspect-square w-full rounded-md bg-white p-1.5"
-    />
-  );
-}
-
 function LessonQr({ lesson, url }: { lesson: LessonCode; url: string }) {
   const label = lessonLabel(lesson, lesson.part);
   const alt = `QR code for ${lesson.name} ${label}`;
 
   async function download() {
-    try {
-      const href = await QRCode.toDataURL(url, { width: DOWNLOAD_PX, margin: 2, errorCorrectionLevel: "M" });
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = qrFileName(lesson, lesson.part);
-      a.click();
-    } catch {
-      toast.error("Couldn't make the image.");
-    }
+    if (!(await downloadQr(url, qrFileName(lesson, lesson.part)))) toast.error("Couldn't make the image.");
   }
 
   async function copy() {

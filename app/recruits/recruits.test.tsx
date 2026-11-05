@@ -194,6 +194,32 @@ describe("Recruits list", () => {
     expect(screen.getByText("Link expired")).toBeTruthy();
   });
 
+  it.each([
+    [true, "refreshes itself while parents are signing up on the night"],
+    [false, "doesn't poll while the sign-up page is closed"],
+  ])("with sign-up open %s the list %s", async (open) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const fetch = stubApi({
+        "GET /recruits/sign-up": [
+          { open, openUntil: null, openedBy: null, url: "https://www.317atc.co.uk/enrol" },
+        ],
+        "GET /recruits": [[recruit()]],
+      });
+      await show(<RecruitsPage />);
+      await screen.findByRole("link", { name: "Erin Walsh" });
+      await screen.findByText(open ? "Open" : "Closed");
+      const lists = () => fetch.mock.calls.filter(([url]) => String(url).endsWith("/recruits")).length;
+      const before = lists();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(21_000);
+      });
+      expect(lists() > before).toBe(open);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows an empty state with no recruits", async () => {
     stubApi({ "GET /recruits": [[]] });
     await show(<RecruitsPage />);
