@@ -22,6 +22,12 @@ const CADETS = [
   { cin: 102, first_name: "Ben", last_name: "Baker", rank: null, flight: "A" },
 ];
 
+const PAST_COMMENTS = [
+  { region: "Shoes", type: "fault", text: "Uppers", count: 5 },
+  { region: "Shoes", type: "positive", text: "Well bulled", count: 1 },
+  { region: "Trousers", type: "fault", text: "Press", count: 3 },
+];
+
 type Draft = { status: number; body?: unknown } | "offline";
 
 /** Fake API. `draft` is what GET /assessment-drafts/inspection answers; `save` what a PUT
@@ -36,6 +42,7 @@ function api({ draft = { status: 404 } as Draft, save = { status: 200 } as Draft
       return new Response(JSON.stringify(answer.body ?? {}), { status: answer.status });
     }
     if (path === "/cadets") return new Response(JSON.stringify(CADETS));
+    if (path === "/inspections/comments") return new Response(JSON.stringify(PAST_COMMENTS));
     return new Response(JSON.stringify([]));
   });
   vi.stubGlobal("fetch", fetch);
@@ -162,6 +169,7 @@ describe("inspection sheet: saving to the server", () => {
       if (path === "/assessment-drafts/inspection" && (init?.method ?? "GET") === "GET")
         return new Response("{}", { status: 404 });
       if (path === "/cadets") return new Response(JSON.stringify(CADETS));
+      if (path === "/inspections/comments") return new Response(JSON.stringify(PAST_COMMENTS));
       return new Response("[]");
     });
     const first = renderWithQuery(<InspectionPage />);
@@ -239,5 +247,56 @@ describe("inspection sheet: restoring after a reload", () => {
     expect(await screen.findByText("Search for a cadet above to start marking.")).toBeInTheDocument();
     expect(screen.queryByText(/^Restored/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Recorded \(/)).not.toBeInTheDocument();
+  });
+});
+
+describe("inspection sheet: comment quick picks", () => {
+  async function openRegion(user: ReturnType<typeof userEvent.setup>, cadet: RegExp, region: string) {
+    await user.click(await screen.findByRole("combobox", { name: /Search cadet/ }));
+    await user.click(await screen.findByRole("option", { name: cadet }));
+    await user.click(screen.getByTitle(region));
+    return screen.findByRole("dialog");
+  }
+
+  it("offers the region's past faults and adds one with a tap", async () => {
+    api();
+    renderWithQuery(<InspectionPage />);
+    const user = userEvent.setup();
+    const pop = await openRegion(user, /Zoë Ünal/, "Shoes");
+
+    const picks = await within(pop).findByRole("group", { name: "Quick picks" });
+    expect(
+      within(picks)
+        .getAllByRole("button")
+        .map((b) => b.textContent)
+    ).toEqual(["Uppers"]);
+    await user.click(within(picks).getByRole("button", { name: "Uppers" }));
+
+    // Now on the cadet, so it leaves the picks.
+    expect(within(pop).getByText("Uppers").closest("li")).not.toBeNull();
+    expect(within(pop).queryByRole("group", { name: "Quick picks" })).toBeNull();
+
+    // Positive shows the praise instead.
+    await user.click(within(pop).getByRole("radio", { name: /Positive/ }));
+    expect(within(pop).getByRole("button", { name: "Well bulled" })).toBeInTheDocument();
+  });
+
+  it("a comment typed for one cadet is a pick for the next before the sheet is sent", async () => {
+    api();
+    renderWithQuery(<InspectionPage />);
+    const user = userEvent.setup();
+    let pop = await openRegion(user, /Zoë Ünal/, "Shoes");
+    await user.type(within(pop).getByRole("textbox"), "Scuffed toecaps");
+    await user.click(within(pop).getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Submit cadet" }));
+
+    pop = await openRegion(user, /Ben Baker/, "Shoes");
+    await user.type(within(pop).getByRole("textbox"), "scuff");
+    const picks = within(pop).getByRole("group", { name: "Quick picks" });
+    expect(
+      within(picks)
+        .getAllByRole("button")
+        .map((b) => b.textContent)
+    ).toEqual(["Scuffed toecaps"]);
   });
 });
