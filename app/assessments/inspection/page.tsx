@@ -42,6 +42,7 @@ import { ErrorAlert } from "@/components/error-alert";
 import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import { formatDate, todayLocal } from "@/lib/format";
 import { sendOrQueue } from "@/lib/outbox";
+import { DraftSaveStatus } from "@/components/draft-save-status";
 
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
@@ -351,16 +352,22 @@ export default function InspectionPage() {
   const { data: session } = useSession();
   const { data: cadets = [], isLoading, error: cadetsError } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
 
+  // Saved to the server as each cadet is recorded or removed (not on every
+  // keystroke), so a reload or another phone picks the night up again.
   const {
     state: sheet,
     setState: setSheet,
     clearDraft,
     draftRestored: restored,
+    restoredFromServer,
+    saveToServer,
+    serverStatus,
   } = useAssessmentDraft<Sheet>(
     "inspection",
     { date: todayLocal(), marks: {}, uniform: "blues" },
     session?.user?.email,
-    (s) => Object.keys(s.marks).length > 0
+    (s) => Object.keys(s.marks).length > 0,
+    { token: session?.id_token, serverSave: "manual" }
   );
   const uniform = sheet.uniform ?? "blues";
   const figureSrc = UNIFORMS.find((u) => u.id === uniform)?.figure ?? UNIFORMS[0].figure;
@@ -477,11 +484,13 @@ export default function InspectionPage() {
   function submitCadet() {
     if (selectedCin == null) return;
     const cin = selectedCin;
-    setSheet((s) => ({
-      ...s,
-      marks: s.marks[cin] ? s.marks : { ...s.marks, [cin]: emptyMark() },
-      order: [cin, ...(s.order ?? []).filter((c) => c !== cin)],
-    }));
+    const next: Sheet = {
+      ...sheet,
+      marks: sheet.marks[cin] ? sheet.marks : { ...sheet.marks, [cin]: emptyMark() },
+      order: [cin, ...(sheet.order ?? []).filter((c) => c !== cin)],
+    };
+    setSheet(next);
+    void saveToServer(next);
     const c = flightCadets.find((c) => c.cin === cin);
     if (c) toast.success(`${c.first_name} ${c.last_name} recorded`);
     setSelectedCin(null);
@@ -489,20 +498,30 @@ export default function InspectionPage() {
 
   // Remove a recorded cadet from the sheet entirely.
   function removeCadet(cin: number) {
-    setSheet((s) => {
-      const marks = { ...s.marks };
-      delete marks[cin];
-      return { ...s, marks, order: (s.order ?? []).filter((c) => c !== cin) };
-    });
+    const marks = { ...sheet.marks };
+    delete marks[cin];
+    const next: Sheet = {
+      ...sheet,
+      marks,
+      order: (sheet.order ?? []).filter((c) => c !== cin),
+    };
+    setSheet(next);
+    void saveToServer(next);
     if (selectedCin === cin) setSelectedCin(null);
   }
 
   function clearAll() {
     setSheet({ date: sheet.date, marks: {}, order: [], uniform });
-    clearDraft();
     setSelectedCin(null);
     setFlightScores(null);
-    toast.success("Draft cleared");
+    void clearDraft().then((cleared) =>
+      cleared
+        ? toast.success("Draft cleared")
+        : // The hook retries the server's copy on the next load.
+          toast.warning(
+            "Cleared on this phone. The server's copy goes next time this page opens with signal."
+          )
+    );
   }
 
   return (
@@ -566,7 +585,14 @@ export default function InspectionPage() {
         }
       />
 
-      {restored && <p className="text-muted-foreground text-xs">Restored your unsaved marking session.</p>}
+      {(restored || restoredFromServer) && !serverStatus && (
+        <p className="text-muted-foreground text-xs">
+          {restoredFromServer
+            ? "Restored your marking session from the server."
+            : "Restored your unsaved marking session."}
+        </p>
+      )}
+      <DraftSaveStatus status={serverStatus} nextSave="the next cadet" />
 
       {flightScores && (
         <Card>
@@ -627,6 +653,7 @@ export default function InspectionPage() {
                 variant="outline"
                 role="combobox"
                 aria-expanded={searchOpen}
+                aria-label={`Search cadet in ${activeFlight} Flight`}
                 className="text-muted-foreground w-full justify-between sm:w-96"
               >
                 <span className="flex items-center gap-2">
