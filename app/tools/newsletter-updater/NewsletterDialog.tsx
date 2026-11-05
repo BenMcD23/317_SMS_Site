@@ -161,8 +161,8 @@ export function NewsletterDialog({
       }
       toast.success(
         mode === "add"
-          ? "Newsletter added! The site will redeploy shortly."
-          : "Newsletter updated! The site will redeploy shortly."
+          ? "Newsletter added! The website will redeploy shortly."
+          : "Newsletter updated! The website will redeploy shortly."
       );
       onOpenChange(false);
       onSuccess();

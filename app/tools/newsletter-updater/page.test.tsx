@@ -41,6 +41,15 @@ describe("Newsletter updater", () => {
     expect(within(items[0]).getByText("Current")).toBeInTheDocument();
   });
 
+  it("each issue links to its own page on the squadron website", async () => {
+    stubApi([issue(1), issue(2)]);
+    renderWithQuery(<NewsletterManagementPage />);
+    const link = await screen.findByRole("link", { name: "View issue 1 on the website" });
+    expect(link).toHaveAttribute("href", "https://www.317atc.co.uk/newsletter/n1");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: "View issue 2 on the website" })).toBeInTheDocument();
+  });
+
   it("deleting an issue takes it off the list without reloading it", async () => {
     const fetch = stubApi([issue(1), issue(2)]);
     renderWithQuery(<NewsletterManagementPage />);

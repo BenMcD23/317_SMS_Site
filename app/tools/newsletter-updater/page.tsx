@@ -17,9 +17,9 @@ import { EmptyState } from "@/components/empty-state";
 import { NewsletterDialog } from "./NewsletterDialog";
 import type { Newsletter } from "./types";
 
-// Base URL of the public newsletter site, used for the "view PDF" link.
-// Set NEXT_PUBLIC_NEWSLETTER_SITE to enable it; left blank the link is hidden.
-const NEWSLETTER_SITE = process.env.NEXT_PUBLIC_NEWSLETTER_SITE ?? "";
+// Newsletters are published to the squadron website, which has a page per
+// issue, so each row can link straight to how parents will see it.
+const WEBSITE = "https://www.317atc.co.uk";
 
 const NEWSLETTERS_KEY = ["newsletters"];
 
@@ -56,7 +56,7 @@ export default function NewsletterManagementPage() {
       }
       setNewsletters((prev) => prev?.filter((n) => n.issue !== issue));
       setDeleteConfirm(null);
-      toast.success("Newsletter deleted. The site will redeploy shortly.");
+      toast.success("Newsletter deleted. The website will redeploy shortly.");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to delete newsletter");
     } finally {
@@ -115,18 +115,16 @@ export default function NewsletterManagementPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    {NEWSLETTER_SITE && (
+                    <Button asChild size="icon" variant="ghost" className="h-8 w-8">
                       <a
-                        href={`${NEWSLETTER_SITE}${n.pdfPath}`}
+                        href={`${WEBSITE}/newsletter/${n.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="View PDF"
+                        aria-label={`View issue ${n.issue} on the website`}
                       >
-                        <Button size="icon" variant="ghost" className="h-8 w-8">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
+                        <ExternalLink className="h-4 w-4" />
                       </a>
-                    )}
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -177,7 +175,7 @@ export default function NewsletterManagementPage() {
       )}
 
       <p className="text-muted-foreground text-center text-xs">
-        Changes are committed to GitHub and the newsletter site redeploys automatically — allow a minute or
+        Changes are committed to GitHub and the squadron website redeploys automatically — allow a minute or
         two to go live.
       </p>
 
