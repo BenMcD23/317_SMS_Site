@@ -21,6 +21,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   LayoutGrid,
+  ListChecks,
   MessageSquare,
   MessageSquareText,
   NotebookPen,
@@ -162,6 +163,13 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/cadets/classifications",
         icon: GraduationCap,
         keywords: ["exams", "lesson plan", "theory", "classification day", "qr code", "lessons"],
+      },
+      // Staff-only (see lib/access.ts).
+      {
+        label: "Session Planner",
+        href: "/session-planner",
+        icon: ListChecks,
+        keywords: ["task bank", "command tasks", "kit list", "leadership tasks", "rotation", "stands"],
       },
       { label: "Events", href: "/cadets/events", icon: Calendar },
       // Staff-only (see lib/access.ts).
