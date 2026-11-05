@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  ArchiveRestore,
   Award,
   BadgeCheck,
   Bot,
@@ -238,7 +239,7 @@ export const NAV_SECTIONS: NavSection[] = [
             label: "History",
             href: "/stores/uniform/history",
             icon: History,
-            keywords: ["given out", "issued", "undo given", "recent uniform"],
+            keywords: ["given out", "issued", "undo given", "recent uniform", "stock changes", "stock log"],
           },
         ],
       },
@@ -254,7 +255,19 @@ export const NAV_SECTIONS: NavSection[] = [
             keywords: ["badge stock", "badge grid"],
           },
           { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart, keywords: ["badge orders"] },
+          {
+            label: "History",
+            href: "/stores/badges/history",
+            icon: History,
+            keywords: ["badges given out", "undo badge", "badge stock changes"],
+          },
         ],
+      },
+      {
+        label: "Deleted",
+        href: "/stores/deleted",
+        icon: ArchiveRestore,
+        keywords: ["restore", "undelete", "deleted orders", "recently deleted"],
       },
     ],
   },

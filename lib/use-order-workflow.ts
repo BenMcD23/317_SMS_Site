@@ -129,22 +129,25 @@ export function useOrderWorkflow<I extends WorkflowItem, O extends WorkflowOrder
   }
 
   function deleteOrder(orderId: string, cadetName: string) {
-    confirm(`Delete the entire order for ${cadetName}? This cannot be undone.`, async () => {
-      try {
-        const res = await send(`${basePath}/${orderId}`, "DELETE");
-        if (!res.ok) throw new Error("Failed to delete order");
-        exit(orderId, () => {
-          setOrders((prev) => prev.filter((o) => o.id !== orderId));
-          setExpandedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(orderId);
-            return next;
+    confirm(
+      `Delete the entire order for ${cadetName}? You can put it back from Stores › Deleted.`,
+      async () => {
+        try {
+          const res = await send(`${basePath}/${orderId}`, "DELETE");
+          if (!res.ok) throw new Error("Failed to delete order");
+          exit(orderId, () => {
+            setOrders((prev) => prev.filter((o) => o.id !== orderId));
+            setExpandedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(orderId);
+              return next;
+            });
           });
-        });
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Unknown error");
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : "Unknown error");
+        }
       }
-    });
+    );
   }
 
   /** `label` is how the item reads in the question, quotes and all. */

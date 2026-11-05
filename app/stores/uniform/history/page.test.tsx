@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import UniformHistoryPage from "@/app/stores/uniform/history/page";
@@ -114,6 +115,15 @@ describe("Uniform history page", () => {
     response = answer({ detail: "odd" });
     renderWithQuery(<UniformHistoryPage />);
     expect(await screen.findByText("Nothing given out yet")).toBeInTheDocument();
+  });
+
+  it("the stock changes tab asks for the uniform log only", async () => {
+    response = answer([]);
+    const user = userEvent.setup();
+    renderWithQuery(<UniformHistoryPage />);
+    await user.click(screen.getByRole("tab", { name: "Stock changes" }));
+    expect(await screen.findByText("No stock changes yet")).toBeInTheDocument();
+    expect(requested.some((u) => u.includes("/stores/stock/changes?kind=uniform"))).toBe(true);
   });
 
   it("is staff only, like the rest of the stores", () => {

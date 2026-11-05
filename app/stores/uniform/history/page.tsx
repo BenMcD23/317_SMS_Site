@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { PageHeader } from "@/components/page-header";
+import { StockChangesTable } from "@/components/stock-changes-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
   ISSUANCE_STATUS_LABELS,
@@ -103,6 +105,29 @@ const columns = col.columns([
 ]);
 
 export default function UniformHistoryPage() {
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
+      <PageHeader
+        title="Uniform history"
+        description="What went out and how the stock changed, newest first. Undo a give from the person's Uniform tab."
+      />
+      <Tabs defaultValue="given" className="gap-6">
+        <TabsList>
+          <TabsTrigger value="given">Given out</TabsTrigger>
+          <TabsTrigger value="stock">Stock changes</TabsTrigger>
+        </TabsList>
+        <TabsContent value="given">
+          <GivenOut />
+        </TabsContent>
+        <TabsContent value="stock">
+          <StockChangesTable kind="uniform" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function GivenOut() {
   const { data, isPending, error } = useApiQuery<RecentIssuance[]>(
     ["stores", "issuances", "recent"],
     "/stores/issuances/recent?limit=200"
@@ -110,39 +135,29 @@ export default function UniformHistoryPage() {
   // An error body where a list was expected is a failure, not "nothing given".
   const entries = Array.isArray(data) ? data : [];
 
-  return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
-      <PageHeader
-        title="Uniform history"
-        description="The latest uniform given out, newest first. Undone gives stay listed. Undo one from the person's Uniform tab."
+  if (error) return <ErrorAlert title="Couldn't load the history" message={error.message} />;
+  if (isPending) return <ListSkeleton rows={8} />;
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        icon={History}
+        title="Nothing given out yet"
+        description="Uniform marked as given, from an order or a Uniform tab, shows here."
       />
-
-      <ErrorAlert title="Couldn't load the history" message={error?.message ?? null} />
-
-      {isPending && !error && <ListSkeleton rows={8} />}
-
-      {!isPending && !error && entries.length === 0 && (
-        <EmptyState
-          icon={History}
-          title="Nothing given out yet"
-          description="Uniform marked as given, from an order or a Uniform tab, shows here."
-        />
-      )}
-
-      {entries.length > 0 && (
-        <DataTable
-          label="Uniform history"
-          data={entries}
-          columns={columns}
-          rowKey={(e) => e.id}
-          initialSort={{ id: "recordedAt", desc: true }}
-          columnClassName={{
-            recordedAt: "hidden sm:table-cell",
-            by: "hidden md:table-cell",
-            status: "hidden sm:table-cell",
-          }}
-        />
-      )}
-    </div>
+    );
+  }
+  return (
+    <DataTable
+      label="Uniform history"
+      data={entries}
+      columns={columns}
+      rowKey={(e) => e.id}
+      initialSort={{ id: "recordedAt", desc: true }}
+      columnClassName={{
+        recordedAt: "hidden sm:table-cell",
+        by: "hidden md:table-cell",
+        status: "hidden sm:table-cell",
+      }}
+    />
   );
 }
