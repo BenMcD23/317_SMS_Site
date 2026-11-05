@@ -433,8 +433,9 @@ export default function InspectionPage() {
   const regions = REGIONS_BY_UNIFORM[uniform];
 
   const { data: pastComments = [], refetch: refetchQuickPicks } = useApiQuery<QuickPick[]>(
-    ["inspection-comments"],
-    "/inspections/comments"
+    // Only this sheet's order of dress: MTP nights get MTP comments, Blues get Blues.
+    ["inspection-comments", uniform],
+    `/inspections/comments?uniform=${uniform}`
   );
   const quickPicks = useMemo(
     () =>
