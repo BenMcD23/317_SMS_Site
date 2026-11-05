@@ -1,5 +1,5 @@
 import { type BadgeBreakdown, type BadgeHistoryPoint, withLivePoint } from "@/lib/badge-history";
-import { FLIGHT_ORDER } from "@/lib/cadet-format";
+import { flightIndex, sortFlights } from "@/lib/cadet-format";
 import { formatDate, todayLocal } from "@/lib/format";
 
 /**
@@ -120,12 +120,23 @@ export function levelColor(level: string): string {
 }
 
 // Flight colours: chart tokens in the order that best survives colour-vision
-// checks in both themes (dataviz validator). Unknown is neutral, not a 5th hue.
-const FLIGHT_COLOURS = ["var(--chart-1)", "var(--chart-4)", "var(--chart-5)", "var(--chart-3)"];
+// checks in both themes (dataviz validator). The NCO flight keeps the primary
+// hue; lettered flights take the others by letter, so A, B and C keep their
+// colour whether or not the scraper has found a D. Past four lettered flights
+// the hues repeat (the label still says which), and anything that isn't a
+// flight is neutral, not another hue.
+const NCO_COLOUR = "var(--chart-1)";
+const LETTER_COLOURS = ["var(--chart-4)", "var(--chart-5)", "var(--chart-3)", "var(--chart-2)"];
+
+/** True for the names flightColor gives a hue to: the NCO flight or a lettered one. */
+export function isFlightName(flight: string): boolean {
+  return flight === "NCO" || flightIndex(flight) >= 0;
+}
 
 export function flightColor(flight: string): string {
-  const i = FLIGHT_ORDER.indexOf(flight);
-  return i >= 0 ? FLIGHT_COLOURS[i] : "var(--muted-foreground)";
+  if (flight === "NCO") return NCO_COLOUR;
+  const i = flightIndex(flight);
+  return i >= 0 ? LETTER_COLOURS[i % LETTER_COLOURS.length] : "var(--muted-foreground)";
 }
 
 /** "A Flight", "NCO", or "No flight" for cadets without one. */
@@ -134,13 +145,9 @@ export function flightLabel(flight: string): string {
   return flight === "NCO" ? "NCO" : `${flight} Flight`;
 }
 
-/** Known flights in their usual order, then anything else the data holds. */
+/** The flights the data holds, in squadron order. */
 export function orderedFlights(flights: Iterable<string>): string[] {
-  const all = new Set(flights);
-  return [
-    ...FLIGHT_ORDER.filter((f) => all.has(f)),
-    ...[...all].filter((f) => !FLIGHT_ORDER.includes(f)).sort(),
-  ];
+  return sortFlights(flights);
 }
 
 /** Preset look-back windows, shortest first: the toggles and the picker's list. */

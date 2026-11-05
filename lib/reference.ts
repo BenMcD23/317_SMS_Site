@@ -90,10 +90,13 @@ function normalise(data: ReferencePayload): Reference {
 
 const ReferenceContext = createContext<Reference>(EMPTY);
 
-/** Fetches the catalogue once per session and shares it with every page. */
+/** Fetches the catalogue (at most once a minute) and shares it with every page. */
 export function ReferenceProvider({ children }: { children: React.ReactNode }) {
   const { data } = useApiQuery<ReferencePayload>(["reference"], "/reference", {
-    staleTime: Infinity,
+    // Staff edit the catalogue now, so it can't be kept for the whole session. A
+    // minute matches the API's cache header; the Catalogue page also
+    // invalidates this key on every save so the editor sees their change at once.
+    staleTime: 60_000,
     gcTime: Infinity,
   });
   const value = useMemo(() => (data ? normalise(data) : EMPTY), [data]);

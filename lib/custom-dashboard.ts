@@ -1,6 +1,6 @@
-import { FLIGHT_ORDER } from "@/lib/cadet-format";
+import { compareFlights } from "@/lib/cadet-format";
 import { formatDate, formatMonth, formatShortDate } from "@/lib/format";
-import { badgeLabel, flightColor, flightLabel } from "@/lib/stats";
+import { badgeLabel, flightColor, flightLabel, isFlightName } from "@/lib/stats";
 
 /**
  * The OC's custom dashboard: panels the OC builds from a query and arranges
@@ -252,9 +252,7 @@ export function toChartData(rows: QueryRow[], spec: QuerySpec, dataset: Dataset 
     .slice(0, MAX_SERIES)
     .map(([id]) => id);
   const flights = sField?.key === "flight";
-  const ordered = flights
-    ? [...kept].sort((a, b) => flightRank(a) - flightRank(b) || a.localeCompare(b))
-    : [...kept].sort((a, b) => a.localeCompare(b));
+  const ordered = flights ? [...kept].sort(compareFlights) : [...kept].sort((a, b) => a.localeCompare(b));
 
   const byX = new Map<string, Record<string, string | number | null>>();
   for (const r of rows) {
@@ -271,15 +269,10 @@ export function toChartData(rows: QueryRow[], spec: QuerySpec, dataset: Dataset 
     series: ordered.map((id, i) => ({
       id: `s:${id}`,
       label: keyLabel(id === "" ? null : id, sField, seriesGroup.grain),
-      colour: flights && flightRank(id) < FLIGHT_ORDER.length ? flightColor(id) : SERIES_COLOURS[i],
+      colour: flights && isFlightName(id) ? flightColor(id) : SERIES_COLOURS[i],
     })),
     hidden: totals.size - kept.length,
   };
-}
-
-function flightRank(flight: string) {
-  const i = FLIGHT_ORDER.indexOf(flight);
-  return i < 0 ? FLIGHT_ORDER.length : i;
 }
 
 /** A fresh panel id: short, and safe for the API's `[A-Za-z0-9_-]` rule. */

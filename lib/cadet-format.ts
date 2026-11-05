@@ -1,6 +1,5 @@
 // Shared formatting for cadet data — keep flight/rank presentation consistent.
 
-export const FLIGHT_ORDER = ["NCO", "A", "B", "C"];
 export const RANK_ORDER = ["Cadet", "Cpl", "Sgt", "FS", "CWO"];
 
 // Flights use the chart hues, never the status colours: B Flight in the
@@ -11,22 +10,47 @@ const CHARLIE = "border-chart-3/40 bg-chart-3/10 text-chart-3";
 const DELTA = "border-chart-4/40 bg-chart-4/15 text-chart-4";
 const NO_FLIGHT = "border-border bg-muted text-muted-foreground";
 
-// Flights are stored as the letter ("A", "C" — see FLIGHT_ORDER and the API's
-// kit-flight query); the spelled-out names are kept so either form colours.
-const FLIGHT_BADGE_CLASSES: Record<string, string> = {
-  A: ALPHA,
-  B: BRAVO,
-  C: CHARLIE,
-  D: DELTA,
-  Alpha: ALPHA,
-  Bravo: BRAVO,
-  Charlie: CHARLIE,
-  Delta: DELTA,
-};
+// Flights are whatever the Bader scraper brings in: usually a letter ("A",
+// "C"), with "NCO" for the NCOs' own flight. Nothing here lists them, so a
+// squadron that gains or loses a flight needs no change to the site.
+const NATO = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel"];
+
+/**
+ * Where a flight sits in the alphabet: "A" and "Alpha" are 0, "B" and "Bravo"
+ * 1, and so on. -1 for anything that isn't a flight name ("NCO", "Unknown"), so
+ * those get neutral colours rather than borrowing a real flight's.
+ */
+export function flightIndex(flight: string | null | undefined): number {
+  const f = (flight ?? "").trim().replace(/\s+flight$/i, "");
+  if (/^[A-Za-z]$/.test(f)) return f.toUpperCase().charCodeAt(0) - 65;
+  return NATO.indexOf(f.toLowerCase());
+}
+
+/** Squadron order: NCO flight first, then A, B, C... and anything unrecognised last, alphabetically. */
+export function compareFlights(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a === "NCO") return -1;
+  if (b === "NCO") return 1;
+  const ia = flightIndex(a);
+  const ib = flightIndex(b);
+  if (ia >= 0 && ib >= 0 && ia !== ib) return ia - ib;
+  if (ia >= 0 !== ib >= 0) return ia >= 0 ? -1 : 1;
+  return a.localeCompare(b);
+}
+
+/** The distinct flights in `flights`, in squadron order. */
+export function sortFlights(flights: Iterable<string>): string[] {
+  return [...new Set(flights)].sort(compareFlights);
+}
+
+// The four flight looks cycle by letter, so a fifth flight repeats the first
+// look rather than going without one; the label beside it tells them apart.
+const FLIGHT_BADGE_CLASSES = [ALPHA, BRAVO, CHARLIE, DELTA];
 
 export function flightBadgeClass(flight: string | null | undefined): string {
   if (!flight) return NO_FLIGHT;
-  return FLIGHT_BADGE_CLASSES[flight.trim()] ?? NO_FLIGHT;
+  const i = flightIndex(flight);
+  return i < 0 ? NO_FLIGHT : FLIGHT_BADGE_CLASSES[i % FLIGHT_BADGE_CLASSES.length];
 }
 
 // Classification steps up in the same order as the dashboard chart, so the
@@ -52,12 +76,9 @@ export function cadetInitials(firstName?: string | null, lastName?: string | nul
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "?";
 }
 
-/** The flights present in a roster, in squadron order (NCO, A, B, C, then anything unexpected). */
+/** The flights present in a roster, in squadron order (NCO, then A, B, C... as many as there are). */
 export function flightsIn(cadets: Array<{ flight: string | null }>): string[] {
-  const present = new Set(cadets.map((c) => c.flight?.trim()).filter((f): f is string => !!f));
-  const known = FLIGHT_ORDER.filter((f) => present.has(f));
-  const extra = [...present].filter((f) => !FLIGHT_ORDER.includes(f)).sort();
-  return [...known, ...extra];
+  return sortFlights(cadets.map((c) => c.flight?.trim()).filter((f): f is string => !!f));
 }
 
 /** "A Flight" for the letter the API stores; anything already spelled out is left alone. */
