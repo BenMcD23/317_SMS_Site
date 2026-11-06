@@ -420,36 +420,56 @@ export const NAV_SECTIONS: NavSection[] = [
 ];
 
 /**
- * The bottom tab bar on a phone: the few places each role goes on parade
- * night, one thumb-tap away. Everything else stays in the sidebar, which the
- * bar's "More" tab opens. `match` widens what lights the tab up (any page under
- * /stores lights "Orders"); the longest match wins, so an NCO on
- * /cadets/assessments sees "Results", not nothing.
+ * The bottom tab bar on a phone: plain links, one tap each, in a strip that
+ * scrolls sideways when they don't fit. "More" (pinned at the end) opens the
+ * full sidebar for the rest. `match` widens what lights a tab (a cadet's record
+ * lights "Cadets"); the longest match wins.
+ *
+ * Order is by use. Staff's comes from prod's Usage_Daily (Oct-Nov 2026,
+ * distinct staff-days on each page's own API calls): Cadets, Stats, uniform
+ * and badge stock, Committee, orders, Scrapers, Training, Attendance, Marking.
+ * Check-in is new (no data yet) but is the door on parade night, so it sits
+ * up front. NCOs and SNCOs had no SMS-site usage at all (only the cadet
+ * portal), so theirs is every page they can reach, in parade-night order.
  */
 export type MobileTab = { label: string; href: string; icon: LucideIcon; match: string[] };
 
 const HOME: MobileTab = { label: "Home", href: "/", icon: LayoutDashboard, match: [] };
+const CHECK_IN: MobileTab = { label: "Check-in", href: "/check-in", icon: ScanLine, match: [] };
+const STATS: MobileTab = { label: "Stats", href: "/stats", icon: ChartLine, match: [] };
+
+// Shared by SNCOs and NCOs; canAccess drops Inspect for NCOs.
+const NCO_TEAM: MobileTab[] = [
+  HOME,
+  CHECK_IN,
+  { label: "Plans", href: "/session-plans", icon: ClipboardList, match: [] },
+  { label: "Inspect", href: "/assessments/inspection", icon: Shirt, match: [] },
+  { label: "Leadership", href: "/assessments/leadership", icon: Star, match: [] },
+  { label: "Radio", href: "/assessments/radio", icon: Radio, match: [] },
+  { label: "Space", href: "/assessments/space", icon: Orbit, match: [] },
+  { label: "Results", href: "/cadets/assessments", icon: Award, match: [] },
+  STATS,
+  { label: "Holidays", href: "/nco-holidays", icon: CalendarOff, match: [] },
+  { label: "Comments", href: "/nco-comments", icon: MessageSquare, match: [] },
+];
 
 const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
   staff: [
     HOME,
-    { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits", "/training"] },
+    { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits"] },
+    CHECK_IN,
+    { label: "Stock", href: "/stores/uniform/stock", icon: Package, match: ["/stores"] },
+    { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart, match: ["/stores/badges/orders"] },
+    { label: "Badges", href: "/stores/badges/stock", icon: Award, match: [] },
+    STATS,
+    { label: "Committee", href: "/committee/requests", icon: ReceiptText, match: [] },
+    { label: "Scrapers", href: "/tools/scraper", icon: DatabaseZap, match: [] },
+    { label: "Training", href: "/training", icon: GraduationCap, match: [] },
+    { label: "Attendance", href: "/attendance", icon: CalendarCheck, match: [] },
     { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
-    { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart, match: ["/stores"] },
   ],
-  // SNCOs run inspections, so the marking tab opens on that sheet.
-  snco: [
-    HOME,
-    { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
-    { label: "Plans", href: "/session-plans", icon: ClipboardList, match: ["/session-plans"] },
-    { label: "Results", href: "/cadets/assessments", icon: Award, match: ["/cadets/assessments"] },
-  ],
-  nco: [
-    HOME,
-    { label: "Marking", href: "/assessments/leadership", icon: ClipboardCheck, match: ["/assessments"] },
-    { label: "Plans", href: "/session-plans", icon: ClipboardList, match: ["/session-plans"] },
-    { label: "Results", href: "/cadets/assessments", icon: Award, match: ["/cadets/assessments"] },
-  ],
+  snco: NCO_TEAM,
+  nco: NCO_TEAM,
 };
 
 /** The tabs for a role, minus any it can't reach (the same rule as the sidebar). */
@@ -458,7 +478,7 @@ export function mobileTabsFor(role: string | undefined): MobileTab[] {
   return tabs.filter((t) => canAccess(role, t.href));
 }
 
-/** Which tab the current page belongs to, or null (the page lives under "More"). */
+/** Which tab the current page belongs to, or null (it's only in the sidebar). */
 export function activeMobileTab(pathname: string, tabs: MobileTab[]): MobileTab | null {
   let best: { tab: MobileTab; len: number } | null = null;
   for (const tab of tabs) {

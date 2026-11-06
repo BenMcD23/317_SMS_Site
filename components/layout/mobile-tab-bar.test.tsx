@@ -41,16 +41,19 @@ beforeEach(() => {
 
 describe("mobile tab bar", () => {
   it.each([
-    ["staff", ["Home", "Cadets", "Marking", "Orders", "More"]],
-    ["snco", ["Home", "Marking", "Plans", "Results", "More"]],
-    ["nco", ["Home", "Marking", "Plans", "Results", "More"]],
-  ])("%s gets their tabs, then More", (role, labels) => {
+    ["staff", "Cadets"],
+    ["snco", "Inspect"],
+    ["nco", "Leadership"],
+  ])("%s gets plain links (no menus to open), then More", (role, label) => {
     const nav = renderBar(role);
+    // Every tab is a link straight to a page; More is the only button.
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(within(nav).getAllByRole("link").length);
+    expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
     expect(
       within(nav)
-        .getAllByRole("listitem")
-        .map((li) => li.textContent)
-    ).toEqual(labels);
+        .getAllByRole("button")
+        .map((b) => b.textContent)
+    ).toEqual(["More"]);
   });
 
   it("marks the current section, and only that one", () => {
@@ -64,12 +67,9 @@ describe("mobile tab bar", () => {
     expect(within(nav).queryByRole("link", { current: "page" })).not.toBeInTheDocument();
   });
 
-  it("an NCO's marking tab goes to a sheet they can use", () => {
+  it("an NCO gets no inspection sheet they can't use", () => {
     const nav = renderBar("nco");
-    expect(within(nav).getByRole("link", { name: "Marking" })).toHaveAttribute(
-      "href",
-      "/assessments/leadership"
-    );
+    expect(within(nav).queryByRole("link", { name: "Inspect" })).not.toBeInTheDocument();
   });
 
   it("More opens the full menu", async () => {
@@ -86,7 +86,7 @@ describe("mobile tab bar", () => {
       within(nav)
         .getAllByRole("listitem")
         .map((li) => li.textContent)
-    ).toEqual(["Home", "More"]);
+    ).toEqual(["Home"]);
   });
 
   it("stays out of print and off wider screens", () => {

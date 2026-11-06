@@ -225,7 +225,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        <UserMenu />
+        <UserMenu onNavigate={closeOnMobile} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

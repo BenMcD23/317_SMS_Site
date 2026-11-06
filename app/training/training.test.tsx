@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import TrainingLayout from "@/app/training/layout";
 import { canAccess } from "@/lib/access";
-import { breadcrumbsFor, flattenLinks, mobileTabsFor, NAV_SECTIONS } from "@/lib/navigation";
+import { breadcrumbsFor, flattenLinks, activeMobileTab, mobileTabsFor, NAV_SECTIONS } from "@/lib/navigation";
 import { CLASSIFICATIONS_REDIRECTS } from "@/next.config";
 
 const path = vi.hoisted(() => ({ current: "/training" }));
@@ -85,9 +85,8 @@ describe("navigation", () => {
     ]);
   });
 
-  it("lights the phone's Cadets tab", () => {
-    const cadets = mobileTabsFor("staff").find((t) => t.label === "Cadets");
-    expect(cadets?.match).toContain("/training");
+  it("lights the phone's Training tab", () => {
+    expect(activeMobileTab("/training/sessions", mobileTabsFor("staff"))?.label).toBe("Training");
   });
 });
 

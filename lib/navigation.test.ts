@@ -163,9 +163,54 @@ describe("mobile tab bar", () => {
   const labels = (role: string | undefined) => mobileTabsFor(role).map((t) => t.label);
 
   it.each([
-    ["staff", ["Home", "Cadets", "Marking", "Orders"]],
-    ["snco", ["Home", "Marking", "Plans", "Results"]],
-    ["nco", ["Home", "Marking", "Plans", "Results"]],
+    [
+      "staff",
+      [
+        "Home",
+        "Cadets",
+        "Check-in",
+        "Stock",
+        "Orders",
+        "Badges",
+        "Stats",
+        "Committee",
+        "Scrapers",
+        "Training",
+        "Attendance",
+        "Marking",
+      ],
+    ],
+    [
+      "snco",
+      [
+        "Home",
+        "Check-in",
+        "Plans",
+        "Inspect",
+        "Leadership",
+        "Radio",
+        "Space",
+        "Results",
+        "Stats",
+        "Holidays",
+        "Comments",
+      ],
+    ],
+    [
+      "nco",
+      [
+        "Home",
+        "Check-in",
+        "Plans",
+        "Leadership",
+        "Radio",
+        "Space",
+        "Results",
+        "Stats",
+        "Holidays",
+        "Comments",
+      ],
+    ],
   ])("%s gets its parade-night tabs", (role, expected) => {
     expect(labels(role)).toEqual(expected);
   });
@@ -177,9 +222,8 @@ describe("mobile tab bar", () => {
     }
   });
 
-  it("an NCO's marking tab never opens the inspection sheet they can't use", () => {
-    const marking = mobileTabsFor("nco").find((t) => t.label === "Marking")!;
-    expect(marking.href).toBe("/assessments/leadership");
+  it("an NCO never gets the inspection sheet they can't use", () => {
+    expect(mobileTabsFor("nco").map((t) => t.href)).not.toContain("/assessments/inspection");
   });
 
   it("a signed-out or unknown role gets only Home", () => {
@@ -192,13 +236,17 @@ describe("mobile tab bar", () => {
     ["staff", "/cadets/1234", "Cadets"],
     ["staff", "/recruits", "Cadets"],
     ["staff", "/assessments/moi", "Marking"],
-    ["staff", "/stores/badges/stock", "Orders"],
+    ["staff", "/stores/badges/stock", "Badges"],
+    ["staff", "/stores/badges/orders", "Orders"],
+    ["staff", "/stores/catalogue", "Stock"],
+    ["staff", "/training/sessions", "Training"],
     ["staff", "/texts/messages", null],
     ["nco", "/cadets/assessments", "Results"],
     ["nco", "/session-plans/12", "Plans"],
     ["nco", "/settings", null],
+    ["nco", "/nco-holidays", "Holidays"],
     // "/" only matches itself, or every page would light Home.
-    ["nco", "/nco-holidays", null],
+    ["staff", "/oc", null],
   ])("%s on %s lights %s", (role, pathname, expected) => {
     expect(activeMobileTab(pathname, mobileTabsFor(role))?.label ?? null).toBe(expected);
   });
