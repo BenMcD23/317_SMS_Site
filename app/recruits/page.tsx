@@ -12,10 +12,11 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { DataTable, dataTableColumns } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { AddRecruitDialog } from "@/components/recruits/add-recruit-dialog";
+import { SignupPanel } from "@/components/recruits/sign-up-panel";
 import { RecruitStatusBadge, StepMeter } from "@/components/recruits/recruit-status";
 import { copyText } from "@/lib/clipboard";
 import { formatDate } from "@/lib/format";
-import { recruitName, type Recruit } from "@/lib/recruits";
+import { recruitName, SIGNUP_KEY, type Recruit, type SignupState } from "@/lib/recruits";
 import { useApiQuery } from "@/lib/use-api-query";
 
 const col = dataTableColumns<Recruit>();
@@ -57,12 +58,18 @@ const columns = col.columns([
 ]);
 
 export default function RecruitsPage() {
+  // The same cached query the sign-up panel reads, so this costs no request.
+  const { data: signup } = useApiQuery<SignupState>(SIGNUP_KEY, "/recruits/sign-up");
   const {
     data: recruits = [],
     isLoading,
     error,
     refetch,
-  } = useApiQuery<Recruit[]>(["recruits"], "/recruits");
+  } = useApiQuery<Recruit[]>(["recruits"], "/recruits", {
+    // While parents are signing up on the night, their children appear here
+    // without anyone reloading.
+    refetchInterval: signup?.open === true ? 20_000 : false,
+  });
   const [adding, setAdding] = useState(false);
 
   async function added(recruit: Recruit) {
@@ -96,6 +103,8 @@ export default function RecruitsPage() {
           </Button>
         }
       />
+
+      <SignupPanel />
 
       <ErrorAlert message={error?.message ?? null} title="Could not load recruits" />
 
