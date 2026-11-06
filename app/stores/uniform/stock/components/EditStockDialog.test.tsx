@@ -6,8 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/reference", () => ({
   useReference: () => ({
     itemTypes: ["Beret", "Lanyard"],
+    stockItemTypes: ["Beret", "Lanyard", "Polo"],
     noSizeItems: new Set(["Lanyard"]),
-    sizes: { Beret: ["54", "55", "56"] },
+    sizes: { Beret: ["54", "55", "56"], Polo: ["XS", "S", "M", "L", "XL"] },
   }),
 }));
 

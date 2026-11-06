@@ -183,3 +183,27 @@ export async function deleteRecruit(token: string, id: number) {
 export function recruitPdfPath(id: number, form: PdfForm): string {
   return `${API_BASE}/recruits/${id}/pdf?form=${form}`;
 }
+
+/**
+ * The recruitment-evening sign-up page: parents scan a QR code on the night
+ * and give what staff would type into "Add recruit"; their joining link is
+ * emailed to them. Shut unless staff open it, and it shuts itself at midnight.
+ */
+export type SignupState = {
+  open: boolean;
+  openUntil: string | null;
+  openedBy: string | null;
+  /** The page the QR code opens (the website's /enrol). Never changes. */
+  url: string;
+};
+
+export const SIGNUP_KEY = ["recruits", "sign-up"] as const;
+
+export function setSignupOpen(token: string, open: boolean) {
+  return apiRequest<SignupState>(
+    token,
+    `${API_BASE}/recruits/sign-up`,
+    { method: "PUT", body: { open } },
+    open ? "Couldn't open the sign-up page." : "Couldn't close the sign-up page."
+  );
+}

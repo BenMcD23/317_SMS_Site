@@ -6,8 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/reference", () => ({
   useReference: () => ({
     itemTypes: ["Beret", "Lanyard"],
+    stockItemTypes: ["Beret", "Lanyard", "Polo"],
     noSizeItems: new Set(["Lanyard"]),
-    sizes: { Beret: ["54", "55", "56"] },
+    sizes: { Beret: ["54", "55", "56"], Polo: ["XS", "S", "M", "L", "XL"] },
   }),
 }));
 
@@ -44,6 +45,23 @@ describe("AddStockDialog", () => {
     Element.prototype.hasPointerCapture = vi.fn(() => false);
     Element.prototype.releasePointerCapture = vi.fn();
     Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("polos can be stocked, using the stock-only item list", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    const { onSuccess } = renderDialog();
+
+    await pick(user, "Item Type", "Polo");
+    await user.type(screen.getByLabelText("Size"), "XL");
+    await pick(user, "Box", "A");
+    await pick(user, "Section", "1");
+    await user.click(screen.getByRole("button", { name: "Add Stock" }));
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({ itemType: "Polo", size: "XL" });
   });
 
   // Types a long size key by key (~2s on its own), which can pass the 5s

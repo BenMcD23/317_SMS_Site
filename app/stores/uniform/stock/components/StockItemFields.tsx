@@ -36,7 +36,7 @@ export function StockItemFields({
 }) {
   const { control, register, setValue, formState } = form;
   const [itemType, box] = useWatch({ control, name: ["itemType", "box"] });
-  const { itemTypes, noSizeItems } = useReference();
+  const { stockItemTypes, noSizeItems } = useReference();
   const needsSize = itemType !== "" && !noSizeItems.has(itemType);
   const sections = shelfStructure.boxes.find((b) => b.label === box)?.sections.map((s) => s.label) ?? [];
 
@@ -65,7 +65,7 @@ export function StockItemFields({
                 <SelectValue placeholder="Select item type…" />
               </SelectTrigger>
               <SelectContent>
-                {itemTypes.map((t) => (
+                {stockItemTypes.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
                   </SelectItem>
