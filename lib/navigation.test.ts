@@ -10,12 +10,9 @@ import {
   flattenLinks,
   isGroup,
   isGroupActive,
-  activeMobileSection,
-  activeMobileShortcut,
+  activeMobileTab,
   isLinkActive,
-  mobileSectionsFor,
-  mobileShortcutsFor,
-  sectionLinks,
+  mobileTabsFor,
   NAV_SECTIONS,
   visibleSections,
 } from "@/lib/navigation";
@@ -163,132 +160,94 @@ describe("breadcrumbsFor", () => {
 });
 
 describe("mobile tab bar", () => {
-  const labels = (role: string | undefined, email?: string, oc = false) =>
-    mobileSectionsFor(role, email, oc).map((t) => t.label);
+  const labels = (role: string | undefined) => mobileTabsFor(role).map((t) => t.label);
 
   it.each([
-    ["staff", ["Home", "Cadets", "Marking", "NCOs", "Stores", "Comms", "Squadron", "Data"]],
-    // NCOs and SNCOs reach nothing in Stores, Comms, Squadron or Data, so those tabs never show.
-    ["snco", ["Home", "Cadets", "Marking", "NCOs"]],
-    ["nco", ["Home", "Cadets", "Marking", "NCOs"]],
-  ])("%s gets a tab per section they can reach", (role, expected) => {
+    [
+      "staff",
+      [
+        "Home",
+        "Cadets",
+        "Check-in",
+        "Stock",
+        "Orders",
+        "Badges",
+        "Stats",
+        "Committee",
+        "Scrapers",
+        "Training",
+        "Attendance",
+        "Marking",
+      ],
+    ],
+    [
+      "snco",
+      [
+        "Home",
+        "Check-in",
+        "Plans",
+        "Inspect",
+        "Leadership",
+        "Radio",
+        "Space",
+        "Results",
+        "Stats",
+        "Holidays",
+        "Comments",
+      ],
+    ],
+    [
+      "nco",
+      [
+        "Home",
+        "Check-in",
+        "Plans",
+        "Leadership",
+        "Radio",
+        "Space",
+        "Results",
+        "Stats",
+        "Holidays",
+        "Comments",
+      ],
+    ],
+  ])("%s gets its parade-night tabs", (role, expected) => {
     expect(labels(role)).toEqual(expected);
   });
 
-  it("a signed-out or unknown role gets only Home", () => {
-    expect(labels(undefined)).toEqual(["Home"]);
-    expect(labels("cadet")).toEqual(["Home"]);
-    // canAccess treats an unknown role like an NCO; the bar mustn't offer Stats on that guess.
-    const [home] = mobileSectionsFor(undefined, undefined);
-    expect(sectionLinks(home.section).map((l) => l.href)).toEqual(["/"]);
-  });
-
-  it("every section has a short tab name, and no two share one", () => {
-    const names = NAV_SECTIONS.map((s) => s.tab.label);
-    expect(new Set(names).size).toBe(names.length);
-    for (const name of names) expect(name.length, name).toBeLessThanOrEqual(8);
-  });
-
-  it.each(["staff", "snco", "nco", undefined])(
-    "every page in %s's sheets is one the role can open",
-    (role) => {
-      for (const tab of mobileSectionsFor(role, undefined)) {
-        for (const link of sectionLinks(tab.section))
-          expect(canAccess(role, link.href), link.href).toBe(true);
-      }
-    }
-  );
-
-  it.each(["staff", "snco", "nco"])("%s's sheets hold exactly the sidebar's pages, in order", (role) => {
-    const sheets = mobileSectionsFor(role, OWNER_EMAIL, true).flatMap((t) =>
-      sectionLinks(t.section).map((l) => l.href)
-    );
-    expect(sheets).toEqual(flattenLinks(visibleSections(role, OWNER_EMAIL, true)).map((l) => l.href));
-  });
-
-  it("an NCO's Marking sheet has no inspection or MOI", () => {
-    const marking = mobileSectionsFor("nco", undefined).find((t) => t.label === "Marking")!;
-    expect(sectionLinks(marking.section).map((l) => l.label)).toEqual(["Leadership", "Radio", "Space"]);
-  });
-
-  it("owner-only and OC-only pages stay out of other people's sheets", () => {
-    const all = (email?: string, oc = false) =>
-      mobileSectionsFor("staff", email, oc).flatMap((t) => sectionLinks(t.section).map((l) => l.href));
-    expect(all("someone@example.com")).not.toContain("/backups");
-    expect(all("someone@example.com")).not.toContain("/oc");
-    expect(all(OWNER_EMAIL, true)).toEqual(expect.arrayContaining(["/backups", "/oc", "/oc/custom"]));
-  });
-
-  it.each([
-    ["staff", "/", "Home"],
-    ["staff", "/stats", "Home"],
-    ["staff", "/cadets/1234", "Cadets"],
-    ["staff", "/cadets/overview", "Cadets"],
-    ["staff", "/recruits", "Cadets"],
-    ["staff", "/training/sessions", "Cadets"],
-    // /cadets/assessments sits under Cadets, not the Marking sheets it shares a word with.
-    ["staff", "/cadets/assessments", "Cadets"],
-    ["staff", "/assessments/moi", "Marking"],
-    ["staff", "/stores/badges/stock", "Stores"],
-    ["staff", "/texts/messages", "Comms"],
-    ["staff", "/form-generators/htd", "Squadron"],
-    ["staff", "/settings", null],
-    ["nco", "/session-plans/12", "NCOs"],
-    ["nco", "/nco-holidays", "NCOs"],
-    ["nco", "/settings", null],
-  ])("%s on %s lights %s", (role, pathname, expected) => {
-    expect(activeMobileSection(pathname, mobileSectionsFor(role, undefined))?.label ?? null).toBe(expected);
-  });
-
-  it("the OC's pages light Home, the most specific link winning", () => {
-    const tabs = mobileSectionsFor("staff", undefined, true);
-    expect(activeMobileSection("/oc/custom", tabs)?.label).toBe("Home");
-    expect(activeMobileSection("/staff/42", tabs)?.label).toBe("Home");
-    // Without the OC flag the staff list isn't theirs, so a staff record lights nothing.
-    expect(activeMobileSection("/staff/42", mobileSectionsFor("staff", undefined))).toBeNull();
-  });
-});
-
-describe("mobile bar shortcuts", () => {
-  const labels = (role: string | undefined) => mobileShortcutsFor(role).map((t) => t.label);
-
-  it.each([
-    ["staff", ["Home", "Check-in", "Orders"]],
-    ["snco", ["Home", "Inspect", "Plans"]],
-    ["nco", ["Home", "Leadership", "Plans"]],
-  ])("%s gets its parade-night shortcuts", (role, expected) => {
-    expect(labels(role)).toEqual(expected);
-  });
-
-  it("a signed-out or unknown role gets only Home", () => {
-    expect(labels(undefined)).toEqual(["Home"]);
-    expect(labels("cadet")).toEqual(["Home"]);
-  });
-
-  it.each(["staff", "snco", "nco"])("every %s shortcut is a real page the role can open", (role) => {
-    for (const tab of mobileShortcutsFor(role)) {
+  it.each(["staff", "snco", "nco"])("every %s tab is a real page the role can open", (role) => {
+    for (const tab of mobileTabsFor(role)) {
       expect(canAccess(role, tab.href), tab.href).toBe(true);
       expect(fs.existsSync(path.join(process.cwd(), "app", tab.href, "page.tsx")), tab.href).toBe(true);
     }
   });
 
-  it("no shortcut shares a name with a section tab, so the bar never shows two of one word", () => {
-    const sections = NAV_SECTIONS.filter((s) => s.label).map((s) => s.tab.label);
-    for (const role of ["staff", "snco", "nco"]) {
-      for (const label of labels(role)) expect(sections, `${role}: ${label}`).not.toContain(label);
-    }
+  it("an NCO never gets the inspection sheet they can't use", () => {
+    expect(mobileTabsFor("nco").map((t) => t.href)).not.toContain("/assessments/inspection");
+  });
+
+  it("a signed-out or unknown role gets only Home", () => {
+    expect(labels(undefined)).toEqual(["Home"]);
+    expect(labels("cadet")).toEqual(["Home"]);
   });
 
   it.each([
     ["staff", "/", "Home"],
-    ["staff", "/check-in", "Check-in"],
+    ["staff", "/cadets/1234", "Cadets"],
+    ["staff", "/recruits", "Cadets"],
+    ["staff", "/assessments/moi", "Marking"],
+    ["staff", "/stores/badges/stock", "Badges"],
     ["staff", "/stores/badges/orders", "Orders"],
-    // Stock is in the Stores section, not the Orders shortcut.
-    ["staff", "/stores/uniform/stock", null],
+    ["staff", "/stores/catalogue", "Stock"],
+    ["staff", "/training/sessions", "Training"],
+    ["staff", "/texts/messages", null],
+    ["nco", "/cadets/assessments", "Results"],
     ["nco", "/session-plans/12", "Plans"],
-    ["nco", "/assessments/radio", null],
-    ["snco", "/assessments/inspection", "Inspect"],
-  ])("%s on %s lights shortcut %s", (role, pathname, expected) => {
-    expect(activeMobileShortcut(pathname, mobileShortcutsFor(role))?.label ?? null).toBe(expected);
+    ["nco", "/settings", null],
+    ["nco", "/nco-holidays", "Holidays"],
+    // "/" only matches itself, or every page would light Home.
+    ["staff", "/oc", null],
+  ])("%s on %s lights %s", (role, pathname, expected) => {
+    expect(activeMobileTab(pathname, mobileTabsFor(role))?.label ?? null).toBe(expected);
   });
 });

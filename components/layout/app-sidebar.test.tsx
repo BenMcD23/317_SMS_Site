@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 
 const KEY = "sms.sidebar.sections";
 
@@ -96,5 +96,44 @@ describe("sidebar sections", () => {
         status: "authenticated",
       };
     }
+  });
+});
+
+describe("on a phone", () => {
+  it("Settings in the account menu closes the sidebar sheet, like every other link", async () => {
+    vi.stubGlobal("matchMedia", (q: string) => ({
+      matches: true,
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+    pathname.current = "/";
+    function OpenSheet() {
+      const { openMobile, setOpenMobile } = useSidebar();
+      return (
+        <button type="button" onClick={() => setOpenMobile(true)}>
+          {openMobile ? "sheet open" : "sheet closed"}
+        </button>
+      );
+    }
+    render(
+      <SidebarProvider>
+        <OpenSheet />
+        <AppSidebar />
+      </SidebarProvider>
+    );
+    await userEvent.click(screen.getByRole("button", { name: "sheet closed" }));
+    await userEvent.click(screen.getByRole("button", { name: /Signed out|staff/i }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Settings" }));
+    expect(screen.getByRole("button", { name: "sheet closed" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 });

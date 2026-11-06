@@ -30,8 +30,9 @@ function initials(name: string | null | undefined): string {
 
 const ROLE_LABELS: Record<string, string> = { staff: "Staff", snco: "SNCO", nco: "NCO" };
 
-/** Sidebar footer: who is signed in, with Settings and Sign out. */
-export function UserMenu() {
+/** Sidebar footer: who is signed in, with Settings and Sign out. `onNavigate`
+ *  closes the phone's sidebar sheet, as the sidebar's own links do. */
+export function UserMenu({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { data: session } = useSession();
   const user = session?.user;
 
@@ -69,7 +70,7 @@ export function UserMenu() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/settings">
+                <Link href="/settings" onClick={onNavigate}>
                   <Settings />
                   Settings
                 </Link>
