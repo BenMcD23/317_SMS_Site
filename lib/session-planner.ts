@@ -230,6 +230,9 @@ export interface PlannerCadet {
   rank: string | null;
   flight: string | null;
   attendance: Attendance;
+  /** Checked in at the door that night (QR code, NFC tag or an NCO's tick):
+   *  never the Bader register. Optional so an older API just shows no ticks. */
+  checked_in?: boolean;
   /** Leadership badge held ("blue", "bronze"…), and sheets the bank can place. */
   leadership: { level: string | null; led: number; passes: number };
 }

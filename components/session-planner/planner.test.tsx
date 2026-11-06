@@ -185,6 +185,37 @@ describe("Session planner", () => {
     await waitFor(() => expect(sent(fetchMock)).toMatchObject({ cins: [1, 4] }));
   });
 
+  it("starts with just the cadets checked in at the door ticked, and says how many", async () => {
+    const fetchMock = api({
+      roster: [ROSTER[0], { ...ROSTER[1], checked_in: true }, ROSTER[2], { ...ROSTER[3], checked_in: true }],
+    });
+    renderWithQuery(<SessionPlanner />);
+    expect(await screen.findByText("2 ticked, 2 checked in")).toBeInTheDocument();
+    expect(screen.getAllByText("Checked in")).toHaveLength(2);
+    expect(screen.getByRole("checkbox", { name: /Able, Sam/ })).not.toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Plan session" }));
+    await waitFor(() => expect(sent(fetchMock)).toMatchObject({ cins: [2, 4] }));
+  });
+
+  it("a tick changed by hand stays, and 'Tick checked in' goes back to the door list", async () => {
+    const fetchMock = api({ roster: [ROSTER[0], { ...ROSTER[1], checked_in: true }, ROSTER[2], ROSTER[3]] });
+    renderWithQuery(<SessionPlanner />);
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Able, Sam/ }));
+    expect(screen.getByText("2 ticked, 1 checked in")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Tick checked in" }));
+    expect(screen.getByText("1 ticked, 1 checked in")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Plan session" }));
+    await waitFor(() => expect(sent(fetchMock)).toMatchObject({ cins: [2] }));
+  });
+
+  it("with nobody checked in yet everyone starts ticked and there's no door button", async () => {
+    api();
+    renderWithQuery(<SessionPlanner />);
+    expect(await screen.findByText("4 ticked")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tick checked in" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Checked in")).not.toBeInTheDocument();
+  });
+
   it("shows each cadet's leadership so far", async () => {
     api();
     renderWithQuery(<SessionPlanner />);

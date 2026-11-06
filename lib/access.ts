@@ -8,6 +8,8 @@ const NCO_ALLOWED_ROUTES = [
   "/assessments",
   "/cadets/assessments",
   "/session-plans",
+  // Tonight's door: NCOs tick in cadets without their phone.
+  "/check-in",
   "/nco-holidays",
   "/nco-comments",
   "/settings",

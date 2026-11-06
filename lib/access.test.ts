@@ -16,6 +16,7 @@ describe("canAccess", () => {
     "/cadets/assessments",
     "/session-plans",
     "/session-plans/12/edit",
+    "/check-in",
     "/nco-holidays",
     "/nco-comments",
     "/settings",
