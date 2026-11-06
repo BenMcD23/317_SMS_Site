@@ -1,13 +1,13 @@
-import { PackageCheck, Undo2 } from "lucide-react";
+import { PackageCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { formatTimestamp } from "@/lib/format";
 import type { GivenEvent } from "@/lib/stores-types";
 
 /**
- * "Given <when> · <who>" for an order item, with an Undo when it can be taken
- * back, and the history once there is one. Shared by the uniform and badge
- * order pages so a give reads and undoes the same way on both.
+ * "Given <when> · <who>" for an order item, and the history once there is one.
+ * Shared by the uniform and badge order pages so a give reads the same way on
+ * both. Undoing is the item's own Mark as Given button (ToggleActionButton),
+ * not a control down here.
  *
  * The stamp is the current state. History appears only once something has been
  * undone (until then it would just repeat the stamp), and lists every give and
@@ -17,18 +17,10 @@ export function GivenStamp({
   givenAt,
   givenBy,
   events,
-  onUndo,
-  undoing,
-  itemLabel,
 }: {
   givenAt: string | null;
   givenBy: string | null;
   events?: GivenEvent[];
-  /** Omit when the order is completed: an item can't be un-given from a closed order. */
-  onUndo?: () => void;
-  undoing?: boolean;
-  /** What's being given, for the Undo button's accessible name ("Beret"). */
-  itemLabel: string;
 }) {
   const history = events?.some((e) => e.action === "undone") ? events : [];
   if (!givenAt && history.length === 0) return null;
@@ -41,20 +33,6 @@ export function GivenStamp({
             Given {formatTimestamp(givenAt)}
             {givenBy && <> · {givenBy}</>}
           </p>
-          {onUndo && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-success hover:bg-success/10 hover:text-success h-6 shrink-0 gap-1 px-1.5 text-xs"
-              disabled={undoing}
-              onClick={onUndo}
-              aria-label={`Undo given: ${itemLabel}`}
-            >
-              <Undo2 className="size-3" />
-              Undo
-            </Button>
-          )}
         </div>
       )}
       {history.length > 0 && (

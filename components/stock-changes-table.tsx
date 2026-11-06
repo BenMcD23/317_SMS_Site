@@ -1,11 +1,14 @@
 "use client";
 
-import { PackageSearch } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, History, PackageSearch } from "lucide-react";
 
 import { DataTable, dataTableColumns } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatTimestamp } from "@/lib/format";
 import { signedChange, stockActionLabel, type StockChange } from "@/lib/stock-changes";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -86,8 +89,7 @@ const columns = col.columns([
 
 /**
  * Every change to a stock count, newest first, for one side of the stores.
- * Shared by the uniform and badge History pages, which both show it as their
- * "Stock changes" tab.
+ * Shown inside `StockChangesPanel` at the top of each stock page.
  */
 export function StockChangesTable({ kind }: { kind: "uniform" | "badge" }) {
   const { data, isPending, error } = useApiQuery<StockChange[]>(
@@ -122,5 +124,31 @@ export function StockChangesTable({ kind }: { kind: "uniform" | "badge" }) {
         action: "whitespace-normal",
       }}
     />
+  );
+}
+
+/**
+ * "Stock changes", folded away at the top of the uniform and badge stock
+ * pages: the log is for when a count looks wrong, not something to read every
+ * visit. It loads only when opened, and again on each opening, so it includes
+ * whatever was just changed on the page below.
+ */
+export function StockChangesPanel({ kind }: { kind: "uniform" | "badge" }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col gap-3">
+      <CollapsibleTrigger asChild>
+        <Button variant="outline" className="h-9 w-full justify-between sm:w-auto sm:self-start">
+          <span className="flex items-center gap-2">
+            <History className="text-muted-foreground size-4" />
+            Stock changes
+          </span>
+          <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <StockChangesTable kind={kind} />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

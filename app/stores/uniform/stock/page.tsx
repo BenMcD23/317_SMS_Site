@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
+import { StockChangesPanel } from "@/components/stock-changes-table";
 import { ErrorAlert } from "@/components/error-alert";
 import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -147,6 +148,8 @@ export default function StockPage() {
           </>
         }
       />
+
+      <StockChangesPanel kind="uniform" />
 
       {/* Search */}
       <div className="flex gap-2">

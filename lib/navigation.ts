@@ -20,7 +20,6 @@ import {
   FileSearch,
   FileText,
   GraduationCap,
-  History,
   LayoutDashboard,
   LayoutGrid,
   MessageSquare,
@@ -235,12 +234,6 @@ export const NAV_SECTIONS: NavSection[] = [
             icon: ChartColumn,
             keywords: ["popular sizes", "what to order", "low stock", "unused stock", "reorder"],
           },
-          {
-            label: "History",
-            href: "/stores/uniform/history",
-            icon: History,
-            keywords: ["given out", "issued", "undo given", "recent uniform", "stock changes", "stock log"],
-          },
         ],
       },
       {
@@ -255,12 +248,6 @@ export const NAV_SECTIONS: NavSection[] = [
             keywords: ["badge stock", "badge grid"],
           },
           { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart, keywords: ["badge orders"] },
-          {
-            label: "History",
-            href: "/stores/badges/history",
-            icon: History,
-            keywords: ["badges given out", "undo badge", "badge stock changes"],
-          },
         ],
       },
       {

@@ -22,6 +22,8 @@ exports[`app/api route handlers > matches the pinned list of backend routes 1`] 
   "DELETE /api/stores/badges/order-lists/entries/[id] -> /stores/badges/order-lists/entries/:id",
   "POST /api/stores/badges/order-lists/entries/[id]/mark-ordered -> /stores/badges/order-lists/entries/:id/mark-ordered",
   "POST /api/stores/badges/order-lists/entries/[id]/mark-received -> /stores/badges/order-lists/entries/:id/mark-received",
+  "POST /api/stores/badges/order-lists/entries/[id]/undo-ordered -> /stores/badges/order-lists/entries/:id/undo-ordered",
+  "POST /api/stores/badges/order-lists/entries/[id]/undo-received -> /stores/badges/order-lists/entries/:id/undo-received",
   "GET /api/stores/badges/orders -> /stores/badges/orders",
   "POST /api/stores/badges/orders -> /stores/badges/orders",
   "PATCH /api/stores/badges/orders/[id] -> /stores/badges/orders/:id",

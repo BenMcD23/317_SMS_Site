@@ -13,7 +13,6 @@ import {
   ArrowUpDown,
   PackageCheck,
   PackageMinus,
-  PackagePlus,
   CheckCircle2,
   RotateCcw,
   Bell,
@@ -49,6 +48,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
 import { GivenStamp } from "@/components/given-stamp";
+import { ToggleActionButton } from "@/components/toggle-action-button";
 import { StockHistory } from "@/components/stock-history";
 import { QmNotes } from "@/components/qm-notes";
 import { ReadyStamp } from "@/components/ready-stamp";
@@ -463,8 +463,14 @@ export default function OrdersPage() {
 
   const openLogsForm = logsForms.find((f) => !f.orderedAt) ?? null;
   const pastLogsForms = logsForms.filter((f) => !!f.orderedAt);
-  const onLogsFormItemIds = new Set(
-    logsForms.flatMap((f) => f.entries.map((e) => e.orderItemId)).filter(Boolean)
+  // Which entry each order item is on, and whether that form has gone to
+  // RAFAC (an entry on a sent form can't be taken off).
+  const logsFormEntryByItem = new Map(
+    logsForms.flatMap((f) =>
+      f.entries
+        .filter((e) => e.orderItemId)
+        .map((e) => [e.orderItemId as string, { entryId: e.id, sent: !!f.orderedAt }] as const)
+    )
   );
 
   async function refreshLogsForms() {
@@ -496,13 +502,16 @@ export default function OrdersPage() {
     doAddToLogsForm(item.id);
   }
 
-  async function handleRemoveLogsFormEntry(entryId: string) {
+  async function handleRemoveLogsFormEntry(entryId: string, itemId?: string) {
+    if (itemId) setAddingToLogsFormId(itemId);
     try {
       const res = await fetch(`/api/stores/logs-forms/entries/${entryId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to remove entry");
       await refreshLogsForms();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      if (itemId) setAddingToLogsFormId(null);
     }
   }
 
@@ -799,50 +808,43 @@ export default function OrdersPage() {
                                     {orderItem.needSizing ? "Enter Size" : "Edit Size"}
                                   </Button>
                                 )}
-                                {removedFromStock ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={removingStock === orderItem.id}
-                                    onClick={() => handleReturnToStock(order, orderItem)}
-                                  >
-                                    <PackagePlus className="mr-1 h-3 w-3" />
-                                    Add Back to Stock
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={removingStock === orderItem.id || !stockMatch || !inStock}
-                                    onClick={() =>
-                                      stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
-                                    }
-                                  >
-                                    <PackageMinus className="mr-1 h-3 w-3" />
-                                    Remove from Stock
-                                  </Button>
-                                )}
-                                {orderItem.itemType !== "Brassard" && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={
-                                      addingToLogsFormId === orderItem.id ||
-                                      onLogsFormItemIds.has(orderItem.id) ||
-                                      orderItem.needSizing ||
-                                      (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
-                                    }
-                                    onClick={() => handleAddToLogsForm(orderItem)}
-                                  >
-                                    <FileSpreadsheet className="mr-1 h-3 w-3" />
-                                    {onLogsFormItemIds.has(orderItem.id)
-                                      ? "On Logs Form"
-                                      : "Add to Logs Form"}
-                                  </Button>
-                                )}
+                                <ToggleActionButton
+                                  done={removedFromStock}
+                                  label="Remove from Stock"
+                                  doneLabel="Put back in stock"
+                                  icon={PackageMinus}
+                                  tone="destructive"
+                                  itemLabel={orderItem.itemType}
+                                  busy={removingStock === orderItem.id}
+                                  disabled={!stockMatch || !inStock}
+                                  onDo={() =>
+                                    stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
+                                  }
+                                  onUndo={() => handleReturnToStock(order, orderItem)}
+                                />
+                                {orderItem.itemType !== "Brassard" &&
+                                  (() => {
+                                    const onForm = logsFormEntryByItem.get(orderItem.id);
+                                    return (
+                                      <ToggleActionButton
+                                        done={!!onForm}
+                                        label="Add to Logs Form"
+                                        doneLabel={onForm?.sent ? "Logs Form sent" : "Undo Logs Form"}
+                                        icon={FileSpreadsheet}
+                                        itemLabel={orderItem.itemType}
+                                        busy={addingToLogsFormId === orderItem.id}
+                                        disabled={
+                                          orderItem.needSizing ||
+                                          (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
+                                        }
+                                        undoDisabled={onForm?.sent}
+                                        onDo={() => handleAddToLogsForm(orderItem)}
+                                        onUndo={() =>
+                                          onForm && handleRemoveLogsFormEntry(onForm.entryId, orderItem.id)
+                                        }
+                                      />
+                                    );
+                                  })()}
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -857,21 +859,21 @@ export default function OrdersPage() {
                                   <Bell className="mr-1 h-3 w-3" />
                                   {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-success/40 text-success hover:bg-success/10 hover:text-success h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
+                                <ToggleActionButton
+                                  done={!!orderItem.givenAt}
+                                  label="Mark as Given"
+                                  doneLabel="Undo given"
+                                  icon={PackageCheck}
+                                  tone="success"
+                                  itemLabel={orderItem.itemType}
+                                  busy={markingAsGiven === orderItem.id || undoingGiven === orderItem.id}
                                   disabled={
-                                    markingAsGiven === orderItem.id ||
-                                    !!orderItem.givenAt ||
                                     orderItem.needSizing ||
                                     (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
                                   }
-                                  onClick={() => handleMarkItemAsGiven(order, orderItem)}
-                                >
-                                  <PackageCheck className="mr-1 h-3 w-3" />
-                                  Mark as Given
-                                </Button>
+                                  onDo={() => handleMarkItemAsGiven(order, orderItem)}
+                                  onUndo={() => handleUndoGiven(order, orderItem)}
+                                />
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -889,18 +891,11 @@ export default function OrdersPage() {
 
                           <ReadyStamp readyToCollect={orderItem.readyToCollect} givenAt={orderItem.givenAt} />
 
-                          {/* Given stamp: the hand-over, an Undo while the order is open, and the history */}
+                          {/* Given stamp: the hand-over and, once something was undone, the history */}
                           <GivenStamp
                             givenAt={orderItem.givenAt}
                             givenBy={orderItem.givenBy}
                             events={orderItem.givenEvents}
-                            itemLabel={orderItem.itemType}
-                            undoing={undoingGiven === orderItem.id}
-                            onUndo={
-                              !isCompleted && orderItem.givenAt
-                                ? () => handleUndoGiven(order, orderItem)
-                                : undefined
-                            }
                           />
 
                           {/* Stock history */}

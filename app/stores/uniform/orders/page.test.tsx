@@ -532,3 +532,79 @@ describe("QM notes", () => {
     expect(alex.getByRole("textbox", { name: "QM note on Beret" })).toHaveValue("Try a 57");
   });
 });
+
+describe("the Logs Form button undoes itself", () => {
+  const form = (orderedAt: string | null) => [
+    {
+      id: "f1",
+      createdAt: "2026-11-01T10:00:00Z",
+      orderedAt,
+      entries: [
+        {
+          id: "e1",
+          orderItemId: "11",
+          itemType: "Beret",
+          size: "56",
+          cadetName: "Alex Smith",
+          cadetCin: 101,
+          createdAt: "2026-11-06T14:00:00Z",
+        },
+      ],
+    },
+  ];
+
+  it("an item on the open form offers to take it off, from the same button", async () => {
+    const fetch = stubApi({
+      "GET /api/stores/logs-forms": () => json(form(null)),
+      "DELETE /api/stores/logs-forms/entries/e1": () => new Response(null, { status: 204 }),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    const undo = within(card("Alex Smith")).getByRole("button", { name: "Undo Logs Form: Beret" });
+    expect(undo).toHaveAttribute("aria-pressed", "true");
+    await act(async () => undo.click());
+    await waitFor(() => expect(calls(fetch, "DELETE /api/stores/logs-forms/entries/e1")).toBe(1));
+  });
+
+  // Once the form has gone to RAFAC the entry is part of what was ordered.
+  it("an item on a form already sent can't be taken off", async () => {
+    stubApi({ "GET /api/stores/logs-forms": () => json(form("2026-11-05T10:00:00Z")) });
+    await renderPage();
+    await expand("Alex Smith");
+    expect(within(card("Alex Smith")).getByRole("button", { name: "Logs Form sent: Beret" })).toBeDisabled();
+  });
+
+  it("a failed removal says so and leaves it on the form", async () => {
+    stubApi({
+      "GET /api/stores/logs-forms": () => json(form(null)),
+      "DELETE /api/stores/logs-forms/entries/e1": () => json({ detail: "nope" }, 500),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await act(async () => screen.getByRole("button", { name: "Undo Logs Form: Beret" }).click());
+    expect(await screen.findByText("Failed to remove entry")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo Logs Form: Beret" })).toBeInTheDocument();
+  });
+});
+
+describe("the Mark as Given button undoes itself", () => {
+  it("a given item's button reads Undo given and asks before taking it back", async () => {
+    const given = orders();
+    given[0].items[0] = item("11", "Beret", { givenAt: "2026-11-06T13:58:00Z", givenBy: "Dev Staff" });
+    stubApi({ "GET /api/stores/orders": () => json(given) });
+    await renderPage();
+    await expand("Alex Smith");
+    const undo = within(card("Alex Smith")).getByRole("button", { name: "Undo given: Beret" });
+    expect(undo).toHaveAttribute("aria-pressed", "true");
+    // The stamp below has no controls of its own any more.
+    expect(
+      within(card("Alex Smith"))
+        .getByText(/Given 06 Nov 2026, 13:58/)
+        .closest("div")
+    ).not.toContainElement(undo);
+    await act(async () => undo.click());
+    expect(
+      within(screen.getByRole("dialog")).getByText(/Undo giving Beret to Alex Smith/)
+    ).toBeInTheDocument();
+  });
+});
