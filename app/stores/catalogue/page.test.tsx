@@ -27,6 +27,7 @@ function item(over: Partial<CatalogueItem> = {}): CatalogueItem {
     gender: "unisex",
     issuanceCategory: null,
     noSize: false,
+    stockOnly: false,
     kitFlight: false,
     onOrderList: true,
     lowStockLevel: null,
@@ -175,6 +176,23 @@ describe("Catalogue page: adding an item", () => {
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(toast.success).toHaveBeenCalledWith("Item saved");
+  });
+
+  it("marks an item as held in stock only, and then hides the kit switch", async () => {
+    const calls = fakeApi({ items: [item()], badges: [] });
+    const user = userEvent.setup();
+    renderWithQuery(<CataloguePage />);
+    await user.click(await screen.findByRole("button", { name: "Add item" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("switch", { name: /part of a new cadet/i })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("switch", { name: "Held in stock only" }));
+    expect(within(dialog).queryByRole("switch", { name: /part of a new cadet/i })).not.toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText("Name"), "Polo");
+    await user.type(within(dialog).getByLabelText("Sizes"), "S{enter}M");
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Add item" })).toBeEnabled());
+    await user.click(within(dialog).getByRole("button", { name: "Add item" }));
+    await waitFor(() => expect(writes(calls)).toHaveLength(1));
+    expect(writes(calls)[0].body).toMatchObject({ name: "Polo", stockOnly: true, kitFlight: false });
   });
 
   it("won't save a sized item without sizes, and says what to do", async () => {

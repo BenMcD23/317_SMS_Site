@@ -19,6 +19,8 @@ export type CatalogueItem = {
   gender: Gender;
   issuanceCategory: string | null;
   noSize: boolean;
+  /** Held in stock but never ordered (polos): on the stock pages, off the order forms. */
+  stockOnly: boolean;
   kitFlight: boolean;
   onOrderList: boolean;
   lowStockLevel: number | null;
@@ -88,6 +90,7 @@ export const itemSchema = z
     name: nameField,
     gender: z.enum(["unisex", "male", "female"]),
     noSize: z.boolean(),
+    stockOnly: z.boolean(),
     sizes: listField(""),
     sizingFields: z.array(z.string()),
     issuanceCategory: z.string(),
@@ -107,6 +110,7 @@ export const EMPTY_ITEM: ItemForm = {
   name: "",
   gender: "unisex",
   noSize: false,
+  stockOnly: false,
   sizes: "",
   sizingFields: [],
   issuanceCategory: OWN_LINE,
@@ -120,6 +124,7 @@ export function itemToForm(i: CatalogueItem): ItemForm {
     name: i.name,
     gender: i.gender,
     noSize: i.noSize,
+    stockOnly: i.stockOnly,
     sizes: i.sizes.join("\n"),
     sizingFields: i.sizingFields,
     issuanceCategory: i.issuanceCategory ?? OWN_LINE,
@@ -135,10 +140,12 @@ export function itemPayload(v: ItemForm, creating: boolean) {
     ...(creating ? { name: v.name.trim() } : {}),
     gender: v.gender,
     noSize: v.noSize,
+    stockOnly: v.stockOnly,
     sizes: v.noSize ? [] : parseList(v.sizes),
     sizingFields: v.noSize ? [] : v.sizingFields,
     issuanceCategory: v.issuanceCategory === OWN_LINE ? "" : v.issuanceCategory,
-    kitFlight: v.kitFlight,
+    // Kit is what gets ordered, so a stock-only item can't be part of it.
+    kitFlight: v.stockOnly ? false : v.kitFlight,
     onOrderList: v.onOrderList,
     // null clears the level; the API leaves it alone only when the key is missing.
     lowStockLevel: v.lowStockLevel.trim() === "" ? null : Number(v.lowStockLevel),
@@ -195,6 +202,7 @@ export function badgeNames(
 /** The line under an item's name: what a QM scanning the list needs to know. */
 export function itemSummary(i: CatalogueItem): string {
   const parts = [i.noSize ? "No size" : `${i.sizes.length} ${i.sizes.length === 1 ? "size" : "sizes"}`];
+  if (i.stockOnly) parts.push("stock only");
   if (i.lowStockLevel !== null) parts.push(`orders below ${i.lowStockLevel}`);
   if (!i.onOrderList) parts.push("not on the order list");
   if (i.kitFlight) parts.push("in new cadets' kit");

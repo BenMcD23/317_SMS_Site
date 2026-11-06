@@ -67,7 +67,7 @@ function ItemDialogBody({
     mode: "onTouched",
   });
   const { control, register, handleSubmit, formState } = form;
-  const [noSize, sizesText] = useWatch({ control, name: ["noSize", "sizes"] });
+  const [noSize, stockOnly, sizesText] = useWatch({ control, name: ["noSize", "stockOnly", "sizes"] });
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const touched = (name: keyof ItemForm) =>
@@ -233,12 +233,21 @@ function ItemDialogBody({
           hint="Off for things the QM tops up by eye, like berets."
         />
         <ToggleRow
-          id={id("kit")}
+          id={id("stockonly")}
           control={control}
-          name="kitFlight"
-          label="Part of a new cadet’s kit"
-          hint="Added to the kitting order for each new C Flight cadet."
+          name="stockOnly"
+          label="Held in stock only"
+          hint="Kept on the stock pages but never offered on orders or the cadet portal, like polos."
         />
+        {!stockOnly && (
+          <ToggleRow
+            id={id("kit")}
+            control={control}
+            name="kitFlight"
+            label="Part of a new cadet’s kit"
+            hint="Added to the kitting order for each new C Flight cadet."
+          />
+        )}
 
         <ErrorAlert message={submitError} title="Not saved" />
 
@@ -289,7 +298,7 @@ function ToggleRow({
 }: {
   id: string;
   control: ReturnType<typeof useForm<ItemForm>>["control"];
-  name: "noSize" | "onOrderList" | "kitFlight";
+  name: "noSize" | "stockOnly" | "onOrderList" | "kitFlight";
   label: string;
   hint: string;
 }) {

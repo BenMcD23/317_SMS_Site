@@ -27,6 +27,7 @@ const ITEM: CatalogueItem = {
   gender: "unisex",
   issuanceCategory: null,
   noSize: false,
+  stockOnly: false,
   kitFlight: true,
   onOrderList: false,
   lowStockLevel: 4,
@@ -127,6 +128,12 @@ describe("the item form", () => {
   it("sends no sizes or measurements for an item with no size", () => {
     const body = itemPayload({ ...ok, noSize: true, sizes: "leftover", sizingFields: ["chest"] }, true);
     expect(body).toMatchObject({ noSize: true, sizes: [], sizingFields: [] });
+  });
+
+  it("a stock-only item is sent as stock only and never as part of the kit", () => {
+    const body = itemPayload({ ...ok, stockOnly: true, kitFlight: true }, true);
+    expect(body).toMatchObject({ stockOnly: true, kitFlight: false });
+    expect(itemPayload({ ...ok, stockOnly: false, kitFlight: true }, true).kitFlight).toBe(true);
   });
 
   it("keeps a chosen shared record line", () => {
