@@ -77,7 +77,7 @@ const posts = (fetchMock: ReturnType<typeof api>) =>
     .filter(([, init]) => init?.method === "POST")
     .map(([, init]) => JSON.parse(String(init!.body)));
 
-describe("Progress tab", () => {
+describe("Theory progress", () => {
   it("opens on the Leading subjects with each cadet's lessons, hiding who's passed or not on them", async () => {
     api();
     renderTab();

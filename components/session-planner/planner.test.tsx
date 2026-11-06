@@ -268,10 +268,7 @@ describe("Session planner", () => {
     api({ tasks: [] });
     renderWithQuery(<SessionPlanner />);
     expect(await screen.findByText("No tasks in the bank yet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open the task bank" })).toHaveAttribute(
-      "href",
-      "/session-planner/bank"
-    );
+    expect(screen.getByRole("link", { name: "Open tasks & kit" })).toHaveAttribute("href", "/training/tasks");
   });
 
   it("a roster that fails to load shows the error, not an empty list", async () => {

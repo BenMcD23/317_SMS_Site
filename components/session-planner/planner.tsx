@@ -234,7 +234,7 @@ export function SessionPlanner() {
         description="Add the tasks your sessions run, and the kit they need, before planning one."
       >
         <Button asChild>
-          <Link href="/session-planner/bank">Open the task bank</Link>
+          <Link href="/training/tasks">Open tasks & kit</Link>
         </Button>
       </EmptyState>
     );
@@ -337,8 +337,8 @@ export function SessionPlanner() {
             })}
           </ul>
         )}
-        <Link href="/session-planner/bank" className="text-primary self-start text-sm hover:underline">
-          Edit the task bank and kit
+        <Link href="/training/tasks" className="text-primary self-start text-sm hover:underline">
+          Edit tasks and kit
         </Link>
       </Section>
 

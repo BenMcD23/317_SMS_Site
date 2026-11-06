@@ -161,30 +161,11 @@ export function TaskBank({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4" aria-labelledby="tasks-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {kinds.length > 1 ? (
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            size="sm"
-            aria-label="Filter by kind of session"
-            className="flex-wrap"
-            value={kind || "all"}
-            onValueChange={(v) => setKind(v === "all" || v === "" ? "" : (v as SessionKind))}
-          >
-            <ToggleGroupItem value="all" className="px-3">
-              All
-            </ToggleGroupItem>
-            {kinds.map((k) => (
-              <ToggleGroupItem key={k} value={k} className="px-3">
-                {kindLabel(k)}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        ) : (
-          <span />
-        )}
+        <h2 id="tasks-heading" className="text-base font-semibold">
+          Tasks
+        </h2>
         <Button
           onClick={() => {
             setEditing(null);
@@ -197,10 +178,34 @@ export function TaskBank({
         </Button>
       </div>
 
-      {retired > 0 && (
-        <div className="flex items-center gap-2">
-          <Switch id="show-retired" checked={showRetired} onCheckedChange={setShowRetired} />
-          <Label htmlFor="show-retired">Show {retired} retired</Label>
+      {(kinds.length > 1 || retired > 0) && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          {kinds.length > 1 && (
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              aria-label="Filter by kind of session"
+              className="flex-wrap"
+              value={kind || "all"}
+              onValueChange={(v) => setKind(v === "all" || v === "" ? "" : (v as SessionKind))}
+            >
+              <ToggleGroupItem value="all" className="px-3">
+                All
+              </ToggleGroupItem>
+              {kinds.map((k) => (
+                <ToggleGroupItem key={k} value={k} className="px-3">
+                  {kindLabel(k)}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          )}
+          {retired > 0 && (
+            <div className="flex items-center gap-2">
+              <Switch id="show-retired" checked={showRetired} onCheckedChange={setShowRetired} />
+              <Label htmlFor="show-retired">Show {retired} retired</Label>
+            </div>
+          )}
         </div>
       )}
 
@@ -247,6 +252,6 @@ export function TaskBank({
         onDelete={editing ? () => remove(editing) : undefined}
       />
       {confirmDialog}
-    </div>
+    </section>
   );
 }

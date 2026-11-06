@@ -48,7 +48,7 @@ export function LessonPips({ progress, parts }: { progress: SubjectProgress; par
 }
 
 /**
- * One cadet × subject cell on the Progress tab. Opens a small menu to tick the
+ * One cadet × subject cell on Theory progress. Opens a small menu to tick the
  * lessons they've had, so fixing one missed scan doesn't mean going to the
  * Record tab and re-picking the cadet.
  */

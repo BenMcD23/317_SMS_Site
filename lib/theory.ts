@@ -1,5 +1,5 @@
 /**
- * Theory lessons on the Classifications page — the shapes /cadets/theory/*
+ * Theory lessons in Training — the shapes /cadets/theory/*
  * sends, and the rules for who still has a subject to do and where a lesson's
  * QR code points. Kept out of the page so they're tested on their own.
  */

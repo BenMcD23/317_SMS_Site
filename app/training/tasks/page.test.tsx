@@ -6,7 +6,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import TaskBankPage from "@/app/session-planner/bank/page";
+import TaskBankPage from "@/app/training/tasks/page";
 import { canAccess } from "@/lib/access";
 import type { BankTask, KitItem, UnlinkedSheet } from "@/lib/session-planner";
 import { renderWithQuery } from "@/tests/render-with-query";
@@ -122,7 +122,7 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
 });
 
-describe("Session planner bank", () => {
+describe("Tasks & kit", () => {
   it("lists the tasks in use with their kit, and flags one the kit can't cover", async () => {
     api();
     renderWithQuery(<TaskBankPage />);
@@ -133,8 +133,11 @@ describe("Session planner bank", () => {
     expect(within(table).getByText("Not enough First aid manikin")).toBeInTheDocument();
     // Retired tasks are hidden until asked for.
     expect(within(table).queryByText("Pipeline")).not.toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Tasks 2" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Unlinked sheets 1" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tasks" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Kit" })).toBeInTheDocument();
+    // Old sheets to link are flagged at the top and listed at the bottom.
+    expect(screen.getByText(/1 old leadership sheet isn't on a task/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Link it" })).toHaveAttribute("href", "#unlinked");
 
     await userEvent.click(screen.getByRole("switch", { name: "Show 1 retired" }));
     expect(within(table).getByText(/Pipeline/)).toBeInTheDocument();
@@ -156,10 +159,10 @@ describe("Session planner bank", () => {
     renderWithQuery(<TaskBankPage />);
     expect(await screen.findByText("No tasks yet")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Kit 0" }));
     expect(screen.getByText("No kit on the list")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "Unlinked sheets 0" }));
-    expect(screen.getByText("Every leadership sheet is on a task")).toBeInTheDocument();
+    // Nothing to link takes no room at all.
+    expect(screen.queryByRole("heading", { name: "Leadership sheets to link" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/old leadership sheet/)).not.toBeInTheDocument();
   });
 
   it("an API error shows its message instead of an empty bank", async () => {
@@ -175,7 +178,7 @@ describe("Session planner bank", () => {
   it("adds kit with how many there are", async () => {
     const fetchMock = api({ write: () => json({ ...KIT[0], id: 3, name: "Cargo net", quantity: 1 }, 201) });
     renderWithQuery(<TaskBankPage />);
-    await userEvent.click(await screen.findByRole("tab", { name: "Kit 2" }));
+    await screen.findByRole("heading", { name: "Kit" });
     expect(screen.getByText("None working")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Add kit" }));
@@ -200,7 +203,7 @@ describe("Session planner bank", () => {
   it("refuses kit with no name before sending anything", async () => {
     const fetchMock = api();
     renderWithQuery(<TaskBankPage />);
-    await userEvent.click(await screen.findByRole("tab", { name: "Kit 2" }));
+    await screen.findByRole("heading", { name: "Kit" });
     await userEvent.click(screen.getByRole("button", { name: "Add kit" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add kit" }));
 
@@ -213,7 +216,7 @@ describe("Session planner bank", () => {
       write: () => json({ detail: "Still needed by Toxic Barrel. Take it off those tasks first." }, 409),
     });
     renderWithQuery(<TaskBankPage />);
-    await userEvent.click(await screen.findByRole("tab", { name: "Kit 2" }));
+    await screen.findByRole("heading", { name: "Kit" });
     await userEvent.click(screen.getByRole("button", { name: "Oil drum" }));
     await userEvent.click(screen.getByRole("button", { name: "Delete kit" }));
     const sure = screen.getByRole("dialog", { name: "Are you sure?" });
@@ -272,7 +275,7 @@ describe("Session planner bank", () => {
   it("links an old sheet to the task it was for", async () => {
     const fetchMock = api({ write: () => json({ assessment_id: 50, task_id: 10 }) });
     renderWithQuery(<TaskBankPage />);
-    await userEvent.click(await screen.findByRole("tab", { name: "Unlinked sheets 1" }));
+    await screen.findByRole("heading", { name: "Leadership sheets to link" });
     expect(screen.getByText("Cpl Zoë Ó Briain")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Link" })).toBeDisabled();
 
@@ -295,13 +298,13 @@ describe("Session planner bank", () => {
   });
 });
 
-describe("Session planner access", () => {
+describe("Tasks & kit access", () => {
   it.each([
     ["staff", true],
     ["snco", false],
     ["nco", false],
     [undefined, false],
   ])("%s reaching it is %s", (role, allowed) => {
-    expect(canAccess(role, "/session-planner/bank")).toBe(allowed);
+    expect(canAccess(role, "/training/tasks")).toBe(allowed);
   });
 });

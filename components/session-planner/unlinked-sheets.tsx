@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Link2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,7 +73,7 @@ function SheetRow({
 /**
  * Leadership sheets written before the bank, whose typed exercise matches no
  * task (or more than one). Linking one tells the planner the cadet has led
- * that task, so they aren't given it again.
+ * that task, so they aren't given it again. Renders nothing when there are none.
  */
 export function UnlinkedSheets({
   sheets,
@@ -87,16 +85,13 @@ export function UnlinkedSheets({
   onLinked: () => void;
 }) {
   const leadership = tasks.filter((t) => t.kind === "leadership");
-  if (sheets.length === 0)
-    return (
-      <EmptyState
-        icon={Link2}
-        title="Every leadership sheet is on a task"
-        description="Sheets whose exercise matches no task in the bank show up here to link by hand."
-      />
-    );
+  // Nothing to do is the normal state, so it takes no room on the page.
+  if (sheets.length === 0) return null;
   return (
-    <div className="flex flex-col gap-3">
+    <section id="unlinked" className="flex scroll-mt-20 flex-col gap-3" aria-labelledby="unlinked-heading">
+      <h2 id="unlinked-heading" className="text-base font-semibold">
+        Leadership sheets to link
+      </h2>
       <p className="text-muted-foreground text-sm">
         These were written before the bank and their exercise doesn&apos;t match a task. Link each one so the
         planner knows the cadet has led it.
@@ -107,6 +102,6 @@ export function UnlinkedSheets({
           <SheetRow key={s.assessment_id} sheet={s} tasks={leadership} onLinked={onLinked} />
         ))}
       </ul>
-    </div>
+    </section>
   );
 }

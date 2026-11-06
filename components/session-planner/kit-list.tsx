@@ -97,8 +97,11 @@ export function KitList({ kit, onChanged }: { kit: KitItem[]; onChanged: () => v
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+    <section className="flex flex-col gap-4" aria-labelledby="kit-heading">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="kit-heading" className="text-base font-semibold">
+          Kit
+        </h2>
         <Button
           onClick={() => {
             setEditing(null);
@@ -137,6 +140,6 @@ export function KitList({ kit, onChanged }: { kit: KitItem[]; onChanged: () => v
         onDelete={editing ? () => remove(editing) : undefined}
       />
       {confirmDialog}
-    </div>
+    </section>
   );
 }

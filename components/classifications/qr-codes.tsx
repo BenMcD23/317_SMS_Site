@@ -97,7 +97,7 @@ function LessonQr({ lesson, url }: { lesson: LessonCode; url: string }) {
 const STEPS = [
   "Click a code to download it, and put it on that lesson's slides.",
   "At the lesson, cadets scan it with their phone camera and sign in.",
-  "It's ticked off on the Progress tab. Codes never change, so do this once.",
+  "It's ticked off on Theory progress. Codes never change, so do this once.",
 ];
 
 /**
