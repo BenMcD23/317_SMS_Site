@@ -13,7 +13,6 @@ import {
   ArrowUpDown,
   PackageCheck,
   PackageMinus,
-  PackagePlus,
   CheckCircle2,
   RotateCcw,
   Bell,
@@ -59,6 +58,8 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
 import { GivenStamp } from "@/components/given-stamp";
+import { OrderListHistory } from "@/components/order-list-history";
+import { ToggleActionButton } from "@/components/toggle-action-button";
 import { StockHistory } from "@/components/stock-history";
 import { QmNotes } from "@/components/qm-notes";
 import { ReadyStamp } from "@/components/ready-stamp";
@@ -664,6 +665,54 @@ export default function BadgeOrdersPage() {
     }
   }
 
+  /** Run one order-list undo for an order item, refreshing the list after. */
+  async function runListUndo(itemId: string, call: () => Promise<Response>, failure: string) {
+    setAddingToListId(itemId);
+    try {
+      const res = await call();
+      if (!res.ok) throw new Error(failure);
+      await refreshOrderListEntries();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setAddingToListId(null);
+    }
+  }
+
+  const listStepPost = (entryId: string, verb: "undo-ordered" | "undo-received") => () =>
+    fetch(`/api/stores/badges/order-lists/entries/${entryId}/${verb}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ by: currentUser }),
+    });
+
+  // Each step's own button undoes it. Undoing a step undoes the ones after it
+  // (the API enforces the same), so when that would also clear a later step,
+  // say so first; undoing just the latest step needs no confirm.
+  function handleUndoAddedToList(item: BadgeOrderItem, entry: BadgeOrderListEntry) {
+    const remove = () =>
+      runListUndo(
+        item.id,
+        () => fetch(`/api/stores/badges/order-lists/entries/${entry.id}`, { method: "DELETE" }),
+        "Failed to take it off the order list"
+      );
+    if (!entry.orderedAt) return void remove();
+    openConfirm(
+      `Take ${item.badgeName} off the order list? Its ${entry.receivedAt ? "ordered and received steps are" : "ordered step is"} undone too.`,
+      remove
+    );
+  }
+
+  function handleUndoOrdered(item: BadgeOrderItem, entry: BadgeOrderListEntry) {
+    const undo = () => runListUndo(item.id, listStepPost(entry.id, "undo-ordered"), "Failed to undo ordered");
+    if (!entry.receivedAt) return void undo();
+    openConfirm(`Undo ordered for ${item.badgeName}? It has been received, so that is undone too.`, undo);
+  }
+
+  function handleUndoReceived(item: BadgeOrderItem, entry: BadgeOrderListEntry) {
+    void runListUndo(item.id, listStepPost(entry.id, "undo-received"), "Failed to undo received");
+  }
+
   function handleCopyEntries(entries: BadgeOrderListEntry[], key: string) {
     const text = entries.map((e) => `${e.badgeName} — ${e.cadetName}`).join("\n");
     navigator.clipboard.writeText(text);
@@ -1031,73 +1080,60 @@ export default function BadgeOrdersPage() {
 
                             {!isCompleted && (
                               <div className="flex flex-wrap gap-1.5 sm:w-40 sm:shrink-0 sm:flex-col sm:items-stretch">
-                                {removedFromStock ? (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={removingStock === orderItem.id}
-                                    onClick={() => handleReturnToStock(order, orderItem)}
-                                  >
-                                    <PackagePlus className="mr-1 h-3 w-3" />
-                                    Add Back to Stock
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={removingStock === orderItem.id || !stockMatch}
-                                    onClick={() =>
-                                      stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
-                                    }
-                                  >
-                                    <PackageMinus className="mr-1 h-3 w-3" />
-                                    Remove from Stock
-                                  </Button>
-                                )}
-                                {orderListStage === "none" && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={addingToListId === orderItem.id}
-                                    onClick={() => handleAddToOrderList(orderItem)}
-                                  >
-                                    <ClipboardList className="mr-1 h-3 w-3" />
-                                    Add to Order List
-                                  </Button>
-                                )}
-                                {(orderListStage === "none" || orderListStage === "toOrder") && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={sendingToOrderedId === orderItem.id}
-                                    onClick={() => handleSendToOrdered(orderItem)}
-                                  >
-                                    <Truck className="mr-1 h-3 w-3" />
-                                    {sendingToOrderedId === orderItem.id
-                                      ? "Sending..."
-                                      : orderListStage === "toOrder"
-                                        ? "Mark as Ordered"
-                                        : "Send to Ordered"}
-                                  </Button>
-                                )}
-                                {orderListStage !== "received" && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                    disabled={markingReceivedQuickId === orderItem.id}
-                                    onClick={() => handleMarkReceivedQuick(orderItem)}
-                                  >
-                                    <Inbox className="mr-1 h-3 w-3" />
-                                    {markingReceivedQuickId === orderItem.id
-                                      ? "Marking..."
-                                      : "Mark as Received"}
-                                  </Button>
-                                )}
+                                <ToggleActionButton
+                                  done={removedFromStock}
+                                  label="Remove from Stock"
+                                  doneLabel="Put back in stock"
+                                  icon={PackageMinus}
+                                  tone="destructive"
+                                  itemLabel={orderItem.badgeName}
+                                  busy={removingStock === orderItem.id}
+                                  disabled={!stockMatch}
+                                  onDo={() =>
+                                    stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
+                                  }
+                                  onUndo={() => handleReturnToStock(order, orderItem)}
+                                />
+                                <ToggleActionButton
+                                  done={orderListStage !== "none"}
+                                  label="Add to Order List"
+                                  doneLabel="Undo order list"
+                                  icon={ClipboardList}
+                                  itemLabel={orderItem.badgeName}
+                                  busy={addingToListId === orderItem.id}
+                                  onDo={() => handleAddToOrderList(orderItem)}
+                                  onUndo={() =>
+                                    orderListEntry && handleUndoAddedToList(orderItem, orderListEntry)
+                                  }
+                                />
+                                <ToggleActionButton
+                                  done={orderListStage === "ordered" || orderListStage === "received"}
+                                  label={orderListStage === "toOrder" ? "Mark as Ordered" : "Send to Ordered"}
+                                  doneLabel="Undo ordered"
+                                  icon={Truck}
+                                  itemLabel={orderItem.badgeName}
+                                  busy={
+                                    sendingToOrderedId === orderItem.id || addingToListId === orderItem.id
+                                  }
+                                  onDo={() => handleSendToOrdered(orderItem)}
+                                  onUndo={() =>
+                                    orderListEntry && handleUndoOrdered(orderItem, orderListEntry)
+                                  }
+                                />
+                                <ToggleActionButton
+                                  done={orderListStage === "received"}
+                                  label="Mark as Received"
+                                  doneLabel="Undo received"
+                                  icon={Inbox}
+                                  itemLabel={orderItem.badgeName}
+                                  busy={
+                                    markingReceivedQuickId === orderItem.id || addingToListId === orderItem.id
+                                  }
+                                  onDo={() => handleMarkReceivedQuick(orderItem)}
+                                  onUndo={() =>
+                                    orderListEntry && handleUndoReceived(orderItem, orderListEntry)
+                                  }
+                                />
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1112,16 +1148,17 @@ export default function BadgeOrdersPage() {
                                   <Bell className="mr-1 h-3 w-3" />
                                   {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-success/40 text-success hover:bg-success/10 hover:text-success h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                  disabled={markingAsGiven === orderItem.id || !!orderItem.givenAt}
-                                  onClick={() => handleMarkItemAsGiven(order, orderItem)}
-                                >
-                                  <PackageCheck className="mr-1 h-3 w-3" />
-                                  Mark as Given
-                                </Button>
+                                <ToggleActionButton
+                                  done={!!orderItem.givenAt}
+                                  label="Mark as Given"
+                                  doneLabel="Undo given"
+                                  icon={PackageCheck}
+                                  tone="success"
+                                  itemLabel={orderItem.badgeName}
+                                  busy={markingAsGiven === orderItem.id || undoingGiven === orderItem.id}
+                                  onDo={() => handleMarkItemAsGiven(order, orderItem)}
+                                  onUndo={() => handleUndoGiven(order, orderItem)}
+                                />
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1139,18 +1176,11 @@ export default function BadgeOrdersPage() {
 
                           <ReadyStamp readyToCollect={orderItem.readyToCollect} givenAt={orderItem.givenAt} />
 
-                          {/* Given stamp: the hand-over, an Undo while the order is open, and the history */}
+                          {/* Given stamp: the hand-over and, once something was undone, the history */}
                           <GivenStamp
                             givenAt={orderItem.givenAt}
                             givenBy={orderItem.givenBy}
                             events={orderItem.givenEvents}
-                            itemLabel={orderItem.badgeName}
-                            undoing={undoingGiven === orderItem.id}
-                            onUndo={
-                              !isCompleted && orderItem.givenAt
-                                ? () => handleUndoGiven(order, orderItem)
-                                : undefined
-                            }
                           />
 
                           {/* Order list stamps — added/ordered/received, each its own line so
@@ -1182,6 +1212,7 @@ export default function BadgeOrdersPage() {
                                   </p>
                                 </div>
                               )}
+                              <OrderListHistory events={orderListEntry.history} />
                             </div>
                           )}
 

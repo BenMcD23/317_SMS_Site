@@ -170,4 +170,13 @@ export interface BadgeOrderListEntry {
   orderedBy: string | null;
   receivedAt: string | null;
   receivedBy: string | null;
+  /** Every step and undo, oldest first (the API's LIST_ACTIONS). Missing from older API responses. */
+  history?: OrderListEvent[];
+}
+
+export interface OrderListEvent {
+  id: string;
+  action: "added" | "ordered" | "received" | "ordered_undone" | "received_undone";
+  timestamp: string;
+  by: string | null;
 }

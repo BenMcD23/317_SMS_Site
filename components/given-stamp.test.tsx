@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { GivenStamp } from "@/components/given-stamp";
 import type { GivenEvent } from "@/lib/stores-types";
@@ -20,7 +19,7 @@ const undone = (id: string, by = "QM Jones"): GivenEvent => ({
 });
 
 function renderStamp(props: Partial<React.ComponentProps<typeof GivenStamp>> = {}) {
-  return render(<GivenStamp givenAt="2026-10-01T18:00:00" givenBy="QM Smith" itemLabel="Beret" {...props} />);
+  return render(<GivenStamp givenAt="2026-10-01T18:00:00" givenBy="QM Smith" {...props} />);
 }
 
 describe("GivenStamp", () => {
@@ -29,20 +28,10 @@ describe("GivenStamp", () => {
     expect(screen.getByText(/Given 01 Oct 2026, 18:00/)).toHaveTextContent("QM Smith");
   });
 
-  it("offers Undo only when the order allows it, named for the item", async () => {
-    const onUndo = vi.fn();
-    const { rerender } = renderStamp({ onUndo });
-    await userEvent.click(screen.getByRole("button", { name: "Undo given: Beret" }));
-    expect(onUndo).toHaveBeenCalledTimes(1);
-
-    // A completed order passes no handler, so no button.
-    rerender(<GivenStamp givenAt="2026-10-01T18:00:00" givenBy="QM Smith" itemLabel="Beret" />);
+  // Undo lives on the item's own button now, so the stamp has no controls.
+  it("is a stamp only, with no buttons", () => {
+    renderStamp();
     expect(screen.queryByRole("button")).toBeNull();
-  });
-
-  it("disables Undo while it's being saved so a double click can't undo twice", () => {
-    renderStamp({ onUndo: vi.fn(), undoing: true });
-    expect(screen.getByRole("button", { name: "Undo given: Beret" })).toBeDisabled();
   });
 
   // Until something is undone the history would just repeat the stamp.

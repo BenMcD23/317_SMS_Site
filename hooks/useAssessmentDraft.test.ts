@@ -56,6 +56,31 @@ describe("useAssessmentDraft", () => {
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 
+  // Leaving the page mid-debounce used to leave the timer running: the work
+  // landed late, after a clear on the next visit, or (in tests) in the next test.
+  it("leaving the page saves straight away and leaves no timer behind", () => {
+    const { result, unmount } = renderHook(() =>
+      useAssessmentDraft<Form>("radio", { notes: "" }, "nco@x", meaningful)
+    );
+    act(() => result.current.setState({ notes: "unsaved" }));
+    unmount();
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ notes: "unsaved" });
+    localStorage.clear();
+    act(() => void vi.advanceTimersByTime(1000));
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("leaving the page after a clear doesn't bring the draft back", async () => {
+    const { result, unmount } = renderHook(() =>
+      useAssessmentDraft<Form>("radio", { notes: "" }, "nco@x", meaningful)
+    );
+    act(() => result.current.setState({ notes: "gone" }));
+    await act(() => result.current.clearDraft());
+    unmount();
+    act(() => void vi.advanceTimersByTime(1000));
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+
   it("clearDraft removes the saved copy and cancels a pending save", () => {
     const { result } = renderHook(() =>
       useAssessmentDraft<Form>("radio", { notes: "" }, "nco@x", meaningful)
