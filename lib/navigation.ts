@@ -34,6 +34,7 @@ import {
   Radio,
   ReceiptText,
   Shirt,
+  ScanLine,
   ShieldCheck,
   ShieldUser,
   ShoppingCart,
@@ -217,6 +218,12 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "NCO Team",
     items: [
+      {
+        label: "Check-in",
+        href: "/check-in",
+        icon: ScanLine,
+        keywords: ["door", "tonight", "who's in", "qr code", "nfc", "register", "head count"],
+      },
       { label: "Session Plans", href: "/session-plans", icon: ClipboardList },
       { label: "Holidays", href: "/nco-holidays", icon: CalendarOff, keywords: ["nco holidays", "leave"] },
       // Staff-only (see lib/access.ts); the NCO gets their copy by email.

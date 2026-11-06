@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { AlertTriangle, ClipboardCopy, ListChecks, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardCopy, ListChecks, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
@@ -96,10 +96,19 @@ function CadetRow({
               {cadet.flight}
             </Badge>
           )}
-          {likelihood !== null && (
-            <span className={cn("text-xs", likelihood < UNLIKELY ? "text-warning" : "text-muted-foreground")}>
-              {Math.round(likelihood * 100)}% likely in
+          {cadet.checked_in ? (
+            <span className="text-success flex items-center gap-1 text-xs">
+              <CheckCircle2 className="size-3" aria-hidden />
+              Checked in
             </span>
+          ) : (
+            likelihood !== null && (
+              <span
+                className={cn("text-xs", likelihood < UNLIKELY ? "text-warning" : "text-muted-foreground")}
+              >
+                {Math.round(likelihood * 100)}% likely in
+              </span>
+            )
           )}
         </span>
         {leadership && (
@@ -139,7 +148,10 @@ export function SessionPlanner() {
   const [changeoverText, setChangeover] = useState("5");
   const [standsText, setStands] = useState("3");
   const [flights, setFlights] = useState<string[] | null>(null); // null: every flight
-  const [unticked, setUnticked] = useState<Set<number>>(new Set());
+  // Who's unticked, for the night it was set on. Until someone changes a
+  // tick, a night with door check-ins starts with just those cadets ticked,
+  // and keeps following the door as more arrive.
+  const [touched, setTouched] = useState<{ date: string; unticked: Set<number> } | null>(null);
   const [skipped, setSkipped] = useState<Set<number>>(new Set()); // tasks not used
   const [plan, setPlan] = useState<SessionPlan | null>(null);
   const [planning, setPlanning] = useState(false);
@@ -153,7 +165,8 @@ export function SessionPlanner() {
   const cadetsQuery = useApiQuery<PlannerCadet[]>(
     ["session-planner", "cadets", date],
     `/session-planner/cadets?date=${date}`,
-    { enabled: !!date }
+    // Tonight's door list fills up while the session is planned.
+    { enabled: !!date, refetchInterval: date === todayLocal() ? 30_000 : false }
   );
   const allTasks = useMemo(() => (Array.isArray(tasksQuery.data) ? tasksQuery.data : []), [tasksQuery.data]);
   const roster = useMemo(() => (Array.isArray(cadetsQuery.data) ? cadetsQuery.data : []), [cadetsQuery.data]);
@@ -164,6 +177,11 @@ export function SessionPlanner() {
   const allFlights = flightsIn(roster);
   const pickedFlights = flights ?? allFlights;
   const shown = roster.filter((c) => pickedFlights.includes(c.flight?.trim() ?? ""));
+  const checkedIn = roster.filter((c) => c.checked_in);
+  const unticked =
+    touched?.date === date
+      ? touched.unticked
+      : new Set(checkedIn.length ? roster.filter((c) => !c.checked_in).map((c) => c.cin) : []);
   const ticked = shown.filter((c) => !unticked.has(c.cin));
   const leadership = kind === "leadership";
   const stands = wholeNumber(standsText);
@@ -181,6 +199,10 @@ export function SessionPlanner() {
   };
   const signature = JSON.stringify(request);
   const stale = plan !== null && planFor !== signature;
+
+  function setUnticked(next: Set<number> | ((prev: Set<number>) => Set<number>)) {
+    setTouched({ date, unticked: typeof next === "function" ? next(unticked) : next });
+  }
 
   function toggle(set: Set<number>, id: number): Set<number> {
     const next = new Set(set);
@@ -342,7 +364,10 @@ export function SessionPlanner() {
         </Link>
       </Section>
 
-      <Section title="Cadets" aside={`${ticked.length} ticked`}>
+      <Section
+        title="Cadets"
+        aside={`${ticked.length} ticked${checkedIn.length ? `, ${checkedIn.length} checked in` : ""}`}
+      >
         {allFlights.length > 1 && (
           <ToggleGroup
             type="multiple"
@@ -361,6 +386,16 @@ export function SessionPlanner() {
           </ToggleGroup>
         )}
         <div className="flex flex-wrap gap-2">
+          {checkedIn.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => setUnticked(new Set(roster.filter((c) => !c.checked_in).map((c) => c.cin)))}
+            >
+              Tick checked in
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
