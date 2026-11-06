@@ -45,6 +45,8 @@ import { sendOrQueue } from "@/lib/outbox";
 import { DraftSaveStatus } from "@/components/draft-save-status";
 
 type Comment = { id: string; region: string; type: "fault" | "positive"; text: string };
+// A comment given before, offered as a one-tap pick (GET /inspections/comments).
+type QuickPick = Omit<Comment, "id"> & { count: number };
 // absent: undefined = follow the scraped absence log; true/false = manual override.
 type Mark = { score: string; comments: Comment[]; absent?: boolean };
 type Uniform = "blues" | "mtp";
@@ -94,6 +96,20 @@ const REGIONS_BY_UNIFORM: Record<Uniform, { id: string; top: number; height: num
 
 const emptyMark = (): Mark => ({ score: "", comments: [] });
 
+const pickKey = (c: Omit<Comment, "id">) => `${c.region}|${c.type}|${c.text.trim().toLowerCase()}`;
+
+/** Comments from submitted sheets plus any typed on tonight's sheet, so a new
+ * one is a tap away for the next cadet before the sheet is sent. Most used first. */
+function mergeQuickPicks(past: QuickPick[], tonight: Comment[]): QuickPick[] {
+  const byKey = new Map(past.map((p) => [pickKey(p), { ...p }]));
+  for (const c of tonight) {
+    const hit = byKey.get(pickKey(c));
+    if (hit) hit.count += 1;
+    else byKey.set(pickKey(c), { region: c.region, type: c.type, text: c.text.trim(), count: 1 });
+  }
+  return [...byKey.values()].sort((a, b) => b.count - a.count);
+}
+
 function InspectionFigure({
   comments,
   onAdd,
@@ -101,6 +117,7 @@ function InspectionFigure({
   disabled = false,
   figureSrc,
   regions,
+  quickPicks,
 }: {
   comments: Comment[];
   onAdd: (region: string, type: Comment["type"], text: string) => void;
@@ -108,6 +125,7 @@ function InspectionFigure({
   disabled?: boolean;
   figureSrc: string;
   regions: (typeof REGIONS_BY_UNIFORM)[Uniform];
+  quickPicks: QuickPick[];
 }) {
   return (
     <div className="relative mx-auto w-[200px] select-none" style={{ aspectRatio: "512 / 1536" }}>
@@ -129,6 +147,7 @@ function InspectionFigure({
             faults={faults}
             positives={positives}
             regionComments={regionComments}
+            quickPicks={quickPicks}
             onAdd={onAdd}
             onRemove={onRemove}
             disabled={disabled}
@@ -144,6 +163,7 @@ function RegionButton({
   faults,
   positives,
   regionComments,
+  quickPicks,
   onAdd,
   onRemove,
   disabled = false,
@@ -152,6 +172,7 @@ function RegionButton({
   faults: number;
   positives: number;
   regionComments: Comment[];
+  quickPicks: QuickPick[];
   onAdd: (region: string, type: Comment["type"], text: string) => void;
   onRemove: (id: string) => void;
   disabled?: boolean;
@@ -159,6 +180,20 @@ function RegionButton({
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [type, setType] = useState<Comment["type"]>("fault");
+
+  // This region's picks for the chosen type, narrowed by what's typed, minus
+  // any this cadet already has.
+  const given = new Set(regionComments.map(pickKey));
+  const typed = text.trim().toLowerCase();
+  const picks = quickPicks
+    .filter(
+      (p) =>
+        p.region === region.id &&
+        p.type === type &&
+        !given.has(pickKey(p)) &&
+        p.text.toLowerCase().includes(typed)
+    )
+    .slice(0, 8);
 
   function submit() {
     const t = text.trim();
@@ -248,6 +283,27 @@ function RegionButton({
           </ToggleGroupItem>
         </ToggleGroup>
 
+        {picks.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5" aria-label="Quick picks" role="group">
+            {picks.map((p) => (
+              <Button
+                key={pickKey(p)}
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-auto rounded-full px-2.5 py-1 text-left text-xs whitespace-normal"
+                // Stays open: a region often has more than one fault.
+                onClick={() => {
+                  onAdd(region.id, type, p.text);
+                  setText("");
+                }}
+              >
+                {p.text}
+              </Button>
+            ))}
+          </div>
+        )}
+
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -274,6 +330,7 @@ function CadetCard({
   absenceReason,
   figureSrc,
   regions,
+  quickPicks,
 }: {
   cadet: Cadet;
   mark: Mark;
@@ -282,6 +339,7 @@ function CadetCard({
   absenceReason: string | null;
   figureSrc: string;
   regions: (typeof REGIONS_BY_UNIFORM)[Uniform];
+  quickPicks: QuickPick[];
 }) {
   const faults = mark.comments.filter((c) => c.type === "fault").length;
   const positives = mark.comments.length - faults;
@@ -317,6 +375,7 @@ function CadetCard({
         <InspectionFigure
           figureSrc={figureSrc}
           regions={regions}
+          quickPicks={quickPicks}
           comments={mark.comments}
           onAdd={(region, type, text) =>
             update((m) => ({
@@ -373,6 +432,20 @@ export default function InspectionPage() {
   const figureSrc = UNIFORMS.find((u) => u.id === uniform)?.figure ?? UNIFORMS[0].figure;
   const regions = REGIONS_BY_UNIFORM[uniform];
 
+  const { data: pastComments = [], refetch: refetchQuickPicks } = useApiQuery<QuickPick[]>(
+    // Only this sheet's order of dress: MTP nights get MTP comments, Blues get Blues.
+    ["inspection-comments", uniform],
+    `/inspections/comments?uniform=${uniform}`
+  );
+  const quickPicks = useMemo(
+    () =>
+      mergeQuickPicks(
+        pastComments,
+        Object.values(sheet.marks).flatMap((m) => m.comments)
+      ),
+    [pastComments, sheet.marks]
+  );
+
   const { data: absences = [] } = useApiQuery<Absence[]>(
     ["absences", sheet.date],
     `/absences?date=${sheet.date}`
@@ -416,6 +489,7 @@ export default function InspectionPage() {
         flight_scores: Record<string, FlightScore>;
       };
       setFlightScores(flight_scores);
+      void refetchQuickPicks(); // tonight's comments now come from the server
       if (awol.length) {
         const names = awol
           .map((cin) => cadets.find((c) => c.cin === cin))
@@ -781,6 +855,7 @@ export default function InspectionPage() {
                 absenceReason={absenceByCin.get(selectedCadet.cin)?.reason ?? null}
                 figureSrc={figureSrc}
                 regions={regions}
+                quickPicks={quickPicks}
               />
               <div className="flex gap-2">
                 <Button className="flex-1" onClick={submitCadet}>

@@ -31,6 +31,7 @@ export type GainedWhereOption = { value: string; label: string };
 export type ReferencePayload = {
   uniform: {
     itemTypes: string[];
+    stockItemTypes?: string[];
     noSizeItems: string[];
     sizes: Record<string, string[]>;
     sizingFields: Record<string, string[]>;
@@ -48,7 +49,10 @@ export type ReferencePayload = {
 
 export type Reference = {
   loaded: boolean;
+  /** What cadets can be ordered. Never includes stock-only items such as polos. */
   itemTypes: string[];
+  /** Everything the stores can hold: `itemTypes` plus stock-only items. Use on the stock pages only. */
+  stockItemTypes: string[];
   noSizeItems: Set<string>;
   sizes: Record<string, string[]>;
   sizingFields: Record<string, string[]>;
@@ -63,6 +67,7 @@ export type Reference = {
 const EMPTY: Reference = {
   loaded: false,
   itemTypes: [],
+  stockItemTypes: [],
   noSizeItems: new Set(),
   sizes: {},
   sizingFields: {},
@@ -77,6 +82,7 @@ function normalise(data: ReferencePayload): Reference {
   return {
     loaded: true,
     itemTypes: data.uniform.itemTypes,
+    stockItemTypes: data.uniform.stockItemTypes ?? data.uniform.itemTypes,
     noSizeItems: new Set(data.uniform.noSizeItems),
     sizes: data.uniform.sizes,
     sizingFields: data.uniform.sizingFields,
