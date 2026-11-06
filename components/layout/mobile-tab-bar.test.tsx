@@ -35,10 +35,13 @@ function renderBar(role: string | undefined, path = "/", extra: Partial<FakeSess
   return { nav: screen.getByRole("navigation", { name: "Quick links" }), ...view };
 }
 
+// Shortcuts are links, sections are buttons; in bar order.
 const tabNames = (nav: HTMLElement) =>
   within(nav)
-    .getAllByRole("button")
-    .map((b) => b.textContent);
+    .getAllByRole("listitem")
+    .map((li) => li.textContent)
+    .filter(Boolean)
+    .concat(["Menu"]);
 
 beforeEach(() => {
   vi.stubGlobal("matchMedia", (q: string) => ({
@@ -51,10 +54,25 @@ beforeEach(() => {
 
 describe("mobile tab bar", () => {
   it.each([
-    ["staff", ["Home", "Cadets", "Marking", "NCOs", "Stores", "Comms", "Squadron", "Data", "Menu"]],
-    ["snco", ["Home", "Cadets", "Marking", "NCOs", "Menu"]],
-    ["nco", ["Home", "Cadets", "Marking", "NCOs", "Menu"]],
-  ])("%s gets a tab per section, then Menu", (role, labels) => {
+    [
+      "staff",
+      [
+        "Home",
+        "Check-in",
+        "Orders",
+        "Cadets",
+        "Marking",
+        "NCOs",
+        "Stores",
+        "Comms",
+        "Squadron",
+        "Data",
+        "Menu",
+      ],
+    ],
+    ["snco", ["Home", "Inspect", "Plans", "Cadets", "Marking", "NCOs", "Menu"]],
+    ["nco", ["Home", "Leadership", "Plans", "Cadets", "Marking", "NCOs", "Menu"]],
+  ])("%s gets shortcuts, then a tab per section, then Menu", (role, labels) => {
     expect(tabNames(renderBar(role).nav)).toEqual(labels);
   });
 
@@ -63,9 +81,10 @@ describe("mobile tab bar", () => {
   });
 
   it("marks the current page's section, and only that one", () => {
-    const { nav } = renderBar("staff", "/stores/badges/orders");
+    const { nav } = renderBar("staff", "/stores/badges/stock");
     expect(within(nav).getByRole("button", { name: "Stores" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getAllByRole("button", { current: "page" })).toHaveLength(1);
+    expect(within(nav).queryByRole("link", { current: "page" })).not.toBeInTheDocument();
   });
 
   it("marks nothing on a page in no section", () => {
@@ -163,15 +182,36 @@ describe("mobile tab bar", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("OC pages only show in the OC's Home sheet", async () => {
-    const { nav, unmount } = renderBar("staff");
-    await userEvent.click(within(nav).getByRole("button", { name: "Home" }));
-    expect(screen.queryByRole("link", { name: "Leaving Process" })).not.toBeInTheDocument();
-    unmount();
+  it.each([
+    ["staff", "/", "Home", "/"],
+    ["staff", "/check-in", "Check-in", "/check-in"],
+    ["nco", "/session-plans/4", "Plans", "/session-plans"],
+  ])("%s's %s shortcut is a one-tap link that lights on its own page", (role, path, label, href) => {
+    const { nav } = renderBar(role, path);
+    const link = within(nav).getByRole("link", { name: label });
+    expect(link).toHaveAttribute("href", href);
+    expect(link).toHaveAttribute("aria-current", "page");
+  });
 
-    const oc = renderBar("staff", "/", { is_oc: true });
-    await userEvent.click(within(oc.nav).getByRole("button", { name: "Home" }));
-    expect(screen.getByRole("link", { name: "Leaving Process" })).toHaveAttribute("href", "/oc/leaving");
+  it("on a shortcut's page the shortcut lights, not the section it's also in", () => {
+    const { nav } = renderBar("staff", "/stores/uniform/orders");
+    expect(within(nav).getByRole("link", { name: "Orders" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("button", { name: "Stores" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("an NCO's marking shortcut opens a sheet they can use", () => {
+    const { nav } = renderBar("nco");
+    expect(within(nav).getByRole("link", { name: "Leadership" })).toHaveAttribute(
+      "href",
+      "/assessments/leadership"
+    );
+  });
+
+  it("tapping a shortcut closes an open sheet", async () => {
+    const { nav } = renderBar("staff");
+    await userEvent.click(within(nav).getByRole("button", { name: "Comms" }));
+    await userEvent.click(within(nav).getByRole("link", { name: "Home" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("Menu opens the full sidebar and closes any open sheet", async () => {

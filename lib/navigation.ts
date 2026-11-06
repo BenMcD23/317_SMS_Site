@@ -483,6 +483,57 @@ export function activeMobileSection(pathname: string, tabs: MobileSection[]): Mo
   return parent && pathname !== parent[1] ? activeMobileSection(parent[1], tabs) : null;
 }
 
+/**
+ * The pages each role goes to most on parade night, pinned at the start of the
+ * phone bar as plain links: one tap, no sheet. Sections follow them for
+ * everything else. `match` widens what lights the shortcut (any order page
+ * lights "Orders"); the longest match wins.
+ */
+export type MobileShortcut = { label: string; href: string; icon: LucideIcon; match: string[] };
+
+const HOME: MobileShortcut = { label: "Home", href: "/", icon: LayoutDashboard, match: [] };
+const CHECK_IN: MobileShortcut = { label: "Check-in", href: "/check-in", icon: ScanLine, match: [] };
+const PLANS: MobileShortcut = {
+  label: "Plans",
+  href: "/session-plans",
+  icon: ClipboardList,
+  match: ["/session-plans"],
+};
+
+const MOBILE_SHORTCUTS: Record<"staff" | "snco" | "nco", MobileShortcut[]> = {
+  staff: [
+    HOME,
+    CHECK_IN,
+    {
+      label: "Orders",
+      href: "/stores/uniform/orders",
+      icon: ShoppingCart,
+      match: ["/stores/badges/orders"],
+    },
+  ],
+  // SNCOs run inspections; NCOs can't, so theirs opens on leadership.
+  snco: [HOME, { label: "Inspect", href: "/assessments/inspection", icon: Shirt, match: [] }, PLANS],
+  nco: [HOME, { label: "Leadership", href: "/assessments/leadership", icon: Star, match: [] }, PLANS],
+};
+
+/** A role's shortcuts, minus any it can't reach (the same rule as the sidebar). */
+export function mobileShortcutsFor(role: string | undefined): MobileShortcut[] {
+  const tabs = MOBILE_SHORTCUTS[role as keyof typeof MOBILE_SHORTCUTS] ?? [HOME];
+  return tabs.filter((t) => canAccess(role, t.href));
+}
+
+/** Which shortcut the current page is, or null (it's in a section instead). */
+export function activeMobileShortcut(pathname: string, tabs: MobileShortcut[]): MobileShortcut | null {
+  let best: { tab: MobileShortcut; len: number } | null = null;
+  for (const tab of tabs) {
+    for (const prefix of [tab.href, ...tab.match]) {
+      if (!isLinkActive(pathname, prefix)) continue;
+      if (!best || prefix.length > best.len) best = { tab, len: prefix.length };
+    }
+  }
+  return best?.tab ?? null;
+}
+
 export function isGroup(item: NavItem): item is NavGroup {
   return item.kind === "group";
 }

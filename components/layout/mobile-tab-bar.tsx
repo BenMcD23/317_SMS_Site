@@ -10,9 +10,11 @@ import { ChevronRight, Menu } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
   activeMobileSection,
+  activeMobileShortcut,
   isGroup,
   isLinkActive,
   mobileSectionsFor,
+  mobileShortcutsFor,
   type MobileSection,
   type NavLink,
 } from "@/lib/navigation";
@@ -22,10 +24,11 @@ const TAB =
   "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors";
 
 /**
- * Bottom bar on a phone, where the thumb is. One tab per sidebar section
- * (lib/navigation.ts `mobileSectionsFor`), scrolling sideways when they don't
- * all fit; tapping one opens that section's pages in a sheet just above the
- * bar. The bar stays live while the sheet is open, so a wrong section is fixed
+ * Bottom bar on a phone, where the thumb is. It starts with the role's
+ * parade-night shortcuts (lib/navigation.ts `mobileShortcutsFor`), plain links
+ * a single tap away, then one tab per sidebar section (`mobileSectionsFor`),
+ * all in one strip that scrolls sideways when it doesn't fit. Tapping a
+ * section opens its pages in a sheet just above the bar. The bar stays live while the sheet is open, so a wrong section is fixed
  * with one more tap rather than close-and-retry. "Menu" stays pinned at the
  * end for the account menu and anything else the full sidebar holds. Hidden
  * from md up, where the sidebar is always on screen.
@@ -34,8 +37,15 @@ export function MobileTabBar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { setOpenMobile, openMobile } = useSidebar();
-  const tabs = mobileSectionsFor(session?.role, session?.user?.email ?? undefined, session?.is_oc);
-  const active = activeMobileSection(pathname, tabs);
+  const shortcuts = mobileShortcutsFor(session?.role);
+  // The unnamed first section (dashboard, stats, OC) is mostly the Home
+  // shortcut already; the rest of it is in Menu, and Stats is on the dashboard.
+  const tabs = mobileSectionsFor(session?.role, session?.user?.email ?? undefined, session?.is_oc).filter(
+    (t) => t.section.label
+  );
+  // A shortcut beats its section: on Orders, "Orders" lights, not "Stores".
+  const activeShortcut = activeMobileShortcut(pathname, shortcuts);
+  const active = activeShortcut ? null : activeMobileSection(pathname, tabs);
   const [openLabel, setOpenLabel] = useState<string | null>(null);
   const open = tabs.find((t) => t.label === openLabel) ?? null;
 
@@ -64,7 +74,27 @@ export function MobileTabBar() {
         aria-label="Quick links"
         className="no-print bg-background/95 supports-[backdrop-filter]:bg-background/85 fixed inset-x-0 bottom-0 z-40 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <SectionScroller activeLabel={active?.label}>
+        <SectionScroller activeKey={activeShortcut ? `link:${activeShortcut.href}` : active?.label}>
+          {shortcuts.map((tab) => {
+            const current = tab === activeShortcut;
+            return (
+              <li key={tab.href} className="flex-none snap-start" data-tab={`link:${tab.href}`}>
+                <Link
+                  href={tab.href}
+                  onClick={() => setOpenLabel(null)}
+                  aria-current={current ? "page" : undefined}
+                  className={cn(TAB, "w-[4.5rem]", current ? "text-primary" : "text-muted-foreground")}
+                >
+                  <tab.icon className="size-5" aria-hidden />
+                  {tab.label}
+                </Link>
+              </li>
+            );
+          })}
+          {shortcuts.length > 0 && tabs.length > 0 && (
+            // Splits one-tap links from tabs that open a sheet.
+            <li aria-hidden className="bg-border my-3 w-px flex-none" />
+          )}
           {tabs.map((tab) => {
             const current = tab === active;
             const expanded = tab === open;
@@ -109,11 +139,11 @@ export function MobileTabBar() {
 }
 
 /**
- * The sideways-scrolling strip of section tabs. Fades whichever edge has more
+ * The sideways-scrolling strip of shortcuts and section tabs. Fades whichever edge has more
  * tabs past it, so a cut-off row reads as "scroll me" rather than "that's all",
  * and starts scrolled to the current page's section so it's never off screen.
  */
-function SectionScroller({ activeLabel, children }: { activeLabel?: string; children: React.ReactNode }) {
+function SectionScroller({ activeKey, children }: { activeKey?: string; children: React.ReactNode }) {
   const ref = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false });
 
@@ -128,11 +158,11 @@ function SectionScroller({ activeLabel, children }: { activeLabel?: string; chil
 
   useLayoutEffect(() => {
     const el = ref.current;
-    const tab = activeLabel ? el?.querySelector(`[data-tab="${CSS.escape(activeLabel)}"]`) : null;
+    const tab = activeKey ? el?.querySelector(`[data-tab="${CSS.escape(activeKey)}"]`) : null;
     // jsdom has no scrollIntoView; there's nothing to scroll there anyway.
     tab?.scrollIntoView?.({ inline: "center", block: "nearest" });
     measure();
-  }, [activeLabel, measure]);
+  }, [activeKey, measure]);
 
   useEffect(() => {
     const el = ref.current;

@@ -11,8 +11,10 @@ import {
   isGroup,
   isGroupActive,
   activeMobileSection,
+  activeMobileShortcut,
   isLinkActive,
   mobileSectionsFor,
+  mobileShortcutsFor,
   sectionLinks,
   NAV_SECTIONS,
   visibleSections,
@@ -244,5 +246,49 @@ describe("mobile tab bar", () => {
     expect(activeMobileSection("/staff/42", tabs)?.label).toBe("Home");
     // Without the OC flag the staff list isn't theirs, so a staff record lights nothing.
     expect(activeMobileSection("/staff/42", mobileSectionsFor("staff", undefined))).toBeNull();
+  });
+});
+
+describe("mobile bar shortcuts", () => {
+  const labels = (role: string | undefined) => mobileShortcutsFor(role).map((t) => t.label);
+
+  it.each([
+    ["staff", ["Home", "Check-in", "Orders"]],
+    ["snco", ["Home", "Inspect", "Plans"]],
+    ["nco", ["Home", "Leadership", "Plans"]],
+  ])("%s gets its parade-night shortcuts", (role, expected) => {
+    expect(labels(role)).toEqual(expected);
+  });
+
+  it("a signed-out or unknown role gets only Home", () => {
+    expect(labels(undefined)).toEqual(["Home"]);
+    expect(labels("cadet")).toEqual(["Home"]);
+  });
+
+  it.each(["staff", "snco", "nco"])("every %s shortcut is a real page the role can open", (role) => {
+    for (const tab of mobileShortcutsFor(role)) {
+      expect(canAccess(role, tab.href), tab.href).toBe(true);
+      expect(fs.existsSync(path.join(process.cwd(), "app", tab.href, "page.tsx")), tab.href).toBe(true);
+    }
+  });
+
+  it("no shortcut shares a name with a section tab, so the bar never shows two of one word", () => {
+    const sections = NAV_SECTIONS.filter((s) => s.label).map((s) => s.tab.label);
+    for (const role of ["staff", "snco", "nco"]) {
+      for (const label of labels(role)) expect(sections, `${role}: ${label}`).not.toContain(label);
+    }
+  });
+
+  it.each([
+    ["staff", "/", "Home"],
+    ["staff", "/check-in", "Check-in"],
+    ["staff", "/stores/badges/orders", "Orders"],
+    // Stock is in the Stores section, not the Orders shortcut.
+    ["staff", "/stores/uniform/stock", null],
+    ["nco", "/session-plans/12", "Plans"],
+    ["nco", "/assessments/radio", null],
+    ["snco", "/assessments/inspection", "Inspect"],
+  ])("%s on %s lights shortcut %s", (role, pathname, expected) => {
+    expect(activeMobileShortcut(pathname, mobileShortcutsFor(role))?.label ?? null).toBe(expected);
   });
 });
