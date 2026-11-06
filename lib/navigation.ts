@@ -4,6 +4,7 @@ import {
   BadgeCheck,
   Bot,
   BookOpen,
+  Building2,
   Calendar,
   CalendarCheck,
   CalendarOff,
@@ -86,6 +87,9 @@ export type NavItem = NavLink | NavGroup;
 
 export type NavSection = {
   label?: string;
+  /** How the section shows on the phone's bottom bar: a short name that fits
+   *  under an icon ("NCO Team" is "NCOs"), since the bar has no room for more. */
+  tab: { label: string; icon: LucideIcon };
   ownerOnly?: boolean;
   ocOnly?: boolean;
   items: NavItem[];
@@ -93,6 +97,7 @@ export type NavSection = {
 
 export const NAV_SECTIONS: NavSection[] = [
   {
+    tab: { label: "Home", icon: LayoutDashboard },
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard },
       {
@@ -148,6 +153,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Cadets",
+    tab: { label: "Cadets", icon: Users },
     items: [
       { label: "Overview", href: "/cadets/overview", icon: Users, keywords: ["cadet list", "roll"] },
       // Staff-only (see lib/access.ts): parents' and medical details.
@@ -207,6 +213,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Marking Sheets",
+    tab: { label: "Marking", icon: ClipboardCheck },
     items: [
       { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
@@ -217,6 +224,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "NCO Team",
+    tab: { label: "NCOs", icon: UserCheck },
     items: [
       {
         label: "Check-in",
@@ -235,6 +243,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Stores",
+    tab: { label: "Stores", icon: Package },
     items: [
       {
         kind: "group",
@@ -293,6 +302,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Comms",
+    tab: { label: "Comms", icon: MessageSquareText },
     items: [
       {
         label: "Parade Night Texts",
@@ -319,6 +329,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Squadron",
+    tab: { label: "Squadron", icon: Building2 },
     items: [
       // Staff-only (see lib/access.ts), as the API requires.
       {
@@ -405,6 +416,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     label: "Data",
+    tab: { label: "Data", icon: DatabaseZap },
     items: [
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap, keywords: ["sync", "import"] },
       { label: "Backups", href: "/backups", icon: DatabaseBackup, ownerOnly: true },
@@ -420,54 +432,55 @@ export const NAV_SECTIONS: NavSection[] = [
 ];
 
 /**
- * The bottom tab bar on a phone: the few places each role goes on parade
- * night, one thumb-tap away. Everything else stays in the sidebar, which the
- * bar's "More" tab opens. `match` widens what lights the tab up (any page under
- * /stores lights "Orders"); the longest match wins, so an NCO on
- * /cadets/assessments sees "Results", not nothing.
+ * The bottom bar on a phone: one tab per sidebar section, scrolling sideways
+ * when they don't fit. Tapping one opens that section's pages in a sheet just
+ * above the bar, so every page is two taps away and none is buried in a long
+ * menu. Built from `visibleSections`, so it can never offer a page the sidebar
+ * (and the middleware) wouldn't.
  */
-export type MobileTab = { label: string; href: string; icon: LucideIcon; match: string[] };
+export type MobileSection = { label: string; icon: LucideIcon; section: NavSection };
 
-const HOME: MobileTab = { label: "Home", href: "/", icon: LayoutDashboard, match: [] };
+const KNOWN_ROLES = ["staff", "snco", "nco"];
 
-const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
-  staff: [
-    HOME,
-    { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits", "/training"] },
-    { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
-    { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart, match: ["/stores"] },
-  ],
-  // SNCOs run inspections, so the marking tab opens on that sheet.
-  snco: [
-    HOME,
-    { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
-    { label: "Plans", href: "/session-plans", icon: ClipboardList, match: ["/session-plans"] },
-    { label: "Results", href: "/cadets/assessments", icon: Award, match: ["/cadets/assessments"] },
-  ],
-  nco: [
-    HOME,
-    { label: "Marking", href: "/assessments/leadership", icon: ClipboardCheck, match: ["/assessments"] },
-    { label: "Plans", href: "/session-plans", icon: ClipboardList, match: ["/session-plans"] },
-    { label: "Results", href: "/cadets/assessments", icon: Award, match: ["/cadets/assessments"] },
-  ],
-};
-
-/** The tabs for a role, minus any it can't reach (the same rule as the sidebar). */
-export function mobileTabsFor(role: string | undefined): MobileTab[] {
-  const tabs = MOBILE_TABS[role as keyof typeof MOBILE_TABS] ?? [HOME];
-  return tabs.filter((t) => canAccess(role, t.href));
+export function mobileSectionsFor(
+  role: string | undefined,
+  email: string | undefined,
+  oc = false
+): MobileSection[] {
+  const sections = visibleSections(role, email, oc);
+  // Before the session loads (or for a role with no SMS access) the sidebar
+  // would show the NCO set, which might bounce; the bar offers only the
+  // dashboard until it knows who's holding the phone.
+  if (!KNOWN_ROLES.includes(role ?? "")) {
+    const home = sections[0];
+    return [
+      { ...home.tab, section: { ...home, items: home.items.filter((i) => !isGroup(i) && i.href === "/") } },
+    ];
+  }
+  return sections.map((section) => ({ ...section.tab, section }));
 }
 
-/** Which tab the current page belongs to, or null (the page lives under "More"). */
-export function activeMobileTab(pathname: string, tabs: MobileTab[]): MobileTab | null {
-  let best: { tab: MobileTab; len: number } | null = null;
+/** Every link in a section, groups opened out, for matching and for the sheet. */
+export function sectionLinks(section: NavSection): NavLink[] {
+  return section.items.flatMap((item) => (isGroup(item) ? item.links : [item]));
+}
+
+/**
+ * Which section the current page is in, or null (Settings lives in none). The
+ * deepest matching link wins, so /oc/custom is OC's, not the dashboard's, and
+ * record pages beside their list (/cadets/1234) count as the list's section.
+ */
+export function activeMobileSection(pathname: string, tabs: MobileSection[]): MobileSection | null {
+  let best: { tab: MobileSection; len: number } | null = null;
   for (const tab of tabs) {
-    for (const prefix of [tab.href, ...tab.match]) {
-      if (!isLinkActive(pathname, prefix)) continue;
-      if (!best || prefix.length > best.len) best = { tab, len: prefix.length };
+    for (const link of sectionLinks(tab.section)) {
+      if (!isLinkActive(pathname, link.href, link.exact)) continue;
+      if (!best || link.href.length > best.len) best = { tab, len: link.href.length };
     }
   }
-  return best?.tab ?? null;
+  if (best) return best.tab;
+  const parent = DETAIL_PARENTS.find(([prefix]) => pathname.startsWith(prefix));
+  return parent && pathname !== parent[1] ? activeMobileSection(parent[1], tabs) : null;
 }
 
 export function isGroup(item: NavItem): item is NavGroup {
