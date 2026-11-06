@@ -36,10 +36,20 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
+const SECTIONS = [
+  { id: null, name: "Badges", built_in: true, can_add: true, subjects: 1 },
+  { id: null, name: "Leading", built_in: true, can_add: false, subjects: 1 },
+];
+
+/** `response` answers the codes; sections and added subjects have their own. */
 function renderTab(response: () => Response = () => json(CODES)) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => response())
+    vi.fn(async (url: string) => {
+      if (String(url).includes("/cadets/theory/sections")) return json(SECTIONS);
+      if (String(url).includes("/cadets/theory/subjects")) return json([]);
+      return response();
+    })
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(

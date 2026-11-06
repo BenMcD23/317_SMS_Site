@@ -12,9 +12,18 @@ import { cn } from "@/lib/utils";
 
 /**
  * A subject's lessons as a row of pips: filled for each lesson had. Taught
- * (every lesson in, exam to sit) turns them amber; passed is a green tick.
+ * (every lesson in, exam to sit) turns them amber; passed is a green tick. A
+ * subject staff added has no exam (`exam` false), so it never goes amber.
  */
-export function LessonPips({ progress, parts }: { progress: SubjectProgress; parts: number }) {
+export function LessonPips({
+  progress,
+  parts,
+  exam = true,
+}: {
+  progress: SubjectProgress;
+  parts: number;
+  exam?: boolean;
+}) {
   if (progress.passed) {
     return (
       <span className="text-success inline-flex items-center gap-1 text-xs font-medium">
@@ -36,7 +45,7 @@ export function LessonPips({ progress, parts }: { progress: SubjectProgress; par
           className={cn(
             "h-2 w-4 rounded-full transition-colors",
             progress.lessons.includes(i + 1)
-              ? progress.taught
+              ? progress.taught && exam
                 ? "bg-warning"
                 : "bg-primary"
               : "bg-muted-foreground/20"
@@ -64,13 +73,14 @@ export function LessonCell({
   onChange: (part: number | undefined, completed: boolean) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
-  const label = `${cadetName}, ${subject.name}: ${progressLabel(progress, subject.parts)}`;
+  const exam = !subject.custom;
+  const label = `${cadetName}, ${subject.name}: ${progressLabel(progress, subject.parts, exam)}`;
 
   // Already passed: nothing to record, so no menu to open.
   if (progress.passed) {
     return (
       <span title={label} aria-label={label} role="img" className="inline-flex">
-        <LessonPips progress={progress} parts={subject.parts} />
+        <LessonPips progress={progress} parts={subject.parts} exam={exam} />
       </span>
     );
   }
@@ -91,10 +101,10 @@ export function LessonCell({
         <button
           type="button"
           aria-label={label}
-          title={progressLabel(progress, subject.parts)}
+          title={progressLabel(progress, subject.parts, exam)}
           className="hover:bg-muted focus-visible:ring-ring/50 inline-flex h-8 items-center rounded-md px-2 outline-none focus-visible:ring-[3px]"
         >
-          <LessonPips progress={progress} parts={subject.parts} />
+          <LessonPips progress={progress} parts={subject.parts} exam={exam} />
         </button>
       </PopoverTrigger>
       <PopoverContent align="center" className="flex w-60 flex-col gap-3">
