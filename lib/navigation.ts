@@ -158,11 +158,29 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["results"] },
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
+      // Staff-only (see lib/access.ts). Classification lessons, practical
+      // sessions, theory progress, the task bank and the lesson QR codes.
       {
-        label: "Classifications",
-        href: "/cadets/classifications",
+        label: "Training",
+        href: "/training",
         icon: GraduationCap,
-        keywords: ["exams", "lesson plan", "theory", "classification day", "qr code", "lessons"],
+        keywords: [
+          "classifications",
+          "classification day",
+          "exams",
+          "theory",
+          "lessons",
+          "lesson plan",
+          "qr code",
+          "session planner",
+          "sessions",
+          "leadership tasks",
+          "command tasks",
+          "task bank",
+          "kit list",
+          "rotation",
+          "stands",
+        ],
       },
       { label: "Events", href: "/cadets/events", icon: Calendar },
       // Staff-only (see lib/access.ts).
@@ -408,7 +426,7 @@ const HOME: MobileTab = { label: "Home", href: "/", icon: LayoutDashboard, match
 const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
   staff: [
     HOME,
-    { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits"] },
+    { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits", "/training"] },
     { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
     { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart, match: ["/stores"] },
   ],

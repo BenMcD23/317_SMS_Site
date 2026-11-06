@@ -1,14 +1,19 @@
 /**
- * Theory lessons on the Classifications page — the shapes /cadets/theory/*
+ * Theory lessons in Training — the shapes /cadets/theory/*
  * sends, and the rules for who still has a subject to do and where a lesson's
  * QR code points. Kept out of the page so they're tested on their own.
  */
 
+import { z } from "zod";
+
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE, PORTAL_URL } from "@/lib/config";
 
-/** A subject and how many lessons it's taught over (3 for classification, 1 for badge theory). */
-export type TheorySubject = { key: string; name: string; category: string; parts: number };
+/**
+ * A subject and how many lessons it's taught over (3 for classification, 1 for
+ * badge theory). `custom` is one staff added, rather than the built-in syllabus.
+ */
+export type TheorySubject = { key: string; name: string; category: string; parts: number; custom?: boolean };
 
 export type SubjectProgress = {
   /** Lesson numbers had, ascending. */
@@ -38,14 +43,19 @@ export function progressOf(cadet: CadetProgress, key: string): SubjectProgress {
   return cadet.subjects[key] ?? NOT_STARTED;
 }
 
+const BUILT_IN_ORDER = ["Leading", "Senior/Master", "Badges"];
+
 /**
  * Categories for the page's tabs and lists: the classification subjects first,
- * as they're what the page is mostly for, then badge theory. Otherwise in the
- * API's order.
+ * as they're what the page is mostly for, then badge theory, then sections
+ * staff added, in the API's order.
  */
 export function categoriesOf(subjects: Pick<TheorySubject, "category">[]): string[] {
   const all = [...new Set(subjects.map((s) => s.category))];
-  return [...all.filter((c) => c !== "Badges"), ...all.filter((c) => c === "Badges")];
+  return [
+    ...BUILT_IN_ORDER.filter((c) => all.includes(c)),
+    ...all.filter((c) => !BUILT_IN_ORDER.includes(c)),
+  ];
 }
 
 // Classification ladder, lowest first; mirrors CLASSIFICATION_ORDER in the API's
@@ -78,10 +88,14 @@ export function stillToDo(cadet: CadetProgress, subjects: TheorySubject[]): bool
   return subjects.some((s) => progressOf(cadet, s.key).lessons.length > 0);
 }
 
-/** "2 of 3 lessons", "Taught", "Passed" — what a progress cell says to a screen reader and on hover. */
-export function progressLabel(progress: SubjectProgress, parts: number): string {
+/**
+ * "2 of 3 lessons", "Taught", "Passed" — what a progress cell says to a screen
+ * reader and on hover. `exam` is false for a subject staff added, which has none.
+ */
+export function progressLabel(progress: SubjectProgress, parts: number, exam = true): string {
   if (progress.passed) return "Passed";
-  if (progress.taught) return "Taught, exam to sit";
+  // A subject staff added has no exam: every lesson in is the end of it.
+  if (progress.taught) return exam ? "Taught, exam to sit" : "All lessons had";
   if (!progress.lessons.length) return "Not started";
   return parts === 1 ? "Done" : `Lessons ${progress.lessons.join(", ")} of ${parts}`;
 }
@@ -116,6 +130,8 @@ export const THEORY_KEYS = {
   subjects: ["theory", "lessons"],
   progress: ["theory", "progress"],
   codes: ["theory", "qr-codes"],
+  sections: ["theory", "sections"],
+  custom: ["theory", "custom-subjects"],
   plan: ["classification-day"],
 } as const;
 
@@ -134,5 +150,89 @@ export function markLessons(
     `${API_BASE}/cadets/theory/mark`,
     { method: "POST", body: { cadet_cins: cadetCins, lessons, completed } },
     "Couldn't save the lessons."
+  );
+}
+
+// ── sections and subjects staff add ───────────────────────────────────────────
+
+/** A heading on the QR codes page. Built-in ones can't be renamed; `can_add` is false for the classification syllabus. */
+export type TheorySection = {
+  id: number | null;
+  name: string;
+  built_in: boolean;
+  can_add: boolean;
+  subjects: number;
+};
+
+/** A subject staff added, retired ones too. `used` means lessons are recorded on it: retire, don't delete. */
+export type CustomSubject = {
+  key: string;
+  name: string;
+  category: string;
+  parts: number;
+  active: boolean;
+  codes: { part: number; code: string }[];
+  used: boolean;
+};
+
+/** Must match MAX_PARTS in the API's core/theory_catalogue.py. */
+export const MAX_LESSONS = 10;
+
+export const sectionSchema = z.object({
+  name: z.string().trim().min(1, "Give the section a name").max(60, "60 characters at most"),
+});
+export type SectionForm = z.infer<typeof sectionSchema>;
+
+/** The subject form. An edit can't go below the lessons it already has: their codes may be printed. */
+export function subjectSchema(minLessons = 1) {
+  return z.object({
+    name: z.string().trim().min(1, "Give it a name").max(120, "120 characters at most"),
+    section: z.string().min(1, "Choose a section"),
+    parts: z
+      .number({ error: "Enter how many lessons" })
+      .int("Whole lessons only")
+      .min(minLessons, minLessons > 1 ? `At least ${minLessons}: those codes may be printed` : "At least 1")
+      .max(MAX_LESSONS, `${MAX_LESSONS} at most`),
+    active: z.boolean(),
+  });
+}
+export type SubjectForm = z.infer<ReturnType<typeof subjectSchema>>;
+
+const THEORY = `${API_BASE}/cadets/theory`;
+
+export function saveSection(token: string, values: SectionForm, id?: number): Promise<TheorySection> {
+  const body = { name: values.name.trim() };
+  return id === undefined
+    ? apiRequest(token, `${THEORY}/sections`, { method: "POST", body }, "Couldn't add the section.")
+    : apiRequest(token, `${THEORY}/sections/${id}`, { method: "PUT", body }, "Couldn't rename the section.");
+}
+
+export function deleteSection(token: string, id: number): Promise<void> {
+  return apiRequest(token, `${THEORY}/sections/${id}`, { method: "DELETE" }, "Couldn't delete the section.");
+}
+
+export function saveSubject(token: string, values: SubjectForm, key?: string): Promise<CustomSubject> {
+  const body = {
+    name: values.name.trim(),
+    section: values.section,
+    parts: values.parts,
+    active: values.active,
+  };
+  return key === undefined
+    ? apiRequest(token, `${THEORY}/subjects`, { method: "POST", body }, "Couldn't add the QR codes.")
+    : apiRequest(
+        token,
+        `${THEORY}/subjects/${encodeURIComponent(key)}`,
+        { method: "PUT", body },
+        "Couldn't save."
+      );
+}
+
+export function deleteSubject(token: string, key: string): Promise<void> {
+  return apiRequest(
+    token,
+    `${THEORY}/subjects/${encodeURIComponent(key)}`,
+    { method: "DELETE" },
+    "Couldn't delete it."
   );
 }

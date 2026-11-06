@@ -251,7 +251,7 @@ function count(groups: { id: string; cadets: unknown[] }[], match: (id: string) 
 
 /**
  * Who sits which exam and who has which lesson on a classification night, from
- * the Volunteer Portal exams and the lessons recorded on the Progress tab, with
+ * the Volunteer Portal exams and the lessons recorded on Theory progress, with
  * anyone unlikely to be in flagged.
  */
 export function ClassificationPlanner() {

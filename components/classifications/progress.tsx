@@ -171,7 +171,8 @@ export function TheoryProgress({ subjects }: { subjects: TheorySubject[] }) {
                 <TableRow className="bg-muted hover:bg-muted">
                   <TableHead className="bg-muted sticky left-0 z-10 min-w-44 pl-4">Cadet</TableHead>
                   {columns.map((s) => {
-                    const taught = rows.filter((c) => progressOf(c, s.key).taught).length;
+                    // Only syllabus subjects have an exam to sit.
+                    const taught = s.custom ? 0 : rows.filter((c) => progressOf(c, s.key).taught).length;
                     return (
                       <TableHead key={s.key} className="h-auto min-w-28 py-2 text-center align-bottom">
                         <span className="block text-xs leading-tight font-medium whitespace-normal">

@@ -5,7 +5,6 @@ import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +19,7 @@ import { DraftSaveStatus } from "@/components/draft-save-status";
 import { SavedHeading } from "@/components/assessments/saved-heading";
 
 import { CadetSearchInput } from "@/components/cadet-search";
+import { LeadershipTaskField } from "@/components/assessments/leadership-task-field";
 import { AssessorCard } from "@/components/assessments/assessor-card";
 import { SectionHeading } from "@/components/section-heading";
 import { todayLocal } from "@/lib/format";
@@ -122,6 +122,8 @@ function ScoreSelector({
 type FormState = {
   cadetCin: number | null;
   cadetName: string;
+  /** The bank task picked; null for a typed exercise. Missing from drafts saved before the bank. */
+  taskId?: number | null;
   exerciseNo: string;
   exerciseName: string;
   scores: Record<number, number | null>;
@@ -134,6 +136,7 @@ type FormState = {
 const initialState = (): FormState => ({
   cadetCin: null,
   cadetName: "",
+  taskId: null,
   exerciseNo: "",
   exerciseName: "",
   scores: Object.fromEntries(QUESTIONS.map((q) => [q.id, null])),
@@ -196,8 +199,9 @@ export default function LeadershipAssessmentPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.cadetCin || !form.exerciseNo || !form.exerciseName) {
-      setError("Please select a cadet from the search results and fill in exercise details.");
+    const hasExercise = form.taskId != null || (!!form.exerciseNo && !!form.exerciseName);
+    if (!form.cadetCin || !hasExercise) {
+      setError("Please select a cadet from the search results and choose the task.");
       return;
     }
     if (!allAnswered) {
@@ -220,6 +224,7 @@ export default function LeadershipAssessmentPage() {
       const payload = {
         cadet_cin: form.cadetCin,
         cadet_name: form.cadetName,
+        task_id: form.taskId ?? null,
         exercise_no: form.exerciseNo,
         exercise_name: form.exerciseName,
         scores: form.scores,
@@ -409,24 +414,17 @@ export default function LeadershipAssessmentPage() {
                   onSelect={(cin, name) => setForm((f) => ({ ...f, cadetCin: cin || null, cadetName: name }))}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="exerciseNo">Exercise No.</Label>
-                <Input
-                  id="exerciseNo"
-                  placeholder="e.g. 3"
-                  value={form.exerciseNo}
-                  onChange={(e) => setForm((f) => ({ ...f, exerciseNo: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="exerciseName">Exercise Name</Label>
-                <Input
-                  id="exerciseName"
-                  placeholder="e.g. River Crossing"
-                  value={form.exerciseName}
-                  onChange={(e) => setForm((f) => ({ ...f, exerciseName: e.target.value }))}
-                />
-              </div>
+              <LeadershipTaskField
+                idPrefix="leadership"
+                cin={form.cadetCin}
+                cadetName={form.cadetName}
+                value={{
+                  taskId: form.taskId ?? null,
+                  exerciseNo: form.exerciseNo,
+                  exerciseName: form.exerciseName,
+                }}
+                onChange={(ex) => setForm((f) => ({ ...f, ...ex }))}
+              />
             </CardContent>
           </Card>
 

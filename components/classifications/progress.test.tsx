@@ -77,7 +77,7 @@ const posts = (fetchMock: ReturnType<typeof api>) =>
     .filter(([, init]) => init?.method === "POST")
     .map(([, init]) => JSON.parse(String(init!.body)));
 
-describe("Progress tab", () => {
+describe("Theory progress", () => {
   it("opens on the Leading subjects with each cadet's lessons, hiding who's passed or not on them", async () => {
     api();
     renderTab();
@@ -193,5 +193,44 @@ describe("Progress tab", () => {
     renderTab();
     const empty = await screen.findByText("Nobody here");
     expect(within(empty.parentElement!.parentElement!).getByText(/Try Everyone/)).toBeVisible();
+  });
+});
+
+describe("Theory progress for a subject staff added", () => {
+  it("shows its section, and every lesson in as done rather than an exam to sit", async () => {
+    const shelter = {
+      key: "custom_shelter",
+      name: "Shelter Building",
+      category: "Fieldcraft",
+      parts: 2,
+      custom: true,
+    };
+    api({
+      progress: () =>
+        json([
+          cadet(1, "Halfway", {
+            subjects: { custom_shelter: { lessons: [1], taught: false, passed: false } },
+          }),
+          cadet(2, "Ready", {
+            subjects: { custom_shelter: { lessons: [1, 2], taught: true, passed: false } },
+          }),
+        ]),
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <TheoryProgress subjects={[...SUBJECTS, shelter]} />
+      </QueryClientProvider>
+    );
+    await userEvent.click(await screen.findByRole("radio", { name: "Fieldcraft" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Everyone" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Sam Ready, Shelter Building: All lessons had" })
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Sam Halfway, Shelter Building: Lessons 1 of 2" })
+    ).toBeVisible();
+    expect(screen.queryByText(/to sit exam/)).not.toBeInTheDocument();
   });
 });

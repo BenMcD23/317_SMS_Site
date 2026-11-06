@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   categoriesOf,
+  subjectSchema,
   lessonLabel,
   lessonUrl,
   markLessons,
@@ -127,5 +128,40 @@ describe("markLessons", () => {
       throw new TypeError("fetch failed");
     });
     await expect(markLessons("tok", [1], [{ key: "nav" }])).rejects.toThrow("Server unreachable.");
+  });
+});
+
+describe("categoriesOf with sections staff added", () => {
+  it("puts the syllabus first, then Badges, then added sections in the API's order", () => {
+    const of = (...names: string[]) => names.map((category) => ({ category }));
+    expect(categoriesOf(of("Badges", "Leading", "Senior/Master", "Fieldcraft", "Drill"))).toEqual([
+      "Leading",
+      "Senior/Master",
+      "Badges",
+      "Fieldcraft",
+      "Drill",
+    ]);
+  });
+});
+
+describe("subjectSchema", () => {
+  it("won't let an edit drop below the lessons that already have codes", () => {
+    const base = { name: "Knots", section: "Fieldcraft", active: true };
+    expect(subjectSchema(3).safeParse({ ...base, parts: 2 }).error?.issues[0].message).toBe(
+      "At least 3: those codes may be printed"
+    );
+    expect(subjectSchema(3).safeParse({ ...base, parts: 4 }).success).toBe(true);
+    expect(subjectSchema().safeParse({ ...base, parts: 11 }).error?.issues[0].message).toBe("10 at most");
+    expect(subjectSchema().safeParse({ ...base, name: "  ", parts: 1 }).error?.issues[0].message).toBe(
+      "Give it a name"
+    );
+  });
+});
+
+describe("progressLabel for a subject with no exam", () => {
+  it("says every lesson is in rather than an exam to sit", () => {
+    const done = { lessons: [1, 2], taught: true, passed: false };
+    expect(progressLabel(done, 2)).toBe("Taught, exam to sit");
+    expect(progressLabel(done, 2, false)).toBe("All lessons had");
   });
 });

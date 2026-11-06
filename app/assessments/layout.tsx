@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
+import { RouteTabs } from "@/components/route-tabs";
 
 const TABS = [
   { label: "Inspection", href: "/assessments/inspection", sncoOnly: true },
@@ -15,7 +13,6 @@ const TABS = [
 ];
 
 export default function AssessmentsLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const { data: session } = useSession();
   const tabs = TABS.filter((tab) => {
     if (tab.staffOnly) return session?.role === "staff";
@@ -30,24 +27,7 @@ export default function AssessmentsLayout({ children }: { children: React.ReactN
         className="border-b-0 pb-0"
       />
 
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-1 border-b">
-          {tabs.map((tab) => (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={cn(
-                "-mb-px border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors",
-                pathname === tab.href
-                  ? "border-primary text-foreground"
-                  : "text-muted-foreground hover:text-foreground border-transparent"
-              )}
-            >
-              {tab.label}
-            </Link>
-          ))}
-        </div>
-      </div>
+      <RouteTabs tabs={tabs} label="Assessment sheets" />
 
       {children}
     </div>

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, XCircle, Save, X, Paperclip } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
+import { LeadershipTaskField } from "@/components/assessments/leadership-task-field";
 import {
   type ScoreMap,
   LEADERSHIP_QUESTIONS,
@@ -91,6 +92,9 @@ type EditorState = {
   date: string;
   scores: ScoreMap;
   // leadership
+  cadetCin: number | null;
+  cadetName: string;
+  taskId: number | null;
   exerciseNo: string;
   exerciseName: string;
   debriefingNotes: string;
@@ -191,6 +195,9 @@ export function AssessmentEditor({
                   MOI_ALL_QUESTIONS.map((q) => q.id)
                 )
               : {},
+          cadetCin: d.cadet?.cin ?? null,
+          cadetName: d.cadet?.first_name ?? "",
+          taskId: typeof f.task_id === "number" ? f.task_id : null,
           exerciseNo: f.exercise_no ?? "",
           exerciseName: f.exercise_name ?? "",
           debriefingNotes: f.debriefing_notes ?? "",
@@ -238,6 +245,7 @@ export function AssessmentEditor({
     let payload: Record<string, unknown>;
     if (isLeadership) {
       payload = {
+        task_id: form.taskId,
         exercise_no: form.exerciseNo,
         exercise_name: form.exerciseName,
         scores: form.scores,
@@ -331,24 +339,14 @@ export function AssessmentEditor({
       {/* Leadership */}
       {isLeadership && (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor={`exNo-${assessmentId}`}>Exercise No.</Label>
-              <Input
-                id={`exNo-${assessmentId}`}
-                value={form.exerciseNo}
-                onChange={(e) => update("exerciseNo", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={`exName-${assessmentId}`}>Exercise Name</Label>
-              <Input
-                id={`exName-${assessmentId}`}
-                value={form.exerciseName}
-                onChange={(e) => update("exerciseName", e.target.value)}
-              />
-            </div>
-          </div>
+          <LeadershipTaskField
+            idPrefix={`edit-${assessmentId}`}
+            cin={form.cadetCin}
+            cadetName={form.cadetName}
+            exceptAssessment={assessmentId}
+            value={{ taskId: form.taskId, exerciseNo: form.exerciseNo, exerciseName: form.exerciseName }}
+            onChange={(ex) => setForm((f) => (f ? { ...f, ...ex } : f))}
+          />
           <div className="divide-y rounded-lg border px-3">
             {LEADERSHIP_QUESTIONS.map((q) => (
               <ScoreRow
