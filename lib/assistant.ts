@@ -6,9 +6,8 @@
  */
 
 import { apiFetch, errorDetail } from "@/lib/api-fetch";
-import { FLIGHT_ORDER } from "@/lib/cadet-format";
 import { SERIES_COLOURS } from "@/lib/custom-dashboard";
-import { flightColor } from "@/lib/stats";
+import { flightColor, isFlightName } from "@/lib/stats";
 
 export type AssistantCall = { tool: string; args: Record<string, unknown>; ok: boolean };
 
@@ -110,7 +109,7 @@ export function chartRows(chart: AssistantChart): Record<string, string | number
   });
 }
 
-const isFlights = (labels: string[]) => labels.length > 0 && labels.every((l) => FLIGHT_ORDER.includes(l));
+const isFlights = (labels: string[]) => labels.length > 0 && labels.every(isFlightName);
 
 /**
  * Colours for a chart's series, or a pie's slices. Fixed order, never cycled:

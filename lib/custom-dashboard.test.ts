@@ -175,6 +175,24 @@ describe("toChartData", () => {
     expect(chart.series[1].colour).toBe(flightColor("C"));
   });
 
+  it("a flight the scraper added later is ordered and coloured like the others", () => {
+    const chart = toChartData(
+      [
+        { keys: ["2026-09-01", "D"], value: 1 },
+        { keys: ["2026-09-01", "B"], value: 5 },
+        { keys: ["2026-09-01", "NCO"], value: 4 },
+      ],
+      spec({ group_by: [{ field: "date" }, { field: "flight" }] }),
+      ATTENDANCE
+    );
+    expect(chart.series.map((s) => s.label)).toEqual(["NCO", "B Flight", "D Flight"]);
+    expect(chart.series.map((s) => s.colour)).toEqual([
+      flightColor("NCO"),
+      flightColor("B"),
+      flightColor("D"),
+    ]);
+  });
+
   it("colours follow the label, not the size, so a growing series doesn't swap colours", () => {
     const q = spec({ group_by: [{ field: "date" }, { field: "state" }] });
     const colourOf = (rows: { keys: string[]; value: number }[], label: string) =>

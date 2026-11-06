@@ -1,5 +1,5 @@
 import { Stat, StatGroup } from "@/components/stat";
-import { FLIGHT_ORDER, RANK_ORDER } from "@/lib/cadet-format";
+import { RANK_ORDER, sortFlights } from "@/lib/cadet-format";
 import type { SquadronStats } from "@/lib/stats";
 
 function breakdownLine(counts: Record<string, number>, order: string[]): string {
@@ -23,7 +23,7 @@ export function SquadronKpis({ stats, strengthHint }: { stats: SquadronStats; st
         size="lg"
         label="Flights"
         value={Object.keys(stats.by_flight).length}
-        hint={breakdownLine(stats.by_flight, FLIGHT_ORDER)}
+        hint={breakdownLine(stats.by_flight, sortFlights(Object.keys(stats.by_flight)))}
       />
       <Stat size="lg" label="NCOs" value={ncoCount} hint={breakdownLine(ncoRanks, RANK_ORDER)} />
     </StatGroup>

@@ -123,6 +123,16 @@ describe("chartColours", () => {
     ]);
   });
 
+  it("treats a D or E flight as a flight too", () => {
+    const more = chart({
+      series: [
+        { name: "D", values: [1, 2, 3] },
+        { name: "E", values: [1, 2, 3] },
+      ],
+    });
+    expect(chartColours(more)).toEqual(["var(--chart-2)", "var(--chart-4)"]);
+  });
+
   it("colours pie slices in order when they aren't flights", () => {
     expect(chartColours(chart({ type: "pie", labels: ["Cadet", "Cpl"] }))).toEqual([
       "var(--chart-1)",

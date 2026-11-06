@@ -55,6 +55,12 @@ describe("visibleSections", () => {
     expect(staff.length).toBeGreaterThan(snco.length);
   });
 
+  it("lists the Catalogue under Stores for staff and nobody else", () => {
+    expect(hrefs("staff")).toContain("/stores/catalogue");
+    for (const role of ["snco", "nco", undefined]) expect(hrefs(role)).not.toContain("/stores/catalogue");
+    expect(breadcrumbsFor("/stores/catalogue").map((c) => c.label)).toEqual(["Stores", "Catalogue"]);
+  });
+
   it("hides owner-only links from everyone but the owner", () => {
     const ownerOnly = ALL_LINKS.filter((l) => l.ownerOnly).map((l) => l.href);
     const sectionOwnerOnly = NAV_SECTIONS.filter((s) => s.ownerOnly).flatMap((s) =>

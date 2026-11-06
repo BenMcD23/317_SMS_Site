@@ -16,6 +16,7 @@ import {
   zoomOutRange,
   cohortOf,
   flightColor,
+  isFlightName,
   heldDelta,
   levelDeltas,
   levelShares,
@@ -232,6 +233,29 @@ describe("ranges and flights", () => {
     expect(flightColor("B")).toBe(flightColor("B"));
     expect(flightColor("A")).not.toBe(flightColor("B"));
     expect(flightColor("Unknown")).toBe("var(--muted-foreground)");
+  });
+
+  it("keeps A, B and C their colours when the scraper finds a D", () => {
+    // Colour comes from the letter, never from the flight's place in today's
+    // list, so a new flight can't repaint the old ones on a chart.
+    const before = ["A", "B", "C"].map(flightColor);
+    orderedFlights(["A", "B", "C", "D"]);
+    expect(["A", "B", "C"].map(flightColor)).toEqual(before);
+    expect(new Set([...before, flightColor("D")]).size).toBe(4);
+    expect(flightColor("NCO")).not.toBe(flightColor("A"));
+  });
+
+  it("gives a flight past D a hue rather than the unknown grey", () => {
+    expect(flightColor("E")).not.toBe("var(--muted-foreground)");
+    expect(isFlightName("E")).toBe(true);
+    expect(isFlightName("NCO")).toBe(true);
+    expect(isFlightName("Unknown")).toBe(false);
+    expect(isFlightName("")).toBe(false);
+  });
+
+  it("orders any number of flights", () => {
+    expect(orderedFlights(["B", "A"])).toEqual(["A", "B"]);
+    expect(orderedFlights(["E", "NCO", "D", "A", "B", "C"])).toEqual(["NCO", "A", "B", "C", "D", "E"]);
   });
 });
 
