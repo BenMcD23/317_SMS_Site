@@ -698,7 +698,7 @@ export default function BadgeOrdersPage() {
       );
     if (!entry.orderedAt) return void remove();
     openConfirm(
-      `Take ${item.badgeName} off the order list? Its ${entry.receivedAt ? "ordered and received steps are" : "ordered step is"} undone too. You can put it back from Stores › Deleted.`,
+      `Take ${item.badgeName} off the order list? Its ${entry.receivedAt ? "ordered and received steps are" : "ordered step is"} undone too.`,
       remove
     );
   }

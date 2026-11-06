@@ -34,10 +34,13 @@ describe("ToggleActionButton", () => {
   });
 
   it("once done, the same button says it will undo, looks pressed, and undoes", async () => {
-    const { onDo, onUndo } = renderButton({ done: true });
+    const { onDo, onUndo } = renderButton({ done: true, tone: "success" });
     const button = screen.getByRole("button", { name: "Undo given" });
     expect(button).toHaveAttribute("aria-pressed", "true");
+    // Greyed out, but keeps its own colour so it still reads as the same step.
     expect(button.className).toContain("border-dashed");
+    expect(button.className).toContain("opacity-60");
+    expect(button.className).toContain("text-success");
     await userEvent.click(button);
     expect(onUndo).toHaveBeenCalledOnce();
     expect(onDo).not.toHaveBeenCalled();

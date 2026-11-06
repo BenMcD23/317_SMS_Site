@@ -1,7 +1,6 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,8 +14,8 @@ const TONES = {
 
 /**
  * An order item's action that, once done, becomes its own undo: "Mark as
- * Given" turns into a greyed, dashed "Undo given" with the undo icon, and the
- * next tap takes it back. Shared by the uniform and badge order pages so every
+ * Given" turns into a faded, dashed "Undo given" (same colour and icon, so
+ * the row still reads at a glance), and the next tap takes it back. Shared by the uniform and badge order pages so every
  * step undoes the same way, from the button that did it, rather than from a
  * separate Undo hidden in the history below.
  *
@@ -62,13 +61,15 @@ export function ToggleActionButton({
       aria-label={done && itemLabel ? `${doneLabel}: ${itemLabel}` : undefined}
       className={cn(
         "h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full",
-        done ? "bg-muted text-muted-foreground hover:text-foreground border-dashed" : TONES[tone],
+        TONES[tone],
+        // Greyed but still the same button: faded and dashed until pressed.
+        done && "border-dashed opacity-60 hover:opacity-100 focus-visible:opacity-100",
         className
       )}
       disabled={busy || (done ? undoDisabled : disabled)}
       onClick={done ? onUndo : onDo}
     >
-      {done ? <Undo2 className="mr-1 h-3 w-3" /> : <Icon className="mr-1 h-3 w-3" />}
+      <Icon className="mr-1 h-3 w-3" />
       {done ? doneLabel : label}
     </Button>
   );

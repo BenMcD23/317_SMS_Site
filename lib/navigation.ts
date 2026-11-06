@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  ArchiveRestore,
   Award,
   BadgeCheck,
   Bot,
@@ -249,12 +248,6 @@ export const NAV_SECTIONS: NavSection[] = [
           },
           { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart, keywords: ["badge orders"] },
         ],
-      },
-      {
-        label: "Deleted",
-        href: "/stores/deleted",
-        icon: ArchiveRestore,
-        keywords: ["restore", "undelete", "deleted orders", "recently deleted"],
       },
     ],
   },
