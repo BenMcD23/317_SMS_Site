@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-// The Training area: one sidebar link whose parts (classifications, sessions,
-// theory progress, tasks & kit, QR codes) are separate pages under one header,
+// The Training area: one sidebar link whose parts (nights, classifications,
+// sessions, catch-ups, theory progress, tasks & kit, QR codes, programme
+// links) are separate pages under one header,
 // staff only, with the old Classifications and Session Planner URLs sent to
 // the right part.
 import { render, screen, within } from "@testing-library/react";
@@ -24,11 +25,14 @@ function renderAt(pathname: string) {
 }
 
 const TAB_HREFS = {
+  Nights: "/training/nights",
   Classifications: "/training",
   Sessions: "/training/sessions",
+  "Catch-ups": "/training/catch-ups",
   "Theory progress": "/training/progress",
   "Tasks & kit": "/training/tasks",
   "QR codes": "/training/qr-codes",
+  "Programme links": "/training/links",
 };
 
 describe("Training tabs", () => {
