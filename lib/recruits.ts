@@ -18,6 +18,8 @@ export type Recruit = {
   cadetLastName: string;
   parentName: string;
   parentEmail: string;
+  // XS to XL, asked on the sign-up page; null if staff added the recruit by hand.
+  poloSize: "XS" | "S" | "M" | "L" | "XL" | null;
   status: RecruitStatus;
   progress: { done: number; total: number; steps: Step[] };
   link: string;

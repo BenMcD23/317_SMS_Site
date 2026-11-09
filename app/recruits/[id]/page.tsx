@@ -152,7 +152,12 @@ export default function RecruitPage() {
             <RecruitStatusBadge recruit={recruit} />
           </span>
         }
-        description={`Parent: ${[recruit.parentName, privateText(recruit.parentEmail)].filter(Boolean).join(" · ")}`}
+        description={[
+          `Parent: ${[recruit.parentName, privateText(recruit.parentEmail)].filter(Boolean).join(" · ")}`,
+          recruit.poloSize && `Polo: ${recruit.poloSize}`,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         actions={
           <>
             {submitted && (
