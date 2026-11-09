@@ -30,6 +30,7 @@ const recruit = (over: Partial<Recruit> = {}): Recruit => ({
   cadetLastName: "Walsh",
   parentName: "Siobhán Walsh",
   parentEmail: "siobhan@example.com",
+  poloSize: null,
   status: "in_progress",
   progress: {
     done: 3,
@@ -334,6 +335,19 @@ describe("A recruit's page", () => {
     expect(screen.queryByRole("heading", { name: "Medical, allergies and diet" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Cadet's contact details" })).toBeNull();
     expect(screen.queryByText(/Hidden|Nothing filled in yet/)).toBeNull();
+  });
+
+  it("shows the polo size the parent chose, and nothing when none was asked", async () => {
+    stubApi({ "GET /recruits/7": [detail({ poloSize: "XL" })] });
+    await show(<RecruitPage />);
+    expect(await screen.findByText("Parent: Siobhán Walsh · siobhan@example.com · Polo: XL")).toBeTruthy();
+  });
+
+  it("leaves the polo size out for a recruit staff added by hand", async () => {
+    stubApi({ "GET /recruits/7": [detail()] });
+    await show(<RecruitPage />);
+    expect(await screen.findByRole("heading", { name: /Erin Walsh/ })).toBeTruthy();
+    expect(screen.queryByText(/Polo/)).toBeNull();
   });
 
   it("shows the link to send, its expiry and what's still missing", async () => {
