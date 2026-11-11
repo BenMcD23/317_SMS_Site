@@ -101,7 +101,7 @@ export function AppraisalForm({
         <CardHeader>
           <CardTitle className="text-base">Who and when</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="appraisal-nco">NCO</Label>
             {lockedNco ? (
@@ -151,7 +151,7 @@ export function AppraisalForm({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-[6rem_minmax(0,1fr)] gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="appraisal-age">Age</Label>
               <Input
@@ -242,7 +242,7 @@ export function AppraisalForm({
         <CardHeader>
           <CardTitle className="text-base">Next review and flags</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-5 sm:grid-cols-3">
+        <CardContent className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="appraisal-interval">Next NCO review</Label>
             <Select
