@@ -159,8 +159,9 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["results"] },
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
-      // Staff-only (see lib/access.ts). Classification lessons, practical
-      // sessions, theory progress, the task bank and the lesson QR codes.
+      // Staff-only (see lib/access.ts). Training nights, classification
+      // lessons, practical sessions, catch-ups, theory progress, the task
+      // bank, the lesson QR codes and programme links.
       {
         label: "Training",
         href: "/training",
@@ -181,6 +182,11 @@ export const NAV_SECTIONS: NavSection[] = [
           "kit list",
           "rotation",
           "stands",
+          "training night",
+          "groups",
+          "catch-ups",
+          "missed lessons",
+          "programme links",
         ],
       },
       { label: "Events", href: "/cadets/events", icon: Calendar },
