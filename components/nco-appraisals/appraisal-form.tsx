@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 
+import { NotesPicker } from "@/components/nco-appraisals/notes-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,8 @@ export function AppraisalForm({
     if (!nco) return;
     setDraft({
       ...draft,
+      // Notes belong to the NCO they're about; a different NCO starts clean.
+      note_ids: cin === draft.cadet_id ? draft.note_ids : [],
       cadet_id: cin,
       nco_name: draft.nco_name.trim() || nco.nco_name,
       age: draft.age.trim() || nco.age,
@@ -191,7 +194,23 @@ export function AppraisalForm({
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* A new appraisal only: an edit's notes were already used when it was saved. */}
+          {!lockedNco && draft.cadet_id && (
+            <NotesPicker
+              key={draft.cadet_id}
+              cin={draft.cadet_id}
+              usedIds={draft.note_ids ?? []}
+              onUse={(notePoints, ids) => {
+                setPoints((existing) =>
+                  existing.trim() ? `${existing.trimEnd()}\n${notePoints}` : notePoints
+                );
+                setDraft({ ...draft, note_ids: [...new Set([...(draft.note_ids ?? []), ...ids])] });
+              }}
+            />
+          )}
+          <Label htmlFor="appraisal-points">Points to make</Label>
           <Textarea
+            id="appraisal-points"
             value={points}
             onChange={(e) => setPoints(e.target.value)}
             rows={5}

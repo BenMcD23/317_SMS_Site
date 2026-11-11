@@ -234,6 +234,13 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Holidays", href: "/nco-holidays", icon: CalendarOff, keywords: ["nco holidays", "leave"] },
       // Staff-only (see lib/access.ts); the NCO gets their copy by email.
       { label: "Appraisals", href: "/nco-appraisals", icon: UserCheck, keywords: ["nco appraisals"] },
+      // Staff-only too: staff's own notes about the NCOs, which the appraisals draw on.
+      {
+        label: "Staff Notes",
+        href: "/nco-notes",
+        icon: MessageSquareText,
+        keywords: ["nco notes", "observations", "voice note", "appraisal notes"],
+      },
       { label: "Comments", href: "/nco-comments", icon: MessageSquare, keywords: ["nco comments", "notes"] },
       // Per-NCO attendance isn't listed here; it's reached from the Squadron
       // attendance page's "Per NCO" button.
