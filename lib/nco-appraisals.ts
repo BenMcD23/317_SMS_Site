@@ -142,6 +142,9 @@ export interface AppraisalDraft extends AppraisalSections {
   cause_for_concern: boolean;
   extend_probation: boolean;
   generated_by: string | null;
+  /** Staff notes pulled into the AI points; saving a new appraisal marks them
+   *  used. Ignored by the API on an edit. */
+  note_ids?: number[];
 }
 
 export interface AiDraftResult {
