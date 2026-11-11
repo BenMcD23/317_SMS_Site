@@ -207,9 +207,20 @@ export function sessionPayload(v: SessionForm) {
   };
 }
 
-/** "Period 1", or "Any time" for a session that stands alone. */
+/**
+ * A parade night's two halves. Must match PERIODS in the API's
+ * core/training_plan.py, which refuses any other.
+ */
+export const HALVES = [
+  { period: 1, label: "1st half", time: "19:25–20:05" },
+  { period: 2, label: "2nd half", time: "20:20–21:00" },
+] as const;
+
+/** "1st half (19:25–20:05)", or "Whole night" for a session that isn't in a half. */
 export function periodLabel(period: number | null): string {
-  return period ? `Period ${period}` : "Any time";
+  const half = HALVES.find((h) => h.period === period);
+  if (half) return `${half.label} (${half.time})`;
+  return period ? `Period ${period}` : "Whole night";
 }
 
 /** The night as text to paste into a message: each session's groups. */

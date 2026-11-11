@@ -8,6 +8,7 @@ import {
   linkSummary,
   nightToText,
   parseLesson,
+  periodLabel,
   sessionFormFrom,
   sessionPayload,
   sessionSchema,
@@ -139,6 +140,16 @@ describe("the session form", () => {
   });
 });
 
+describe("period labels", () => {
+  it.each([
+    [1, "1st half (19:25–20:05)"],
+    [2, "2nd half (20:20–21:00)"],
+    [null, "Whole night"],
+  ])("names %j %j", (period, label) => {
+    expect(periodLabel(period)).toBe(label);
+  });
+});
+
 describe("link summaries", () => {
   const base = { subject_name: null, new_subject: null, part: null, source: null, subject_key: null };
 
@@ -197,9 +208,9 @@ describe("the night as text", () => {
       ],
     } as unknown as TrainingNight;
     expect(nightToText(night)).toBe(
-      "Period 1: Map Reading 2 (Basic Navigation, lesson 2) - Sgt Davies\n" +
+      "1st half (19:25–20:05): Map Reading 2 (Basic Navigation, lesson 2) - Sgt Davies\n" +
         "  Needs this lesson: Cpl Amy Able, Zoë Ørsted\n\n" +
-        "Any time: Drill"
+        "Whole night: Drill"
     );
   });
 });

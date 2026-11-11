@@ -235,7 +235,7 @@ function ProgrammeSummary({ night }: { night: TrainingNight }) {
       <dl className="mt-2 flex flex-col gap-2 text-sm">
         {periods.map((period) => (
           <div key={period} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-            <dt className="text-muted-foreground w-20 shrink-0">Period {period}</dt>
+            <dt className="text-muted-foreground shrink-0 sm:w-44">{periodLabel(period)}</dt>
             <dd className="flex flex-col gap-0.5">
               {night.programme
                 .filter((p) => p.period === period)

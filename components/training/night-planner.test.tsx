@@ -151,7 +151,7 @@ describe("Training nights", () => {
     api();
     renderWithQuery(<NightPlanner />);
     const nav = await screen.findByRole("article", { name: "Map Reading 2" });
-    expect(within(nav).getByText("Period 1 · A, B Flight · Sgt Davies")).toBeInTheDocument();
+    expect(within(nav).getByText("1st half (19:25–20:05) · A, B Flight · Sgt Davies")).toBeInTheDocument();
     expect(within(nav).getByText("Basic Navigation, lesson 2")).toBeInTheDocument();
     expect(within(nav).getByText("Only who needs it · By need · up to 8 a group")).toBeInTheDocument();
     expect(
@@ -262,6 +262,17 @@ describe("Training nights", () => {
       },
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("offers the night's two halves, with their times, or the whole night", async () => {
+    api();
+    renderWithQuery(<NightPlanner />);
+    await screen.findByRole("article", { name: "Drill" });
+    await userEvent.click(screen.getAllByRole("button", { name: "Add session" })[0]);
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "When" }));
+    const options = (await screen.findAllByRole("option")).map((o) => o.textContent);
+    expect(options).toEqual(["1st half (19:25–20:05)", "2nd half (20:20–21:00)", "Whole night"]);
   });
 
   it("won't group by need or take only who needs it until a lesson is picked", async () => {

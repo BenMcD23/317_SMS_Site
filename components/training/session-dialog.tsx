@@ -33,7 +33,9 @@ import { categoriesOf } from "@/lib/theory";
 import {
   GROUPING_LABELS,
   GROUPINGS,
+  HALVES,
   lessonName,
+  periodLabel,
   POOL_LABELS,
   POOLS,
   sessionFormFrom,
@@ -43,7 +45,6 @@ import {
   type SessionForm,
 } from "@/lib/training";
 
-const PERIODS = ["1", "2", "3", "4"];
 // Radix Select can't hold an empty value, so "none" stands for it in the menus.
 const NONE = "none";
 
@@ -121,7 +122,7 @@ export function SessionDialog({
         </ResponsiveDialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
+          <div className="grid gap-4 sm:grid-cols-[1fr_13rem]">
             <Field data-invalid={!!titleError || undefined}>
               <FieldLabel htmlFor="session-title">Name</FieldLabel>
               <Input
@@ -147,12 +148,12 @@ export function SessionDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PERIODS.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          Period {p}
+                      {HALVES.map((h) => (
+                        <SelectItem key={h.period} value={String(h.period)}>
+                          {periodLabel(h.period)}
                         </SelectItem>
                       ))}
-                      <SelectItem value={NONE}>Any time</SelectItem>
+                      <SelectItem value={NONE}>{periodLabel(null)}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
