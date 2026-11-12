@@ -105,10 +105,13 @@ describe("dashboard", () => {
     expect(screen.getByText("No badges gained this month.")).toBeTruthy();
   });
 
-  it("hides staff tools from NCOs", async () => {
-    stubApi({ "/stats/current": [current], "/stats/awards": [[]] });
+  it("is titled Home, as the menu calls it, and doesn't repeat the menu's links", async () => {
+    SESSION = SESSIONS.staff;
+    stubApi({ "/stats/current": [current], "/stats/awards": [[]], "/stores/badges/to-give": [[]] });
     await renderDashboard();
+    expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeInTheDocument();
     expect(screen.queryByText("Bader Scrapers")).toBeNull();
+    expect(screen.queryByText("JI/AO Generator")).toBeNull();
   });
 
   it("shows staff the badges still to give out", async () => {

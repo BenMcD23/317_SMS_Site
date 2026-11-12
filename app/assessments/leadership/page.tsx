@@ -73,7 +73,7 @@ function ScoreSelector({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="bg-card rounded-lg border p-4 transition-shadow hover:shadow-sm">
+    <div className="p-4" role="group" aria-label={`Question ${question.id}`}>
       <div className="mb-3 flex items-start gap-3">
         <span className="bg-primary/10 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
           {question.id}
@@ -88,6 +88,8 @@ function ScoreSelector({
             <button
               key={score}
               type="button"
+              aria-pressed={isSelected}
+              aria-label={label ? `${score}, ${label}` : String(score)}
               onClick={() => onChange(score)}
               className={cn(
                 "group relative flex flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-md border py-2.5 text-xs font-semibold transition-all",
@@ -459,8 +461,8 @@ export default function LeadershipAssessmentPage() {
             )}
           </div>
 
-          {/* Questions */}
-          <div className="space-y-3">
+          {/* Questions: one frame with hairlines between, not a box each. */}
+          <div className="bg-card divide-y rounded-lg border">
             {QUESTIONS.map((q) => (
               <ScoreSelector
                 key={q.id}

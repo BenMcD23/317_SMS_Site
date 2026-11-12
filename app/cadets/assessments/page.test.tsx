@@ -250,3 +250,24 @@ describe("Upload all on the ready tab", () => {
     expect(screen.queryByRole("button", { name: /Upload all/ })).toBeNull();
   });
 });
+
+describe("the results list", () => {
+  it("is one list, a block per cadet whose name opens their record", async () => {
+    fakeApi();
+    await renderPage();
+    const amy = screen.getByRole("region", { name: "Amy Able" });
+    expect(within(amy).getByRole("link", { name: "Amy Able" })).toHaveAttribute("href", "/cadets/1001");
+    expect(within(amy).getByText("Blue Radio")).toBeInTheDocument();
+    // Every cadet is in the same frame, not a card each.
+    const blocks = screen.getAllByRole("region");
+    expect(new Set(blocks.map((b) => b.parentElement)).size).toBe(1);
+  });
+
+  it("names its status filter, so a screen reader knows what the choices narrow", async () => {
+    fakeApi();
+    await renderPage();
+    expect(screen.getByRole("radiogroup", { name: "Status" })).toBeInTheDocument();
+    // One type of assessment on the list: no type filter to offer.
+    expect(screen.queryByRole("radiogroup", { name: "Assessment type" })).not.toBeInTheDocument();
+  });
+});

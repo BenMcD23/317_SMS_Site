@@ -12,65 +12,13 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/componen
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section-heading";
-import { DividedGrid } from "@/components/divided-grid";
 import { BadgesToGive } from "@/components/badges/badges-to-give";
 import { BadgeGlance } from "@/components/stats/badge-glance";
 import { SquadronKpis } from "@/components/stats/kpis";
 import { RecentAwards } from "@/components/stats/qual-lists";
-import { ArrowRight, ChartLine, FileText, DatabaseZap, Calendar, Newspaper } from "lucide-react";
+import { ArrowRight, ChartLine } from "lucide-react";
 
 const AWARDS_DAYS = 30;
-
-const QUICK_TOOLS = [
-  {
-    title: "JI/AO Generator",
-    desc: "Generate joining instructions and admin orders",
-    href: "/tools/ji-ao-generator",
-    icon: FileText,
-  },
-  {
-    title: "Bader Scrapers",
-    desc: "Sync cadet and event data from SMS",
-    href: "/tools/scraper",
-    icon: DatabaseZap,
-  },
-  {
-    title: "Programme",
-    desc: "Publish the monthly programme to the website",
-    href: "/tools/programme-updater",
-    icon: Calendar,
-  },
-  {
-    title: "Newsletter",
-    desc: "Manage published newsletters",
-    href: "/tools/newsletter-updater",
-    icon: Newspaper,
-  },
-];
-
-function QuickTools() {
-  return (
-    <section className="no-print flex flex-col gap-3" aria-labelledby="tools-heading">
-      <SectionHeading title={<span id="tools-heading">Tools</span>} />
-      <DividedGrid as="ul" className="grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        {QUICK_TOOLS.map((t) => (
-          <li key={t.href} className="flex">
-            <Link
-              href={t.href}
-              className="hover:bg-muted/50 focus-visible:ring-ring/50 flex min-w-0 flex-1 items-start gap-3 px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-inset"
-            >
-              <t.icon className="text-muted-foreground mt-0.5 size-4 shrink-0" aria-hidden />
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-sm font-medium">{t.title}</span>
-                <span className="text-muted-foreground text-xs text-pretty">{t.desc}</span>
-              </span>
-            </Link>
-          </li>
-        ))}
-      </DividedGrid>
-    </section>
-  );
-}
 
 function DashboardSkeleton() {
   return (
@@ -118,7 +66,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
       <PageHeader
-        title="Dashboard"
+        title="Home"
         actions={
           <Button asChild variant="outline" size="sm">
             <Link href="/stats">
@@ -134,8 +82,6 @@ export default function HomePage() {
         stats && (
           <>
             <SquadronKpis stats={stats} />
-
-            {session?.role === "staff" && <QuickTools />}
 
             {/* Badge orders are staff-only in the API, so NCOs don't get an empty 403 box. */}
             {session?.role === "staff" && <BadgesToGive />}
