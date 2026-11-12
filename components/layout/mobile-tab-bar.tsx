@@ -1,118 +1,321 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { Menu } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { LogOut, Menu, Pin, Search, Settings } from "lucide-react";
 
-import { useSidebar } from "@/components/ui/sidebar";
-import { activeMobileTab, mobileTabsFor } from "@/lib/navigation";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  addRecent,
+  currentPins,
+  MAX_PINS,
+  pageFor,
+  pinLabel,
+  reachablePages,
+  searchPages,
+  togglePin,
+  type PageLink,
+} from "@/lib/mobile-pins";
+import { visibleSections } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
+const PINS_KEY = "sms.mobile.pins";
+const RECENT_KEY = "sms.mobile.recent";
+
 const TAB =
-  "flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors";
+  "flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors";
 
 /**
- * Bottom tab bar on a phone, where the thumb is. Every tab is a plain link to a
- * page (lib/navigation.ts `mobileTabsFor`, ordered by use), in a strip that
- * scrolls sideways when they don't fit; "More" stays pinned at the end and
- * opens the full sidebar. Hidden from md up, where the sidebar is always on
- * screen.
+ * A list kept in this browser's localStorage. Only a per-phone convenience, so
+ * every read and write is guarded: a private window or blocked storage just
+ * gets the fallback (null) and choices last for the visit.
+ */
+function useStoredList(key: string): [string[] | null, (next: string[]) => void] {
+  // Starts empty so the server render and the first client render agree.
+  const [value, setValue] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    try {
+      const parsed: unknown = JSON.parse(window.localStorage.getItem(key) ?? "null");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage only exists after mount
+      if (Array.isArray(parsed)) setValue(parsed.filter((x): x is string => typeof x === "string"));
+    } catch {
+      // Unreadable or blocked: keep the fallback.
+    }
+  }, [key]);
+
+  const save = (next: string[]) => {
+    setValue(next);
+    try {
+      window.localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      // Storage blocked or full: the choice still holds for this visit.
+    }
+  };
+  return [value, save];
+}
+
+/**
+ * Bottom bar on a phone: the four pages this person pinned (one tap each) and
+ * Menu, which slides up their recent pages, a search box and every page, each
+ * with a pin to add it to the bar. Hidden from md up, where the sidebar is.
  */
 export function MobileTabBar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { setOpenMobile, openMobile } = useSidebar();
-  const tabs = mobileTabsFor(session?.role);
-  const active = activeMobileTab(pathname, tabs);
+  const role = session?.role;
+  const pages = reachablePages(visibleSections(role, session?.user?.email ?? undefined, session?.is_oc));
+  const [storedPins, savePins] = useStoredList(PINS_KEY);
+  const [storedRecent, saveRecent] = useStoredList(RECENT_KEY);
+  const [open, setOpen] = useState(false);
+
+  const pins = currentPins(storedPins, role, pages);
+  const byHref = new Map(pages.map((p) => [p.href, p]));
+  const here = pageFor(pathname, pages);
+
+  // Remember where we've been, so getting back is two taps.
+  const hereHref = here?.href;
+  useEffect(() => {
+    if (!hereHref) return;
+    let recent: string[] = [];
+    try {
+      const parsed: unknown = JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]");
+      if (Array.isArray(parsed)) recent = parsed.filter((x): x is string => typeof x === "string");
+    } catch {
+      // Unreadable: start a fresh list.
+    }
+    if (recent[0] !== hereHref) saveRecent(addRecent(recent, hereHref));
+    // saveRecent is a new function each render; the page is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hereHref]);
 
   return (
-    <nav
-      aria-label="Quick links"
-      className="no-print bg-background/95 supports-[backdrop-filter]:bg-background/85 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
-    >
-      <TabScroller activeHref={active?.href}>
-        {tabs.map((tab) => {
-          const current = tab === active;
-          return (
-            <li key={tab.href} className="flex-none snap-start" data-tab={tab.href}>
-              <Link
-                href={tab.href}
-                aria-current={current ? "page" : undefined}
-                className={cn(TAB, "w-[4.5rem]", current ? "text-primary" : "text-muted-foreground")}
-              >
-                <tab.icon className="size-5" aria-hidden />
-                {tab.label}
-              </Link>
-            </li>
-          );
-        })}
-      </TabScroller>
-      <div className="border-l">
-        <button
-          type="button"
-          onClick={() => setOpenMobile(true)}
-          aria-expanded={openMobile}
-          className={cn(TAB, "text-muted-foreground w-16")}
-        >
-          <Menu className="size-5" aria-hidden />
-          More
-        </button>
-      </div>
-    </nav>
+    <>
+      <nav
+        aria-label="Quick links"
+        className="no-print bg-background/95 supports-[backdrop-filter]:bg-background/85 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
+        <ul className="flex min-w-0 flex-1">
+          {pins.map((href) => {
+            const page = byHref.get(href)!;
+            const current = here?.href === href;
+            return (
+              <li key={href} className="flex min-w-0 flex-1">
+                <Link
+                  href={href}
+                  aria-current={current ? "page" : undefined}
+                  className={cn(TAB, current ? "text-primary" : "text-muted-foreground")}
+                >
+                  <page.icon className="size-5 shrink-0" aria-hidden />
+                  <span className="w-full truncate text-center">{pinLabel(page, role, pages)}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="flex w-1/5 flex-none border-l">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-expanded={open}
+            className={cn(TAB, "text-muted-foreground")}
+          >
+            <Menu className="size-5" aria-hidden />
+            Menu
+          </button>
+        </div>
+      </nav>
+      <QuickMenu
+        open={open}
+        onOpenChange={setOpen}
+        pages={pages}
+        pins={pins}
+        recent={(storedRecent ?? []).filter((h) => h !== here?.href && byHref.has(h))}
+        onTogglePin={(href) => savePins(togglePin(pins, href))}
+      />
+    </>
   );
 }
 
-/**
- * The sideways-scrolling strip. Fades whichever edge has more tabs past it, so
- * a cut-off row reads as "scroll me" rather than "that's all", and starts
- * scrolled to the current page's tab so it's never off screen.
- */
-function TabScroller({ activeHref, children }: { activeHref?: string; children: React.ReactNode }) {
-  const ref = useRef<HTMLUListElement>(null);
-  const [edges, setEdges] = useState({ start: false, end: false });
-
-  const measure = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    setEdges({
-      start: el.scrollLeft > 4,
-      end: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const tab = activeHref ? el?.querySelector(`[data-tab="${CSS.escape(activeHref)}"]`) : null;
-    // jsdom has no scrollIntoView; there's nothing to scroll there anyway.
-    tab?.scrollIntoView?.({ inline: "center", block: "nearest" });
-    measure();
-  }, [activeHref, measure]);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [measure]);
-
-  const fade = edges.start || edges.end;
+/** One page in the menu: the link, and a pin to put it on (or take it off) the bar. */
+function PageRow({
+  page,
+  pinned,
+  pinsFull,
+  onTogglePin,
+  onNavigate,
+}: {
+  page: PageLink;
+  pinned: boolean;
+  pinsFull: boolean;
+  onTogglePin: () => void;
+  onNavigate: () => void;
+}) {
+  const place = page.path.join(" › ");
   return (
-    <ul
-      ref={ref}
-      onScroll={measure}
-      className="flex min-w-0 flex-1 snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overscroll-x-contain [&::-webkit-scrollbar]:hidden"
-      style={
-        fade
-          ? {
-              maskImage: `linear-gradient(to right, ${edges.start ? "transparent" : "black"}, black 1.5rem, black calc(100% - 1.5rem), ${edges.end ? "transparent" : "black"})`,
-            }
-          : undefined
-      }
-    >
-      {children}
-    </ul>
+    <li className="flex items-center gap-1">
+      <Link
+        href={page.href}
+        onClick={onNavigate}
+        className="hover:bg-muted/50 flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-md px-2"
+      >
+        <page.icon className="text-muted-foreground size-5 shrink-0" aria-hidden />
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-medium">{page.label}</span>
+          {place && <span className="text-muted-foreground truncate text-xs">{place}</span>}
+        </span>
+      </Link>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={cn("size-10 shrink-0", pinned ? "text-primary" : "text-muted-foreground")}
+        aria-pressed={pinned}
+        aria-label={pinned ? `Unpin ${page.label}` : `Pin ${page.label}`}
+        // A full bar refuses a fifth: unpin one first. Disabled says so.
+        disabled={!pinned && pinsFull}
+        onClick={onTogglePin}
+      >
+        {/* Filled when it is on the bar; a crossed-out pin read as "not pinned". */}
+        <Pin className={cn(pinned && "fill-current")} />
+      </Button>
+    </li>
+  );
+}
+
+function QuickMenu({
+  open,
+  onOpenChange,
+  pages,
+  pins,
+  recent,
+  onTogglePin,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pages: PageLink[];
+  pins: string[];
+  recent: string[];
+  onTogglePin: (href: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const byHref = new Map(pages.map((p) => [p.href, p]));
+  const pinsFull = pins.length >= MAX_PINS;
+  const close = () => {
+    onOpenChange(false);
+    setQuery("");
+  };
+  const row = (page: PageLink) => (
+    <PageRow
+      key={page.href}
+      page={page}
+      pinned={pins.includes(page.href)}
+      pinsFull={pinsFull}
+      onTogglePin={() => onTogglePin(page.href)}
+      onNavigate={close}
+    />
+  );
+
+  const found = searchPages(pages, query);
+  const recentPages = recent.map((h) => byHref.get(h)!).filter(Boolean);
+  // Every page under its section's name, in the sidebar's order.
+  const sections: Array<[string, PageLink[]]> = [];
+  for (const page of pages) {
+    const name = page.path[0] ?? "General";
+    const last = sections[sections.length - 1];
+    if (last && last[0] === name) last[1].push(page);
+    else sections.push([name, [page]]);
+  }
+
+  return (
+    <ResponsiveDialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
+      <ResponsiveDialogContent className="sm:max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Menu</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            Pin up to {MAX_PINS} pages to the bar with{" "}
+            <Pin className="inline size-3.5" aria-label="the pin" />.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+
+        <div className="flex flex-col gap-5 pb-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="quick-menu-search" className="sr-only">
+              Find a page
+            </Label>
+            <div className="relative">
+              <Search
+                className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                aria-hidden
+              />
+              <Input
+                id="quick-menu-search"
+                type="search"
+                placeholder="Find a page…"
+                className="h-11 pl-9"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {query.trim() ? (
+            <section aria-label="Results">
+              {found.length ? (
+                <ul className="flex flex-col">{found.map(row)}</ul>
+              ) : (
+                <p className="text-muted-foreground px-2 text-sm">No page matches “{query.trim()}”.</p>
+              )}
+            </section>
+          ) : (
+            <>
+              {recentPages.length > 0 && (
+                <section aria-labelledby="quick-menu-recent" className="flex flex-col gap-1">
+                  <h3 id="quick-menu-recent" className="text-muted-foreground px-2 text-xs font-medium">
+                    Recent
+                  </h3>
+                  <ul className="flex flex-col">{recentPages.map(row)}</ul>
+                </section>
+              )}
+              {sections.map(([name, list]) => (
+                <section key={name} aria-label={name} className="flex flex-col gap-1">
+                  <h3 className="text-muted-foreground px-2 text-xs font-medium">{name}</h3>
+                  <ul className="flex flex-col">{list.map(row)}</ul>
+                </section>
+              ))}
+              <section aria-label="Account" className="flex flex-col gap-1 border-t pt-3">
+                <Link
+                  href="/settings"
+                  onClick={close}
+                  className="hover:bg-muted/50 flex min-h-12 items-center gap-3 rounded-md px-2 text-sm font-medium"
+                >
+                  <Settings className="text-muted-foreground size-5" aria-hidden />
+                  Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="text-destructive hover:bg-muted/50 flex min-h-12 items-center gap-3 rounded-md px-2 text-left text-sm font-medium"
+                >
+                  <LogOut className="size-5" aria-hidden />
+                  Sign out
+                </button>
+              </section>
+            </>
+          )}
+        </div>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
