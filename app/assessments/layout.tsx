@@ -1,6 +1,6 @@
 "use client";
 
-import { useArea } from "@/components/area-tabs";
+import { useArea } from "@/hooks/use-area";
 import { PageHeader } from "@/components/page-header";
 
 const DESCRIPTIONS: Record<string, string> = {

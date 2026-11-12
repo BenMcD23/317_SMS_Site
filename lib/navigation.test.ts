@@ -8,6 +8,11 @@ import { OWNER_EMAIL } from "@/lib/config";
 import {
   activeMobileTab,
   activeTab,
+  hubHref,
+  hubSections,
+  mobileHubFor,
+  sectionFor,
+  sectionSlug,
   areaFor,
   breadcrumbsFor,
   flattenLinks,
@@ -203,26 +208,17 @@ describe("breadcrumbsFor", () => {
   });
 });
 
-describe("mobile tab bar", () => {
+describe("mobile tab bar and section hubs", () => {
   const labels = (role: string | undefined) => mobileTabsFor(role).map((t) => t.label);
+  const hrefs = (role: string) =>
+    flattenLinks(visibleSections(role, "someone@317atc.co.uk")).map((l) => l.href);
 
   it.each([
-    ["staff", ["Home", "Cadets", "Check-in", "Stores"]],
-    ["snco", ["Home", "Check-in", "Mark", "Plans"]],
-    ["nco", ["Home", "Check-in", "Mark", "Plans"]],
-  ])("%s gets its parade-night tabs", (role, expected) => {
+    ["staff", ["Home", "Cadets", "Parade Night", "Stores"]],
+    ["snco", ["Home", "Parade Night", "NCO Team"]],
+    ["nco", ["Home", "Parade Night", "NCO Team"]],
+  ])("%s gets its main sections", (role, expected) => {
     expect(labels(role)).toEqual(expected);
-  });
-
-  it.each(["staff", "snco", "nco"])("every %s tab is a real page the role can open", (role) => {
-    for (const tab of mobileTabsFor(role)) {
-      expect(canAccess(role, tab.href), tab.href).toBe(true);
-      expect(fs.existsSync(path.join(process.cwd(), "app", tab.href, "page.tsx")), tab.href).toBe(true);
-    }
-  });
-
-  it("an NCO never gets the inspection sheet they can't use", () => {
-    expect(mobileTabsFor("nco").map((t) => t.href)).not.toContain("/assessments/inspection");
   });
 
   it("a signed-out or unknown role gets only Home", () => {
@@ -230,22 +226,100 @@ describe("mobile tab bar", () => {
     expect(labels("cadet")).toEqual(["Home"]);
   });
 
+  it("slugs a section's name for its hub address", () => {
+    expect(sectionSlug("Parade Night")).toBe("parade-night");
+    expect(sectionSlug("NCO Team")).toBe("nco-team");
+    expect(hubHref("Stores")).toBe("/m/stores");
+  });
+
+  it.each([
+    ["/stores/badges/orders", "Stores"],
+    ["/stores/uniform/stock/BOX-A", "Stores"],
+    ["/cadets/2100003", "Cadets"],
+    ["/training/progress", "Parade Night"],
+    ["/stats", ""],
+    ["/settings", ""],
+    ["/", null],
+    ["/m/stores", null],
+    ["/nowhere", null],
+  ])("puts %s in section %j", (pathname, expected) => {
+    expect(sectionFor(pathname)).toBe(expected);
+  });
+
   it.each([
     ["staff", "/", "Home"],
+    ["staff", "/m/stores", "Stores"],
     ["staff", "/cadets/1234", "Cadets"],
     ["staff", "/recruits", "Cadets"],
-    ["staff", "/stores/badges/stock", "Stores"],
-    ["staff", "/stores/badges/orders", "Stores"],
     ["staff", "/stores/catalogue", "Stores"],
-    ["staff", "/training/progress", null],
+    ["staff", "/training/progress", "Parade Night"],
+    // Not on staff's bar: More.
     ["staff", "/texts/messages", null],
-    ["nco", "/cadets/assessments", "Mark"],
-    ["nco", "/assessments/radio", "Mark"],
-    ["nco", "/session-plans/12", "Plans"],
-    ["nco", "/settings", null],
-    // "/" only matches itself, or every page would light Home.
     ["staff", "/oc", null],
+    ["nco", "/cadets/assessments", "Parade Night"],
+    ["nco", "/session-plans/12", "NCO Team"],
+    ["nco", "/settings", null],
   ])("%s on %s lights %s", (role, pathname, expected) => {
     expect(activeMobileTab(pathname, mobileTabsFor(role))?.label ?? null).toBe(expected);
+  });
+
+  it.each([
+    ["staff", "/stores/badges/orders", { label: "Stores", href: "/m/stores" }],
+    ["staff", "/texts/recipients", { label: "More", href: "/m/more" }],
+    ["nco", "/assessments/radio", { label: "Parade Night", href: "/m/parade-night" }],
+    ["nco", "/stats", { label: "More", href: "/m/more" }],
+    ["staff", "/", null],
+    ["staff", "/m/more", null],
+  ])("%s on %s goes back to %o", (role, pathname, expected) => {
+    expect(mobileHubFor(pathname, role)).toEqual(expected);
+  });
+
+  it.each(["staff", "snco", "nco"])("every hub %s can open lists only pages they can reach", (role) => {
+    const visible = visibleSections(role, "someone@317atc.co.uk");
+    const slugs = [...mobileTabsFor(role).filter((t) => t.href !== "/"), { href: "/m/more" }].map((t) =>
+      t.href.replace("/m/", "")
+    );
+    for (const slug of slugs) {
+      const hub = hubSections(slug, role, visible);
+      expect(hub, slug).not.toBeNull();
+      for (const href of flattenLinks(hub!.sections).map((l) => l.href)) {
+        expect(canAccess(role, href), `${slug}: ${href}`).toBe(true);
+        expect(hrefs(role)).toContain(href);
+      }
+    }
+  });
+
+  it("More holds every section not on the bar, and not Home", () => {
+    const visible = visibleSections("staff", "someone@317atc.co.uk");
+    const more = hubSections("more", "staff", visible)!;
+    expect(more.sections.map((s) => s.label ?? "")).toEqual(["", "NCO Team", "Comms", "Admin"]);
+    expect(flattenLinks(more.sections).map((l) => l.href)).not.toContain("/");
+    expect(flattenLinks(more.sections).map((l) => l.href)).toContain("/stats");
+  });
+
+  it("between them, the bar's hubs and More reach every page in the menu", () => {
+    for (const role of ["staff", "nco"]) {
+      const visible = visibleSections(role, "someone@317atc.co.uk");
+      const slugs = [
+        ...mobileTabsFor(role)
+          .filter((t) => t.href !== "/")
+          .map((t) => t.href.slice(3)),
+        "more",
+      ];
+      const reached = slugs.flatMap((slug) =>
+        flattenLinks(hubSections(slug, role, visible)!.sections).map((l) => l.href)
+      );
+      for (const href of hrefs(role).filter((h) => h !== "/"))
+        expect(reached, `${role} ${href}`).toContain(href);
+    }
+  });
+
+  it("finds no hub for an unknown section, or one an NCO can't see", () => {
+    expect(hubSections("nowhere", "staff", visibleSections("staff", "s@x"))).toBeNull();
+    expect(hubSections("stores", "nco", visibleSections("nco", "n@x"))).toBeNull();
+  });
+
+  it("every hub is a page anyone signed in can open", () => {
+    for (const role of ["staff", "snco", "nco"]) expect(canAccess(role, "/m/stores")).toBe(true);
   });
 });

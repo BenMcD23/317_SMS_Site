@@ -27,8 +27,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset className="min-w-0">
         <header className="no-print bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
-          {/* On a phone the tab bar's "More" opens the sidebar instead. */}
-          <SidebarTrigger className="-ml-1 max-md:hidden" />
+          {/* On a phone too: the bottom bar's hubs are the quick way round,
+              and this opens the whole menu for anyone who'd rather use it. */}
+          <SidebarTrigger className="-ml-1" />
           <HeaderBreadcrumbs />
           <div className="ml-auto flex items-center gap-2">
             <OutboxIndicator />

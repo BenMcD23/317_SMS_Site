@@ -4,11 +4,18 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
-import { isNavLinkActive, visibleSections, type NavLink, type NavSection } from "@/lib/navigation";
+import { activeTab, isNavLinkActive, visibleSections, type NavLink, type NavSection } from "@/lib/navigation";
 import { useOpenSections } from "@/lib/sidebar-sections";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +27,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -47,13 +57,86 @@ function NavLinkItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
   );
 }
 
+/**
+ * An area (Orders, Training) with its pages indented beneath it. The area
+ * you're in unfolds by itself, and any other can be opened by hand; the rest
+ * stay one line each, so the menu stays short with every page in it. In
+ * icon-only mode there's nowhere to indent, so the icon opens a flyout.
+ */
+function NavAreaItem({ link, onNavigate }: { link: NavLink; onNavigate: () => void }) {
+  const pathname = usePathname();
+  const { state, isMobile } = useSidebar();
+  const tabs = link.tabs ?? [];
+  const current = activeTab(pathname, tabs);
+  const active = current !== null;
+
+  if (state === "collapsed" && !isMobile) {
+    return (
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton tooltip={link.label} isActive={active}>
+              <link.icon />
+              <span>{link.label}</span>
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" className="min-w-40">
+            <DropdownMenuLabel>{link.label}</DropdownMenuLabel>
+            {tabs.map((tab) => (
+              <DropdownMenuItem key={tab.href} asChild>
+                <Link href={tab.href} onClick={onNavigate}>
+                  {tab.label}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    // Keyed on `active` so moving into the area (the sidebar stays mounted
+    // across pages) unfolds it, while a hand-opened area elsewhere stays open
+    // until you leave it.
+    <Collapsible key={String(active)} asChild defaultOpen={active} className="group/collapsible">
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton tooltip={link.label} isActive={active}>
+            <link.icon />
+            <span>{link.label}</span>
+            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {tabs.map((tab) => (
+              <SidebarMenuSubItem key={tab.href}>
+                <SidebarMenuSubButton asChild isActive={tab === current}>
+                  <Link href={tab.href} onClick={onNavigate}>
+                    <span>{tab.label}</span>
+                  </Link>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
+
 function SectionItems({ section, onNavigate }: { section: NavSection; onNavigate: () => void }) {
   return (
     <SidebarGroupContent>
       <SidebarMenu>
-        {section.items.map((item) => (
-          <NavLinkItem key={item.label} link={item} onNavigate={onNavigate} />
-        ))}
+        {section.items.map((item) =>
+          item.tabs ? (
+            <NavAreaItem key={item.label} link={item} onNavigate={onNavigate} />
+          ) : (
+            <NavLinkItem key={item.label} link={item} onNavigate={onNavigate} />
+          )
+        )}
       </SidebarMenu>
     </SidebarGroupContent>
   );

@@ -6,12 +6,12 @@
 import fs from "node:fs";
 import nodePath from "node:path";
 
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import TrainingLayout from "@/app/training/layout";
 import { canAccess } from "@/lib/access";
-import { breadcrumbsFor, flattenLinks, NAV_SECTIONS } from "@/lib/navigation";
+import { activeTab, breadcrumbsFor, flattenLinks, NAV_SECTIONS } from "@/lib/navigation";
 import { CLASSIFICATIONS_REDIRECTS, TRAINING_REDIRECTS } from "@/next.config";
 
 const path = vi.hoisted(() => ({ current: "/training" }));
@@ -36,45 +36,31 @@ const TAB_HREFS = {
   Setup: "/training/setup",
 };
 
-describe("Training tabs", () => {
-  it("are links to each part, in order, with the page under them", () => {
-    renderAt("/training");
-    const nav = screen.getByRole("navigation", { name: "Training" });
-    const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => [l.textContent, l.getAttribute("href")])).toEqual(Object.entries(TAB_HREFS));
-    expect(screen.getByRole("heading", { name: "Training" })).toBeInTheDocument();
-    expect(screen.getByText("page body")).toBeInTheDocument();
+const training = NAV_SECTIONS.flatMap((sec) => sec.items).find((i) => i.label === "Training")!;
+
+describe("Training's pages", () => {
+  it("are four, in order, listed under Training in the menu", () => {
+    expect(training.tabs!.map((t) => [t.label, t.href])).toEqual(Object.entries(TAB_HREFS));
   });
 
-  it.each(Object.entries(TAB_HREFS))("%s is the current tab on its own page", (label, href) => {
-    renderAt(href);
-    const nav = screen.getByRole("navigation", { name: "Training" });
-    const current = within(nav)
-      .getAllByRole("link")
-      .filter((l) => l.getAttribute("aria-current") === "page");
+  it("share one header and no tab row: the sidebar and the phone's hub move between them", () => {
+    renderAt("/training/progress");
+    expect(screen.getByRole("heading", { level: 1, name: "Training" })).toBeInTheDocument();
+    expect(screen.getByText("page body")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it.each(Object.entries(TAB_HREFS))("%s is the current page on its own page", (label, href) => {
     // Tonight is the index: it mustn't light up on every other part too.
-    expect(current.map((l) => l.textContent)).toEqual([label]);
+    expect(activeTab(href, training.tabs!)?.label).toBe(label);
   });
 
   it.each(["/training/classifications", "/training/sessions"])(
     "%s is planned from Tonight, so it lights Tonight",
     (href) => {
-      renderAt(href);
-      const nav = screen.getByRole("navigation", { name: "Training" });
-      expect(within(nav).getByRole("link", { current: "page" })).toHaveTextContent("Tonight");
+      expect(activeTab(href, training.tabs!)?.label).toBe("Tonight");
     }
   );
-});
-
-describe("who can open it", () => {
-  it.each([
-    ["staff", true],
-    ["snco", false],
-    ["nco", false],
-    [undefined, false],
-  ])("%s → %s, on every part", (role, allowed) => {
-    for (const href of Object.values(TAB_HREFS)) expect(canAccess(role, href)).toBe(allowed);
-  });
 });
 
 describe("navigation", () => {

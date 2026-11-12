@@ -13,6 +13,8 @@ const NCO_ALLOWED_ROUTES = [
   "/nco-holidays",
   "/nco-comments",
   "/settings",
+  // The phone's section hubs: each lists only what the role can reach.
+  "/m",
 ];
 const INSPECTION_ROUTE = "/assessments/inspection";
 const MOI_ROUTE = "/assessments/moi";

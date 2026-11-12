@@ -50,25 +50,37 @@ describe("sidebar sections", () => {
     expect(screen.getAllByRole("link", { name: "Home" }).length).toBeGreaterThan(0);
   });
 
-  it("lists an area once, lit on any of its pages, opening its first page", () => {
+  it("unfolds the area you're in to show its pages, with this one lit", () => {
     renderSidebar("/stores/badges/orders");
-    const orders = screen.getByRole("link", { name: "Orders" });
-    expect(orders).toHaveAttribute("href", "/stores/uniform/orders");
+    const orders = screen.getByRole("button", { name: "Orders" });
+    expect(orders).toHaveAttribute("aria-expanded", "true");
     expect(orders).toHaveAttribute("data-active", "true");
-    expect(screen.queryByRole("link", { name: "Badges" })).not.toBeInTheDocument();
+    const pages = screen.getByRole("link", { name: "Badges" });
+    expect(pages).toHaveAttribute("href", "/stores/badges/orders");
+    expect(pages).toHaveAttribute("data-active", "true");
+    expect(screen.getByRole("link", { name: "Uniform" })).toHaveAttribute("data-active", "false");
+  });
+
+  it("keeps other areas folded to one line, and opens one by hand", async () => {
+    renderSidebar("/stores/badges/orders");
+    const texts = screen.getByRole("button", { name: "Texts" });
+    expect(texts).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Recipients" })).not.toBeInTheDocument();
+    await userEvent.click(texts);
+    expect(screen.getByRole("link", { name: "Recipients" })).toHaveAttribute("href", "/texts/recipients");
   });
 
   it("folds and unfolds a section from its heading, and remembers it next time", async () => {
     const { unmount } = renderSidebar("/");
     await userEvent.click(heading("Comms"));
-    expect(screen.queryByRole("link", { name: "Texts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Texts" })).not.toBeInTheDocument();
     expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ Comms: false });
     unmount();
 
     renderSidebar("/");
     expect(heading("Comms")).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(heading("Comms"));
-    expect(screen.getByRole("link", { name: "Texts" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Texts" })).toBeInTheDocument();
   });
 
   it("keeps the current section open even if it was closed on an earlier visit", () => {

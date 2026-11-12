@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Award,
   Bot,
   Calendar,
   CalendarCheck,
@@ -449,62 +448,103 @@ export const NAV_SECTIONS: NavSection[] = [
 ];
 
 /**
- * The bottom tab bar on a phone: four places, one tap each, and "More" for the
- * full menu. Four fit a 390px phone at a thumb-sized width without scrolling;
- * the old strip of ten to twelve scrolled sideways, so most of it was hidden
- * and its labels were cut off.
+ * The bottom bar on a phone holds sections, not pages. Tapping one opens its
+ * hub (`/m/<section>`): a list of every page in it, big enough for a thumb.
+ * A page inside has a back link to its hub, so moving around a section is
+ * hub → page → back, with no tab rows on the pages themselves. "More" is the
+ * hub for every section that isn't on the bar.
  *
- * Staff's picks are their most used pages in prod's Usage_Daily (Oct-Nov
- * 2026): cadets, then stores, with Check-in up front because it's the door on
- * parade night. NCOs' are the parade-night jobs: the door, marking, plans.
- * `match` widens what lights a tab (a cadet's record lights "Cadets"); the
- * longest match wins.
+ * Staff's sections are the ones they use most (prod's Usage_Daily, Oct-Nov
+ * 2026: cadets, then stores) plus Parade Night for the door and the sheets.
+ * NCOs and SNCOs only reach Parade Night and NCO Team, so those are theirs.
  */
-export type MobileTab = { label: string; href: string; icon: LucideIcon; match: string[] };
+export type MobileTab = { label: string; href: string; icon: LucideIcon; sections: string[] };
 
-const HOME: MobileTab = { label: "Home", href: "/", icon: House, match: [] };
-const CHECK_IN: MobileTab = { label: "Check-in", href: "/check-in", icon: ScanLine, match: [] };
+export const MORE_HREF = "/m/more";
 
-// Shared by SNCOs and NCOs.
-const NCO_TEAM: MobileTab[] = [
-  HOME,
-  CHECK_IN,
-  {
-    label: "Mark",
-    href: "/assessments/leadership",
-    icon: ClipboardCheck,
-    match: ["/assessments", "/cadets/assessments"],
-  },
-  { label: "Plans", href: "/session-plans", icon: ClipboardList, match: [] },
-];
+/** A section's hub address part: "Parade Night" → "parade-night". */
+export function sectionSlug(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function hubHref(sectionLabel: string): string {
+  return `/m/${sectionSlug(sectionLabel)}`;
+}
+
+function sectionTab(label: string, icon: LucideIcon): MobileTab {
+  return { label, href: hubHref(label), icon, sections: [label] };
+}
+
+const HOME: MobileTab = { label: "Home", href: "/", icon: House, sections: [] };
+const PARADE_NIGHT = sectionTab("Parade Night", ScanLine);
 
 const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
-  staff: [
-    HOME,
-    { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits"] },
-    CHECK_IN,
-    { label: "Stores", href: "/stores/uniform/orders", icon: Award, match: ["/stores"] },
-  ],
-  snco: NCO_TEAM,
-  nco: NCO_TEAM,
+  staff: [HOME, sectionTab("Cadets", Users), PARADE_NIGHT, sectionTab("Stores", Package)],
+  snco: [HOME, PARADE_NIGHT, sectionTab("NCO Team", ClipboardList)],
+  nco: [HOME, PARADE_NIGHT, sectionTab("NCO Team", ClipboardList)],
 };
 
 /** The tabs for a role, minus any it can't reach (the same rule as the sidebar). */
 export function mobileTabsFor(role: string | undefined): MobileTab[] {
-  const tabs = MOBILE_TABS[role as keyof typeof MOBILE_TABS] ?? [HOME];
-  return tabs.filter((t) => canAccess(role, t.href));
+  return MOBILE_TABS[role as keyof typeof MOBILE_TABS] ?? [HOME];
 }
 
-/** Which tab the current page belongs to, or null (it's only in the sidebar). */
+/**
+ * The label of the section a page lives in: "Stores" for /stores/badges/orders
+ * or a box below it, "Cadets" for a cadet's record, "" for a top-level page
+ * (Stats, Settings), and null for Home, a hub, or a page the map doesn't know.
+ */
+export function sectionFor(pathname: string): string | null {
+  if (pathname === "/" || pathname.startsWith("/m/")) return null;
+  const crumbs = breadcrumbsFor(pathname);
+  if (!crumbs.length) return null;
+  const labels = NAV_SECTIONS.flatMap((s) => (s.label ? [s.label] : []));
+  return labels.includes(crumbs[0].label) ? crumbs[0].label : "";
+}
+
+/**
+ * Which bar tab the current page belongs to: its hub, or a page in its
+ * section. Null means More (a section that isn't on the bar) or nowhere.
+ */
 export function activeMobileTab(pathname: string, tabs: MobileTab[]): MobileTab | null {
-  let best: { tab: MobileTab; len: number } | null = null;
-  for (const tab of tabs) {
-    for (const prefix of [tab.href, ...tab.match]) {
-      if (!isLinkActive(pathname, prefix)) continue;
-      if (!best || prefix.length > best.len) best = { tab, len: prefix.length };
-    }
+  const exact = tabs.find((t) => t.href === pathname);
+  if (exact) return exact;
+  const section = sectionFor(pathname);
+  if (section === null) return null;
+  return tabs.find((t) => t.sections.includes(section)) ?? null;
+}
+
+/** Where a page's back link on a phone goes: its section's hub, or More. Null on Home and the hubs. */
+export function mobileHubFor(
+  pathname: string,
+  role: string | undefined
+): { label: string; href: string } | null {
+  const section = sectionFor(pathname);
+  if (section === null) return null;
+  const tab = mobileTabsFor(role).find((t) => t.sections.includes(section));
+  return tab ? { label: tab.label, href: tab.href } : { label: "More", href: MORE_HREF };
+}
+
+/** The sections a hub lists, already filtered to what the user can reach. */
+export function hubSections(
+  slug: string,
+  role: string | undefined,
+  visible: NavSection[]
+): { label: string; sections: NavSection[] } | null {
+  if (slug === "more") {
+    const onBar = new Set(mobileTabsFor(role).flatMap((t) => t.sections));
+    const sections = visible
+      .filter((s) => !onBar.has(s.label ?? ""))
+      // The top block's Home is on the bar already.
+      .map((s) => (s.label ? s : { ...s, items: s.items.filter((i) => i.href !== "/") }))
+      .filter((s) => s.items.length > 0);
+    return { label: "More", sections };
   }
-  return best?.tab ?? null;
+  const section = visible.find((s) => s.label && sectionSlug(s.label) === slug);
+  return section ? { label: section.label!, sections: [section] } : null;
 }
 
 export function isLinkActive(pathname: string, href: string, exact = false): boolean {
