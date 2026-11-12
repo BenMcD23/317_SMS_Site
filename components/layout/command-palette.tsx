@@ -8,7 +8,7 @@ import { History, Pin, PinOff, Search, User } from "lucide-react";
 
 import { apiFetch } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
-import { fullLabel, MAX_PINS } from "@/lib/mobile-pins";
+import { fullLabel } from "@/lib/mobile-pins";
 import { flattenLinks, visibleSections } from "@/lib/navigation";
 import { useQuickPages } from "@/lib/quick-pages";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,6 @@ export function CommandPalette({
     .flatMap((h) => (byHref.has(h) ? [byHref.get(h)!] : []));
   const here = quick.here;
   const herePinned = here ? quick.pins.includes(here.href) : false;
-  const canPinHere = here && (herePinned || quick.pins.length < MAX_PINS);
   const showExtras = query.trim() === "";
 
   const pages = flattenLinks(
@@ -143,7 +142,7 @@ export function CommandPalette({
             <CommandSeparator />
           </>
         )}
-        {showExtras && here && canPinHere && (
+        {showExtras && here && (
           <>
             <CommandGroup heading="This page">
               <CommandItem

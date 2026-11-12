@@ -3,16 +3,18 @@ import type { LucideIcon } from "lucide-react";
 import { flattenLinks, isLinkActive, mobileTabsFor, type NavSection } from "@/lib/navigation";
 
 /**
- * The phone's bottom bar: four pages each person pins for themselves, and a
- * Menu with the pages they used last, a search box and everything else.
+ * The pages each person pins for themselves (as many as they like), shown on
+ * the phone's bottom bar and at the top of the sidebar, and a Menu with the
+ * pages they used last, a search box and everything else.
  * Built for switching back and forth between the same few pages, which is
  * most of what happens on a phone: a pinned page is one tap, a recent one two.
  *
- * Pure helpers here; the bar keeps the choices in localStorage, so they're
- * per phone and a blocked or private browser just falls back to the defaults.
+ * Pure helpers here; lib/quick-pages.ts keeps the pins on the account, so they
+ * follow someone between browsers.
  */
 
-export const MAX_PINS = 4;
+/** How many pages someone starts with pinned before they choose their own. */
+export const DEFAULT_PIN_COUNT = 4;
 export const MAX_RECENT = 5;
 
 export type PageLink = { label: string; href: string; icon: LucideIcon; path: string[]; keywords?: string[] };
@@ -41,7 +43,7 @@ export function defaultPins(role: string | undefined, pages: PageLink[]): string
   return mobileTabsFor(role)
     .map((t) => t.href)
     .filter((href) => reachable.has(href))
-    .slice(0, MAX_PINS);
+    .slice(0, DEFAULT_PIN_COUNT);
 }
 
 /**
@@ -51,13 +53,12 @@ export function defaultPins(role: string | undefined, pages: PageLink[]): string
 export function currentPins(stored: string[] | null, role: string | undefined, pages: PageLink[]): string[] {
   if (!stored) return defaultPins(role, pages);
   const reachable = new Set(pages.map((p) => p.href));
-  return [...new Set(stored)].filter((href) => reachable.has(href)).slice(0, MAX_PINS);
+  return [...new Set(stored)].filter((href) => reachable.has(href));
 }
 
-/** Pin or unpin a page. A fifth pin is refused (returns the pins unchanged); unpin one first. */
+/** Pin a page (to the end) or unpin it. There's no limit. */
 export function togglePin(pins: string[], href: string): string[] {
-  if (pins.includes(href)) return pins.filter((p) => p !== href);
-  return pins.length >= MAX_PINS ? pins : [...pins, href];
+  return pins.includes(href) ? pins.filter((p) => p !== href) : [...pins, href];
 }
 
 /** Put a page at the front of the recent list, once, keeping the newest few. */

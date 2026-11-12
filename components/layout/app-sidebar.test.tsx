@@ -141,16 +141,17 @@ describe("pinned pages", () => {
     expect(pinnedList()).not.toBeInTheDocument();
   });
 
-  it("says which rows are pinned, and refuses a fifth", () => {
+  it("says which rows are pinned, and takes as many as you like", async () => {
     renderSidebar("/stores/uniform/orders");
-    // The staff defaults fill all four.
+    // The staff defaults are four; a fifth and sixth go on the end.
     expect(screen.getAllByRole("button", { name: "Unpin Dashboard" })[0]).toHaveAttribute(
       "aria-pressed",
       "true"
     );
-    const fifth = screen.getByRole("button", { name: "Pin Uniform Orders" });
-    expect(fifth).toBeDisabled();
-    expect(fifth).toHaveAttribute("title", expect.stringMatching(/Unpin one first/));
+    await userEvent.click(screen.getByRole("button", { name: "Pin Uniform Orders" }));
+    await userEvent.click(screen.getByRole("button", { name: "Pin Uniform Insights" }));
+    expect(JSON.parse(window.localStorage.getItem(PINS)!)).toHaveLength(6);
+    expect(within(pinnedList()!).getByRole("link", { name: "Insights" })).toBeInTheDocument();
   });
 
   it("never shows an NCO a staff page pinned on a shared computer", () => {

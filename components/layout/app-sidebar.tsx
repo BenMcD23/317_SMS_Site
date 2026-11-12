@@ -16,7 +16,7 @@ import {
   type NavLink,
   type NavSection,
 } from "@/lib/navigation";
-import { fullLabel, MAX_PINS } from "@/lib/mobile-pins";
+import { fullLabel } from "@/lib/mobile-pins";
 import { useQuickPages } from "@/lib/quick-pages";
 import { useOpenSections } from "@/lib/sidebar-sections";
 import { cn } from "@/lib/utils";
@@ -65,27 +65,19 @@ const PinsContext = createContext<{ pins: string[]; toggle: (href: string) => vo
 /**
  * Pin a page to the top of the menu (and the phone's bar), or take it off.
  * Shows on hover and keyboard focus on a laptop so the menu stays quiet,
- * always in the phone's menu sheet where there's no hover. A full set of
- * pins refuses a fifth: unpin one first.
+ * always in the phone's menu sheet where there's no hover.
  */
 function PinButton({ href, label, sub = false }: { href: string; label: string; sub?: boolean }) {
   const { pins, toggle } = useContext(PinsContext);
   const pinned = pins.includes(href);
-  const full = !pinned && pins.length >= MAX_PINS;
   return (
     <SidebarMenuAction
       showOnHover={!sub}
       aria-pressed={pinned}
       aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
-      title={full ? `Unpin one first: ${MAX_PINS} is the most` : undefined}
-      disabled={full}
       onClick={() => toggle(href)}
       className={cn(
-        "disabled:cursor-not-allowed",
         pinned && "text-sidebar-primary",
-        // A refused pin stays hidden like the rest until its row is hovered,
-        // then shows faded.
-        !sub && "group-hover/menu-item:disabled:opacity-40",
         // Sub-rows aren't menu items, so they need their own hover rule.
         sub &&
           "top-1 group-focus-within/menu-sub-item:opacity-100 group-hover/menu-sub-item:opacity-100 md:opacity-0"

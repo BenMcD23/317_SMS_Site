@@ -4,7 +4,7 @@ import {
   addRecent,
   currentPins,
   defaultPins,
-  MAX_PINS,
+  DEFAULT_PIN_COUNT,
   MAX_RECENT,
   pageFor,
   pinLabel,
@@ -30,7 +30,7 @@ describe("default pins", () => {
 
   it("skip what the role can't open: an NCO gets no inspection sheet", () => {
     const pins = defaultPins("nco", nco);
-    expect(pins).toHaveLength(MAX_PINS);
+    expect(pins).toHaveLength(DEFAULT_PIN_COUNT);
     expect(pins).not.toContain("/assessments/inspection");
   });
 
@@ -48,7 +48,7 @@ describe("current pins", () => {
     expect(currentPins([], "staff", staff)).toEqual([]);
   });
 
-  it("drop pages the user can no longer reach, duplicates and anything past four", () => {
+  it("drop pages the user can no longer reach and duplicates, and keep as many as were pinned", () => {
     const stored = [
       "/stores/badges/orders",
       "/stores/catalogue",
@@ -63,6 +63,7 @@ describe("current pins", () => {
       "/stores/catalogue",
       "/stats",
       "/texts/messages",
+      "/recruits",
     ]);
     // A staff pin on an NCO's phone (shared phone, role changed) just goes.
     expect(currentPins(["/stores/catalogue", "/check-in"], "nco", nco)).toEqual(["/check-in"]);
@@ -75,9 +76,9 @@ describe("pinning", () => {
     expect(togglePin(["/a", "/b", "/c"], "/b")).toEqual(["/a", "/c"]);
   });
 
-  it("refuses a fifth pin", () => {
-    const full = ["/a", "/b", "/c", "/d"];
-    expect(togglePin(full, "/e")).toEqual(full);
+  it("has no limit", () => {
+    const many = ["/a", "/b", "/c", "/d", "/e", "/f"];
+    expect(togglePin(many, "/g")).toEqual([...many, "/g"]);
   });
 });
 

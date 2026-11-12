@@ -131,11 +131,18 @@ describe("the menu", () => {
     ]);
   });
 
-  it("won't take a fifth pin: unpin one first", async () => {
+  it("takes as many pins as you like, and the bar scrolls once they don't fit", async () => {
     const { nav } = renderBar("staff");
     const menu = await openMenu(nav);
-    expect(within(menu).getByRole("button", { name: "Pin Squadron Stats" })).toBeDisabled();
-    expect(within(menu).getAllByRole("button", { name: /^Unpin / })).toHaveLength(4);
+    await userEvent.click(within(menu).getByRole("button", { name: "Pin Squadron Stats" }));
+    await userEvent.click(within(menu).getByRole("button", { name: "Pin Parade Night Texts" }));
+    expect(tabNames(nav)).toEqual(["Home", "Cadets", "Check-in", "Stock", "Stats", "Parade Night Texts"]);
+    expect(within(nav).getAllByRole("list", { hidden: true })[0]).toHaveClass("overflow-x-auto");
+  });
+
+  it("shares the width when four or fewer are pinned, with no scrolling", () => {
+    const { nav } = renderBar("staff");
+    expect(within(nav).getAllByRole("list")[0]).not.toHaveClass("overflow-x-auto");
   });
 
   it("finds a page by name or an old name", async () => {

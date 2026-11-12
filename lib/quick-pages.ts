@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
+import { apiFetch } from "@/lib/api-fetch";
+import { API_BASE } from "@/lib/config";
 import {
   addRecent,
   currentPins,
@@ -17,19 +20,32 @@ import { visibleSections } from "@/lib/navigation";
 /**
  * The pages someone pinned and the pages they used last, shared by the phone
  * bar, the sidebar's Pinned list and ⌘K, so a pin made in one shows in the
- * others straight away. Kept in this browser's localStorage (keys kept from
- * when only the phone had them, so existing pins carry over); every read and
- * write is guarded, and blocked storage just means the defaults for the visit.
+ * others straight away.
+ *
+ * Pins live on the account (the API's /settings/nav-pins), so they follow
+ * someone from laptop to phone. This browser keeps a copy so the menu draws
+ * at once and works offline; the account's list replaces it when it arrives.
+ * Recent pages stay per browser: they're about where you've just been here.
+ * Every storage read and write is guarded, and blocked storage just means the
+ * copy lasts for the visit.
  */
 
 const PINS_KEY = "sms.mobile.pins";
 const RECENT_KEY = "sms.mobile.recent";
+const PINS_URL = `${API_BASE}/settings/nav-pins`;
 
 const listeners = new Set<() => void>();
 // This tab's latest write of each list. Read before storage, so a write that
 // storage refused (full, blocked) still holds for the visit rather than the
 // older value storage kept winning.
 const memory = new Map<string, string>();
+// The token whose account pins have been fetched (or are being), so each
+// sign-in loads them once however many components ask.
+let loadedFor: string | null = null;
+
+function notify() {
+  for (const l of listeners) l();
+}
 
 function subscribe(onChange: () => void) {
   listeners.add(onChange);
@@ -57,7 +73,8 @@ function read(key: string): string | null {
   }
 }
 
-function write(key: string, list: string[]) {
+/** Store a list, or null for "never chosen" (the role's defaults). */
+function write(key: string, list: string[] | null) {
   const raw = JSON.stringify(list);
   memory.set(key, raw);
   try {
@@ -65,7 +82,7 @@ function write(key: string, list: string[]) {
   } catch {
     // Storage blocked or full: `memory` keeps it for this visit.
   }
-  for (const l of listeners) l();
+  notify();
 }
 
 /** The raw string, so React compares by value and doesn't re-render forever. */
@@ -88,9 +105,49 @@ function parseList(raw: string | null): string[] | null {
   }
 }
 
-/** For tests: forget writes held in memory, as a fresh visit would. */
+async function saveToAccount(token: string, pins: string[] | null): Promise<boolean> {
+  try {
+    const res = await apiFetch(PINS_URL, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ pins }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch the account's pins once per sign-in. The account wins over this
+ * browser's copy. An account that has never chosen but a browser that has
+ * (pins made before they were saved to the account) sends them up, so nobody
+ * loses the pins they'd already set. A failed fetch keeps the copy.
+ */
+async function loadFromAccount(token: string) {
+  if (loadedFor === token) return;
+  loadedFor = token;
+  try {
+    const res = await apiFetch(PINS_URL, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return;
+    const data = (await res.json().catch(() => null)) as { pins?: unknown } | null;
+    if (!data || !("pins" in data)) return;
+    const fromAccount = data.pins === null ? null : parseList(JSON.stringify(data.pins));
+    const local = parseList(read(PINS_KEY));
+    if (fromAccount === null && local !== null) {
+      await saveToAccount(token, local);
+      return;
+    }
+    write(PINS_KEY, fromAccount);
+  } catch {
+    // Offline or the API's down: keep this browser's copy.
+  }
+}
+
+/** For tests: forget writes held in memory and which account was loaded, as a fresh visit would. */
 export function resetQuickPagesForTest() {
   memory.clear();
+  loadedFor = null;
 }
 
 export type QuickPages = {
@@ -112,9 +169,14 @@ export function useQuickPages(): QuickPages {
   const role = session?.role;
   const email = session?.user?.email ?? undefined;
   const oc = session?.is_oc;
+  const token = session?.id_token;
   const pages = useMemo(() => reachablePages(visibleSections(role, email, oc)), [role, email, oc]);
   const pinsRaw = useRaw(PINS_KEY);
   const recentRaw = useRaw(RECENT_KEY);
+
+  useEffect(() => {
+    if (token) void loadFromAccount(token);
+  }, [token]);
 
   const pins = currentPins(parseList(pinsRaw), role, pages);
   const reachable = new Set(pages.map((p) => p.href));
@@ -125,7 +187,19 @@ export function useQuickPages(): QuickPages {
     pins,
     recent,
     here: pageFor(pathname, pages),
-    togglePin: (href) => write(PINS_KEY, toggled(pins, href)),
+    togglePin: (href) => {
+      const before = parseList(read(PINS_KEY));
+      const next = toggled(pins, href);
+      // Show it at once; the account catches up.
+      write(PINS_KEY, next);
+      if (!token) return;
+      void saveToAccount(token, next).then((ok) => {
+        if (ok) return;
+        // Put it back rather than show a pin the account doesn't have.
+        write(PINS_KEY, before);
+        toast.error("Couldn't save your pins. Check your connection and try again.");
+      });
+    },
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, Menu, Pin, Search, Settings } from "lucide-react";
@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MAX_PINS, pinLabel, searchPages, type PageLink } from "@/lib/mobile-pins";
+import { pinLabel, searchPages, type PageLink } from "@/lib/mobile-pins";
 import { useQuickPages } from "@/lib/quick-pages";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +23,11 @@ const TAB =
   "flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors";
 
 /**
- * Bottom bar on a phone: the four pages this person pinned (one tap each) and
- * Menu, which slides up their recent pages, a search box and every page, each
- * with a pin to add it to the bar. Hidden from md up, where the sidebar is.
+ * Bottom bar on a phone: the pages this person pinned (one tap each) and Menu,
+ * which slides up their recent pages, a search box and every page, each with
+ * a pin to add it to the bar. Up to four share the width; more scroll
+ * sideways, with Menu fixed at the end and the current page scrolled into
+ * view. Hidden from md up, where the sidebar is.
  */
 export function MobileTabBar() {
   const { data: session } = useSession();
@@ -35,6 +37,17 @@ export function MobileTabBar() {
   const { pages, pins, recent, here, togglePin } = useQuickPages();
   const [open, setOpen] = useState(false);
   const byHref = new Map(pages.map((p) => [p.href, p]));
+  const strip = useRef<HTMLUListElement>(null);
+  const crowded = pins.length > 4;
+
+  // A pinned page past the edge of the strip is brought into view, so the lit
+  // tab is never hidden. jsdom has no scrollIntoView.
+  const hereHref = here?.href;
+  useEffect(() => {
+    if (!hereHref) return;
+    const tab = strip.current?.querySelector(`[data-pin="${CSS.escape(hereHref)}"]`);
+    tab?.scrollIntoView?.({ inline: "center", block: "nearest" });
+  }, [hereHref]);
 
   return (
     <>
@@ -42,12 +55,24 @@ export function MobileTabBar() {
         aria-label="Quick links"
         className="no-print bg-background/95 supports-[backdrop-filter]:bg-background/85 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <ul className="flex min-w-0 flex-1">
+        <ul
+          ref={strip}
+          className={cn(
+            "flex min-w-0 flex-1",
+            crowded &&
+              "snap-x [scrollbar-width:none] overflow-x-auto overscroll-x-contain [&::-webkit-scrollbar]:hidden"
+          )}
+        >
           {pins.map((href) => {
             const page = byHref.get(href)!;
             const current = here?.href === href;
             return (
-              <li key={href} className="flex min-w-0 flex-1">
+              <li
+                key={href}
+                data-pin={href}
+                // Four share the width; more keep a thumb-sized width each and scroll.
+                className={cn("flex min-w-0", crowded ? "w-[4.75rem] flex-none snap-start" : "flex-1")}
+              >
                 <Link
                   href={href}
                   aria-current={current ? "page" : undefined}
@@ -88,13 +113,11 @@ export function MobileTabBar() {
 function PageRow({
   page,
   pinned,
-  pinsFull,
   onTogglePin,
   onNavigate,
 }: {
   page: PageLink;
   pinned: boolean;
-  pinsFull: boolean;
   onTogglePin: () => void;
   onNavigate: () => void;
 }) {
@@ -119,8 +142,6 @@ function PageRow({
         className={cn("size-10 shrink-0", pinned ? "text-primary" : "text-muted-foreground")}
         aria-pressed={pinned}
         aria-label={pinned ? `Unpin ${page.label}` : `Pin ${page.label}`}
-        // A full bar refuses a fifth: unpin one first. Disabled says so.
-        disabled={!pinned && pinsFull}
         onClick={onTogglePin}
       >
         {/* Filled when it is on the bar; a crossed-out pin read as "not pinned". */}
@@ -147,7 +168,6 @@ function QuickMenu({
 }) {
   const [query, setQuery] = useState("");
   const byHref = new Map(pages.map((p) => [p.href, p]));
-  const pinsFull = pins.length >= MAX_PINS;
   const close = () => {
     onOpenChange(false);
     setQuery("");
@@ -157,7 +177,6 @@ function QuickMenu({
       key={page.href}
       page={page}
       pinned={pins.includes(page.href)}
-      pinsFull={pinsFull}
       onTogglePin={() => onTogglePin(page.href)}
       onNavigate={close}
     />
@@ -180,7 +199,7 @@ function QuickMenu({
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>Menu</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            Pin up to {MAX_PINS} pages to the bar with{" "}
+            Pin the pages you use most to the bar with{" "}
             <Pin className="inline size-3.5" aria-label="the pin" />.
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
