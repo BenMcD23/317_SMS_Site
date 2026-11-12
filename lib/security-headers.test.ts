@@ -57,4 +57,13 @@ describe("securityHeaders", () => {
       ])
     );
   });
+
+  it("lets this site ask for the microphone but keeps camera and location off", () => {
+    // `microphone=()` blocks the browser prompt entirely, so voice notes on
+    // /nco-notes could never be allowed.
+    const policy = securityHeaders(API, false).find((h) => h.key === "Permissions-Policy")?.value;
+    expect(policy).toContain("microphone=(self)");
+    expect(policy).toContain("camera=()");
+    expect(policy).toContain("geolocation=()");
+  });
 });
