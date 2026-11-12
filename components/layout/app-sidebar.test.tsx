@@ -30,6 +30,16 @@ function renderSidebar(path = "/cadets/overview") {
 const heading = (name: string) => screen.getByRole("button", { name });
 
 beforeEach(() => {
+  // jsdom has no ResizeObserver, and opening a group measures with one; without
+  // it the group sometimes never opened (an unhandled ReferenceError).
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
   window.matchMedia ??= (q: string) =>
     ({
       matches: false,
@@ -69,7 +79,7 @@ describe("sidebar sections", () => {
     expect(uniform).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("link", { name: "Insights" })).not.toBeInTheDocument();
     await userEvent.click(uniform);
-    expect(screen.getByRole("link", { name: "Insights" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Insights" })).toHaveAttribute(
       "href",
       "/stores/uniform/insights"
     );
