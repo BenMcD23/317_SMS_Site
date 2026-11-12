@@ -68,7 +68,13 @@ export function securityHeaders(apiBase: string, isDev: boolean): Header[] {
     // postMessage, which a stricter Cross-Origin-Opener-Policy would sever, so
     // that header is deliberately not set.
     { key: "Referrer-Policy", value: "no-referrer" },
-    { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+    // microphone=(self), not (): the NCO notes page records voice notes, and an
+    // empty allowlist makes the browser refuse getUserMedia without ever showing
+    // a permission prompt, so the user had nothing to click "Allow" on.
+    {
+      key: "Permissions-Policy",
+      value: "camera=(), microphone=(self), geolocation=(), payment=()",
+    },
     // Browsers ignore HSTS on plain http, so this is harmless on localhost.
     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   ];

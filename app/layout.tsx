@@ -1,21 +1,27 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { AppShell } from "@/components/layout/app-shell";
 
 // Atkinson Hyperlegible was drawn for low-vision readers: distinct 1/l/I and
 // 0/O, which matters for CINs, sizes and a phone read in a dim drill hall.
-const uiSans = Atkinson_Hyperlegible_Next({
+// Self-hosted (variable Latin files from the Fontsource packages, OFL licence
+// beside them) rather than next/font/google: that downloads from Google at
+// build time, and a failed download broke CI with "next/font/google queries
+// have exactly one entry" and left the font off the page.
+const uiSans = localFont({
+  src: "./fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2",
   variable: "--font-ui-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "200 800",
+  display: "swap",
 });
 
-const uiMono = Atkinson_Hyperlegible_Mono({
+const uiMono = localFont({
+  src: "./fonts/atkinson-hyperlegible-mono-latin-wght-normal.woff2",
   variable: "--font-ui-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: "200 800",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
