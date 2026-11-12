@@ -4,11 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const SESSION = { data: { id_token: "tok", role: "staff", user: { email: "s@x" } }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useParams: () => ({ box: "a" }),
-  useRouter: () => ({ push: vi.fn() }),
-}));
+vi.mock("next/navigation", () => ({ useParams: () => ({ box: "a" }), useRouter: () => ({ push: vi.fn() }) }));
 
 import BoxPage from "@/app/stores/uniform/stock/[box]/page";
 import { renderWithQuery } from "@/tests/render-with-query";

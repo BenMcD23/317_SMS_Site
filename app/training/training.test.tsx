@@ -1,24 +1,19 @@
 // @vitest-environment jsdom
-// The Training area: one sidebar link whose four tabs (Tonight, Progress,
-// Tasks & kit, Setup) are separate pages under one header, staff only. The
-// classification and practical-session planners open from Tonight and light
-// its tab; every old URL is sent to the right part.
-import fs from "node:fs";
-import nodePath from "node:path";
-
-import { render, screen } from "@testing-library/react";
+// The Training area: one sidebar link whose parts (nights, classifications,
+// sessions, catch-ups, theory progress, tasks & kit, QR codes, programme
+// links) are separate pages under one header,
+// staff only, with the old Classifications and Session Planner URLs sent to
+// the right part.
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import TrainingLayout from "@/app/training/layout";
 import { canAccess } from "@/lib/access";
-import { activeTab, breadcrumbsFor, flattenLinks, NAV_SECTIONS } from "@/lib/navigation";
-import { CLASSIFICATIONS_REDIRECTS, TRAINING_REDIRECTS } from "@/next.config";
+import { breadcrumbsFor, flattenLinks, activeMobileTab, mobileTabsFor, NAV_SECTIONS } from "@/lib/navigation";
+import { CLASSIFICATIONS_REDIRECTS } from "@/next.config";
 
 const path = vi.hoisted(() => ({ current: "/training" }));
 vi.mock("next/navigation", () => ({ usePathname: () => path.current }));
-vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: { role: "staff", user: { email: "s@317atc.co.uk" } } }),
-}));
 
 function renderAt(pathname: string) {
   path.current = pathname;
@@ -30,37 +25,46 @@ function renderAt(pathname: string) {
 }
 
 const TAB_HREFS = {
-  Tonight: "/training",
-  Progress: "/training/progress",
+  Nights: "/training/nights",
+  Classifications: "/training",
+  Sessions: "/training/sessions",
+  "Catch-ups": "/training/catch-ups",
+  "Theory progress": "/training/progress",
   "Tasks & kit": "/training/tasks",
-  Setup: "/training/setup",
+  "QR codes": "/training/qr-codes",
+  "Programme links": "/training/links",
 };
 
-const training = NAV_SECTIONS.flatMap((sec) => sec.items).find((i) => i.label === "Training")!;
-
-describe("Training's pages", () => {
-  it("are four, in order, listed under Training in the menu", () => {
-    expect(training.tabs!.map((t) => [t.label, t.href])).toEqual(Object.entries(TAB_HREFS));
-  });
-
-  it("share one header and no tab row: the sidebar and the phone's hub move between them", () => {
-    renderAt("/training/progress");
-    expect(screen.getByRole("heading", { level: 1, name: "Training" })).toBeInTheDocument();
+describe("Training tabs", () => {
+  it("are links to each part, in order, with the page under them", () => {
+    renderAt("/training");
+    const nav = screen.getByRole("navigation", { name: "Training" });
+    const links = within(nav).getAllByRole("link");
+    expect(links.map((l) => [l.textContent, l.getAttribute("href")])).toEqual(Object.entries(TAB_HREFS));
+    expect(screen.getByRole("heading", { name: "Training" })).toBeInTheDocument();
     expect(screen.getByText("page body")).toBeInTheDocument();
-    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
   });
 
-  it.each(Object.entries(TAB_HREFS))("%s is the current page on its own page", (label, href) => {
-    // Tonight is the index: it mustn't light up on every other part too.
-    expect(activeTab(href, training.tabs!)?.label).toBe(label);
+  it.each(Object.entries(TAB_HREFS))("%s is the current tab on its own page", (label, href) => {
+    renderAt(href);
+    const nav = screen.getByRole("navigation", { name: "Training" });
+    const current = within(nav)
+      .getAllByRole("link")
+      .filter((l) => l.getAttribute("aria-current") === "page");
+    // Classifications is the index: it mustn't light up on every other part too.
+    expect(current.map((l) => l.textContent)).toEqual([label]);
   });
+});
 
-  it.each(["/training/classifications", "/training/sessions"])(
-    "%s is planned from Tonight, so it lights Tonight",
-    (href) => {
-      expect(activeTab(href, training.tabs!)?.label).toBe("Tonight");
-    }
-  );
+describe("who can open it", () => {
+  it.each([
+    ["staff", true],
+    ["snco", false],
+    ["nco", false],
+    [undefined, false],
+  ])("%s → %s, on every part", (role, allowed) => {
+    for (const href of Object.values(TAB_HREFS)) expect(canAccess(role, href)).toBe(allowed);
+  });
 });
 
 describe("navigation", () => {
@@ -78,21 +82,15 @@ describe("navigation", () => {
   });
 
   it("names the area in the breadcrumbs on every part", () => {
-    expect(breadcrumbsFor("/training")).toEqual([
-      { label: "Parade Night" },
-      { label: "Training" },
-      { label: "Tonight" },
-    ]);
+    expect(breadcrumbsFor("/training")).toEqual([{ label: "Cadets" }, { label: "Training" }]);
     expect(breadcrumbsFor("/training/sessions")).toEqual([
-      { label: "Parade Night" },
-      { label: "Training" },
-      { label: "Tonight", href: "/training" },
+      { label: "Cadets" },
+      { label: "Training", href: "/training" },
     ]);
-    expect(breadcrumbsFor("/training/progress").map((c) => c.label)).toEqual([
-      "Parade Night",
-      "Training",
-      "Progress",
-    ]);
+  });
+
+  it("lights the phone's Training tab", () => {
+    expect(activeMobileTab("/training/sessions", mobileTabsFor("staff"))?.label).toBe("Training");
   });
 });
 
@@ -106,31 +104,13 @@ function redirectFor(pathname: string, query: Record<string, string> = {}): stri
 
 describe("old Classifications links", () => {
   it.each([
-    [{}, "/training/classifications"],
+    [{}, "/training"],
     [{ tab: "progress" }, "/training/progress"],
     // The Record tab became a button on Progress before this move.
     [{ tab: "record" }, "/training/progress"],
-    [{ tab: "qr" }, "/training/setup"],
-    [{ tab: "nonsense" }, "/training/classifications"],
+    [{ tab: "qr" }, "/training/qr-codes"],
+    [{ tab: "nonsense" }, "/training"],
   ])("?%o goes to %s", (query, destination) => {
     expect(redirectFor("/cadets/classifications", query)).toBe(destination);
-  });
-});
-
-describe("old Training tabs", () => {
-  it.each([
-    ["/training/nights", "/training"],
-    ["/training/catch-ups", "/training/progress?view=missed"],
-    ["/training/qr-codes", "/training/setup"],
-    ["/training/links", "/training/setup"],
-  ])("%s goes to %s", (source, destination) => {
-    expect(TRAINING_REDIRECTS.find((r) => r.source === source)?.destination).toBe(destination);
-  });
-
-  it("sends nothing to a page that no longer exists", () => {
-    for (const { destination } of [...TRAINING_REDIRECTS, ...CLASSIFICATIONS_REDIRECTS]) {
-      const page = destination.split("?")[0].replace(/^\/training/, "app/training");
-      expect(fs.existsSync(nodePath.join(process.cwd(), page, "page.tsx")), destination).toBe(true);
-    }
   });
 });

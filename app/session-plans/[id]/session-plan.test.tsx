@@ -6,10 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const SESSION = { data: { id_token: "tok", role: "nco" }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import SessionPlanDetailPage from "@/app/session-plans/[id]/page";

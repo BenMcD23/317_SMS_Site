@@ -8,10 +8,7 @@ import { renderWithQuery } from "@/tests/render-with-query";
 
 const SESSION = { data: { id_token: "tok" }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn() }),
-}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 function change(over: Partial<StockChange>): StockChange {
   return {

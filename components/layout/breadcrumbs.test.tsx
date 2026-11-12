@@ -24,7 +24,7 @@ describe("HeaderBreadcrumbs", () => {
 
   it("links a cadet record back to the cadet list", () => {
     trail("/cadets/2100003");
-    expect(screen.getByRole("link", { name: "Cadets" })).toHaveAttribute("href", "/cadets/overview");
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/cadets/overview");
   });
 
   it("renders nothing for a page the site map doesn't know", () => {

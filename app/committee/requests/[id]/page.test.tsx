@@ -8,10 +8,7 @@ import CommitteeRequestDetailPage from "@/app/committee/requests/[id]/page";
 
 const SESSION = { data: { id_token: "tok", role: "staff" }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION }));
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn() }),
-}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/config", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/config")>()),
   API_BASE: "http://api",

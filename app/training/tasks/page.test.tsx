@@ -20,10 +20,7 @@ vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn(), 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }));
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useRouter: () => router,
-}));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 const KIT: KitItem[] = [
   {

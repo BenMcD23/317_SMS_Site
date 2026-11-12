@@ -12,7 +12,7 @@ export const CLASSIFICATIONS_REDIRECTS = [
     [
       ["progress", "/training/progress"],
       ["record", "/training/progress"],
-      ["qr", "/training/setup"],
+      ["qr", "/training/qr-codes"],
     ] as const
   ).map(([tab, destination]) => ({
     source: "/cadets/classifications",
@@ -20,19 +20,7 @@ export const CLASSIFICATIONS_REDIRECTS = [
     destination,
     permanent: false,
   })),
-  { source: "/cadets/classifications", destination: "/training/classifications", permanent: false },
-];
-
-/**
- * Training went from eight tabs to four: Nights became Tonight (the area's
- * index), Catch-ups a view of Progress, and QR codes and Programme links one
- * Setup page. Classifications and Sessions are planned from Tonight.
- */
-export const TRAINING_REDIRECTS = [
-  { source: "/training/nights", destination: "/training", permanent: false },
-  { source: "/training/catch-ups", destination: "/training/progress?view=missed", permanent: false },
-  { source: "/training/qr-codes", destination: "/training/setup", permanent: false },
-  { source: "/training/links", destination: "/training/setup", permanent: false },
+  { source: "/cadets/classifications", destination: "/training", permanent: false },
 ];
 
 const nextConfig: NextConfig = {
@@ -43,8 +31,8 @@ const nextConfig: NextConfig = {
   // hundreds of named exports; without this every page bundles the whole
   // package. lucide-react is already in Next's built-in default list.
   // Keep old bookmarks working: the leaving process moved under the OC section,
-  // Theory Progress, Classification Day and then Classifications moved into
-  // Training, and Training's eight tabs became four (TRAINING_REDIRECTS).
+  // and Theory Progress, Classification Day and then Classifications moved into
+  // Training, one page per old tab.
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders(API_BASE, process.env.NODE_ENV !== "production") }];
   },
@@ -52,8 +40,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/cadets/leaving", destination: "/oc/leaving", permanent: false },
       ...CLASSIFICATIONS_REDIRECTS,
-      ...TRAINING_REDIRECTS,
-      { source: "/cadets/classification-day", destination: "/training/classifications", permanent: false },
+      { source: "/cadets/classification-day", destination: "/training", permanent: false },
       { source: "/cadets/theory", destination: "/training/progress", permanent: false },
     ];
   },

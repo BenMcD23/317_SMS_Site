@@ -6,18 +6,12 @@ import { describe, expect, it } from "vitest";
 import { canAccess } from "@/lib/access";
 import { OWNER_EMAIL } from "@/lib/config";
 import {
-  activeMobileTab,
-  activeTab,
-  hubHref,
-  hubSections,
-  mobileHubFor,
-  sectionFor,
-  sectionSlug,
-  areaFor,
   breadcrumbsFor,
   flattenLinks,
+  isGroup,
+  isGroupActive,
+  activeMobileTab,
   isLinkActive,
-  isNavLinkActive,
   mobileTabsFor,
   NAV_SECTIONS,
   visibleSections,
@@ -38,21 +32,10 @@ describe("the site map", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  it("never has an empty area, and an area's row opens its first page", () => {
+  it("never has an empty group", () => {
     for (const section of NAV_SECTIONS) {
-      for (const item of section.items) {
-        if (!item.tabs) continue;
-        expect(item.tabs.length).toBeGreaterThan(1);
-        expect(item.href).toBe(item.tabs[0].href);
-      }
+      for (const item of section.items) if (isGroup(item)) expect(item.links.length).toBeGreaterThan(0);
     }
-  });
-
-  it("keeps the staff menu short: one row per job", () => {
-    const rows = visibleSections("staff", "someone@317atc.co.uk").flatMap((s) => s.items);
-    expect(rows.length).toBeLessThanOrEqual(26);
-    // ...without losing a page: every page is still a tab or a row.
-    expect(flattenLinks(NAV_SECTIONS).length).toBeGreaterThan(rows.length);
   });
 });
 
@@ -98,29 +81,13 @@ describe("visibleSections", () => {
     expect(ocLinks).toContain("/oc/custom");
   });
 
-  it("puts the OC dashboard, leaving process and staff together in an OC area", () => {
-    const rows = visibleSections("staff", "oc@317atc.co.uk", true).flatMap((s) => s.items);
-    const oc = rows.find((r) => r.label === "OC");
-    expect(oc?.tabs?.map((t) => t.href)).toEqual(["/oc", "/oc/custom", "/oc/leaving", "/staff/overview"]);
-    // Nobody else gets an empty OC row.
-    const others = visibleSections("staff", "other@317atc.co.uk").flatMap((s) => s.items);
-    expect(others.some((r) => r.label === "OC")).toBe(false);
-  });
-
-  it("drops the tabs a role can't reach, and opens the area on the first it can", () => {
-    const rows = (role: string) => visibleSections(role, "n@x").flatMap((s) => s.items);
-    const assessments = (role: string) => rows(role).find((r) => r.label === "Assessments");
-    expect(assessments("staff")?.tabs?.map((t) => t.label)).toContain("MOI");
-    expect(assessments("nco")?.tabs?.map((t) => t.label)).toEqual([
-      "Leadership",
-      "Radio",
-      "Space",
-      "Results",
-    ]);
-    // An SNCO can mark an inspection but not see the history: one tab, the sheet.
-    const inspections = rows("snco").find((r) => r.label === "Inspections");
-    expect(inspections?.tabs?.map((t) => t.href)).toEqual(["/assessments/inspection"]);
-    expect(rows("nco").some((r) => r.label === "Inspections")).toBe(false);
+  it("puts the OC dashboard and leaving process together under an OC group", () => {
+    const groups = visibleSections("staff", "oc@317atc.co.uk", true).flatMap((s) => s.items.filter(isGroup));
+    const oc = groups.find((g) => g.label === "OC");
+    expect(oc?.links.map((l) => l.href)).toEqual(["/oc", "/oc/custom", "/oc/leaving", "/staff/overview"]);
+    // Nobody else gets an empty OC group.
+    const others = visibleSections("staff", "other@317atc.co.uk").flatMap((s) => s.items.filter(isGroup));
+    expect(others.some((g) => g.label === "OC")).toBe(false);
   });
 
   it("the old leaving page is gone, and staff is the OC's alone", () => {
@@ -128,10 +95,10 @@ describe("visibleSections", () => {
     expect(hrefs("staff", "other@317atc.co.uk")).not.toContain("/staff/overview");
   });
 
-  it("drops empty sections and areas entirely", () => {
+  it("drops empty sections and groups entirely", () => {
     for (const section of visibleSections("nco", "n@x")) {
       expect(section.items.length).toBeGreaterThan(0);
-      for (const item of section.items) if (item.tabs) expect(item.tabs.length).toBeGreaterThan(0);
+      for (const item of section.items) if (isGroup(item)) expect(item.links.length).toBeGreaterThan(0);
     }
   });
 });
@@ -149,39 +116,10 @@ describe("active state", () => {
     expect(isLinkActive("/cadets/auditing", "/cadets/audit")).toBe(false);
   });
 
-  it("a group's row is active on any of its pages", () => {
-    const badges = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.label === "Badges")!;
-    expect(isNavLinkActive("/stores/badges/stock", badges)).toBe(true);
-    expect(isNavLinkActive("/stores/badges/orders", badges)).toBe(true);
-    expect(isNavLinkActive("/stores/uniform/orders", badges)).toBe(false);
-  });
-
-  it("splits Stores into Uniform and Badges, as before, with Catalogue on its own", () => {
-    const stores = NAV_SECTIONS.find((s) => s.label === "Stores")!;
-    expect(stores.items.map((i) => [i.label, i.tabs?.map((t) => t.label)])).toEqual([
-      ["Uniform", ["Stock", "Orders", "Insights"]],
-      ["Badges", ["Stock", "Orders"]],
-      ["Catalogue", undefined],
-    ]);
-  });
-
-  it("gives every page in a group its own icon", () => {
-    for (const item of NAV_SECTIONS.flatMap((s) => s.items))
-      for (const tab of item.tabs ?? []) expect(tab.icon, `${item.label} › ${tab.label}`).toBeDefined();
-  });
-
-  it("picks the deepest tab, so an index tab doesn't light up beneath itself", () => {
-    const attendance = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.label === "Attendance")!;
-    expect(activeTab("/attendance", attendance.tabs!)?.label).toBe("Squadron");
-    expect(activeTab("/attendance/ncos", attendance.tabs!)?.label).toBe("NCOs");
-  });
-
-  it("finds a page's area, but not for a page that stands alone", () => {
-    const sections = visibleSections("staff", "someone@317atc.co.uk");
-    expect(areaFor("/texts/recipients", sections)?.label).toBe("Texts");
-    expect(areaFor("/stores/uniform/stock/BOX-A", sections)?.label).toBe("Uniform");
-    expect(areaFor("/stores/catalogue", sections)).toBeNull();
-    expect(areaFor("/", sections)).toBeNull();
+  it("a group is active when any child is", () => {
+    const group = NAV_SECTIONS.flatMap((s) => s.items).find(isGroup)!;
+    expect(isGroupActive(group.links[0].href, group)).toBe(true);
+    expect(isGroupActive("/nowhere", group)).toBe(false);
   });
 });
 
@@ -200,10 +138,9 @@ describe("breadcrumbsFor", () => {
   it("trails a cadet or staff record back to its list, with the list linked", () => {
     expect(breadcrumbsFor("/cadets/2100003")).toEqual([
       { label: "Cadets" },
-      { label: "Cadets", href: "/cadets/overview" },
+      { label: "Overview", href: "/cadets/overview" },
     ]);
     expect(breadcrumbsFor("/staff/12")).toEqual([
-      { label: "Admin" },
       { label: "OC" },
       { label: "Staff", href: "/staff/overview" },
     ]);
@@ -222,17 +159,71 @@ describe("breadcrumbsFor", () => {
   });
 });
 
-describe("mobile tab bar and section hubs", () => {
+describe("mobile tab bar", () => {
   const labels = (role: string | undefined) => mobileTabsFor(role).map((t) => t.label);
-  const hrefs = (role: string) =>
-    flattenLinks(visibleSections(role, "someone@317atc.co.uk")).map((l) => l.href);
 
   it.each([
-    ["staff", ["Home", "Cadets", "Parade Night", "Stores"]],
-    ["snco", ["Home", "Parade Night", "NCO Team"]],
-    ["nco", ["Home", "Parade Night", "NCO Team"]],
-  ])("%s gets its main sections", (role, expected) => {
+    [
+      "staff",
+      [
+        "Home",
+        "Cadets",
+        "Check-in",
+        "Stock",
+        "Orders",
+        "Badges",
+        "Stats",
+        "Committee",
+        "Scrapers",
+        "Training",
+        "Attendance",
+        "Marking",
+      ],
+    ],
+    [
+      "snco",
+      [
+        "Home",
+        "Check-in",
+        "Plans",
+        "Inspect",
+        "Leadership",
+        "Radio",
+        "Space",
+        "Results",
+        "Stats",
+        "Holidays",
+        "Comments",
+      ],
+    ],
+    [
+      "nco",
+      [
+        "Home",
+        "Check-in",
+        "Plans",
+        "Leadership",
+        "Radio",
+        "Space",
+        "Results",
+        "Stats",
+        "Holidays",
+        "Comments",
+      ],
+    ],
+  ])("%s gets its parade-night tabs", (role, expected) => {
     expect(labels(role)).toEqual(expected);
+  });
+
+  it.each(["staff", "snco", "nco"])("every %s tab is a real page the role can open", (role) => {
+    for (const tab of mobileTabsFor(role)) {
+      expect(canAccess(role, tab.href), tab.href).toBe(true);
+      expect(fs.existsSync(path.join(process.cwd(), "app", tab.href, "page.tsx")), tab.href).toBe(true);
+    }
+  });
+
+  it("an NCO never gets the inspection sheet they can't use", () => {
+    expect(mobileTabsFor("nco").map((t) => t.href)).not.toContain("/assessments/inspection");
   });
 
   it("a signed-out or unknown role gets only Home", () => {
@@ -240,100 +231,23 @@ describe("mobile tab bar and section hubs", () => {
     expect(labels("cadet")).toEqual(["Home"]);
   });
 
-  it("slugs a section's name for its hub address", () => {
-    expect(sectionSlug("Parade Night")).toBe("parade-night");
-    expect(sectionSlug("NCO Team")).toBe("nco-team");
-    expect(hubHref("Stores")).toBe("/m/stores");
-  });
-
-  it.each([
-    ["/stores/badges/orders", "Stores"],
-    ["/stores/uniform/stock/BOX-A", "Stores"],
-    ["/cadets/2100003", "Cadets"],
-    ["/training/progress", "Parade Night"],
-    ["/stats", ""],
-    ["/settings", ""],
-    ["/", null],
-    ["/m/stores", null],
-    ["/nowhere", null],
-  ])("puts %s in section %j", (pathname, expected) => {
-    expect(sectionFor(pathname)).toBe(expected);
-  });
-
   it.each([
     ["staff", "/", "Home"],
-    ["staff", "/m/stores", "Stores"],
     ["staff", "/cadets/1234", "Cadets"],
     ["staff", "/recruits", "Cadets"],
-    ["staff", "/stores/catalogue", "Stores"],
-    ["staff", "/training/progress", "Parade Night"],
-    // Not on staff's bar: More.
+    ["staff", "/assessments/moi", "Marking"],
+    ["staff", "/stores/badges/stock", "Badges"],
+    ["staff", "/stores/badges/orders", "Orders"],
+    ["staff", "/stores/catalogue", "Stock"],
+    ["staff", "/training/sessions", "Training"],
     ["staff", "/texts/messages", null],
-    ["staff", "/oc", null],
-    ["nco", "/cadets/assessments", "Parade Night"],
-    ["nco", "/session-plans/12", "NCO Team"],
+    ["nco", "/cadets/assessments", "Results"],
+    ["nco", "/session-plans/12", "Plans"],
     ["nco", "/settings", null],
+    ["nco", "/nco-holidays", "Holidays"],
+    // "/" only matches itself, or every page would light Home.
+    ["staff", "/oc", null],
   ])("%s on %s lights %s", (role, pathname, expected) => {
     expect(activeMobileTab(pathname, mobileTabsFor(role))?.label ?? null).toBe(expected);
-  });
-
-  it.each([
-    ["staff", "/stores/badges/orders", { label: "Stores", href: "/m/stores" }],
-    ["staff", "/texts/recipients", { label: "More", href: "/m/more" }],
-    ["nco", "/assessments/radio", { label: "Parade Night", href: "/m/parade-night" }],
-    ["nco", "/stats", { label: "More", href: "/m/more" }],
-    ["staff", "/", null],
-    ["staff", "/m/more", null],
-  ])("%s on %s goes back to %o", (role, pathname, expected) => {
-    expect(mobileHubFor(pathname, role)).toEqual(expected);
-  });
-
-  it.each(["staff", "snco", "nco"])("every hub %s can open lists only pages they can reach", (role) => {
-    const visible = visibleSections(role, "someone@317atc.co.uk");
-    const slugs = [...mobileTabsFor(role).filter((t) => t.href !== "/"), { href: "/m/more" }].map((t) =>
-      t.href.replace("/m/", "")
-    );
-    for (const slug of slugs) {
-      const hub = hubSections(slug, role, visible);
-      expect(hub, slug).not.toBeNull();
-      for (const href of flattenLinks(hub!.sections).map((l) => l.href)) {
-        expect(canAccess(role, href), `${slug}: ${href}`).toBe(true);
-        expect(hrefs(role)).toContain(href);
-      }
-    }
-  });
-
-  it("More holds every section not on the bar, and not Home", () => {
-    const visible = visibleSections("staff", "someone@317atc.co.uk");
-    const more = hubSections("more", "staff", visible)!;
-    expect(more.sections.map((s) => s.label ?? "")).toEqual(["", "NCO Team", "Comms", "Admin"]);
-    expect(flattenLinks(more.sections).map((l) => l.href)).not.toContain("/");
-    expect(flattenLinks(more.sections).map((l) => l.href)).toContain("/stats");
-  });
-
-  it("between them, the bar's hubs and More reach every page in the menu", () => {
-    for (const role of ["staff", "nco"]) {
-      const visible = visibleSections(role, "someone@317atc.co.uk");
-      const slugs = [
-        ...mobileTabsFor(role)
-          .filter((t) => t.href !== "/")
-          .map((t) => t.href.slice(3)),
-        "more",
-      ];
-      const reached = slugs.flatMap((slug) =>
-        flattenLinks(hubSections(slug, role, visible)!.sections).map((l) => l.href)
-      );
-      for (const href of hrefs(role).filter((h) => h !== "/"))
-        expect(reached, `${role} ${href}`).toContain(href);
-    }
-  });
-
-  it("finds no hub for an unknown section, or one an NCO can't see", () => {
-    expect(hubSections("nowhere", "staff", visibleSections("staff", "s@x"))).toBeNull();
-    expect(hubSections("stores", "nco", visibleSections("nco", "n@x"))).toBeNull();
-  });
-
-  it("every hub is a page anyone signed in can open", () => {
-    for (const role of ["staff", "snco", "nco"]) expect(canAccess(role, "/m/stores")).toBe(true);
   });
 });

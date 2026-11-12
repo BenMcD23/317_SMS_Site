@@ -11,10 +11,7 @@ const SESSION = {
   update: () => Promise.resolve(null),
 };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION }));
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn() }),
-}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 let oc = true;
 vi.mock("@/lib/config", async (importOriginal) => ({

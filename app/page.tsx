@@ -66,7 +66,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
       <PageHeader
-        title="Home"
+        title="Dashboard"
         actions={
           <Button asChild variant="outline" size="sm">
             <Link href="/stats">

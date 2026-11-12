@@ -12,10 +12,7 @@ const SESSION = {
   update: () => Promise.resolve(null),
 };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
-vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
-  useRouter: () => ({ push: vi.fn() }),
-}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const EVENTS = [
   { id: 1, title: "Wing March", category: "Road Marching", cadet_count: 0, cadets: [], sub_apps: [] },

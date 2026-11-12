@@ -105,11 +105,11 @@ describe("dashboard", () => {
     expect(screen.getByText("No badges gained this month.")).toBeTruthy();
   });
 
-  it("is titled Home, as the menu calls it, and doesn't repeat the menu's links", async () => {
+  it("doesn't repeat the sidebar's links as a Tools list", async () => {
     SESSION = SESSIONS.staff;
     stubApi({ "/stats/current": [current], "/stats/awards": [[]], "/stores/badges/to-give": [[]] });
     await renderDashboard();
-    expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     expect(screen.queryByText("Bader Scrapers")).toBeNull();
     expect(screen.queryByText("JI/AO Generator")).toBeNull();
   });

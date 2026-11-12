@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const SESSION = vi.hoisted(() => ({
@@ -10,7 +11,12 @@ const pathname = vi.hoisted(() => ({ current: "/" }));
 vi.mock("next/navigation", () => ({ usePathname: () => pathname.current }));
 
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+
+function SidebarState() {
+  const { openMobile } = useSidebar();
+  return <output aria-label="sidebar">{openMobile ? "open" : "closed"}</output>;
+}
 
 function renderBar(role: string | undefined, path = "/") {
   SESSION.current = { data: { role }, status: "authenticated" };
@@ -18,6 +24,7 @@ function renderBar(role: string | undefined, path = "/") {
   render(
     <SidebarProvider>
       <MobileTabBar />
+      <SidebarState />
     </SidebarProvider>
   );
   return screen.getByRole("navigation", { name: "Quick links" });
@@ -34,54 +41,52 @@ beforeEach(() => {
 
 describe("mobile tab bar", () => {
   it.each([
-    ["staff", ["Home", "Cadets", "Parade Night", "Stores", "More"]],
-    ["snco", ["Home", "Parade Night", "NCO Team", "More"]],
-    ["nco", ["Home", "Parade Night", "NCO Team", "More"]],
-  ])("%s gets Home, their main sections and More, all plain links", (role, expected) => {
+    ["staff", "Cadets"],
+    ["snco", "Inspect"],
+    ["nco", "Leadership"],
+  ])("%s gets plain links (no menus to open), then More", (role, label) => {
     const nav = renderBar(role);
+    // Every tab is a link straight to a page; More is the only button.
+    expect(within(nav).getAllByRole("listitem")).toHaveLength(within(nav).getAllByRole("link").length);
+    expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
     expect(
       within(nav)
-        .getAllByRole("link")
-        .map((l) => l.textContent)
-    ).toEqual(expected);
-    expect(within(nav).queryByRole("button")).not.toBeInTheDocument();
+        .getAllByRole("button")
+        .map((b) => b.textContent)
+    ).toEqual(["More"]);
   });
 
-  it("a section tab opens its hub", () => {
-    const nav = renderBar("staff");
-    expect(within(nav).getByRole("link", { name: "Stores" })).toHaveAttribute("href", "/m/stores");
-    expect(within(nav).getByRole("link", { name: "More" })).toHaveAttribute("href", "/m/more");
-  });
-
-  it("lights the section on any page in it, and only that one", () => {
+  it("marks the current section, and only that one", () => {
     const nav = renderBar("staff", "/stores/badges/orders");
-    expect(within(nav).getByRole("link", { name: "Stores" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "Orders" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current");
-    expect(within(nav).getByRole("link", { name: "More" })).not.toHaveAttribute("aria-current");
   });
 
-  it("lights More on a page whose section isn't on the bar", () => {
+  it("marks nothing on a page that lives under More", () => {
     const nav = renderBar("staff", "/texts/messages");
-    expect(within(nav).getByRole("link", { name: "More" })).toHaveAttribute("aria-current", "page");
-    expect(within(nav).getAllByRole("link", { current: "page" })).toHaveLength(1);
+    expect(within(nav).queryByRole("link", { current: "page" })).not.toBeInTheDocument();
   });
 
-  it("lights only Home on Home", () => {
-    const nav = renderBar("nco", "/");
-    expect(
-      within(nav)
-        .getAllByRole("link", { current: "page" })
-        .map((l) => l.textContent)
-    ).toEqual(["Home"]);
+  it("an NCO gets no inspection sheet they can't use", () => {
+    const nav = renderBar("nco");
+    expect(within(nav).queryByRole("link", { name: "Inspect" })).not.toBeInTheDocument();
+  });
+
+  it("More opens the full menu", async () => {
+    const nav = renderBar("nco");
+    const more = within(nav).getByRole("button", { name: "More" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(more);
+    expect(screen.getByRole("status", { name: "sidebar" })).toHaveTextContent("open");
   });
 
   it("before the session loads there's just Home and More, nothing to bounce off", () => {
     const nav = renderBar(undefined);
     expect(
       within(nav)
-        .getAllByRole("link")
-        .map((l) => l.textContent)
-    ).toEqual(["Home", "More"]);
+        .getAllByRole("listitem")
+        .map((li) => li.textContent)
+    ).toEqual(["Home"]);
   });
 
   it("stays out of print and off wider screens", () => {

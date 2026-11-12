@@ -204,20 +204,6 @@ describe("Training nights", () => {
     expect(screen.queryByRole("button", { name: "Open all" })).not.toBeInTheDocument();
   });
 
-  it("links to the two planners behind the night", async () => {
-    api();
-    renderWithQuery(<NightPlanner />);
-    const plan = await screen.findByRole("navigation", { name: "Plan the night" });
-    expect(within(plan).getByRole("link", { name: /Lessons and exams/ })).toHaveAttribute(
-      "href",
-      "/training/classifications"
-    );
-    expect(within(plan).getByRole("link", { name: /Practical session/ })).toHaveAttribute(
-      "href",
-      "/training/sessions"
-    );
-  });
-
   it("totals the night across sessions", async () => {
     api();
     renderWithQuery(<NightPlanner />);

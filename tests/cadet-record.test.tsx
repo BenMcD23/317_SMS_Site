@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const SESSION = { data: { id_token: "tok", role: "staff" }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
   useParams: () => ({ cin: "42" }),
   useSearchParams: () => new URLSearchParams(),
 }));

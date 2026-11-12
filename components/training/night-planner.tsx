@@ -1,25 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   CalendarDays,
   CheckCircle2,
-  ChevronRight,
   ClipboardCopy,
-  GraduationCap,
   ListPlus,
   Pencil,
   Plus,
   QrCode,
   TriangleAlert,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { DividedGrid } from "@/components/divided-grid";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -221,49 +216,6 @@ function SessionRow({
         </div>
       )}
     </OrderDisclosure>
-  );
-}
-
-/**
- * The two planners behind a night, one tap from it: who's on which
- * classification lesson or exam, and a practical session's rotation. They were
- * tabs beside this one, which made three places to plan one evening.
- */
-function PlanTheNight() {
-  const items = [
-    {
-      href: "/training/classifications",
-      icon: GraduationCap,
-      title: "Lessons and exams",
-      desc: "Who's on which classification lesson or exam",
-    },
-    {
-      href: "/training/sessions",
-      icon: Users,
-      title: "Practical session",
-      desc: "Rotate groups round leadership tasks or stands",
-    },
-  ];
-  return (
-    <nav aria-label="Plan the night">
-      <DividedGrid as="ul" className="grid-cols-1 sm:grid-cols-2">
-        {items.map((it) => (
-          <li key={it.href} className="flex">
-            <Link
-              href={it.href}
-              className="hover:bg-muted/50 focus-visible:ring-ring/50 flex min-w-0 flex-1 items-center gap-3 px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-inset"
-            >
-              <it.icon className="text-muted-foreground size-4 shrink-0" aria-hidden />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-sm font-medium">{it.title}</span>
-                <span className="text-muted-foreground text-xs">{it.desc}</span>
-              </span>
-              <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
-            </Link>
-          </li>
-        ))}
-      </DividedGrid>
-    </nav>
   );
 }
 
@@ -508,8 +460,6 @@ export function NightPlanner() {
               </OrderList>
             </section>
           )}
-
-          <PlanTheNight />
         </>
       )}
 

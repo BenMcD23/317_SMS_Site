@@ -900,7 +900,7 @@ export default function AssessmentsOverviewPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
-        title="Assessment results"
+        title="Cadet Assessments"
         description={loading ? "Loading…" : `${cadets.length} cadets with assessment sheets`}
       />
 

@@ -6,7 +6,15 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 
-import { activeTab, isNavLinkActive, visibleSections, type NavLink, type NavSection } from "@/lib/navigation";
+import {
+  isGroup,
+  isGroupActive,
+  isLinkActive,
+  visibleSections,
+  type NavGroup,
+  type NavLink,
+  type NavSection,
+} from "@/lib/navigation";
 import { useOpenSections } from "@/lib/sidebar-sections";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -47,7 +55,11 @@ function NavLinkItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
   const pathname = usePathname();
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={link.label} isActive={isNavLinkActive(pathname, link)}>
+      <SidebarMenuButton
+        asChild
+        tooltip={link.label}
+        isActive={isLinkActive(pathname, link.href, link.exact)}
+      >
         <Link href={link.href} onClick={onNavigate}>
           <NavIcon icon={link.icon} />
           <span>{link.label}</span>
@@ -58,36 +70,32 @@ function NavLinkItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
 }
 
 /**
- * A group (Uniform, Training) with its pages indented beneath it, each with
- * its own icon. The area
- * you're in unfolds by itself, and any other can be opened by hand; the rest
- * stay one line each, so the menu stays short with every page in it. In
- * icon-only mode there's nowhere to indent, so the icon opens a flyout.
+ * A parent with children. Expanded sidebar: a collapsible, open whenever one
+ * of its children is the current page. Icon-only sidebar: the children would
+ * be hidden, so the icon opens them as a flyout menu instead.
  */
-function NavAreaItem({ link, onNavigate }: { link: NavLink; onNavigate: () => void }) {
+function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate: () => void }) {
   const pathname = usePathname();
   const { state, isMobile } = useSidebar();
-  const tabs = link.tabs ?? [];
-  const current = activeTab(pathname, tabs);
-  const active = current !== null;
+  const active = isGroupActive(pathname, group);
 
   if (state === "collapsed" && !isMobile) {
     return (
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton tooltip={link.label} isActive={active}>
-              <link.icon />
-              <span>{link.label}</span>
+            <SidebarMenuButton tooltip={group.label} isActive={active}>
+              <group.icon />
+              <span>{group.label}</span>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start" className="min-w-40">
-            <DropdownMenuLabel>{link.label}</DropdownMenuLabel>
-            {tabs.map((tab) => (
-              <DropdownMenuItem key={tab.href} asChild>
-                <Link href={tab.href} onClick={onNavigate}>
-                  <NavIcon icon={tab.icon ?? link.icon} />
-                  {tab.label}
+            <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+            {group.links.map((link) => (
+              <DropdownMenuItem key={link.href} asChild>
+                <Link href={link.href} onClick={onNavigate}>
+                  <link.icon />
+                  {link.label}
                 </Link>
               </DropdownMenuItem>
             ))}
@@ -98,26 +106,23 @@ function NavAreaItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
   }
 
   return (
-    // Keyed on `active` so moving into the area (the sidebar stays mounted
-    // across pages) unfolds it, while a hand-opened area elsewhere stays open
-    // until you leave it.
-    <Collapsible key={String(active)} asChild defaultOpen={active} className="group/collapsible">
+    <Collapsible asChild defaultOpen={active} className="group/collapsible">
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={link.label} isActive={active}>
-            <link.icon />
-            <span>{link.label}</span>
+          <SidebarMenuButton tooltip={group.label} isActive={active}>
+            <group.icon />
+            <span>{group.label}</span>
             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
           </SidebarMenuButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <SidebarMenuSub>
-            {tabs.map((tab) => (
-              <SidebarMenuSubItem key={tab.href}>
-                <SidebarMenuSubButton asChild isActive={tab === current}>
-                  <Link href={tab.href} onClick={onNavigate}>
-                    <NavIcon icon={tab.icon ?? link.icon} />
-                    <span>{tab.label}</span>
+            {group.links.map((link) => (
+              <SidebarMenuSubItem key={link.href}>
+                <SidebarMenuSubButton asChild isActive={isLinkActive(pathname, link.href, link.exact)}>
+                  <Link href={link.href} onClick={onNavigate}>
+                    <NavIcon icon={link.icon} />
+                    <span>{link.label}</span>
                   </Link>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
@@ -134,10 +139,10 @@ function SectionItems({ section, onNavigate }: { section: NavSection; onNavigate
     <SidebarGroupContent>
       <SidebarMenu>
         {section.items.map((item) =>
-          item.tabs ? (
-            <NavAreaItem key={item.label} link={item} onNavigate={onNavigate} />
+          isGroup(item) ? (
+            <NavGroupItem key={item.label} group={item} onNavigate={onNavigate} />
           ) : (
-            <NavLinkItem key={item.label} link={item} onNavigate={onNavigate} />
+            <NavLinkItem key={item.href} link={item} onNavigate={onNavigate} />
           )
         )}
       </SidebarMenu>
@@ -167,7 +172,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="Home">
+            <SidebarMenuButton size="lg" asChild tooltip="Dashboard">
               <Link href="/" onClick={closeOnMobile}>
                 <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-md">
                   <Image src="/icon.jpg" alt="" width={32} height={32} className="size-8 object-cover" />
