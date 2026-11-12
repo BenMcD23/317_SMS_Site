@@ -1,37 +1,21 @@
 "use client";
 
 import { PageHeader } from "@/components/page-header";
-import { RouteTabs, type RouteTab } from "@/components/route-tabs";
 
 /**
- * Planning what cadets do on a night, and keeping track of what they've done:
- * the night's sessions grouped from the door, classification lessons and
- * exams, practical sessions (leadership tasks, radio, first aid), catch-ups,
- * theory progress, the task bank and kit, the lesson QR codes, and which
- * lesson each programme activity is. One area because it's the same job,
- * getting the right cadets onto the right thing, and each part is its own page
- * so it can be bookmarked.
+ * Getting the right cadets onto the right thing on a parade night, and keeping
+ * track of what they've had. Tonight is where a night is run from; Progress is
+ * who's had which lesson (and who's missed one); Tasks & kit and Setup are the
+ * rarely-changed things behind them. The tabs come from the Training area in
+ * lib/navigation.ts, each its own page so it can be bookmarked.
  */
-const TABS: RouteTab[] = [
-  { label: "Nights", href: "/training/nights" },
-  { label: "Classifications", href: "/training", exact: true },
-  { label: "Sessions", href: "/training/sessions" },
-  { label: "Catch-ups", href: "/training/catch-ups" },
-  { label: "Theory progress", href: "/training/progress" },
-  { label: "Tasks & kit", href: "/training/tasks" },
-  { label: "QR codes", href: "/training/qr-codes" },
-  { label: "Programme links", href: "/training/links" },
-];
-
 export default function TrainingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 pb-16">
       <PageHeader
         title="Training"
-        description="Plan classification lessons and practical sessions, and keep track of who's done what."
-        className="border-b-0 pb-0"
+        description="Run tonight's sessions and keep track of who's had which lesson."
       />
-      <RouteTabs tabs={TABS} label="Training" />
       {children}
     </div>
   );

@@ -151,8 +151,12 @@ describe("Training nights", () => {
     api();
     renderWithQuery(<NightPlanner />);
     const nav = await screen.findByRole("article", { name: "Map Reading 2" });
+    // Closed, a session still says what, when, for whom and how many.
     expect(within(nav).getByText("1st half (19:25–20:05) · A, B Flight · Sgt Davies")).toBeInTheDocument();
     expect(within(nav).getByText("Basic Navigation, lesson 2")).toBeInTheDocument();
+    expect(within(nav).getByText("3 cadets")).toBeInTheDocument();
+    expect(within(nav).queryByRole("region")).not.toBeInTheDocument();
+    await userEvent.click(within(nav).getByRole("button", { name: "Expand Map Reading 2" }));
     expect(within(nav).getByText("Only who needs it · By need · up to 8 a group")).toBeInTheDocument();
     expect(
       within(nav).getByText("3 cadets · 2 need it · 1 missing an earlier lesson · 1 scanned in")
@@ -170,11 +174,48 @@ describe("Training nights", () => {
     api();
     renderWithQuery(<NightPlanner />);
     const drill = await screen.findByRole("article", { name: "Drill" });
+    // A warning shows on the closed row, so it isn't missed.
+    expect(within(drill).getByLabelText("Has a warning")).toBeInTheDocument();
+    await userEvent.click(within(drill).getByRole("button", { name: "Expand Drill" }));
     expect(within(drill).getByText(/nobody's checked in yet, so this is who's expected/)).toBeInTheDocument();
     expect(within(drill).getByText("Rarely in")).toBeInTheDocument();
     expect(within(drill).getByText("Nobody it's for has checked in yet.")).toBeInTheDocument();
     // No lesson, so no QR code to show.
-    expect(within(drill).queryByRole("button", { name: "QR code" })).not.toBeInTheDocument();
+    expect(within(drill).queryByRole("button", { name: /QR code/ })).not.toBeInTheDocument();
+  });
+
+  it("starts a night's sessions closed so it fits a screen, and opens them all at once", async () => {
+    api();
+    renderWithQuery(<NightPlanner />);
+    await screen.findByRole("article", { name: "Drill" });
+    expect(screen.getByRole("button", { name: "Expand Drill" })).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(screen.getByRole("button", { name: "Open all" }));
+    expect(screen.getByRole("button", { name: "Collapse Drill" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Collapse Map Reading 2" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Close all" }));
+    expect(screen.getByRole("button", { name: "Expand Drill" })).toBeInTheDocument();
+  });
+
+  it("opens a night's only session straight away", async () => {
+    api({ nights: [night({ sessions: [MAP_READING] })] });
+    renderWithQuery(<NightPlanner />);
+    const nav = await screen.findByRole("article", { name: "Map Reading 2" });
+    expect(within(nav).getByRole("region", { name: "Map Reading 2: Needs this lesson" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open all" })).not.toBeInTheDocument();
+  });
+
+  it("links to the two planners behind the night", async () => {
+    api();
+    renderWithQuery(<NightPlanner />);
+    const plan = await screen.findByRole("navigation", { name: "Plan the night" });
+    expect(within(plan).getByRole("link", { name: /Lessons and exams/ })).toHaveAttribute(
+      "href",
+      "/training/classifications"
+    );
+    expect(within(plan).getByRole("link", { name: /Practical session/ })).toHaveAttribute(
+      "href",
+      "/training/sessions"
+    );
   });
 
   it("totals the night across sessions", async () => {
@@ -339,7 +380,7 @@ describe("Training nights", () => {
   it("shows the lesson's QR code, or why it can't", async () => {
     api();
     renderWithQuery(<NightPlanner />);
-    await userEvent.click(await screen.findByRole("button", { name: "QR code" }));
+    await userEvent.click(await screen.findByRole("button", { name: "QR code for Map Reading 2" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Basic Navigation, lesson 2")).toBeInTheDocument();
     // The test environment has no portal address set.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { AlertTriangle, CheckCircle2, ClipboardCopy, ListChecks, Users } from "lucide-react";
@@ -157,6 +157,11 @@ export function SessionPlanner() {
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [planFor, setPlanFor] = useState("");
+  // Once the door has checked people in, the list shows them (and anyone
+  // ticked by hand); the rest of the roll is one tap away. A list of every
+  // cadet on the books, most of them not there, buried the ones who were.
+  const [showEveryone, setShowEveryone] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   const tasksQuery = useApiQuery<BankTask[]>(
     ["session-planner", "tasks", "active"],
@@ -183,6 +188,9 @@ export function SessionPlanner() {
       ? touched.unticked
       : new Set(checkedIn.length ? roster.filter((c) => !c.checked_in).map((c) => c.cin) : []);
   const ticked = shown.filter((c) => !unticked.has(c.cin));
+  const trimmed = checkedIn.length > 0 && !showEveryone;
+  const listed = trimmed ? shown.filter((c) => c.checked_in || !unticked.has(c.cin)) : shown;
+  const hiddenCount = shown.length - listed.length;
   const leadership = kind === "leadership";
   const stands = wholeNumber(standsText);
   const changeover = wholeNumber(changeoverText);
@@ -224,6 +232,12 @@ export function SessionPlanner() {
       setPlanning(false);
     }
   }
+
+  // The plan lands below the cadet list; bring it into view rather than leave
+  // it off the bottom of the screen. jsdom has no scrollIntoView.
+  useEffect(() => {
+    if (plan) resultRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [plan]);
 
   async function copyPlan() {
     if (!plan) return;
@@ -420,7 +434,7 @@ export function SessionPlanner() {
           <EmptyState icon={Users} title="No cadets" description="Pick a flight to see its cadets." />
         ) : (
           <ul className="bg-card divide-y rounded-lg border">
-            {shown.map((c) => (
+            {listed.map((c) => (
               <CadetRow
                 key={c.cin}
                 cadet={c}
@@ -430,6 +444,16 @@ export function SessionPlanner() {
               />
             ))}
           </ul>
+        )}
+        {checkedIn.length > 0 && (hiddenCount > 0 || showEveryone) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 self-start"
+            onClick={() => setShowEveryone((v) => !v)}
+          >
+            {showEveryone ? "Only show who's checked in" : `Show ${hiddenCount} more not checked in`}
+          </Button>
         )}
       </Section>
 
@@ -451,7 +475,11 @@ export function SessionPlanner() {
       </div>
 
       <ErrorAlert message={planError} title="Not planned" />
-      {plan && <PlanResult plan={plan} />}
+      {plan && (
+        <div ref={resultRef} className="scroll-mt-4">
+          <PlanResult plan={plan} />
+        </div>
+      )}
     </div>
   );
 }
