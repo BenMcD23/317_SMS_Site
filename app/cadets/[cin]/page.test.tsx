@@ -13,6 +13,7 @@ const SESSION = {
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
 let tab = "overview";
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
   useParams: () => ({ cin: "111" }),
   useSearchParams: () => new URLSearchParams(`tab=${tab}`),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

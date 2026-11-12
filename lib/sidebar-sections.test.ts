@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { activeSectionLabel, isSectionOpen } from "@/lib/sidebar-sections";
 
-const LABELS = ["Cadets", "Stores", "Squadron"];
+const LABELS = ["Cadets", "Stores", "Comms"];
 
 describe("activeSectionLabel", () => {
   it("finds the section a page, or a record below it, lives in", () => {
@@ -14,14 +14,18 @@ describe("activeSectionLabel", () => {
   it("is null for pages outside any heading, or a section the user can't see", () => {
     expect(activeSectionLabel("/", LABELS)).toBeNull();
     expect(activeSectionLabel("/settings", LABELS)).toBeNull();
-    expect(activeSectionLabel("/tools/scraper", LABELS)).toBeNull(); // "Data", not in LABELS
+    expect(activeSectionLabel("/tools/scraper", LABELS)).toBeNull(); // "Admin", not in LABELS
   });
 });
 
 describe("isSectionOpen", () => {
-  it("opens only the current page's section on a first visit", () => {
+  it("opens every section on a first visit, so nothing is hidden behind a heading", () => {
     expect(isSectionOpen("Cadets", {}, "Cadets", false)).toBe(true);
-    expect(isSectionOpen("Stores", {}, "Cadets", false)).toBe(false);
+    expect(isSectionOpen("Stores", {}, "Cadets", false)).toBe(true);
+  });
+
+  it("keeps a section the user folded folded", () => {
+    expect(isSectionOpen("Stores", { Stores: false }, "Cadets", false)).toBe(false);
   });
 
   it("remembers sections the user opened or closed", () => {

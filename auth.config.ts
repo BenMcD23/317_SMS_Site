@@ -1,8 +1,8 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { canAccess } from "./lib/access";
-import { devSignInBuild } from "./lib/config";
+import { canAccess, isOwnerOnly } from "./lib/access";
+import { devSignInBuild, OWNER_EMAIL } from "./lib/config";
 
 /** Accounts the dev bypass can log in as — must match the API's
  *  `_dev_fake_email` so the fake token resolves to the same role there. */
@@ -160,6 +160,11 @@ export const authConfig: NextAuthConfig = {
       if (!auth.role) return Response.redirect(new URL("/unauthorized", nextUrl));
 
       if (!canAccess(auth.role, nextUrl.pathname)) {
+        return Response.redirect(new URL("/unauthorized", nextUrl));
+      }
+
+      const isOwner = (auth.user?.email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
+      if (isOwnerOnly(nextUrl.pathname) && !isOwner) {
         return Response.redirect(new URL("/unauthorized", nextUrl));
       }
 

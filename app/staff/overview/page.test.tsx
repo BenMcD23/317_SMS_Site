@@ -16,7 +16,11 @@ vi.mock("next-auth/react", () => ({
       status: "authenticated",
     }),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useParams: () => ({ id: "10" }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({ push: vi.fn() }),
+  useParams: () => ({ id: "10" }),
+}));
 
 async function renderAs(email: string, page: "overview" | "detail") {
   session.email = email;

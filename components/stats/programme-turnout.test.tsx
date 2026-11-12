@@ -12,7 +12,10 @@ const SESSION = {
   status: "authenticated",
 };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 const STATS: ProgrammeStats = {
   days: 182,

@@ -1,34 +1,25 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useArea } from "@/components/area-tabs";
 import { PageHeader } from "@/components/page-header";
-import { RouteTabs } from "@/components/route-tabs";
 
-const TABS = [
-  { label: "Inspection", href: "/assessments/inspection", sncoOnly: true },
-  { label: "Leadership", href: "/assessments/leadership" },
-  { label: "Radio", href: "/assessments/radio" },
-  { label: "Space", href: "/assessments/space" },
-  { label: "MOI", href: "/assessments/moi", staffOnly: true },
-];
+const DESCRIPTIONS: Record<string, string> = {
+  Assessments: "Mark an assessment, then find it under Results to download or upload it.",
+  Inspections: "Mark a flight's inspection, then see the history and leaderboard.",
+};
 
+/**
+ * The marking sheets. Most belong to the Assessments area and the inspection
+ * sheet to Inspections (lib/navigation.ts), so the header takes its title and
+ * tab row from whichever area the sheet is in.
+ */
 export default function AssessmentsLayout({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const tabs = TABS.filter((tab) => {
-    if (tab.staffOnly) return session?.role === "staff";
-    return !tab.sncoOnly || session?.role === "staff" || session?.role === "snco";
-  });
+  const area = useArea();
+  const title = area?.label ?? "Assessments";
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <PageHeader
-        title="Assessment Sheets"
-        description="Record assessments and generate the paperwork"
-        className="border-b-0 pb-0"
-      />
-
-      <RouteTabs tabs={tabs} label="Assessment sheets" />
-
+      <PageHeader title={title} description={DESCRIPTIONS[title]} />
       {children}
     </div>
   );

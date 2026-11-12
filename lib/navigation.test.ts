@@ -6,12 +6,13 @@ import { describe, expect, it } from "vitest";
 import { canAccess } from "@/lib/access";
 import { OWNER_EMAIL } from "@/lib/config";
 import {
+  activeMobileTab,
+  activeTab,
+  areaFor,
   breadcrumbsFor,
   flattenLinks,
-  isGroup,
-  isGroupActive,
-  activeMobileTab,
   isLinkActive,
+  isNavLinkActive,
   mobileTabsFor,
   NAV_SECTIONS,
   visibleSections,
@@ -32,10 +33,21 @@ describe("the site map", () => {
     expect(new Set(all).size).toBe(all.length);
   });
 
-  it("never has an empty group", () => {
+  it("never has an empty area, and an area's row opens its first page", () => {
     for (const section of NAV_SECTIONS) {
-      for (const item of section.items) if (isGroup(item)) expect(item.links.length).toBeGreaterThan(0);
+      for (const item of section.items) {
+        if (!item.tabs) continue;
+        expect(item.tabs.length).toBeGreaterThan(1);
+        expect(item.href).toBe(item.tabs[0].href);
+      }
     }
+  });
+
+  it("keeps the staff menu short: one row per job", () => {
+    const rows = visibleSections("staff", "someone@317atc.co.uk").flatMap((s) => s.items);
+    expect(rows.length).toBeLessThanOrEqual(26);
+    // ...without losing a page: every page is still a tab or a row.
+    expect(flattenLinks(NAV_SECTIONS).length).toBeGreaterThan(rows.length);
   });
 });
 
@@ -81,13 +93,29 @@ describe("visibleSections", () => {
     expect(ocLinks).toContain("/oc/custom");
   });
 
-  it("puts the OC dashboard and leaving process together under an OC group", () => {
-    const groups = visibleSections("staff", "oc@317atc.co.uk", true).flatMap((s) => s.items.filter(isGroup));
-    const oc = groups.find((g) => g.label === "OC");
-    expect(oc?.links.map((l) => l.href)).toEqual(["/oc", "/oc/custom", "/oc/leaving", "/staff/overview"]);
-    // Nobody else gets an empty OC group.
-    const others = visibleSections("staff", "other@317atc.co.uk").flatMap((s) => s.items.filter(isGroup));
-    expect(others.some((g) => g.label === "OC")).toBe(false);
+  it("puts the OC dashboard, leaving process and staff together in an OC area", () => {
+    const rows = visibleSections("staff", "oc@317atc.co.uk", true).flatMap((s) => s.items);
+    const oc = rows.find((r) => r.label === "OC");
+    expect(oc?.tabs?.map((t) => t.href)).toEqual(["/oc", "/oc/custom", "/oc/leaving", "/staff/overview"]);
+    // Nobody else gets an empty OC row.
+    const others = visibleSections("staff", "other@317atc.co.uk").flatMap((s) => s.items);
+    expect(others.some((r) => r.label === "OC")).toBe(false);
+  });
+
+  it("drops the tabs a role can't reach, and opens the area on the first it can", () => {
+    const rows = (role: string) => visibleSections(role, "n@x").flatMap((s) => s.items);
+    const assessments = (role: string) => rows(role).find((r) => r.label === "Assessments");
+    expect(assessments("staff")?.tabs?.map((t) => t.label)).toContain("MOI");
+    expect(assessments("nco")?.tabs?.map((t) => t.label)).toEqual([
+      "Leadership",
+      "Radio",
+      "Space",
+      "Results",
+    ]);
+    // An SNCO can mark an inspection but not see the history: one tab, the sheet.
+    const inspections = rows("snco").find((r) => r.label === "Inspections");
+    expect(inspections?.tabs?.map((t) => t.href)).toEqual(["/assessments/inspection"]);
+    expect(rows("nco").some((r) => r.label === "Inspections")).toBe(false);
   });
 
   it("the old leaving page is gone, and staff is the OC's alone", () => {
@@ -95,10 +123,10 @@ describe("visibleSections", () => {
     expect(hrefs("staff", "other@317atc.co.uk")).not.toContain("/staff/overview");
   });
 
-  it("drops empty sections and groups entirely", () => {
+  it("drops empty sections and areas entirely", () => {
     for (const section of visibleSections("nco", "n@x")) {
       expect(section.items.length).toBeGreaterThan(0);
-      for (const item of section.items) if (isGroup(item)) expect(item.links.length).toBeGreaterThan(0);
+      for (const item of section.items) if (item.tabs) expect(item.tabs.length).toBeGreaterThan(0);
     }
   });
 });
@@ -116,31 +144,47 @@ describe("active state", () => {
     expect(isLinkActive("/cadets/auditing", "/cadets/audit")).toBe(false);
   });
 
-  it("a group is active when any child is", () => {
-    const group = NAV_SECTIONS.flatMap((s) => s.items).find(isGroup)!;
-    expect(isGroupActive(group.links[0].href, group)).toBe(true);
-    expect(isGroupActive("/nowhere", group)).toBe(false);
+  it("an area's row is active on any of its pages", () => {
+    const orders = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.label === "Orders")!;
+    expect(isNavLinkActive("/stores/uniform/orders", orders)).toBe(true);
+    expect(isNavLinkActive("/stores/badges/orders", orders)).toBe(true);
+    expect(isNavLinkActive("/stores/badges/stock", orders)).toBe(false);
+  });
+
+  it("picks the deepest tab, so an index tab doesn't light up beneath itself", () => {
+    const attendance = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.label === "Attendance")!;
+    expect(activeTab("/attendance", attendance.tabs!)?.label).toBe("Squadron");
+    expect(activeTab("/attendance/ncos", attendance.tabs!)?.label).toBe("NCOs");
+  });
+
+  it("finds a page's area, but not for a page that stands alone", () => {
+    const sections = visibleSections("staff", "someone@317atc.co.uk");
+    expect(areaFor("/texts/recipients", sections)?.label).toBe("Texts");
+    expect(areaFor("/stores/uniform/stock/BOX-A", sections)?.label).toBe("Stock");
+    expect(areaFor("/stores/catalogue", sections)).toBeNull();
+    expect(areaFor("/", sections)).toBeNull();
   });
 });
 
 describe("breadcrumbsFor", () => {
   it("names the trail to an exact page with no link on the last crumb", () => {
     const crumbs = breadcrumbsFor("/stores/uniform/stock");
-    expect(crumbs.map((c) => c.label)).toEqual(["Stores", "Uniform", "Stock"]);
+    expect(crumbs.map((c) => c.label)).toEqual(["Stores", "Stock", "Uniform"]);
     expect(crumbs[crumbs.length - 1].href).toBeUndefined();
   });
 
   it("links the nearest ancestor for a deeper page", () => {
     const crumbs = breadcrumbsFor("/stores/uniform/stock/BOX-A");
-    expect(crumbs[crumbs.length - 1]).toEqual({ label: "Stock", href: "/stores/uniform/stock" });
+    expect(crumbs[crumbs.length - 1]).toEqual({ label: "Uniform", href: "/stores/uniform/stock" });
   });
 
   it("trails a cadet or staff record back to its list, with the list linked", () => {
     expect(breadcrumbsFor("/cadets/2100003")).toEqual([
       { label: "Cadets" },
-      { label: "Overview", href: "/cadets/overview" },
+      { label: "Cadets", href: "/cadets/overview" },
     ]);
     expect(breadcrumbsFor("/staff/12")).toEqual([
+      { label: "Admin" },
       { label: "OC" },
       { label: "Staff", href: "/staff/overview" },
     ]);
@@ -163,54 +207,9 @@ describe("mobile tab bar", () => {
   const labels = (role: string | undefined) => mobileTabsFor(role).map((t) => t.label);
 
   it.each([
-    [
-      "staff",
-      [
-        "Home",
-        "Cadets",
-        "Check-in",
-        "Stock",
-        "Orders",
-        "Badges",
-        "Stats",
-        "Committee",
-        "Scrapers",
-        "Training",
-        "Attendance",
-        "Marking",
-      ],
-    ],
-    [
-      "snco",
-      [
-        "Home",
-        "Check-in",
-        "Plans",
-        "Inspect",
-        "Leadership",
-        "Radio",
-        "Space",
-        "Results",
-        "Stats",
-        "Holidays",
-        "Comments",
-      ],
-    ],
-    [
-      "nco",
-      [
-        "Home",
-        "Check-in",
-        "Plans",
-        "Leadership",
-        "Radio",
-        "Space",
-        "Results",
-        "Stats",
-        "Holidays",
-        "Comments",
-      ],
-    ],
+    ["staff", ["Home", "Cadets", "Check-in", "Stores"]],
+    ["snco", ["Home", "Check-in", "Mark", "Plans"]],
+    ["nco", ["Home", "Check-in", "Mark", "Plans"]],
   ])("%s gets its parade-night tabs", (role, expected) => {
     expect(labels(role)).toEqual(expected);
   });
@@ -235,16 +234,15 @@ describe("mobile tab bar", () => {
     ["staff", "/", "Home"],
     ["staff", "/cadets/1234", "Cadets"],
     ["staff", "/recruits", "Cadets"],
-    ["staff", "/assessments/moi", "Marking"],
-    ["staff", "/stores/badges/stock", "Badges"],
-    ["staff", "/stores/badges/orders", "Orders"],
-    ["staff", "/stores/catalogue", "Stock"],
-    ["staff", "/training/sessions", "Training"],
+    ["staff", "/stores/badges/stock", "Stores"],
+    ["staff", "/stores/badges/orders", "Stores"],
+    ["staff", "/stores/catalogue", "Stores"],
+    ["staff", "/training/progress", null],
     ["staff", "/texts/messages", null],
-    ["nco", "/cadets/assessments", "Results"],
+    ["nco", "/cadets/assessments", "Mark"],
+    ["nco", "/assessments/radio", "Mark"],
     ["nco", "/session-plans/12", "Plans"],
     ["nco", "/settings", null],
-    ["nco", "/nco-holidays", "Holidays"],
     // "/" only matches itself, or every page would light Home.
     ["staff", "/oc", null],
   ])("%s on %s lights %s", (role, pathname, expected) => {

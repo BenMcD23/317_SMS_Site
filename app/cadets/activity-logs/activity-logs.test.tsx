@@ -29,7 +29,11 @@ vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn(), 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router, useParams: () => ({ cin: "2100001" }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => router,
+  useParams: () => ({ cin: "2100001" }),
+}));
 const download = vi.hoisted(() => ({ saveResponseAsFile: vi.fn(() => Promise.resolve("x.pdf")) }));
 vi.mock("@/lib/download", () => download);
 

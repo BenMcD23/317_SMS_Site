@@ -29,3 +29,15 @@ export function canAccess(role: string | undefined, pathname: string): boolean {
   if (under(pathname, INSPECTION_ROUTE)) return role === "snco";
   return NCO_ALLOWED_ROUTES.some((route) => under(pathname, route));
 }
+
+/** Pages only the owner may open: backups and usage analytics. The API enforces it too. */
+const OWNER_ROUTES = ["/backups", "/usage"];
+
+/**
+ * Whether the page is the owner's alone. Checked in the middleware next to
+ * `canAccess`, so another staff member is sent to /unauthorized like any other
+ * page they can't open, instead of loading the page to find it says no.
+ */
+export function isOwnerOnly(pathname: string): boolean {
+  return OWNER_ROUTES.some((route) => under(pathname, route));
+}

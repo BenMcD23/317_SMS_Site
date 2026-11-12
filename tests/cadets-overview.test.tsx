@@ -7,7 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const SESSION = { data: { id_token: "tok", role: "staff" }, status: "authenticated" };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
 const router = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => router,
+}));
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 

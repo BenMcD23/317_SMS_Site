@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, User } from "lucide-react";
+import { Plus, Search, User } from "lucide-react";
 
 import { apiFetch } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
-import { flattenLinks, visibleSections } from "@/lib/navigation";
+import { flattenLinks, quickActionsFor, visibleSections } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
@@ -38,8 +38,8 @@ function useDebounced<T>(value: T, ms: number): T {
 }
 
 /**
- * ⌘K / Ctrl+K jump box: every page the user can reach, plus a cadet search
- * that goes straight to the record. Pages are filtered client-side by cmdk;
+ * ⌘K / Ctrl+K jump box: every page the user can reach, a few things to start
+ * ("New session plan"), plus a cadet search that goes straight to the record. Pages are filtered client-side by cmdk;
  * cadets come from the API once the query is two characters long.
  */
 export function CommandPalette({
@@ -58,6 +58,8 @@ export function CommandPalette({
   const pages = flattenLinks(
     visibleSections(session?.role, session?.user?.email ?? undefined, session?.is_oc)
   );
+
+  const actions = quickActionsFor(session?.role);
 
   const { data: cadets = [], isFetching } = useQuery<CadetHit[]>({
     queryKey: ["cadets", "search", debouncedQuery],
@@ -109,11 +111,28 @@ export function CommandPalette({
             <CommandSeparator />
           </>
         )}
+        {actions.length > 0 && (
+          <>
+            <CommandGroup heading="Actions">
+              {actions.map((a) => (
+                <CommandItem
+                  key={a.label}
+                  value={["action", a.label, ...a.keywords].join(" ")}
+                  onSelect={() => go(a.href)}
+                >
+                  <Plus />
+                  <span>{a.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
         <CommandGroup heading="Pages">
           {pages.map((p) => (
             <CommandItem
               key={p.href}
-              value={[...p.path, p.label, ...(p.keywords ?? [])].join(" ")}
+              value={[p.href, ...p.path, p.label, ...(p.keywords ?? [])].join(" ")}
               onSelect={() => go(p.href)}
             >
               <p.icon />

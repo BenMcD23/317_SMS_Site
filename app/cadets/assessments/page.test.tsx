@@ -18,7 +18,10 @@ const NCO = {
 };
 let session = STAFF;
 vi.mock("next-auth/react", () => ({ useSession: () => session, signIn: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 const toast = vi.hoisted(() => ({ loading: vi.fn(), success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));

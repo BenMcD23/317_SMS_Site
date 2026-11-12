@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { activeTab, isLinkActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 export type RouteTab = {
@@ -14,7 +15,7 @@ export type RouteTab = {
 };
 
 export function isTabActive(pathname: string, tab: RouteTab): boolean {
-  return pathname === tab.href || (!tab.exact && pathname.startsWith(tab.href + "/"));
+  return isLinkActive(pathname, tab.href, tab.exact);
 }
 
 /**
@@ -26,6 +27,9 @@ export function isTabActive(pathname: string, tab: RouteTab): boolean {
 export function RouteTabs({ tabs, label }: { tabs: RouteTab[]; label: string }) {
   const pathname = usePathname();
   const nav = useRef<HTMLElement>(null);
+  // The deepest match, so an index tab (/training) that its siblings sit
+  // under (/training/progress) doesn't light up on their pages too.
+  const current = activeTab(pathname, tabs);
 
   // On a phone the row is wider than the screen: bring the current tab into
   // view, or a page reached by a link opens with its own tab hidden.
@@ -38,7 +42,7 @@ export function RouteTabs({ tabs, label }: { tabs: RouteTab[]; label: string }) 
     <nav ref={nav} aria-label={label} className="overflow-x-auto">
       <div className="flex min-w-max gap-1 border-b">
         {tabs.map((tab) => {
-          const active = isTabActive(pathname, tab);
+          const active = tab === current;
           return (
             <Link
               key={tab.href}

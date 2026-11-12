@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { authConfig, DEV_USERS } from "@/auth.config";
+import { OWNER_EMAIL } from "@/lib/config";
 
 type Authorized = (args: { auth: unknown; request: { nextUrl: URL } }) => boolean | Response;
 const authorized = authConfig.callbacks!.authorized as unknown as Authorized;
@@ -45,6 +46,21 @@ describe("middleware authorized()", () => {
     expect(visit("/assessments/moi", user("staff"))).toBe(true);
     expect(visit("/assessments/moi", user("snco"))).toBe("redirect:/unauthorized");
     expect(visit("/assessments/moi", user("nco"))).toBe("redirect:/unauthorized");
+  });
+
+  it.each(["/backups", "/usage", "/usage/x"])(
+    "keeps %s to the owner, sending other staff to /unauthorized before the page loads",
+    (path) => {
+      expect(visit(path, user("staff"))).toBe("redirect:/unauthorized");
+      expect(visit(path, user("nco"))).toBe("redirect:/unauthorized");
+      // Email case differs between Google and our config; still the owner.
+      const owner = { user: { email: OWNER_EMAIL.toUpperCase() }, role: "staff" };
+      expect(visit(path, owner)).toBe(true);
+    }
+  );
+
+  it("doesn't mistake a lookalike path for an owner page", () => {
+    expect(visit("/usages", user("staff"))).toBe(true);
   });
 });
 

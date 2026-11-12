@@ -13,7 +13,10 @@ const SESSION = vi.hoisted(() => ({
   update: () => Promise.resolve(null),
 }));
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION, signIn: vi.fn() }));
-vi.mock("next/navigation", () => ({ useParams: () => ({ cin: "1" }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useParams: () => ({ cin: "1" }),
+}));
 
 import NcoNotesPage from "@/app/nco-notes/page";
 import NcoNotesProfilePage from "@/app/nco-notes/[cin]/page";

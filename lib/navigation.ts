@@ -1,49 +1,33 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Award,
-  BadgeCheck,
   Bot,
-  BookOpen,
   Calendar,
   CalendarCheck,
   CalendarOff,
-  ChartColumn,
   ChartLine,
   ChartNoAxesColumn,
   ClipboardCheck,
   ClipboardList,
-  ListChecks,
-  Contact,
   DatabaseBackup,
   DatabaseZap,
   FileCheck,
-  FileSearch,
-  FileText,
+  Globe,
   GraduationCap,
-  LayoutDashboard,
-  LayoutGrid,
+  House,
+  ListChecks,
   MessageSquare,
   MessageSquareText,
   NotebookPen,
-  Images,
-  SquareUser,
-  Newspaper,
-  Orbit,
   Package,
-  Plane,
-  Radio,
   ReceiptText,
-  Shirt,
   ScanLine,
   ShieldCheck,
   ShieldUser,
+  Shirt,
   ShoppingCart,
-  Star,
   UserCheck,
-  UserCog,
-  UserMinus,
   UserPlus,
-  UserRoundPlus,
   Users,
 } from "lucide-react";
 
@@ -51,105 +35,91 @@ import { canAccess } from "@/lib/access";
 import { OWNER_EMAIL } from "@/lib/config";
 
 /**
- * The site map: what the sidebar shows, what the header breadcrumbs say, and
- * what the ⌘K palette searches. One definition so those three never disagree.
+ * The site map: what the sidebar shows, what the header breadcrumbs say, what
+ * the tab row at the top of a page offers, and what the ⌘K palette searches.
+ * One definition so those never disagree.
  *
- * Role gating is not repeated here. A link is shown when `canAccess` (the same
- * rule the middleware enforces) says the role can reach it, so nothing is ever
- * listed that would bounce to /unauthorized. `ownerOnly` / `ocOnly` are the two
- * cosmetic gates for pages whose real enforcement is on the API.
+ * The sidebar lists areas, one row per job ("Orders", "Texts"). An area whose
+ * job spans several pages lists them as `tabs`: the sidebar row opens the first
+ * one the user can reach, and `PageHeader` puts the tab row under the title of
+ * every page in it. That keeps the menu short without losing a page.
+ *
+ * Role gating is not repeated here. A link or tab is shown when `canAccess`
+ * (the same rule the middleware enforces) says the role can reach it, so
+ * nothing is ever listed that would bounce to /unauthorized. `ownerOnly` /
+ * `ocOnly` are the two cosmetic gates for pages whose real enforcement is on
+ * the API.
  */
 
-export type NavLink = {
-  kind?: "link";
+type Gates = {
+  ownerOnly?: boolean;
+  ocOnly?: boolean;
+};
+
+export type NavTab = Gates & {
   label: string;
   href: string;
-  icon: LucideIcon;
-  ownerOnly?: boolean;
-  ocOnly?: boolean;
+  /** Light up only on this exact path: for an area's index page, whose siblings live under it. */
+  exact?: boolean;
   /** Extra words the palette should match, e.g. old names people still use. */
   keywords?: string[];
-  /** Highlight only on this exact path — for a group's landing page (/oc)
-   *  whose siblings (/oc/leaving) live underneath it. */
-  exact?: boolean;
 };
 
-/** A collapsible parent with its own children (Stores › Uniform › Stock). */
-export type NavGroup = {
-  kind: "group";
+export type NavLink = Gates & {
   label: string;
+  /** Where the sidebar row goes. For an area with tabs, the first tab the user can reach. */
+  href: string;
   icon: LucideIcon;
-  links: NavLink[];
+  keywords?: string[];
+  exact?: boolean;
+  /** The pages of an area, shown as a tab row at the top of each of them. */
+  tabs?: NavTab[];
 };
 
-export type NavItem = NavLink | NavGroup;
-
-export type NavSection = {
+export type NavSection = Gates & {
   label?: string;
-  ownerOnly?: boolean;
-  ocOnly?: boolean;
-  items: NavItem[];
+  items: NavLink[];
 };
+
+/** An area: its first tab is where its sidebar row goes. */
+function area(link: Omit<NavLink, "href"> & { tabs: NavTab[] }): NavLink {
+  return { ...link, href: link.tabs[0].href };
+}
 
 export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { label: "Dashboard", href: "/", icon: LayoutDashboard },
+      { label: "Home", href: "/", icon: House, keywords: ["dashboard", "today"] },
       {
-        label: "Squadron Stats",
+        label: "Stats",
         href: "/stats",
         icon: ChartLine,
-        keywords: ["badge progression", "trends", "strength", "expiring"],
+        keywords: ["squadron stats", "badge progression", "trends", "strength", "expiring"],
       },
-      // Staff-only: lib/access.ts doesn't list it for NCOs, and the API requires staff.
-      {
+      // Staff-only: lib/access.ts doesn't list either for NCOs, and the API requires staff.
+      area({
         label: "Assistant",
-        href: "/assistant",
         icon: Bot,
-        keywords: ["ai", "ask", "chat", "question", "who", "find"],
-      },
-      {
-        kind: "group",
-        label: "OC",
-        icon: ShieldUser,
-        links: [
+        tabs: [
+          { label: "Ask", href: "/assistant", keywords: ["ai", "ask", "chat", "question", "who", "find"] },
           {
-            label: "Dashboard",
-            href: "/oc",
-            icon: ShieldUser,
-            ocOnly: true,
-            exact: true,
-            keywords: ["oc dashboard"],
-          },
-          {
-            label: "Custom Dashboard",
-            href: "/oc/custom",
-            icon: LayoutGrid,
-            ocOnly: true,
-            keywords: ["grafana", "panels", "query", "charts", "build your own"],
-          },
-          {
-            label: "Leaving Process",
-            href: "/oc/leaving",
-            icon: UserMinus,
-            ocOnly: true,
-            keywords: ["leavers", "lapsed cadets", "parent emails"],
-          },
-          {
-            label: "Staff",
-            href: "/staff/overview",
-            icon: UserCog,
-            ocOnly: true,
-            keywords: ["cfav", "adults"],
+            label: "Documents",
+            href: "/tools/docs-assistant",
+            keywords: ["docs assistant", "rafac documents", "policy", "acp", "jsp", "sharepoint"],
           },
         ],
-      },
+      }),
     ],
   },
   {
     label: "Cadets",
     items: [
-      { label: "Overview", href: "/cadets/overview", icon: Users, keywords: ["cadet list", "roll"] },
+      {
+        label: "Cadets",
+        href: "/cadets/overview",
+        icon: Users,
+        keywords: ["overview", "cadet list", "roll"],
+      },
       // Staff-only (see lib/access.ts): parents' and medical details.
       {
         label: "Recruits",
@@ -157,40 +127,23 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: UserPlus,
         keywords: ["joining form", "new cadets", "3822a", "3822h", "consent", "health declaration", "enrol"],
       },
-      { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["results"] },
-      { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
-      // Staff-only (see lib/access.ts). Training nights, classification
-      // lessons, practical sessions, catch-ups, theory progress, the task
-      // bank, the lesson QR codes and programme links.
-      {
-        label: "Training",
-        href: "/training",
-        icon: GraduationCap,
-        keywords: [
-          "classifications",
-          "classification day",
-          "exams",
-          "theory",
-          "lessons",
-          "lesson plan",
-          "qr code",
-          "session planner",
-          "sessions",
-          "leadership tasks",
-          "command tasks",
-          "task bank",
-          "kit list",
-          "rotation",
-          "stands",
-          "training night",
-          "groups",
-          "catch-ups",
-          "missed lessons",
-          "programme links",
+      area({
+        label: "Events",
+        icon: Calendar,
+        tabs: [
+          { label: "Events", href: "/cadets/events", keywords: ["bader events", "banned"] },
+          {
+            label: "Flying paperwork",
+            href: "/cadets/flying",
+            keywords: ["aef", "gliding", "tg21", "tg23", "av med"],
+          },
+          {
+            label: "JI / AO",
+            href: "/tools/ji-ao-generator",
+            keywords: ["joining instructions", "admin order", "generator"],
+          },
         ],
-      },
-      { label: "Events", href: "/cadets/events", icon: Calendar },
-      // Staff-only (see lib/access.ts).
+      }),
       {
         label: "DofE Activity Logs",
         href: "/cadets/activity-logs",
@@ -198,31 +151,26 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ["dofe", "duke of edinburgh", "volunteering", "skills", "physical", "weekly log"],
       },
       {
-        label: "Flying Paperwork",
-        href: "/cadets/flying",
-        icon: Plane,
-        keywords: ["aef", "gliding", "tg21", "tg23", "av med"],
-      },
-      {
         label: "Audit",
         href: "/cadets/audit",
         icon: ShieldCheck,
-        keywords: ["qualifications", "medical", "dietary", "wht", "weapon handling", "l98a2", "scorpion"],
+        keywords: [
+          "cadet check",
+          "event audit",
+          "qualifications",
+          "medical",
+          "dietary",
+          "wht",
+          "weapon handling",
+          "l98a2",
+          "scorpion",
+        ],
       },
     ],
   },
   {
-    label: "Marking Sheets",
-    items: [
-      { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
-      { label: "Leadership", href: "/assessments/leadership", icon: Star },
-      { label: "Radio", href: "/assessments/radio", icon: Radio },
-      { label: "Space", href: "/assessments/space", icon: Orbit, keywords: ["blue space", "workbook"] },
-      { label: "MOI", href: "/assessments/moi", icon: BookOpen, keywords: ["method of instruction"] },
-    ],
-  },
-  {
-    label: "NCO Team",
+    // What happens on the night, in the order it happens.
+    label: "Parade Night",
     items: [
       {
         label: "Check-in",
@@ -230,64 +178,144 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ScanLine,
         keywords: ["door", "tonight", "who's in", "qr code", "nfc", "register", "head count"],
       },
+      // Staff-only (see lib/access.ts).
+      area({
+        label: "Training",
+        icon: GraduationCap,
+        tabs: [
+          {
+            // Not exact: the classification and practical-session planners
+            // (/training/classifications, /training/sessions) are part of
+            // running tonight, so they light this tab. The other tabs are
+            // deeper matches and win on their own pages.
+            label: "Tonight",
+            href: "/training",
+            keywords: [
+              "nights",
+              "training night",
+              "groups",
+              "sessions",
+              "classifications",
+              "classification day",
+              "exams",
+              "lessons",
+              "lesson plan",
+              "session planner",
+              "leadership tasks",
+              "command tasks",
+              "rotation",
+              "stands",
+            ],
+          },
+          {
+            label: "Progress",
+            href: "/training/progress",
+            keywords: ["theory progress", "catch-ups", "missed lessons", "record a lesson"],
+          },
+          { label: "Tasks & kit", href: "/training/tasks", keywords: ["task bank", "kit list"] },
+          { label: "Setup", href: "/training/setup", keywords: ["qr codes", "lesson qr", "programme links"] },
+        ],
+      }),
+      area({
+        label: "Assessments",
+        icon: ClipboardCheck,
+        tabs: [
+          { label: "Leadership", href: "/assessments/leadership", keywords: ["marking sheet"] },
+          { label: "Radio", href: "/assessments/radio", keywords: ["marking sheet"] },
+          {
+            label: "Space",
+            href: "/assessments/space",
+            keywords: ["blue space", "workbook", "marking sheet"],
+          },
+          { label: "MOI", href: "/assessments/moi", keywords: ["method of instruction", "marking sheet"] },
+          {
+            label: "Results",
+            href: "/cadets/assessments",
+            keywords: ["cadet assessments", "upload to sms", "pdf"],
+          },
+        ],
+      }),
+      area({
+        label: "Inspections",
+        icon: Shirt,
+        tabs: [
+          { label: "Mark", href: "/assessments/inspection", keywords: ["inspection marking sheet"] },
+          {
+            label: "History",
+            href: "/cadets/inspections",
+            keywords: ["inspection history", "leaderboard", "analysis"],
+          },
+        ],
+      }),
+      area({
+        label: "Attendance",
+        icon: CalendarCheck,
+        tabs: [
+          { label: "Squadron", href: "/attendance", exact: true, keywords: ["parade nights", "turnout"] },
+          { label: "NCOs", href: "/attendance/ncos", keywords: ["per nco", "nco attendance"] },
+        ],
+      }),
+    ],
+  },
+  {
+    label: "NCO Team",
+    items: [
       { label: "Session Plans", href: "/session-plans", icon: ClipboardList },
       { label: "Holidays", href: "/nco-holidays", icon: CalendarOff, keywords: ["nco holidays", "leave"] },
-      // Staff-only (see lib/access.ts); the NCO gets their copy by email.
-      { label: "Appraisals", href: "/nco-appraisals", icon: UserCheck, keywords: ["nco appraisals"] },
-      // Staff-only too: staff's own notes about the NCOs, which the appraisals draw on.
+      // Staff-only (see lib/access.ts): the NCO gets their appraisal by email,
+      // and the notes are staff's own, which the appraisals draw on.
+      area({
+        label: "Appraisals",
+        icon: UserCheck,
+        tabs: [
+          { label: "Appraisals", href: "/nco-appraisals", keywords: ["nco appraisals"] },
+          {
+            label: "Staff notes",
+            href: "/nco-notes",
+            keywords: ["nco notes", "observations", "voice note", "appraisal notes"],
+          },
+        ],
+      }),
       {
-        label: "Staff Notes",
-        href: "/nco-notes",
-        icon: MessageSquareText,
-        keywords: ["nco notes", "observations", "voice note", "appraisal notes"],
+        label: "Cadet Comments",
+        href: "/nco-comments",
+        icon: MessageSquare,
+        keywords: ["nco comments", "notes about cadets", "general"],
       },
-      { label: "Comments", href: "/nco-comments", icon: MessageSquare, keywords: ["nco comments", "notes"] },
-      // Per-NCO attendance isn't listed here; it's reached from the Squadron
-      // attendance page's "Per NCO" button.
     ],
   },
   {
     label: "Stores",
     items: [
-      {
-        kind: "group",
-        label: "Uniform",
-        icon: Package,
-        links: [
+      area({
+        label: "Orders",
+        icon: ShoppingCart,
+        tabs: [
           {
-            label: "Stock",
+            label: "Uniform",
+            href: "/stores/uniform/orders",
+            keywords: ["uniform orders", "kitting", "logs form"],
+          },
+          { label: "Badges", href: "/stores/badges/orders", keywords: ["badge orders", "order list"] },
+        ],
+      }),
+      area({
+        label: "Stock",
+        icon: Package,
+        tabs: [
+          {
+            label: "Uniform",
             href: "/stores/uniform/stock",
-            icon: Package,
             keywords: ["uniform stock", "shelves", "boxes"],
           },
-          {
-            label: "Orders",
-            href: "/stores/uniform/orders",
-            icon: ShoppingCart,
-            keywords: ["uniform orders", "kitting"],
-          },
+          { label: "Badges", href: "/stores/badges/stock", keywords: ["badge stock", "badge grid"] },
           {
             label: "Insights",
             href: "/stores/uniform/insights",
-            icon: ChartColumn,
             keywords: ["popular sizes", "what to order", "low stock", "unused stock", "reorder"],
           },
         ],
-      },
-      {
-        kind: "group",
-        label: "Badges",
-        icon: Award,
-        links: [
-          {
-            label: "Stock",
-            href: "/stores/badges/stock",
-            icon: Award,
-            keywords: ["badge stock", "badge grid"],
-          },
-          { label: "Orders", href: "/stores/badges/orders", icon: ShoppingCart, keywords: ["badge orders"] },
-        ],
-      },
+      }),
       {
         label: "Catalogue",
         href: "/stores/catalogue",
@@ -307,42 +335,45 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Comms",
     items: [
-      {
-        label: "Parade Night Texts",
-        href: "/texts/messages",
+      area({
+        label: "Texts",
         icon: MessageSquareText,
-        keywords: ["sms", "messages"],
-      },
-      { label: "Text Recipients", href: "/texts/recipients", icon: Contact, keywords: ["phone numbers"] },
-      {
-        label: "Programme",
-        href: "/tools/programme-updater",
-        icon: Calendar,
-        keywords: ["website", "publish"],
-      },
-      { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper, keywords: ["website"] },
-      { label: "Gallery", href: "/tools/gallery-updater", icon: Images, keywords: ["website", "photos"] },
-      {
-        label: "Staff & NCO Photos",
-        href: "/tools/website-people",
-        icon: SquareUser,
-        keywords: ["website", "photos", "our staff", "our ncos", "promotion"],
-      },
+        tabs: [
+          { label: "Messages", href: "/texts/messages", keywords: ["parade night texts", "sms"] },
+          { label: "Recipients", href: "/texts/recipients", keywords: ["text recipients", "phone numbers"] },
+        ],
+      }),
+      area({
+        label: "Website",
+        icon: Globe,
+        tabs: [
+          {
+            label: "Programme",
+            href: "/tools/programme-updater",
+            keywords: ["publish", "monthly programme"],
+          },
+          { label: "Newsletters", href: "/tools/newsletter-updater", keywords: ["newsletter"] },
+          { label: "Gallery", href: "/tools/gallery-updater", keywords: ["photos"] },
+          {
+            label: "Staff & NCO Photos",
+            href: "/tools/website-people",
+            keywords: ["photos", "our staff", "our ncos", "promotion"],
+          },
+        ],
+      }),
     ],
   },
   {
-    label: "Squadron",
+    label: "Admin",
     items: [
       // Staff-only (see lib/access.ts), as the API requires.
-      {
-        kind: "group",
+      area({
         label: "Applications",
         icon: FileCheck,
-        links: [
+        tabs: [
           {
-            label: "Staff Cadets",
+            label: "Staff cadets",
             href: "/applications/staff-cadets",
-            icon: BadgeCheck,
             keywords: [
               "staff cadet application",
               "pi501",
@@ -354,9 +385,8 @@ export const NAV_SECTIONS: NavSection[] = [
             ],
           },
           {
-            label: "Adult Staff",
+            label: "Adult staff",
             href: "/applications/adult-staff",
-            icon: UserRoundPlus,
             keywords: [
               "uniformed staff",
               "cfav application",
@@ -369,56 +399,42 @@ export const NAV_SECTIONS: NavSection[] = [
             ],
           },
         ],
-      },
-      {
-        label: "Attendance",
-        href: "/attendance",
-        icon: CalendarCheck,
-        keywords: ["parade nights", "turnout"],
-      },
+      }),
       {
         label: "Committee Requests",
         href: "/committee/requests",
         icon: ReceiptText,
-        keywords: ["purchase", "civcom"],
+        keywords: ["purchase", "civcom", "committee"],
       },
-      {
-        label: "JI / AO Generator",
-        href: "/tools/ji-ao-generator",
-        icon: FileText,
-        keywords: ["joining instructions", "admin order"],
-      },
-      // Staff-only: lib/access.ts doesn't list it for NCOs, and the API requires staff.
-      {
-        label: "Docs Assistant",
-        href: "/tools/docs-assistant",
-        icon: FileSearch,
-        keywords: ["ai", "chatbot", "rafac documents", "policy", "acp", "jsp", "sharepoint"],
-      },
-      {
-        kind: "group",
+      area({
         label: "Travel Claims",
         icon: ReceiptText,
-        links: [
-          {
-            label: "F1771e",
-            href: "/form-generators/f1771e",
-            icon: ReceiptText,
-            keywords: ["travel claim", "expenses"],
-          },
-          {
-            label: "HTD",
-            href: "/form-generators/htd",
-            icon: ReceiptText,
-            keywords: ["home to duty", "7101"],
-          },
+        tabs: [
+          { label: "F1771e", href: "/form-generators/f1771e", keywords: ["travel claim", "expenses"] },
+          { label: "HTD", href: "/form-generators/htd", keywords: ["home to duty", "7101"] },
         ],
-      },
-    ],
-  },
-  {
-    label: "Data",
-    items: [
+      }),
+      area({
+        label: "OC",
+        icon: ShieldUser,
+        ocOnly: true,
+        tabs: [
+          { label: "Dashboard", href: "/oc", exact: true, ocOnly: true, keywords: ["oc dashboard"] },
+          {
+            label: "Custom",
+            href: "/oc/custom",
+            ocOnly: true,
+            keywords: ["custom dashboard", "grafana", "panels", "query", "charts", "build your own"],
+          },
+          {
+            label: "Leaving",
+            href: "/oc/leaving",
+            ocOnly: true,
+            keywords: ["leaving process", "leavers", "lapsed cadets", "parent emails"],
+          },
+          { label: "Staff", href: "/staff/overview", ocOnly: true, keywords: ["cfav", "adults"] },
+        ],
+      }),
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap, keywords: ["sync", "import"] },
       { label: "Backups", href: "/backups", icon: DatabaseBackup, ownerOnly: true },
       {
@@ -433,37 +449,33 @@ export const NAV_SECTIONS: NavSection[] = [
 ];
 
 /**
- * The bottom tab bar on a phone: plain links, one tap each, in a strip that
- * scrolls sideways when they don't fit. "More" (pinned at the end) opens the
- * full sidebar for the rest. `match` widens what lights a tab (a cadet's record
- * lights "Cadets"); the longest match wins.
+ * The bottom tab bar on a phone: four places, one tap each, and "More" for the
+ * full menu. Four fit a 390px phone at a thumb-sized width without scrolling;
+ * the old strip of ten to twelve scrolled sideways, so most of it was hidden
+ * and its labels were cut off.
  *
- * Order is by use. Staff's comes from prod's Usage_Daily (Oct-Nov 2026,
- * distinct staff-days on each page's own API calls): Cadets, Stats, uniform
- * and badge stock, Committee, orders, Scrapers, Training, Attendance, Marking.
- * Check-in is new (no data yet) but is the door on parade night, so it sits
- * up front. NCOs and SNCOs had no SMS-site usage at all (only the cadet
- * portal), so theirs is every page they can reach, in parade-night order.
+ * Staff's picks are their most used pages in prod's Usage_Daily (Oct-Nov
+ * 2026): cadets, then stores, with Check-in up front because it's the door on
+ * parade night. NCOs' are the parade-night jobs: the door, marking, plans.
+ * `match` widens what lights a tab (a cadet's record lights "Cadets"); the
+ * longest match wins.
  */
 export type MobileTab = { label: string; href: string; icon: LucideIcon; match: string[] };
 
-const HOME: MobileTab = { label: "Home", href: "/", icon: LayoutDashboard, match: [] };
+const HOME: MobileTab = { label: "Home", href: "/", icon: House, match: [] };
 const CHECK_IN: MobileTab = { label: "Check-in", href: "/check-in", icon: ScanLine, match: [] };
-const STATS: MobileTab = { label: "Stats", href: "/stats", icon: ChartLine, match: [] };
 
-// Shared by SNCOs and NCOs; canAccess drops Inspect for NCOs.
+// Shared by SNCOs and NCOs.
 const NCO_TEAM: MobileTab[] = [
   HOME,
   CHECK_IN,
+  {
+    label: "Mark",
+    href: "/assessments/leadership",
+    icon: ClipboardCheck,
+    match: ["/assessments", "/cadets/assessments"],
+  },
   { label: "Plans", href: "/session-plans", icon: ClipboardList, match: [] },
-  { label: "Inspect", href: "/assessments/inspection", icon: Shirt, match: [] },
-  { label: "Leadership", href: "/assessments/leadership", icon: Star, match: [] },
-  { label: "Radio", href: "/assessments/radio", icon: Radio, match: [] },
-  { label: "Space", href: "/assessments/space", icon: Orbit, match: [] },
-  { label: "Results", href: "/cadets/assessments", icon: Award, match: [] },
-  STATS,
-  { label: "Holidays", href: "/nco-holidays", icon: CalendarOff, match: [] },
-  { label: "Comments", href: "/nco-comments", icon: MessageSquare, match: [] },
 ];
 
 const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
@@ -471,15 +483,7 @@ const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
     HOME,
     { label: "Cadets", href: "/cadets/overview", icon: Users, match: ["/cadets", "/recruits"] },
     CHECK_IN,
-    { label: "Stock", href: "/stores/uniform/stock", icon: Package, match: ["/stores"] },
-    { label: "Orders", href: "/stores/uniform/orders", icon: ShoppingCart, match: ["/stores/badges/orders"] },
-    { label: "Badges", href: "/stores/badges/stock", icon: Award, match: [] },
-    STATS,
-    { label: "Committee", href: "/committee/requests", icon: ReceiptText, match: [] },
-    { label: "Scrapers", href: "/tools/scraper", icon: DatabaseZap, match: [] },
-    { label: "Training", href: "/training", icon: GraduationCap, match: [] },
-    { label: "Attendance", href: "/attendance", icon: CalendarCheck, match: [] },
-    { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
+    { label: "Stores", href: "/stores/uniform/orders", icon: Award, match: ["/stores"] },
   ],
   snco: NCO_TEAM,
   nco: NCO_TEAM,
@@ -503,53 +507,105 @@ export function activeMobileTab(pathname: string, tabs: MobileTab[]): MobileTab 
   return best?.tab ?? null;
 }
 
-export function isGroup(item: NavItem): item is NavGroup {
-  return item.kind === "group";
-}
-
 export function isLinkActive(pathname: string, href: string, exact = false): boolean {
   if (href === "/" || exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function isGroupActive(pathname: string, group: NavGroup): boolean {
-  return group.links.some((l) => isLinkActive(pathname, l.href));
+/**
+ * The tab of an area the path is on, if any. The deepest match wins, so
+ * /attendance/ncos is "NCOs", not "Squadron".
+ */
+export function activeTab(pathname: string, tabs: NavTab[]): NavTab | null {
+  let best: NavTab | null = null;
+  for (const tab of tabs) {
+    if (isLinkActive(pathname, tab.href, tab.exact) && (!best || tab.href.length > best.href.length))
+      best = tab;
+  }
+  return best;
 }
 
-/** The sections a signed-in user should see, with every link they can't reach removed. */
+/** A sidebar row is current when the page is it, or any page of its area. */
+export function isNavLinkActive(pathname: string, link: NavLink): boolean {
+  return link.tabs ? activeTab(pathname, link.tabs) !== null : isLinkActive(pathname, link.href, link.exact);
+}
+
+/** The sections a signed-in user should see, with every link and tab they can't reach removed. */
 export function visibleSections(
   role: string | undefined,
   email: string | undefined,
   oc = false
 ): NavSection[] {
   const isOwner = (email ?? "").toLowerCase() === OWNER_EMAIL.toLowerCase();
-  const canSee = (item: { ownerOnly?: boolean; ocOnly?: boolean }) =>
-    (!item.ownerOnly || isOwner) && (!item.ocOnly || oc);
-  const keepLink = (l: NavLink) => canSee(l) && canAccess(role, l.href);
+  const canSee = (item: Gates) => (!item.ownerOnly || isOwner) && (!item.ocOnly || oc);
+  const keepTab = (t: NavTab) => canSee(t) && canAccess(role, t.href);
 
   return NAV_SECTIONS.filter(canSee)
     .map((section) => ({
       ...section,
-      items: section.items.flatMap<NavItem>((item) => {
-        if (isGroup(item)) {
-          const links = item.links.filter(keepLink);
-          return links.length ? [{ ...item, links }] : [];
-        }
-        return keepLink(item) ? [item] : [];
+      items: section.items.flatMap<NavLink>((item) => {
+        if (!canSee(item)) return [];
+        if (!item.tabs) return canAccess(role, item.href) ? [item] : [];
+        const tabs = item.tabs.filter(keepTab);
+        // An area opens on the first of its pages the user can reach.
+        return tabs.length ? [{ ...item, href: tabs[0].href, tabs }] : [];
       }),
     }))
     .filter((s) => s.items.length > 0);
 }
 
-/** Every reachable link flattened, with the section/group path it lives under — for the palette. */
-export function flattenLinks(sections: NavSection[]): Array<NavLink & { path: string[] }> {
+export type FlatLink = NavTab & { icon: LucideIcon; path: string[] };
+
+/**
+ * Every reachable page flattened, with the section/area path it lives under:
+ * for the palette and the breadcrumbs. An area contributes its tabs, not
+ * itself, so each page appears once.
+ */
+export function flattenLinks(sections: NavSection[]): FlatLink[] {
   return sections.flatMap((section) =>
-    section.items.flatMap((item) => {
+    section.items.flatMap((item): FlatLink[] => {
       const base = section.label ? [section.label] : [];
-      if (isGroup(item)) return item.links.map((l) => ({ ...l, path: [...base, item.label] }));
-      return [{ ...item, path: base }];
+      if (!item.tabs) return [{ ...item, path: base }];
+      return item.tabs.map((t) => ({
+        ...t,
+        icon: item.icon,
+        path: [...base, item.label],
+        keywords: [...(t.keywords ?? []), ...(item.keywords ?? [])],
+      }));
     })
   );
+}
+
+/** The area a path belongs to, with only the tabs in `sections` (so the ones this user can reach). */
+export function areaFor(pathname: string, sections: NavSection[]): NavLink | null {
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (item.tabs && activeTab(pathname, item.tabs)) return item;
+    }
+  }
+  return null;
+}
+
+/**
+ * Things people come to the palette to *do*, not just places to go: each is a
+ * page that starts the job. Gated by `canAccess` like everything else.
+ */
+export type QuickAction = { label: string; href: string; keywords: string[] };
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: "New session plan", href: "/session-plans/new", keywords: ["write", "plan a lesson"] },
+  {
+    label: "New committee request",
+    href: "/committee/requests/new",
+    keywords: ["purchase", "buy", "civcom"],
+  },
+  { label: "New NCO appraisal", href: "/nco-appraisals/new", keywords: ["appraise"] },
+  { label: "Book a holiday", href: "/nco-holidays", keywords: ["leave", "away"] },
+  { label: "Record a lesson", href: "/training/progress", keywords: ["theory", "lesson had"] },
+];
+
+export function quickActionsFor(role: string | undefined): QuickAction[] {
+  return QUICK_ACTIONS.filter((a) => canAccess(role, a.href));
 }
 
 export type Crumb = { label: string; href?: string };
@@ -571,7 +627,7 @@ const DETAIL_PARENTS: Array<[prefix: string, listHref: string]> = [
 /**
  * Breadcrumb trail for the header, from the deepest nav link that matches the
  * current path. Pages deeper than any nav link (e.g. /cadets/1234) get the
- * nearest ancestor and a trailing "…" the page itself replaces with a title.
+ * nearest ancestor, linked, as the way back.
  */
 export function breadcrumbsFor(pathname: string): Crumb[] {
   let best: { crumbs: Crumb[]; len: number } | null = null;

@@ -41,24 +41,34 @@ beforeEach(() => {
 });
 
 describe("sidebar sections", () => {
-  it("opens only the section holding the current page on a first visit", () => {
+  it("opens every section on a first visit, so nothing is hidden behind a heading", () => {
     renderSidebar("/stores/uniform/orders");
     expect(heading("Stores")).toHaveAttribute("aria-expanded", "true");
-    expect(heading("Cadets")).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
+    expect(heading("Cadets")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Audit" })).toBeInTheDocument();
     // Top-level links have no heading and are always there.
-    expect(screen.getAllByRole("link", { name: "Dashboard" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Home" }).length).toBeGreaterThan(0);
   });
 
-  it("opens and closes a section from its heading, and remembers it next time", async () => {
+  it("lists an area once, lit on any of its pages, opening its first page", () => {
+    renderSidebar("/stores/badges/orders");
+    const orders = screen.getByRole("link", { name: "Orders" });
+    expect(orders).toHaveAttribute("href", "/stores/uniform/orders");
+    expect(orders).toHaveAttribute("data-active", "true");
+    expect(screen.queryByRole("link", { name: "Badges" })).not.toBeInTheDocument();
+  });
+
+  it("folds and unfolds a section from its heading, and remembers it next time", async () => {
     const { unmount } = renderSidebar("/");
     await userEvent.click(heading("Comms"));
-    expect(screen.getByRole("link", { name: "Parade Night Texts" })).toBeInTheDocument();
-    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ Comms: true });
+    expect(screen.queryByRole("link", { name: "Texts" })).not.toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ Comms: false });
     unmount();
 
     renderSidebar("/");
-    expect(heading("Comms")).toHaveAttribute("aria-expanded", "true");
+    expect(heading("Comms")).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(heading("Comms"));
+    expect(screen.getByRole("link", { name: "Texts" })).toBeInTheDocument();
   });
 
   it("keeps the current section open even if it was closed on an earlier visit", () => {
@@ -81,7 +91,7 @@ describe("sidebar sections", () => {
       throw new Error("QuotaExceeded");
     });
     await act(async () => heading("Stores").click());
-    expect(heading("Stores")).toHaveAttribute("aria-expanded", "true");
+    expect(heading("Stores")).toHaveAttribute("aria-expanded", "false");
   });
 
   it("only offers headings for sections the role can see", () => {

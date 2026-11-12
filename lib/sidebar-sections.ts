@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { breadcrumbsFor } from "@/lib/navigation";
 
 /**
- * Which sidebar sections are expanded. The full menu is taller than a laptop
- * screen, so sections collapse; this remembers the choice per browser and makes
- * sure the section holding the current page is open.
+ * Which sidebar sections are expanded. Every section starts open, so nothing
+ * is hidden behind a folded heading (the menu is one row per area, short
+ * enough to scan); a section someone folds stays folded in this browser, and
+ * the section holding the current page is always open.
  *
  * Only a per-viewer convenience, so localStorage is fine, and every read and
  * write is guarded: private windows and blocked storage just fall back to "only
@@ -26,7 +27,7 @@ export function activeSectionLabel(pathname: string, sectionLabels: string[]): s
 /**
  * The current page's section is open — so the page is never hidden in the menu,
  * however you got there (⌘K, a link, back) — unless you closed it on this very
- * page. Every other section is as you last left it, closed if never touched.
+ * page. Every other section is as you last left it, open if never touched.
  */
 export function isSectionOpen(
   label: string,
@@ -35,7 +36,7 @@ export function isSectionOpen(
   closedActiveHere: boolean
 ): boolean {
   if (label === active) return !closedActiveHere;
-  return stored[label] ?? false;
+  return stored[label] ?? true;
 }
 
 function readStored(): OpenSections {

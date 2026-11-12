@@ -42,8 +42,8 @@ beforeEach(() => {
 describe("mobile tab bar", () => {
   it.each([
     ["staff", "Cadets"],
-    ["snco", "Inspect"],
-    ["nco", "Leadership"],
+    ["snco", "Mark"],
+    ["nco", "Mark"],
   ])("%s gets plain links (no menus to open), then More", (role, label) => {
     const nav = renderBar(role);
     // Every tab is a link straight to a page; More is the only button.
@@ -56,9 +56,17 @@ describe("mobile tab bar", () => {
     ).toEqual(["More"]);
   });
 
+  it("never has more than four places and More, so nothing is cut off", () => {
+    for (const role of ["staff", "snco", "nco"]) {
+      const nav = renderBar(role);
+      expect(within(nav).getAllByRole("link").length).toBeLessThanOrEqual(4);
+      nav.remove();
+    }
+  });
+
   it("marks the current section, and only that one", () => {
     const nav = renderBar("staff", "/stores/badges/orders");
-    expect(within(nav).getByRole("link", { name: "Orders" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "Stores" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current");
   });
 
@@ -67,9 +75,12 @@ describe("mobile tab bar", () => {
     expect(within(nav).queryByRole("link", { current: "page" })).not.toBeInTheDocument();
   });
 
-  it("an NCO gets no inspection sheet they can't use", () => {
+  it("an NCO's Mark tab opens a sheet they can use, not the inspection one", () => {
     const nav = renderBar("nco");
-    expect(within(nav).queryByRole("link", { name: "Inspect" })).not.toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Mark" })).toHaveAttribute(
+      "href",
+      "/assessments/leadership"
+    );
   });
 
   it("More opens the full menu", async () => {
