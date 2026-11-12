@@ -19,9 +19,9 @@ describe("activeSectionLabel", () => {
 });
 
 describe("isSectionOpen", () => {
-  it("opens every section on a first visit, so nothing is hidden behind a heading", () => {
+  it("opens only the current page's section on a first visit", () => {
     expect(isSectionOpen("Cadets", {}, "Cadets", false)).toBe(true);
-    expect(isSectionOpen("Stores", {}, "Cadets", false)).toBe(true);
+    expect(isSectionOpen("Stores", {}, "Cadets", false)).toBe(false);
   });
 
   it("keeps a section the user folded folded", () => {

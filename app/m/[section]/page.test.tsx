@@ -31,9 +31,14 @@ describe("a section hub", () => {
   it("lists every page in the section, an area's pages under its name", () => {
     renderHub("stores", "staff");
     expect(screen.getByRole("heading", { level: 1, name: "Stores" })).toBeInTheDocument();
-    expect(linkNames(screen.getByRole("list", { name: "Orders" }))).toEqual([
-      ["Uniform", "/stores/uniform/orders"],
-      ["Badges", "/stores/badges/orders"],
+    expect(linkNames(screen.getByRole("list", { name: "Uniform" }))).toEqual([
+      ["Stock", "/stores/uniform/stock"],
+      ["Orders", "/stores/uniform/orders"],
+      ["Insights", "/stores/uniform/insights"],
+    ]);
+    expect(linkNames(screen.getByRole("list", { name: "Badges" }))).toEqual([
+      ["Stock", "/stores/badges/stock"],
+      ["Orders", "/stores/badges/orders"],
     ]);
     expect(screen.getByRole("link", { name: "Catalogue" })).toHaveAttribute("href", "/stores/catalogue");
   });

@@ -1,32 +1,55 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Award,
+  BadgeCheck,
+  BookOpen,
   Bot,
   Calendar,
   CalendarCheck,
+  CalendarDays,
   CalendarOff,
+  Car,
+  ChartColumn,
   ChartLine,
   ChartNoAxesColumn,
   ClipboardCheck,
   ClipboardList,
+  Contact,
   DatabaseBackup,
   DatabaseZap,
   FileCheck,
+  FileSearch,
+  FileText,
   Globe,
   GraduationCap,
+  History,
   House,
+  Images,
+  LayoutDashboard,
+  LayoutGrid,
   ListChecks,
   MessageSquare,
   MessageSquareText,
+  Newspaper,
   NotebookPen,
+  Orbit,
   Package,
+  Plane,
+  QrCode,
+  Radio,
   ReceiptText,
   ScanLine,
   ShieldCheck,
   ShieldUser,
   Shirt,
   ShoppingCart,
+  SquareUser,
+  Star,
   UserCheck,
+  UserCog,
+  UserMinus,
   UserPlus,
+  UserRoundPlus,
   Users,
 } from "lucide-react";
 
@@ -58,6 +81,8 @@ type Gates = {
 export type NavTab = Gates & {
   label: string;
   href: string;
+  /** Its own icon in the sidebar and on a phone's hub; the area's when not set. */
+  icon?: LucideIcon;
   /** Light up only on this exact path: for an area's index page, whose siblings live under it. */
   exact?: boolean;
   /** Extra words the palette should match, e.g. old names people still use. */
@@ -100,10 +125,16 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Assistant",
         icon: Bot,
         tabs: [
-          { label: "Ask", href: "/assistant", keywords: ["ai", "ask", "chat", "question", "who", "find"] },
+          {
+            label: "Ask",
+            href: "/assistant",
+            icon: Bot,
+            keywords: ["ai", "ask", "chat", "question", "who", "find"],
+          },
           {
             label: "Documents",
             href: "/tools/docs-assistant",
+            icon: FileSearch,
             keywords: ["docs assistant", "rafac documents", "policy", "acp", "jsp", "sharepoint"],
           },
         ],
@@ -130,15 +161,17 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Events",
         icon: Calendar,
         tabs: [
-          { label: "Events", href: "/cadets/events", keywords: ["bader events", "banned"] },
+          { label: "Events", href: "/cadets/events", icon: Calendar, keywords: ["bader events", "banned"] },
           {
             label: "Flying paperwork",
             href: "/cadets/flying",
+            icon: Plane,
             keywords: ["aef", "gliding", "tg21", "tg23", "av med"],
           },
           {
             label: "JI / AO",
             href: "/tools/ji-ao-generator",
+            icon: FileText,
             keywords: ["joining instructions", "admin order", "generator"],
           },
         ],
@@ -189,6 +222,7 @@ export const NAV_SECTIONS: NavSection[] = [
             // deeper matches and win on their own pages.
             label: "Tonight",
             href: "/training",
+            icon: CalendarDays,
             keywords: [
               "nights",
               "training night",
@@ -209,27 +243,45 @@ export const NAV_SECTIONS: NavSection[] = [
           {
             label: "Progress",
             href: "/training/progress",
+            icon: BookOpen,
             keywords: ["theory progress", "catch-ups", "missed lessons", "record a lesson"],
           },
-          { label: "Tasks & kit", href: "/training/tasks", keywords: ["task bank", "kit list"] },
-          { label: "Setup", href: "/training/setup", keywords: ["qr codes", "lesson qr", "programme links"] },
+          {
+            label: "Tasks & kit",
+            href: "/training/tasks",
+            icon: ListChecks,
+            keywords: ["task bank", "kit list"],
+          },
+          {
+            label: "Setup",
+            href: "/training/setup",
+            icon: QrCode,
+            keywords: ["qr codes", "lesson qr", "programme links"],
+          },
         ],
       }),
       area({
         label: "Assessments",
         icon: ClipboardCheck,
         tabs: [
-          { label: "Leadership", href: "/assessments/leadership", keywords: ["marking sheet"] },
-          { label: "Radio", href: "/assessments/radio", keywords: ["marking sheet"] },
+          { label: "Leadership", href: "/assessments/leadership", icon: Star, keywords: ["marking sheet"] },
+          { label: "Radio", href: "/assessments/radio", icon: Radio, keywords: ["marking sheet"] },
           {
             label: "Space",
             href: "/assessments/space",
+            icon: Orbit,
             keywords: ["blue space", "workbook", "marking sheet"],
           },
-          { label: "MOI", href: "/assessments/moi", keywords: ["method of instruction", "marking sheet"] },
+          {
+            label: "MOI",
+            href: "/assessments/moi",
+            icon: BookOpen,
+            keywords: ["method of instruction", "marking sheet"],
+          },
           {
             label: "Results",
             href: "/cadets/assessments",
+            icon: ClipboardCheck,
             keywords: ["cadet assessments", "upload to sms", "pdf"],
           },
         ],
@@ -238,10 +290,16 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Inspections",
         icon: Shirt,
         tabs: [
-          { label: "Mark", href: "/assessments/inspection", keywords: ["inspection marking sheet"] },
+          {
+            label: "Mark",
+            href: "/assessments/inspection",
+            icon: Shirt,
+            keywords: ["inspection marking sheet"],
+          },
           {
             label: "History",
             href: "/cadets/inspections",
+            icon: History,
             keywords: ["inspection history", "leaderboard", "analysis"],
           },
         ],
@@ -250,8 +308,19 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Attendance",
         icon: CalendarCheck,
         tabs: [
-          { label: "Squadron", href: "/attendance", exact: true, keywords: ["parade nights", "turnout"] },
-          { label: "NCOs", href: "/attendance/ncos", keywords: ["per nco", "nco attendance"] },
+          {
+            label: "Squadron",
+            href: "/attendance",
+            icon: CalendarCheck,
+            exact: true,
+            keywords: ["parade nights", "turnout"],
+          },
+          {
+            label: "NCOs",
+            href: "/attendance/ncos",
+            icon: UserCheck,
+            keywords: ["per nco", "nco attendance"],
+          },
         ],
       }),
     ],
@@ -267,10 +336,11 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Appraisals",
         icon: UserCheck,
         tabs: [
-          { label: "Appraisals", href: "/nco-appraisals", keywords: ["nco appraisals"] },
+          { label: "Appraisals", href: "/nco-appraisals", icon: UserCheck, keywords: ["nco appraisals"] },
           {
             label: "Staff notes",
             href: "/nco-notes",
+            icon: MessageSquareText,
             keywords: ["nco notes", "observations", "voice note", "appraisal notes"],
           },
         ],
@@ -287,31 +357,44 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Stores",
     items: [
       area({
-        label: "Orders",
-        icon: ShoppingCart,
-        tabs: [
-          {
-            label: "Uniform",
-            href: "/stores/uniform/orders",
-            keywords: ["uniform orders", "kitting", "logs form"],
-          },
-          { label: "Badges", href: "/stores/badges/orders", keywords: ["badge orders", "order list"] },
-        ],
-      }),
-      area({
-        label: "Stock",
+        label: "Uniform",
         icon: Package,
         tabs: [
           {
-            label: "Uniform",
+            label: "Stock",
             href: "/stores/uniform/stock",
+            icon: Package,
             keywords: ["uniform stock", "shelves", "boxes"],
           },
-          { label: "Badges", href: "/stores/badges/stock", keywords: ["badge stock", "badge grid"] },
+          {
+            label: "Orders",
+            href: "/stores/uniform/orders",
+            icon: ShoppingCart,
+            keywords: ["uniform orders", "kitting", "logs form"],
+          },
           {
             label: "Insights",
             href: "/stores/uniform/insights",
+            icon: ChartColumn,
             keywords: ["popular sizes", "what to order", "low stock", "unused stock", "reorder"],
+          },
+        ],
+      }),
+      area({
+        label: "Badges",
+        icon: Award,
+        tabs: [
+          {
+            label: "Stock",
+            href: "/stores/badges/stock",
+            icon: Award,
+            keywords: ["badge stock", "badge grid"],
+          },
+          {
+            label: "Orders",
+            href: "/stores/badges/orders",
+            icon: ShoppingCart,
+            keywords: ["badge orders", "order list"],
           },
         ],
       }),
@@ -338,8 +421,18 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Texts",
         icon: MessageSquareText,
         tabs: [
-          { label: "Messages", href: "/texts/messages", keywords: ["parade night texts", "sms"] },
-          { label: "Recipients", href: "/texts/recipients", keywords: ["text recipients", "phone numbers"] },
+          {
+            label: "Messages",
+            href: "/texts/messages",
+            icon: MessageSquareText,
+            keywords: ["parade night texts", "sms"],
+          },
+          {
+            label: "Recipients",
+            href: "/texts/recipients",
+            icon: Contact,
+            keywords: ["text recipients", "phone numbers"],
+          },
         ],
       }),
       area({
@@ -349,13 +442,20 @@ export const NAV_SECTIONS: NavSection[] = [
           {
             label: "Programme",
             href: "/tools/programme-updater",
+            icon: Calendar,
             keywords: ["publish", "monthly programme"],
           },
-          { label: "Newsletters", href: "/tools/newsletter-updater", keywords: ["newsletter"] },
-          { label: "Gallery", href: "/tools/gallery-updater", keywords: ["photos"] },
+          {
+            label: "Newsletters",
+            href: "/tools/newsletter-updater",
+            icon: Newspaper,
+            keywords: ["newsletter"],
+          },
+          { label: "Gallery", href: "/tools/gallery-updater", icon: Images, keywords: ["photos"] },
           {
             label: "Staff & NCO Photos",
             href: "/tools/website-people",
+            icon: SquareUser,
             keywords: ["photos", "our staff", "our ncos", "promotion"],
           },
         ],
@@ -373,6 +473,7 @@ export const NAV_SECTIONS: NavSection[] = [
           {
             label: "Staff cadets",
             href: "/applications/staff-cadets",
+            icon: BadgeCheck,
             keywords: [
               "staff cadet application",
               "pi501",
@@ -386,6 +487,7 @@ export const NAV_SECTIONS: NavSection[] = [
           {
             label: "Adult staff",
             href: "/applications/adult-staff",
+            icon: UserRoundPlus,
             keywords: [
               "uniformed staff",
               "cfav application",
@@ -409,8 +511,13 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Travel Claims",
         icon: ReceiptText,
         tabs: [
-          { label: "F1771e", href: "/form-generators/f1771e", keywords: ["travel claim", "expenses"] },
-          { label: "HTD", href: "/form-generators/htd", keywords: ["home to duty", "7101"] },
+          {
+            label: "F1771e",
+            href: "/form-generators/f1771e",
+            icon: ReceiptText,
+            keywords: ["travel claim", "expenses"],
+          },
+          { label: "HTD", href: "/form-generators/htd", icon: Car, keywords: ["home to duty", "7101"] },
         ],
       }),
       area({
@@ -418,20 +525,35 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: ShieldUser,
         ocOnly: true,
         tabs: [
-          { label: "Dashboard", href: "/oc", exact: true, ocOnly: true, keywords: ["oc dashboard"] },
+          {
+            label: "Dashboard",
+            href: "/oc",
+            icon: LayoutDashboard,
+            exact: true,
+            ocOnly: true,
+            keywords: ["oc dashboard"],
+          },
           {
             label: "Custom",
             href: "/oc/custom",
+            icon: LayoutGrid,
             ocOnly: true,
             keywords: ["custom dashboard", "grafana", "panels", "query", "charts", "build your own"],
           },
           {
             label: "Leaving",
             href: "/oc/leaving",
+            icon: UserMinus,
             ocOnly: true,
             keywords: ["leaving process", "leavers", "lapsed cadets", "parent emails"],
           },
-          { label: "Staff", href: "/staff/overview", ocOnly: true, keywords: ["cfav", "adults"] },
+          {
+            label: "Staff",
+            href: "/staff/overview",
+            icon: UserCog,
+            ocOnly: true,
+            keywords: ["cfav", "adults"],
+          },
         ],
       }),
       { label: "Bader Scrapers", href: "/tools/scraper", icon: DatabaseZap, keywords: ["sync", "import"] },

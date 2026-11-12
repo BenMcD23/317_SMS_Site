@@ -23,7 +23,7 @@ function HubRow({ href, label, icon: Icon }: { href: string; label: string; icon
 
 /**
  * The pages of one or more sections as a phone-sized list: the hub a bottom
- * bar tab opens. A page on its own is a row; an area (Orders, Training) is its
+ * bar tab opens. A page on its own is a row; a group (Uniform, Training) is its
  * name as a small heading over a row per page, so a section with areas still
  * reads top to bottom with one tap to anything in it.
  */
@@ -60,7 +60,7 @@ export function SectionHub({
                 <h3 className="text-muted-foreground px-1 text-sm font-medium">{it.label}</h3>
                 <ul aria-label={it.label} className="bg-card divide-y overflow-hidden rounded-lg border">
                   {it.tabs!.map((t) => (
-                    <HubRow key={t.href} href={t.href} label={t.label} icon={it.icon} />
+                    <HubRow key={t.href} href={t.href} label={t.label} icon={t.icon ?? it.icon} />
                   ))}
                 </ul>
               </div>

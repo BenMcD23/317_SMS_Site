@@ -149,11 +149,25 @@ describe("active state", () => {
     expect(isLinkActive("/cadets/auditing", "/cadets/audit")).toBe(false);
   });
 
-  it("an area's row is active on any of its pages", () => {
-    const orders = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.label === "Orders")!;
-    expect(isNavLinkActive("/stores/uniform/orders", orders)).toBe(true);
-    expect(isNavLinkActive("/stores/badges/orders", orders)).toBe(true);
-    expect(isNavLinkActive("/stores/badges/stock", orders)).toBe(false);
+  it("a group's row is active on any of its pages", () => {
+    const badges = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.label === "Badges")!;
+    expect(isNavLinkActive("/stores/badges/stock", badges)).toBe(true);
+    expect(isNavLinkActive("/stores/badges/orders", badges)).toBe(true);
+    expect(isNavLinkActive("/stores/uniform/orders", badges)).toBe(false);
+  });
+
+  it("splits Stores into Uniform and Badges, as before, with Catalogue on its own", () => {
+    const stores = NAV_SECTIONS.find((s) => s.label === "Stores")!;
+    expect(stores.items.map((i) => [i.label, i.tabs?.map((t) => t.label)])).toEqual([
+      ["Uniform", ["Stock", "Orders", "Insights"]],
+      ["Badges", ["Stock", "Orders"]],
+      ["Catalogue", undefined],
+    ]);
+  });
+
+  it("gives every page in a group its own icon", () => {
+    for (const item of NAV_SECTIONS.flatMap((s) => s.items))
+      for (const tab of item.tabs ?? []) expect(tab.icon, `${item.label} › ${tab.label}`).toBeDefined();
   });
 
   it("picks the deepest tab, so an index tab doesn't light up beneath itself", () => {
@@ -165,7 +179,7 @@ describe("active state", () => {
   it("finds a page's area, but not for a page that stands alone", () => {
     const sections = visibleSections("staff", "someone@317atc.co.uk");
     expect(areaFor("/texts/recipients", sections)?.label).toBe("Texts");
-    expect(areaFor("/stores/uniform/stock/BOX-A", sections)?.label).toBe("Stock");
+    expect(areaFor("/stores/uniform/stock/BOX-A", sections)?.label).toBe("Uniform");
     expect(areaFor("/stores/catalogue", sections)).toBeNull();
     expect(areaFor("/", sections)).toBeNull();
   });
@@ -174,13 +188,13 @@ describe("active state", () => {
 describe("breadcrumbsFor", () => {
   it("names the trail to an exact page with no link on the last crumb", () => {
     const crumbs = breadcrumbsFor("/stores/uniform/stock");
-    expect(crumbs.map((c) => c.label)).toEqual(["Stores", "Stock", "Uniform"]);
+    expect(crumbs.map((c) => c.label)).toEqual(["Stores", "Uniform", "Stock"]);
     expect(crumbs[crumbs.length - 1].href).toBeUndefined();
   });
 
   it("links the nearest ancestor for a deeper page", () => {
     const crumbs = breadcrumbsFor("/stores/uniform/stock/BOX-A");
-    expect(crumbs[crumbs.length - 1]).toEqual({ label: "Uniform", href: "/stores/uniform/stock" });
+    expect(crumbs[crumbs.length - 1]).toEqual({ label: "Stock", href: "/stores/uniform/stock" });
   });
 
   it("trails a cadet or staff record back to its list, with the list linked", () => {

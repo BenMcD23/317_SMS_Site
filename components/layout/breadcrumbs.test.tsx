@@ -19,7 +19,7 @@ describe("HeaderBreadcrumbs", () => {
     expect(separators).toHaveLength(2);
     for (const sep of separators) expect(sep.className).toContain("hidden md:flex");
     // The page itself is never hidden.
-    expect(screen.getByText("Uniform").closest("li")?.className ?? "").not.toContain("hidden");
+    expect(screen.getByText("Orders").closest("li")?.className ?? "").not.toContain("hidden");
   });
 
   it("links a cadet record back to the cadet list", () => {

@@ -58,7 +58,8 @@ function NavLinkItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
 }
 
 /**
- * An area (Orders, Training) with its pages indented beneath it. The area
+ * A group (Uniform, Training) with its pages indented beneath it, each with
+ * its own icon. The area
  * you're in unfolds by itself, and any other can be opened by hand; the rest
  * stay one line each, so the menu stays short with every page in it. In
  * icon-only mode there's nowhere to indent, so the icon opens a flyout.
@@ -85,6 +86,7 @@ function NavAreaItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
             {tabs.map((tab) => (
               <DropdownMenuItem key={tab.href} asChild>
                 <Link href={tab.href} onClick={onNavigate}>
+                  <NavIcon icon={tab.icon ?? link.icon} />
                   {tab.label}
                 </Link>
               </DropdownMenuItem>
@@ -114,6 +116,7 @@ function NavAreaItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
               <SidebarMenuSubItem key={tab.href}>
                 <SidebarMenuSubButton asChild isActive={tab === current}>
                   <Link href={tab.href} onClick={onNavigate}>
+                    <NavIcon icon={tab.icon ?? link.icon} />
                     <span>{tab.label}</span>
                   </Link>
                 </SidebarMenuSubButton>

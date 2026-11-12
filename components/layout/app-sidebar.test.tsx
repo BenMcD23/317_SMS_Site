@@ -41,46 +41,49 @@ beforeEach(() => {
 });
 
 describe("sidebar sections", () => {
-  it("opens every section on a first visit, so nothing is hidden behind a heading", () => {
+  it("opens only the section holding the current page on a first visit", () => {
     renderSidebar("/stores/uniform/orders");
     expect(heading("Stores")).toHaveAttribute("aria-expanded", "true");
-    expect(heading("Cadets")).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("link", { name: "Audit" })).toBeInTheDocument();
+    expect(heading("Cadets")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
     // Top-level links have no heading and are always there.
     expect(screen.getAllByRole("link", { name: "Home" }).length).toBeGreaterThan(0);
   });
 
-  it("unfolds the area you're in to show its pages, with this one lit", () => {
+  it("unfolds the group you're in to show its pages, with this one lit", () => {
     renderSidebar("/stores/badges/orders");
-    const orders = screen.getByRole("button", { name: "Orders" });
-    expect(orders).toHaveAttribute("aria-expanded", "true");
+    const badges = screen.getByRole("button", { name: "Badges" });
+    expect(badges).toHaveAttribute("aria-expanded", "true");
+    expect(badges).toHaveAttribute("data-active", "true");
+    const orders = screen.getByRole("link", { name: "Orders" });
+    expect(orders).toHaveAttribute("href", "/stores/badges/orders");
     expect(orders).toHaveAttribute("data-active", "true");
-    const pages = screen.getByRole("link", { name: "Badges" });
-    expect(pages).toHaveAttribute("href", "/stores/badges/orders");
-    expect(pages).toHaveAttribute("data-active", "true");
-    expect(screen.getByRole("link", { name: "Uniform" })).toHaveAttribute("data-active", "false");
+    expect(screen.getByRole("link", { name: "Stock" })).toHaveAttribute("data-active", "false");
+    // Each page has its own icon, as the groups always had.
+    expect(orders.querySelector("svg")).not.toBeNull();
   });
 
-  it("keeps other areas folded to one line, and opens one by hand", async () => {
+  it("keeps other groups folded to one line, and opens one by hand", async () => {
     renderSidebar("/stores/badges/orders");
-    const texts = screen.getByRole("button", { name: "Texts" });
-    expect(texts).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Recipients" })).not.toBeInTheDocument();
-    await userEvent.click(texts);
-    expect(screen.getByRole("link", { name: "Recipients" })).toHaveAttribute("href", "/texts/recipients");
+    const uniform = screen.getByRole("button", { name: "Uniform" });
+    expect(uniform).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Insights" })).not.toBeInTheDocument();
+    await userEvent.click(uniform);
+    expect(screen.getByRole("link", { name: "Insights" })).toHaveAttribute(
+      "href",
+      "/stores/uniform/insights"
+    );
   });
 
-  it("folds and unfolds a section from its heading, and remembers it next time", async () => {
+  it("opens and closes a section from its heading, and remembers it next time", async () => {
     const { unmount } = renderSidebar("/");
     await userEvent.click(heading("Comms"));
-    expect(screen.queryByRole("button", { name: "Texts" })).not.toBeInTheDocument();
-    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ Comms: false });
+    expect(screen.getByRole("button", { name: "Texts" })).toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ Comms: true });
     unmount();
 
     renderSidebar("/");
-    expect(heading("Comms")).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(heading("Comms"));
-    expect(screen.getByRole("button", { name: "Texts" })).toBeInTheDocument();
+    expect(heading("Comms")).toHaveAttribute("aria-expanded", "true");
   });
 
   it("keeps the current section open even if it was closed on an earlier visit", () => {
@@ -103,7 +106,7 @@ describe("sidebar sections", () => {
       throw new Error("QuotaExceeded");
     });
     await act(async () => heading("Stores").click());
-    expect(heading("Stores")).toHaveAttribute("aria-expanded", "false");
+    expect(heading("Stores")).toHaveAttribute("aria-expanded", "true");
   });
 
   it("only offers headings for sections the role can see", () => {
