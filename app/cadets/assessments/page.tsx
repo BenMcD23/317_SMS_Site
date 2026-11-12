@@ -759,7 +759,7 @@ function CadetAssessmentBlock({
 
   return (
     <section aria-label={name} className="divide-y">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3 pb-2">
+      <div className="bg-muted/30 flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5">
         <Link href={`/cadets/${cadet.cin}`} className="font-semibold hover:underline">
           {name}
         </Link>

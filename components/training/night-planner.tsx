@@ -455,8 +455,6 @@ export function NightPlanner() {
             <Stat label="Scanned in" value={scanned} tone={scanned ? "success" : undefined} />
           </StatGroup>
 
-          <PlanTheNight />
-
           {night.programme.length > 0 && <ProgrammeSummary night={night} />}
 
           {sessions.length === 0 ? (
@@ -510,6 +508,8 @@ export function NightPlanner() {
               </OrderList>
             </section>
           )}
+
+          <PlanTheNight />
         </>
       )}
 
