@@ -11,6 +11,7 @@ const pathname = vi.hoisted(() => ({ current: "/" }));
 vi.mock("next/navigation", () => ({ usePathname: () => pathname.current }));
 
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
+import { RecentPageTracker, resetQuickPagesForTest } from "@/lib/quick-pages";
 
 const PINS = "sms.mobile.pins";
 const RECENT = "sms.mobile.recent";
@@ -18,7 +19,13 @@ const RECENT = "sms.mobile.recent";
 function renderBar(role: string | undefined, path = "/") {
   SESSION.current = { data: role ? { role } : null, status: "authenticated" };
   pathname.current = path;
-  const view = render(<MobileTabBar />);
+  // The app shell mounts the tracker beside the bar.
+  const view = render(
+    <>
+      <MobileTabBar />
+      <RecentPageTracker />
+    </>
+  );
   return { nav: screen.getByRole("navigation", { name: "Quick links" }), ...view };
 }
 
@@ -43,6 +50,7 @@ beforeEach(() => {
     removeEventListener() {},
   }));
   window.localStorage.clear();
+  resetQuickPagesForTest();
   // jsdom has no pointer capture; the sheet's drag handling calls it.
   Element.prototype.setPointerCapture = vi.fn();
   Element.prototype.releasePointerCapture = vi.fn();

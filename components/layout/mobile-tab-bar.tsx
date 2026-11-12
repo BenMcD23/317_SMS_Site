@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut, Menu, Pin, Search, Settings } from "lucide-react";
 
@@ -16,55 +15,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  addRecent,
-  currentPins,
-  MAX_PINS,
-  pageFor,
-  pinLabel,
-  reachablePages,
-  searchPages,
-  togglePin,
-  type PageLink,
-} from "@/lib/mobile-pins";
-import { visibleSections } from "@/lib/navigation";
+import { MAX_PINS, pinLabel, searchPages, type PageLink } from "@/lib/mobile-pins";
+import { useQuickPages } from "@/lib/quick-pages";
 import { cn } from "@/lib/utils";
-
-const PINS_KEY = "sms.mobile.pins";
-const RECENT_KEY = "sms.mobile.recent";
 
 const TAB =
   "flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors";
-
-/**
- * A list kept in this browser's localStorage. Only a per-phone convenience, so
- * every read and write is guarded: a private window or blocked storage just
- * gets the fallback (null) and choices last for the visit.
- */
-function useStoredList(key: string): [string[] | null, (next: string[]) => void] {
-  // Starts empty so the server render and the first client render agree.
-  const [value, setValue] = useState<string[] | null>(null);
-
-  useEffect(() => {
-    try {
-      const parsed: unknown = JSON.parse(window.localStorage.getItem(key) ?? "null");
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage only exists after mount
-      if (Array.isArray(parsed)) setValue(parsed.filter((x): x is string => typeof x === "string"));
-    } catch {
-      // Unreadable or blocked: keep the fallback.
-    }
-  }, [key]);
-
-  const save = (next: string[]) => {
-    setValue(next);
-    try {
-      window.localStorage.setItem(key, JSON.stringify(next));
-    } catch {
-      // Storage blocked or full: the choice still holds for this visit.
-    }
-  };
-  return [value, save];
-}
 
 /**
  * Bottom bar on a phone: the four pages this person pinned (one tap each) and
@@ -72,33 +28,13 @@ function useStoredList(key: string): [string[] | null, (next: string[]) => void]
  * with a pin to add it to the bar. Hidden from md up, where the sidebar is.
  */
 export function MobileTabBar() {
-  const pathname = usePathname();
   const { data: session } = useSession();
   const role = session?.role;
-  const pages = reachablePages(visibleSections(role, session?.user?.email ?? undefined, session?.is_oc));
-  const [storedPins, savePins] = useStoredList(PINS_KEY);
-  const [storedRecent, saveRecent] = useStoredList(RECENT_KEY);
+  // Shared with the sidebar's Pinned list and ⌘K (lib/quick-pages.ts); the
+  // app shell records recent pages.
+  const { pages, pins, recent, here, togglePin } = useQuickPages();
   const [open, setOpen] = useState(false);
-
-  const pins = currentPins(storedPins, role, pages);
   const byHref = new Map(pages.map((p) => [p.href, p]));
-  const here = pageFor(pathname, pages);
-
-  // Remember where we've been, so getting back is two taps.
-  const hereHref = here?.href;
-  useEffect(() => {
-    if (!hereHref) return;
-    let recent: string[] = [];
-    try {
-      const parsed: unknown = JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]");
-      if (Array.isArray(parsed)) recent = parsed.filter((x): x is string => typeof x === "string");
-    } catch {
-      // Unreadable: start a fresh list.
-    }
-    if (recent[0] !== hereHref) saveRecent(addRecent(recent, hereHref));
-    // saveRecent is a new function each render; the page is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hereHref]);
 
   return (
     <>
@@ -141,8 +77,8 @@ export function MobileTabBar() {
         onOpenChange={setOpen}
         pages={pages}
         pins={pins}
-        recent={(storedRecent ?? []).filter((h) => h !== here?.href && byHref.has(h))}
-        onTogglePin={(href) => savePins(togglePin(pins, href))}
+        recent={recent.filter((h) => h !== here?.href)}
+        onTogglePin={togglePin}
       />
     </>
   );

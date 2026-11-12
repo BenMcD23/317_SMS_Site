@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, User } from "lucide-react";
+import { History, Pin, PinOff, Search, User } from "lucide-react";
 
 import { apiFetch } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
+import { fullLabel, MAX_PINS } from "@/lib/mobile-pins";
 import { flattenLinks, visibleSections } from "@/lib/navigation";
+import { useQuickPages } from "@/lib/quick-pages";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
@@ -39,7 +41,9 @@ function useDebounced<T>(value: T, ms: number): T {
 
 /**
  * ⌘K / Ctrl+K jump box: every page the user can reach, plus a cadet search
- * that goes straight to the record. Pages are filtered client-side by cmdk;
+ * that goes straight to the record. With nothing typed, the pages used last
+ * come first, so going back is Ctrl+K, Enter; and the page you're on can be
+ * pinned to the top of the menu (lib/quick-pages.ts). Pages are filtered client-side by cmdk;
  * cadets come from the API once the query is two characters long.
  */
 export function CommandPalette({
@@ -54,6 +58,16 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounced(query.trim(), 200);
   const token = session?.id_token;
+
+  const quick = useQuickPages();
+  const byHref = new Map(quick.pages.map((p) => [p.href, p]));
+  const recent = quick.recent
+    .filter((h) => h !== quick.here?.href)
+    .flatMap((h) => (byHref.has(h) ? [byHref.get(h)!] : []));
+  const here = quick.here;
+  const herePinned = here ? quick.pins.includes(here.href) : false;
+  const canPinHere = here && (herePinned || quick.pins.length < MAX_PINS);
+  const showExtras = query.trim() === "";
 
   const pages = flattenLinks(
     visibleSections(session?.role, session?.user?.email ?? undefined, session?.is_oc)
@@ -105,6 +119,47 @@ export function CommandPalette({
                   </span>
                 </CommandItem>
               ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+        {showExtras && recent.length > 0 && (
+          <>
+            <CommandGroup heading="Recent">
+              {recent.map((p) => (
+                <CommandItem
+                  key={`recent-${p.href}`}
+                  value={`recent ${p.href} ${p.label}`}
+                  onSelect={() => go(p.href)}
+                >
+                  <History />
+                  <span>{fullLabel(p, quick.pages)}</span>
+                  {p.path.length > 0 && (
+                    <span className="text-muted-foreground ml-auto text-xs">{p.path.join(" › ")}</span>
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+        {showExtras && here && canPinHere && (
+          <>
+            <CommandGroup heading="This page">
+              <CommandItem
+                value={`pin this page ${here.label}`}
+                onSelect={() => {
+                  quick.togglePin(here.href);
+                  onOpenChange(false);
+                }}
+              >
+                {herePinned ? <PinOff /> : <Pin />}
+                <span>
+                  {herePinned
+                    ? `Unpin ${fullLabel(here, quick.pages)}`
+                    : `Pin ${fullLabel(here, quick.pages)} to the menu`}
+                </span>
+              </CommandItem>
             </CommandGroup>
             <CommandSeparator />
           </>

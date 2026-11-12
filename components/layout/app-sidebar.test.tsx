@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { resetQuickPagesForTest } from "@/lib/quick-pages";
 
 const KEY = "sms.sidebar.sections";
 
@@ -38,6 +39,7 @@ beforeEach(() => {
       removeEventListener() {},
     }) as unknown as MediaQueryList;
   window.localStorage.clear();
+  resetQuickPagesForTest();
 });
 
 describe("sidebar sections", () => {
@@ -90,6 +92,78 @@ describe("sidebar sections", () => {
       renderSidebar("/session-plans");
       expect(heading("NCO Team")).toHaveAttribute("aria-expanded", "true");
       expect(screen.queryByRole("button", { name: "Stores" })).not.toBeInTheDocument();
+    } finally {
+      SESSION.current = {
+        data: { role: "staff", user: { email: "staff@317atc.co.uk" } },
+        status: "authenticated",
+      };
+    }
+  });
+});
+
+describe("pinned pages", () => {
+  const PINS = "sms.mobile.pins";
+  const pinnedList = () => screen.queryByRole("group", { name: "Pinned" });
+
+  it("lists the pins at the top, without Home, which is already the first row", () => {
+    window.localStorage.setItem(PINS, JSON.stringify(["/", "/stores/badges/orders", "/texts/messages"]));
+    renderSidebar("/texts/messages");
+    const list = pinnedList()!;
+    expect(
+      within(list)
+        .getAllByRole("link")
+        .map((l) => l.getAttribute("href"))
+    ).toEqual(["/stores/badges/orders", "/texts/messages"]);
+    // Lit on its own page, however the sections are folded.
+    expect(within(list).getByRole("link", { name: "Parade Night Texts" })).toHaveAttribute(
+      "data-active",
+      "true"
+    );
+  });
+
+  it("shows nothing when only Home is pinned, or nothing is", () => {
+    window.localStorage.setItem(PINS, JSON.stringify(["/"]));
+    renderSidebar();
+    expect(pinnedList()).not.toBeInTheDocument();
+  });
+
+  it("pins a page from its row and unpins it from the Pinned list", async () => {
+    window.localStorage.setItem(PINS, JSON.stringify(["/"]));
+    renderSidebar("/stores/uniform/orders");
+    await userEvent.click(screen.getByRole("button", { name: "Pin Uniform Orders" }));
+    const list = pinnedList()!;
+    expect(within(list).getByRole("link", { name: "Uniform Orders" })).toHaveAttribute(
+      "href",
+      "/stores/uniform/orders"
+    );
+    expect(JSON.parse(window.localStorage.getItem(PINS)!)).toEqual(["/", "/stores/uniform/orders"]);
+    await userEvent.click(within(list).getByRole("button", { name: "Unpin Uniform Orders" }));
+    expect(pinnedList()).not.toBeInTheDocument();
+  });
+
+  it("says which rows are pinned, and refuses a fifth", () => {
+    renderSidebar("/stores/uniform/orders");
+    // The staff defaults fill all four.
+    expect(screen.getAllByRole("button", { name: "Unpin Dashboard" })[0]).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    const fifth = screen.getByRole("button", { name: "Pin Uniform Orders" });
+    expect(fifth).toBeDisabled();
+    expect(fifth).toHaveAttribute("title", expect.stringMatching(/Unpin one first/));
+  });
+
+  it("never shows an NCO a staff page pinned on a shared computer", () => {
+    window.localStorage.setItem(PINS, JSON.stringify(["/stores/uniform/orders", "/session-plans"]));
+    SESSION.current = { data: { role: "nco", user: { email: "nco@317atc.co.uk" } }, status: "authenticated" };
+    try {
+      renderSidebar("/session-plans");
+      const list = pinnedList()!;
+      expect(
+        within(list)
+          .getAllByRole("link")
+          .map((l) => l.getAttribute("href"))
+      ).toEqual(["/session-plans"]);
     } finally {
       SESSION.current = {
         data: { role: "staff", user: { email: "staff@317atc.co.uk" } },

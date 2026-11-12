@@ -1,10 +1,11 @@
 "use client";
 
+import { createContext, useContext } from "react";
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Pin } from "lucide-react";
 
 import {
   isGroup,
@@ -15,7 +16,10 @@ import {
   type NavLink,
   type NavSection,
 } from "@/lib/navigation";
+import { fullLabel, MAX_PINS } from "@/lib/mobile-pins";
+import { useQuickPages } from "@/lib/quick-pages";
 import { useOpenSections } from "@/lib/sidebar-sections";
+import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -34,6 +38,7 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
+  SidebarMenuAction,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
@@ -51,7 +56,55 @@ function NavIcon({ icon: Icon }: { icon: React.ElementType }) {
   return pending ? <Loader2 className="animate-spin" /> : <Icon />;
 }
 
-function NavLinkItem({ link, onNavigate }: { link: NavLink; onNavigate: () => void }) {
+/** The pins, shared with the phone bar and ⌘K (lib/quick-pages.ts), read once for the whole menu. */
+const PinsContext = createContext<{ pins: string[]; toggle: (href: string) => void }>({
+  pins: [],
+  toggle: () => {},
+});
+
+/**
+ * Pin a page to the top of the menu (and the phone's bar), or take it off.
+ * Shows on hover and keyboard focus on a laptop so the menu stays quiet,
+ * always in the phone's menu sheet where there's no hover. A full set of
+ * pins refuses a fifth: unpin one first.
+ */
+function PinButton({ href, label, sub = false }: { href: string; label: string; sub?: boolean }) {
+  const { pins, toggle } = useContext(PinsContext);
+  const pinned = pins.includes(href);
+  const full = !pinned && pins.length >= MAX_PINS;
+  return (
+    <SidebarMenuAction
+      showOnHover={!sub}
+      aria-pressed={pinned}
+      aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
+      title={full ? `Unpin one first: ${MAX_PINS} is the most` : undefined}
+      disabled={full}
+      onClick={() => toggle(href)}
+      className={cn(
+        "disabled:cursor-not-allowed",
+        pinned && "text-sidebar-primary",
+        // A refused pin stays hidden like the rest until its row is hovered,
+        // then shows faded.
+        !sub && "group-hover/menu-item:disabled:opacity-40",
+        // Sub-rows aren't menu items, so they need their own hover rule.
+        sub &&
+          "top-1 group-focus-within/menu-sub-item:opacity-100 group-hover/menu-sub-item:opacity-100 md:opacity-0"
+      )}
+    >
+      <Pin className={cn(pinned && "fill-current")} />
+    </SidebarMenuAction>
+  );
+}
+
+function NavLinkItem({
+  link,
+  onNavigate,
+  pinnable = true,
+}: {
+  link: NavLink;
+  onNavigate: () => void;
+  pinnable?: boolean;
+}) {
   const pathname = usePathname();
   return (
     <SidebarMenuItem>
@@ -65,6 +118,7 @@ function NavLinkItem({ link, onNavigate }: { link: NavLink; onNavigate: () => vo
           <span>{link.label}</span>
         </Link>
       </SidebarMenuButton>
+      {pinnable && <PinButton href={link.href} label={link.label} />}
     </SidebarMenuItem>
   );
 }
@@ -119,12 +173,17 @@ function NavGroupItem({ group, onNavigate }: { group: NavGroup; onNavigate: () =
           <SidebarMenuSub>
             {group.links.map((link) => (
               <SidebarMenuSubItem key={link.href}>
-                <SidebarMenuSubButton asChild isActive={isLinkActive(pathname, link.href, link.exact)}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={isLinkActive(pathname, link.href, link.exact)}
+                  className="pr-8"
+                >
                   <Link href={link.href} onClick={onNavigate}>
                     <NavIcon icon={link.icon} />
                     <span>{link.label}</span>
                   </Link>
                 </SidebarMenuSubButton>
+                <PinButton href={link.href} label={`${group.label} ${link.label}`} sub />
               </SidebarMenuSubItem>
             ))}
           </SidebarMenuSub>
@@ -161,6 +220,9 @@ export function AppSidebar() {
   );
   // Icon-only mode has no headings to click, so every icon stays reachable.
   const iconOnly = state === "collapsed" && !isMobile;
+  const { pages, pins, togglePin } = useQuickPages();
+  // Home is the menu's first row already, so it isn't repeated under Pinned.
+  const pinned = pins.filter((h) => h !== "/").flatMap((h) => pages.filter((p) => p.href === h));
 
   // On mobile the sidebar is an overlay sheet — collapse it after navigating.
   const closeOnMobile = () => {
@@ -168,66 +230,101 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="Dashboard">
-              <Link href="/" onClick={closeOnMobile}>
-                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-md">
-                  <Image src="/icon.jpg" alt="" width={32} height={32} className="size-8 object-cover" />
-                </div>
-                <div className="grid flex-1 text-left leading-tight">
-                  <span className="truncate text-sm font-semibold">317 Squadron</span>
-                  <span className="text-sidebar-foreground/60 truncate text-xs">Management System</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+    <PinsContext.Provider value={{ pins, toggle: togglePin }}>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" asChild tooltip="Dashboard">
+                <Link href="/" onClick={closeOnMobile}>
+                  <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-md">
+                    <Image src="/icon.jpg" alt="" width={32} height={32} className="size-8 object-cover" />
+                  </div>
+                  <div className="grid flex-1 text-left leading-tight">
+                    <span className="truncate text-sm font-semibold">317 Squadron</span>
+                    <span className="text-sidebar-foreground/60 truncate text-xs">Management System</span>
+                  </div>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
 
-      <SidebarContent>
-        {sections.map((section, i) =>
-          !section.label || iconOnly ? (
-            <SidebarGroup key={section.label ?? i}>
-              {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
-              <SectionItems section={section} onNavigate={closeOnMobile} />
+        <SidebarContent>
+          {sections.length > 0 && sections[0].label === undefined && (
+            <SidebarGroup key="top">
+              <SectionItems section={sections[0]} onNavigate={closeOnMobile} />
             </SidebarGroup>
-          ) : (
-            // The menu is taller than a laptop screen, so each section folds
-            // away; useOpenSections remembers which and keeps the current one open.
-            <Collapsible
-              key={section.label}
-              open={isOpen(section.label)}
-              onOpenChange={(open) => setOpen(section.label!, open)}
-              className="group/section"
-            >
-              {/* Less padding than a plain group: folded, the headings stack
-                  as a compact list instead of a column of gaps. */}
-              <SidebarGroup className="py-0.5">
-                <SidebarGroupLabel
-                  asChild
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer"
-                >
-                  <CollapsibleTrigger>
-                    {section.label}
-                    <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=closed]/section:-rotate-90" />
-                  </CollapsibleTrigger>
-                </SidebarGroupLabel>
-                <CollapsibleContent>
+          )}
+          {/* The pages this person pinned, one click away however the
+            sections are folded. The same pins as the phone's bar. */}
+          {pinned.length > 0 && (
+            <SidebarGroup role="group" aria-label="Pinned">
+              <SidebarGroupLabel>Pinned</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {pinned.map((page) => (
+                    <SidebarMenuItem key={page.href}>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={fullLabel(page, pages)}
+                        isActive={isLinkActive(pathname, page.href)}
+                      >
+                        <Link href={page.href} onClick={closeOnMobile}>
+                          <NavIcon icon={page.icon} />
+                          <span>{fullLabel(page, pages)}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                      <PinButton href={page.href} label={fullLabel(page, pages)} />
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+          {sections
+            .filter((s) => s.label !== undefined)
+            .map((section, i) =>
+              !section.label || iconOnly ? (
+                <SidebarGroup key={section.label ?? i}>
+                  {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
                   <SectionItems section={section} onNavigate={closeOnMobile} />
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-          )
-        )}
-      </SidebarContent>
+                </SidebarGroup>
+              ) : (
+                // The menu is taller than a laptop screen, so each section folds
+                // away; useOpenSections remembers which and keeps the current one open.
+                <Collapsible
+                  key={section.label}
+                  open={isOpen(section.label)}
+                  onOpenChange={(open) => setOpen(section.label!, open)}
+                  className="group/section"
+                >
+                  {/* Less padding than a plain group: folded, the headings stack
+                  as a compact list instead of a column of gaps. */}
+                  <SidebarGroup className="py-0.5">
+                    <SidebarGroupLabel
+                      asChild
+                      className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer"
+                    >
+                      <CollapsibleTrigger>
+                        {section.label}
+                        <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=closed]/section:-rotate-90" />
+                      </CollapsibleTrigger>
+                    </SidebarGroupLabel>
+                    <CollapsibleContent>
+                      <SectionItems section={section} onNavigate={closeOnMobile} />
+                    </CollapsibleContent>
+                  </SidebarGroup>
+                </Collapsible>
+              )
+            )}
+        </SidebarContent>
 
-      <SidebarFooter>
-        <UserMenu onNavigate={closeOnMobile} />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+        <SidebarFooter>
+          <UserMenu onNavigate={closeOnMobile} />
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    </PinsContext.Provider>
   );
 }

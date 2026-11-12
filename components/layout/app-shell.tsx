@@ -10,6 +10,7 @@ import { ApiStatusBadge, useApiStatus } from "@/components/layout/api-status";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { OutboxIndicator, OutboxSync } from "@/components/outbox";
+import { RecentPageTracker } from "@/lib/quick-pages";
 
 /** Auth pages render bare — no sidebar or header. */
 const NO_SHELL_ROUTES = ["/login", "/unauthorized"];
@@ -44,6 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </SidebarInset>
       <MobileTabBar />
       <OutboxSync />
+      <RecentPageTracker />
     </SidebarProvider>
   );
 }

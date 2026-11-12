@@ -73,7 +73,15 @@ export function addRecent(recent: string[], href: string): string[] {
  */
 export function pinLabel(page: PageLink, role: string | undefined, pages: PageLink[]): string {
   const short = mobileTabsFor(role).find((t) => t.href === page.href)?.label;
-  if (short) return short;
+  return short ?? fullLabel(page, pages);
+}
+
+/**
+ * A page's full name for a list away from its group (Pinned, Recent): its own
+ * name, with the group in front when another page shares it ("Uniform Orders",
+ * "Badges Orders").
+ */
+export function fullLabel(page: PageLink, pages: PageLink[]): string {
   const clash = pages.some((p) => p.href !== page.href && p.label === page.label);
   const group = page.path[page.path.length - 1];
   return clash && group ? `${group} ${page.label}` : page.label;
