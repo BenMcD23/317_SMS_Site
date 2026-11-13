@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -882,18 +883,14 @@ function EventCheckTab() {
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label className="text-sm">Event</Label>
-                <Select value={selectedEventId} onValueChange={handleEventChange} disabled={loadingEvents}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an event…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((e) => (
-                      <SelectItem key={e.id} value={String(e.id)}>
-                        {e.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  aria-label="Event"
+                  value={selectedEventId}
+                  onValueChange={handleEventChange}
+                  disabled={loadingEvents}
+                  placeholder="Select an event…"
+                  options={events.map((e) => ({ value: String(e.id), label: e.title }))}
+                />
               </div>
 
               {subApps.length > 0 && (

@@ -12,6 +12,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@/components/responsive-dialog";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -154,27 +155,19 @@ export function PersonDialog({
               control={control}
               name="rank"
               render={({ field }) => (
-                <Select
+                <SearchableSelect
+                  id="person-rank"
                   value={field.value}
                   onValueChange={(v) => {
                     field.onChange(v);
                     field.onBlur();
                   }}
-                >
-                  <SelectTrigger id="person-rank" className="w-full" aria-invalid={!!rankError || undefined}>
-                    <SelectValue placeholder="Select a rank" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ranks
-                      // "Wg Cdr (Ret'd)" is a place to list someone, not a rank they hold.
-                      .filter((r) => !r.includes("Ret'd"))
-                      .map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                  aria-invalid={!!rankError || undefined}
+                  placeholder="Select a rank"
+                  searchPlaceholder="Find a rank…"
+                  // "Wg Cdr (Ret'd)" is a place to list someone, not a rank they hold.
+                  options={ranks.filter((r) => !r.includes("Ret'd")).map((r) => ({ value: r, label: r }))}
+                />
               )}
             />
             <FieldError>{rankError}</FieldError>

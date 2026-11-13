@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, X, Check, Loader2, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
@@ -212,37 +212,33 @@ export function UserProfileCard({
                   <div key={key} className="space-y-1.5">
                     <Label htmlFor={`profile-${key}`}>{label}</Label>
                     {key === "rank" ? (
-                      <Select value={draft.rank} onValueChange={(v) => setDraft((d) => ({ ...d, rank: v }))}>
-                        <SelectTrigger id="profile-rank">
-                          <SelectValue placeholder="Select rank" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[
-                            "Sgt",
-                            "FS",
-                            "WO",
-                            "Plt Off",
-                            "Fg Off",
-                            "Flt Lt",
-                            "Sqn Ldr",
-                            "Wg Cdr",
-                            "Gp Capt",
-                            "Chaplain",
-                            "CI",
-                            "CGI",
-                            "National Chair",
-                            "Rgnl Chair",
-                            "Wg Chair",
-                            "Sqn Chair",
-                            "Rgnl Treasurer",
-                            "Wg Treasurer",
-                          ].map((r) => (
-                            <SelectItem key={r} value={r}>
-                              {r}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        id="profile-rank"
+                        value={draft.rank}
+                        onValueChange={(v) => setDraft((d) => ({ ...d, rank: v }))}
+                        placeholder="Select rank"
+                        searchPlaceholder="Find a rank…"
+                        options={[
+                          "Sgt",
+                          "FS",
+                          "WO",
+                          "Plt Off",
+                          "Fg Off",
+                          "Flt Lt",
+                          "Sqn Ldr",
+                          "Wg Cdr",
+                          "Gp Capt",
+                          "Chaplain",
+                          "CI",
+                          "CGI",
+                          "National Chair",
+                          "Rgnl Chair",
+                          "Wg Chair",
+                          "Sqn Chair",
+                          "Rgnl Treasurer",
+                          "Wg Treasurer",
+                        ].map((r) => ({ value: r, label: r }))}
+                      />
                     ) : (
                       <Input
                         id={`profile-${key}`}

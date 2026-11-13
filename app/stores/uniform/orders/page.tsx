@@ -21,6 +21,7 @@ import {
   Lock,
   ShoppingCart,
 } from "lucide-react";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
@@ -31,7 +32,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Order,
@@ -920,21 +920,14 @@ export default function OrdersPage() {
                         <p className="text-muted-foreground text-xs font-medium">Add item to order</p>
                         <div className="flex flex-wrap items-end gap-2">
                           <div className="min-w-36 flex-1">
-                            <Select
+                            <SearchableSelect
+                              aria-label="Item type"
                               value={addItemDraft.itemType}
                               onValueChange={(v) => setAddItemDraft((d) => ({ ...d, itemType: v }))}
-                            >
-                              <SelectTrigger className="h-8 text-sm">
-                                <SelectValue placeholder="Item type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {itemTypes.map((t) => (
-                                  <SelectItem key={t} value={t}>
-                                    {t}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              placeholder="Item type"
+                              className="h-8 text-sm"
+                              options={itemTypes.map((t) => ({ value: t, label: t }))}
+                            />
                           </div>
                           {!noSizeItems.has(addItemDraft.itemType) && (
                             <div className="w-28">
@@ -1271,25 +1264,18 @@ export default function OrdersPage() {
                 <div key={idx} className="space-y-1.5 rounded-md border p-2">
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
-                      <Select
+                      <SearchableSelect
+                        aria-label="Item type"
                         value={item.itemType}
                         onValueChange={(v) =>
                           setNewItems((prev) =>
                             prev.map((it, i) => (i === idx ? { ...it, itemType: v } : it))
                           )
                         }
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Item type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {itemTypes.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {t}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Item type"
+                        className="h-8 text-sm"
+                        options={itemTypes.map((t) => ({ value: t, label: t }))}
+                      />
                     </div>
                     {!noSizeItems.has(item.itemType) && (
                       <div className="w-24">

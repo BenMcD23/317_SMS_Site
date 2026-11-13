@@ -3,6 +3,8 @@
 import { useBadgeGrid } from "@/lib/badge-grid";
 import { useState, useMemo } from "react";
 import { Check, Plus, Search, Settings2 } from "lucide-react";
+import { SearchableSelect } from "@/components/searchable-select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +15,6 @@ import { StockChangesPanel } from "@/components/stock-changes-table";
 import { ErrorAlert } from "@/components/error-alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BadgeItem } from "@/lib/stores-types";
 import { BadgeGridView } from "../components/BadgeGridView";
 import { type BadgeCategory, buildBadgeName, parseBadgeName, useReference } from "@/lib/reference";
@@ -403,28 +404,24 @@ export default function BadgeStockPage() {
             {grid && grid.cells.length > 1 && (
               <div className="space-y-1.5">
                 <Label>Section</Label>
-                <Select
+                <SearchableSelect
+                  aria-label="Section"
                   value={addItemCellId !== null ? String(addItemCellId) : ""}
                   onValueChange={(v) => setAddItemCellId(Number(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose section…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {grid.cells.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.label ?? `Row ${c.row + 1}, Col ${c.col + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Choose section…"
+                  options={grid.cells.map((c) => ({
+                    value: String(c.id),
+                    label: c.label ?? `Row ${c.row + 1}, Col ${c.col + 1}`,
+                  }))}
+                />
               </div>
             )}
 
             {/* Badge type */}
             <div className="space-y-1.5">
               <Label>Badge type</Label>
-              <Select
+              <SearchableSelect
+                aria-label="Badge type"
                 value={selectedCategory?.id ?? ""}
                 onValueChange={(v) => {
                   const cat = badgeCategories.find((c) => c.id === v) ?? null;
@@ -432,42 +429,28 @@ export default function BadgeStockPage() {
                   setSelectedSubType(null);
                   setSelectedLevel(null);
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {badgeCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select type…"
+                options={badgeCategories.map((c) => ({ value: c.id, label: c.name }))}
+              />
             </div>
 
             {/* Sub-type */}
             {selectedCategory && (selectedCategory.subTypes || selectedCategory.items) && (
               <div className="space-y-1.5">
                 <Label>{selectedCategory.subTypes ? "Sub-type" : "Badge"}</Label>
-                <Select
+                <SearchableSelect
+                  aria-label="Badge"
                   value={selectedSubType ?? ""}
                   onValueChange={(v) => {
                     setSelectedSubType(v);
                     setSelectedLevel(null);
                   }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(selectedCategory.subTypes ?? selectedCategory.items ?? []).map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select…"
+                  options={(selectedCategory.subTypes ?? selectedCategory.items ?? []).map((s) => ({
+                    value: s,
+                    label: s,
+                  }))}
+                />
               </div>
             )}
 
@@ -475,18 +458,20 @@ export default function BadgeStockPage() {
             {selectedCategory?.levels && (!selectedCategory.subTypes || selectedSubType) && (
               <div className="space-y-1.5">
                 <Label>Level</Label>
-                <Select value={selectedLevel ?? ""} onValueChange={setSelectedLevel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select level…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedCategory.levels.map((l) => (
-                      <SelectItem key={l} value={l}>
-                        {l}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  aria-label="Level"
+                  className="w-fit flex-wrap"
+                  value={selectedLevel ?? ""}
+                  onValueChange={(v) => v && setSelectedLevel(v)}
+                >
+                  {selectedCategory.levels.map((l) => (
+                    <ToggleGroupItem key={l} value={l} className="px-3">
+                      {l}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </div>
             )}
 
@@ -534,28 +519,24 @@ export default function BadgeStockPage() {
             {grid && grid.cells.length > 1 && (
               <div className="space-y-1.5">
                 <Label>Section</Label>
-                <Select
+                <SearchableSelect
+                  aria-label="Section"
                   value={editCellId !== null ? String(editCellId) : ""}
                   onValueChange={(v) => setEditCellId(Number(v))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose section…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {grid.cells.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.label ?? `Row ${c.row + 1}, Col ${c.col + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Choose section…"
+                  options={grid.cells.map((c) => ({
+                    value: String(c.id),
+                    label: c.label ?? `Row ${c.row + 1}, Col ${c.col + 1}`,
+                  }))}
+                />
               </div>
             )}
 
             {/* Badge type */}
             <div className="space-y-1.5">
               <Label>Badge type</Label>
-              <Select
+              <SearchableSelect
+                aria-label="Badge type"
                 value={editCategory?.id ?? ""}
                 onValueChange={(v) => {
                   const cat = badgeCategories.find((c) => c.id === v) ?? null;
@@ -563,42 +544,28 @@ export default function BadgeStockPage() {
                   setEditSubType(null);
                   setEditLevel(null);
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {badgeCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select type…"
+                options={badgeCategories.map((c) => ({ value: c.id, label: c.name }))}
+              />
             </div>
 
             {/* Sub-type */}
             {editCategory && (editCategory.subTypes || editCategory.items) && (
               <div className="space-y-1.5">
                 <Label>{editCategory.subTypes ? "Sub-type" : "Badge"}</Label>
-                <Select
+                <SearchableSelect
+                  aria-label="Badge"
                   value={editSubType ?? ""}
                   onValueChange={(v) => {
                     setEditSubType(v);
                     setEditLevel(null);
                   }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(editCategory.subTypes ?? editCategory.items ?? []).map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select…"
+                  options={(editCategory.subTypes ?? editCategory.items ?? []).map((s) => ({
+                    value: s,
+                    label: s,
+                  }))}
+                />
               </div>
             )}
 
@@ -606,18 +573,20 @@ export default function BadgeStockPage() {
             {editCategory?.levels && (!editCategory.subTypes || editSubType) && (
               <div className="space-y-1.5">
                 <Label>Level</Label>
-                <Select value={editLevel ?? ""} onValueChange={setEditLevel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select level…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {editCategory.levels.map((l) => (
-                      <SelectItem key={l} value={l}>
-                        {l}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  aria-label="Level"
+                  className="w-fit flex-wrap"
+                  value={editLevel ?? ""}
+                  onValueChange={(v) => v && setEditLevel(v)}
+                >
+                  {editCategory.levels.map((l) => (
+                    <ToggleGroupItem key={l} value={l} className="px-3">
+                      {l}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </div>
             )}
 

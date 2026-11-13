@@ -9,6 +9,7 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
+import { SearchableSelect } from "@/components/searchable-select";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -392,21 +392,17 @@ function HistoryTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <SearchableSelect
+          aria-label="Inspection date"
           value={sheetId != null ? String(sheetId) : undefined}
           onValueChange={(v) => setSheetId(Number(v))}
-        >
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Choose an inspection date" />
-          </SelectTrigger>
-          <SelectContent>
-            {sheets.map((s) => (
-              <SelectItem key={s.id} value={String(s.id)}>
-                {s.date} · {s.present}/{s.cadet_count} present · {UNIFORM_LABELS[s.uniform] ?? s.uniform}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Choose an inspection date"
+          className="w-64"
+          options={sheets.map((s) => ({
+            value: String(s.id),
+            label: `${s.date} · ${s.present}/${s.cadet_count} present · ${UNIFORM_LABELS[s.uniform] ?? s.uniform}`,
+          }))}
+        />
         <Button variant="outline" onClick={exportPdf} disabled={exporting || sheetId == null}>
           {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
           Export PDF
