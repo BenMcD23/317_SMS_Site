@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
-import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
 import {
   addRecent,
@@ -105,17 +105,32 @@ function parseList(raw: string | null): string[] | null {
   }
 }
 
-async function saveToAccount(token: string, pins: string[] | null): Promise<boolean> {
+/**
+ * What came of saving pins to the account. "unsupported" is an API without
+ * the pins endpoint (404/405: an older API, or a preview running main's):
+ * the pins can't follow the account there, but they still work in this
+ * browser, so that isn't an error. Any other failure carries a reason.
+ */
+type SaveResult = { ok: true } | { ok: false; unsupported: true } | { ok: false; reason: string };
+
+async function saveToAccount(token: string, pins: string[] | null): Promise<SaveResult> {
+  let res: Response;
   try {
-    const res = await apiFetch(PINS_URL, {
+    res = await apiFetch(PINS_URL, {
       method: "PUT",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ pins }),
     });
-    return res.ok;
   } catch {
-    return false;
+    return { ok: false, reason: "Couldn't save your pins. Check your connection and try again." };
   }
+  if (res.ok) return { ok: true };
+  if (res.status === 404 || res.status === 405) return { ok: false, unsupported: true };
+  const detail = errorDetail(await res.json().catch(() => null));
+  return {
+    ok: false,
+    reason: `Couldn't save your pins${detail ? `: ${detail}` : ". Try again in a moment."}`,
+  };
 }
 
 /**
@@ -193,11 +208,11 @@ export function useQuickPages(): QuickPages {
       // Show it at once; the account catches up.
       write(PINS_KEY, next);
       if (!token) return;
-      void saveToAccount(token, next).then((ok) => {
-        if (ok) return;
+      void saveToAccount(token, next).then((result) => {
+        if (result.ok || "unsupported" in result) return;
         // Put it back rather than show a pin the account doesn't have.
         write(PINS_KEY, before);
-        toast.error("Couldn't save your pins. Check your connection and try again.");
+        toast.error(result.reason);
       });
     },
   };

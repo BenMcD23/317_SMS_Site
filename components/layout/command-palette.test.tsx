@@ -43,14 +43,16 @@ const groupOptions = (dialog: HTMLElement, heading: string) => {
 
 /**
  * A fake API for the account's pins: `account` is what it holds (null = never
- * chosen). `failSave` makes a PUT fail. Records each PUT's body.
+ * chosen). `failSave` makes a PUT fail; `noEndpoint` is an API from before
+ * pins were kept (404 on both). Records each PUT's body.
  */
-function fakeAccount(account: string[] | null, { failSave = false } = {}) {
+function fakeAccount(account: string[] | null, { failSave = false, noEndpoint = false } = {}) {
   const saved: unknown[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init: RequestInit = {}) => {
       if (String(url).endsWith("/settings/nav-pins")) {
+        if (noEndpoint) return new Response(JSON.stringify({ detail: "Not Found" }), { status: 404 });
         if (init.method === "PUT") {
           if (failSave) return new Response(JSON.stringify({ detail: "down" }), { status: 503 });
           const body = JSON.parse(String(init.body));
@@ -179,7 +181,20 @@ describe("pins on the account", () => {
     await act(settle);
     await userEvent.click(within(dialog).getByRole("option", { name: "Pin Parade Night Texts to the menu" }));
     await waitFor(() => expect(JSON.parse(window.localStorage.getItem(PINS)!)).toEqual(["/"]));
-    expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/Couldn't save your pins/));
+    // The API's own reason, not a guess about the connection.
+    expect(toastError).toHaveBeenCalledWith("Couldn't save your pins: down");
+  });
+
+  it("keep a pin in this browser, without an error, on an API that can't store pins", async () => {
+    // A preview whose API runs main answers 404: that's "can't follow the
+    // account here", not a failure, so the pin stays and nothing is shown.
+    fakeAccount(["/"], { noEndpoint: true });
+    const dialog = renderPalette("/texts/messages");
+    await act(settle);
+    await userEvent.click(within(dialog).getByRole("option", { name: "Pin Parade Night Texts to the menu" }));
+    await act(settle);
+    expect(JSON.parse(window.localStorage.getItem(PINS)!)).toContain("/texts/messages");
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("keep this browser's copy when the account can't be reached", async () => {
