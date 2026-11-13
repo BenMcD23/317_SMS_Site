@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { StickyActions } from "@/components/sticky-actions";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -92,7 +93,7 @@ function ScoreSelector({
               aria-label={label ? `${score}, ${label}` : String(score)}
               onClick={() => onChange(score)}
               className={cn(
-                "group relative flex flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-md border py-2.5 text-xs font-semibold transition-all",
+                "group relative flex min-h-12 flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-md border py-3 text-sm font-semibold transition-colors sm:min-h-0 sm:py-2.5 sm:text-xs",
                 isSelected
                   ? score === 1
                     ? "border-destructive bg-destructive text-white"
@@ -554,7 +555,7 @@ export default function LeadershipAssessmentPage() {
             </p>
           )}
 
-          <div className="flex gap-3">
+          <StickyActions>
             <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
               {loading ? (
                 <>
@@ -571,7 +572,7 @@ export default function LeadershipAssessmentPage() {
             <Button variant="outline" onClick={handleReset}>
               Reset Form
             </Button>
-          </div>
+          </StickyActions>
         </>
       )}
     </div>

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { StickyActions } from "@/components/sticky-actions";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -502,7 +503,7 @@ export default function RadioAssessmentPage() {
             </p>
           )}
 
-          <div className="flex gap-3">
+          <StickyActions>
             <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
               {loading ? (
                 <>
@@ -519,7 +520,7 @@ export default function RadioAssessmentPage() {
             <Button variant="outline" onClick={handleReset}>
               Reset Form
             </Button>
-          </div>
+          </StickyActions>
         </>
       )}
     </div>

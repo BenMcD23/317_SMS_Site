@@ -35,6 +35,7 @@ import {
 } from "@/lib/session-planner";
 import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
+import { StickyActions } from "@/components/sticky-actions";
 
 /** Below this, or with an absence booked, "Untick unlikely" takes them off. */
 const UNLIKELY = 0.5;
@@ -459,7 +460,7 @@ export function SessionPlanner() {
         )}
       </Section>
 
-      <div className="bg-background sticky bottom-16 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t px-4 py-3 md:bottom-0 md:mx-0 md:px-0">
+      <StickyActions>
         <Button className="h-10" onClick={runPlan} disabled={!!blocker || planning}>
           {planning ? "Planning…" : plan ? "Plan again" : "Plan session"}
         </Button>
@@ -474,7 +475,7 @@ export function SessionPlanner() {
             Copy plan
           </Button>
         )}
-      </div>
+      </StickyActions>
 
       <ErrorAlert message={planError} title="Not planned" />
       {plan && (
