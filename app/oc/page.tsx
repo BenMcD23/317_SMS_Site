@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ShieldAlert, GraduationCap, Clock, Check, LayoutList, Printer, RotateCcw } from "lucide-react";
+import { ShieldAlert, GraduationCap, Check, LayoutList, Printer, RotateCcw } from "lucide-react";
 import {
   type CommitteeRequestSummary,
   type CommitteeRequestStatus,
@@ -33,6 +33,8 @@ import { SectionHeading } from "@/components/section-heading";
 import { Stat, StatGroup } from "@/components/stat";
 import { OcAccessRequired } from "@/components/oc/oc-access-required";
 import { SectionArranger } from "@/components/section-arranger";
+import { StaffComplianceList } from "@/components/staff-compliance-list";
+import { COMPLIANCE_KEY, complianceCounts, type ComplianceResponse } from "@/lib/staff-compliance";
 
 const LAYOUT_KEY = ["oc-dashboard", "layout"] as const;
 
@@ -238,6 +240,11 @@ export default function OcDashboardPage() {
   const { data: committee } = useApiQuery<CommitteeList>(["committee-requests"], "/committee-requests", {
     enabled: allowed,
   });
+  const {
+    data: compliance,
+    isLoading: complianceLoading,
+    error: complianceError,
+  } = useApiQuery<ComplianceResponse>(COMPLIANCE_KEY, "/staff/compliance", { enabled: allowed });
   const { data: layout, isLoading: layoutLoading } = useApiQuery<OcLayout>(
     LAYOUT_KEY,
     "/oc/dashboard/layout",
@@ -600,15 +607,53 @@ export default function OcDashboardPage() {
         </Card>
       </section>
     ),
+    compliance: (
+      <section className="flex flex-col gap-3">
+        <SectionHeading
+          title="Staff DBS & Training"
+          description="From the last 317 Sync. Each person is emailed on Friday when something falls due."
+        />
+        {complianceLoading ? (
+          <Skeleton className="h-24 w-full" />
+        ) : complianceError ? (
+          <p className="text-destructive text-sm">Couldn&apos;t load staff DBS and training.</p>
+        ) : (
+          (() => {
+            const staff = Array.isArray(compliance?.staff) ? compliance.staff : [];
+            const due = staff.filter((s) => s.status && s.status !== "ok");
+            const c = complianceCounts(staff);
+            return (
+              <>
+                <StatGroup className="grid-cols-2 sm:grid-cols-4">
+                  <Stat
+                    label="Lapsed or not done"
+                    value={c.expired + c.missing}
+                    tone={c.expired + c.missing ? "destructive" : undefined}
+                  />
+                  <Stat label="Due in 60 days" value={c.expiring} tone={c.expiring ? "warning" : undefined} />
+                  <Stat label="Up to date" value={c.ok} />
+                  <Stat label="Not synced" value={c.unsynced} />
+                </StatGroup>
+                {due.length > 0 ? (
+                  <StaffComplianceList staff={due} />
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    {c.ok ? "Everyone synced is up to date." : "Nobody has been synced from the portal yet."}
+                  </p>
+                )}
+                <Link href="/staff/compliance" className="no-print w-fit text-sm underline">
+                  Everyone&apos;s DBS and training
+                </Link>
+              </>
+            );
+          })()
+        )}
+      </section>
+    ),
     pipeline: (
       <section className="flex flex-col gap-3">
         <SectionHeading title="In the Pipeline" />
         <div className="grid gap-4 lg:grid-cols-2">
-          <PlaceholderCard
-            icon={Clock}
-            title="Mandatory Training Reminders"
-            description="Staff mandatory training (safeguarding, first aid, etc.) with expiry reminders, once that data is captured."
-          />
           <PlaceholderCard
             icon={ShieldAlert}
             title="Subs at-risk radar"

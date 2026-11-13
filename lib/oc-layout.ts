@@ -5,13 +5,14 @@ import { arrayMove } from "@dnd-kit/sortable";
  * The ids match OC_SECTIONS in the API's routers/oc.py, which saves the order
  * per user; change the two together.
  */
-export const OC_SECTIONS = ["committee", "strength", "qualifications", "pipeline"] as const;
+export const OC_SECTIONS = ["committee", "strength", "qualifications", "compliance", "pipeline"] as const;
 export type OcSection = (typeof OC_SECTIONS)[number];
 
 export const OC_SECTION_TITLES: Record<OcSection, string> = {
   committee: "Committee Requests",
   strength: "Strength & Attendance",
   qualifications: "Qualifications",
+  compliance: "Staff DBS & Training",
   pipeline: "In the Pipeline",
 };
 

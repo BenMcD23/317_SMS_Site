@@ -12,6 +12,8 @@ const IMPORTS = [
   "Classification exams → Classifications",
   "Classification dates",
   "Join date",
+  "Staff DBS & training",
+  "Enrol ready cadets on exams",
 ];
 
 /**

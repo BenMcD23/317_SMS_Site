@@ -11,6 +11,12 @@
 // most CONCURRENCY at once, and stops when the page says it's done (or after
 // an hour). It never sees a 317 SMS token.
 //
+// One write is allowed: enrolling cadets on a classification exam (the same
+// call the portal's own Exams page makes). Only that path, only enrolling
+// (never un-enrolling), at most MAX_ENROL people, and only after the person
+// at the portal says OK to a prompt naming the exam and how many. 317 SMS
+// can ask; it can't make the portal do it without them.
+//
 // Self-contained on purpose: it becomes a `javascript:` URL (see
 // components/vp-sync-card.tsx), with __SMS_ORIGIN__ swapped for the site's origin.
 // Bump VERSION only when this relay itself changes (lib/vp-sync.ts
@@ -18,8 +24,10 @@
 (() => {
   const SMS = "__SMS_ORIGIN__";
   const VP = "https://volunteers.bader.mod.uk";
-  const VERSION = 2;
+  const VERSION = 3;
   const CONCURRENCY = 8;
+  const MAX_ENROL = 100;
+  const ENROL_PATH = /^\/api\/exams\/management\/subjects\/([A-Za-z0-9-]{1,64})\/enrolments$/;
   // A portal API path and nothing else: no other host, no `..` tricks.
   const API_PATH = /^\/api\/[A-Za-z0-9\/_\-.~?=&%,]*$/;
   if (location.origin !== VP) {
@@ -85,6 +93,64 @@
     }
   };
 
+  // The ASP.NET antiforgery token writes need, from this page or the Exams page.
+  const verification = async () => {
+    const read = (doc) =>
+      doc.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute("content") ||
+      doc.querySelector('input[name="__RequestVerificationToken"]')?.value ||
+      "";
+    const here = read(document);
+    if (here) return here;
+    try {
+      const html = await (await fetch("/exams", { credentials: "include" })).text();
+      return read(new DOMParser().parseFromString(html, "text/html"));
+    } catch {
+      return "";
+    }
+  };
+
+  const enrol = async (path, body, label) => {
+    const match = typeof path === "string" ? ENROL_PATH.exec(path) : null;
+    const actions = body && typeof body === "object" ? body.actions : null;
+    const ids = actions && typeof actions === "object" ? Object.keys(actions) : [];
+    if (
+      !match ||
+      !actions ||
+      body.examId !== match[1] ||
+      !ids.length ||
+      ids.length > MAX_ENROL ||
+      !ids.every((id) => /^\d{1,12}$/.test(id) && actions[id] === true)
+    ) {
+      return { status: 0, body: "refused by the bookmark: only enrolling cadets on an exam is allowed" };
+    }
+    const name = String(label || "this exam").slice(0, 120);
+    const ok = confirm(
+      `317 SMS wants to enrol ${ids.length} cadet${ids.length === 1 ? "" : "s"} on ${name}.\n\n` +
+        "Press OK to enrol them on the Volunteer Portal now."
+    );
+    if (!ok) return { status: 0, body: "cancelled on the portal" };
+    const [token, request] = await Promise.all([csrf, verification()]);
+    if (!token || !request)
+      return { status: 0, body: "couldn't get the portal's sign-in tokens — reload it and try again" };
+    try {
+      const r = await fetch(new URL(path, VP).href, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": token,
+          RequestVerificationToken: request,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ examId: match[1], actions: Object.fromEntries(ids.map((id) => [id, true])) }),
+      });
+      return { status: r.status, body: await r.text() };
+    } catch (e) {
+      return { status: 0, body: "network error: " + (e && e.message) };
+    }
+  };
+
   const stop = (text) => {
     removeEventListener("message", onMessage);
     say(text);
@@ -102,6 +168,15 @@
       stop(String(m.text || "done — check the 317 SMS tab."));
     } else if (m.type === "sms-vp-get") {
       const reply = await relay(m.path);
+      win.postMessage({ type: "sms-vp-result", id: m.id, ...reply }, SMS);
+    } else if (m.type === "sms-vp-enrol") {
+      say("waiting for you to confirm the enrolment…");
+      const reply = await enrol(m.path, m.body, m.label);
+      say(
+        reply.status >= 200 && reply.status < 300
+          ? "enrolment sent — check the 317 SMS tab."
+          : "enrolment not sent."
+      );
       win.postMessage({ type: "sms-vp-result", id: m.id, ...reply }, SMS);
     }
   };

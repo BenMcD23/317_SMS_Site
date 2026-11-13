@@ -31,8 +31,14 @@ const DASH = {
   qual_summary: { total: 0, expired: 0, expiring_30: 0, expiring_90: 0 },
   expiring_quals: [],
 };
-const DEFAULT = ["committee", "strength", "qualifications", "pipeline"];
-const TITLES = ["Committee Requests", "Strength & Attendance", "Qualifications", "In the Pipeline"];
+const DEFAULT = ["committee", "strength", "qualifications", "compliance", "pipeline"];
+const TITLES = [
+  "Committee Requests",
+  "Strength & Attendance",
+  "Qualifications",
+  "Staff DBS & Training",
+  "In the Pipeline",
+];
 
 type Reply = [unknown, number?] | (() => Promise<Response>);
 
@@ -107,6 +113,7 @@ describe("OC dashboard layout", () => {
       "In the Pipeline",
       "Committee Requests",
       "Strength & Attendance",
+      "Staff DBS & Training",
     ]);
   });
 
@@ -124,6 +131,7 @@ describe("OC dashboard layout", () => {
       "Committee Requests",
       "Strength & Attendance",
       "Qualifications",
+      "Staff DBS & Training",
     ]);
   });
 
@@ -131,7 +139,10 @@ describe("OC dashboard layout", () => {
     const fetch = stubApi(
       routes(DEFAULT, {
         "PUT /oc/dashboard/layout": [
-          { sections: ["committee", "qualifications", "strength", "pipeline"], customised: true },
+          {
+            sections: ["committee", "qualifications", "strength", "compliance", "pipeline"],
+            customised: true,
+          },
         ],
       })
     );
@@ -152,7 +163,7 @@ describe("OC dashboard layout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Move Qualifications up" }));
     await settle();
     expect(sentBodies(fetch, "PUT")).toEqual([
-      { sections: ["committee", "qualifications", "strength", "pipeline"] },
+      { sections: ["committee", "qualifications", "strength", "compliance", "pipeline"] },
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
@@ -160,6 +171,7 @@ describe("OC dashboard layout", () => {
       "Committee Requests",
       "Qualifications",
       "Strength & Attendance",
+      "Staff DBS & Training",
       "In the Pipeline",
     ]);
   });
@@ -225,7 +237,78 @@ describe("OC dashboard export", () => {
       "Committee Requests",
       "Strength & Attendance",
       "Qualifications",
+      "Staff DBS & Training",
     ]);
+  });
+});
+
+describe("OC dashboard staff DBS and training", () => {
+  const person = (cin: number, name: string, status: string | null, items: unknown[] | null) => ({
+    cin,
+    name,
+    rank: "CI",
+    status,
+    items,
+    synced_at: status ? "2026-11-10T09:00:00" : null,
+  });
+  const lapsed = {
+    key: "dbs",
+    name: "DBS",
+    kind: "vetting",
+    achieved: "2023-01-01",
+    expires: "2026-01-01",
+    status: "expired",
+  };
+  const fine = {
+    key: "dbs",
+    name: "DBS",
+    kind: "vetting",
+    achieved: "2025-01-01",
+    expires: "2028-01-01",
+    status: "ok",
+  };
+
+  it("lists only the staff with something due, worst first, with the counts", async () => {
+    stubApi(
+      routes(DEFAULT, {
+        "GET /staff/compliance": [
+          {
+            everyone: true,
+            due_within_days: 60,
+            staff: [
+              person(1, "Ann Fine", "ok", [fine]),
+              person(2, "Órla Lapsed", "expired", [lapsed]),
+              person(3, "Pat Never", null, null),
+            ],
+          },
+        ],
+      })
+    );
+    await renderPage();
+    const section = screen.getByRole("heading", { name: "Staff DBS & Training" }).closest("section")!;
+    expect(section.textContent).toContain("CI Órla Lapsed");
+    expect(section.textContent).toContain("Lapsed 1 Jan 2026");
+    expect(section.textContent).not.toContain("Ann Fine");
+    expect(section.textContent).toMatch(/Not synced\s*1/);
+  });
+
+  it("says so when everyone synced is up to date", async () => {
+    stubApi(
+      routes(DEFAULT, {
+        "GET /staff/compliance": [
+          { everyone: true, due_within_days: 60, staff: [person(1, "Ann Fine", "ok", [fine])] },
+        ],
+      })
+    );
+    await renderPage();
+    expect(screen.getByText("Everyone synced is up to date.")).toBeTruthy();
+  });
+
+  it("an API error is a message in that section, not a broken dashboard", async () => {
+    stubApi(routes(DEFAULT, { "GET /staff/compliance": [{ detail: "boom" }, 500] }));
+    await renderPage();
+    expect(screen.getByText("Couldn't load staff DBS and training.")).toBeTruthy();
+    expect(sectionOrder()).toEqual(TITLES);
   });
 });
 

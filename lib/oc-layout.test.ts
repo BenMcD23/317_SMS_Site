@@ -4,7 +4,7 @@ import { moveSection, normaliseLayout, OC_SECTIONS } from "@/lib/oc-layout";
 
 describe("normaliseLayout", () => {
   it("keeps a full saved order as it is", () => {
-    const order = ["pipeline", "qualifications", "strength", "committee"];
+    const order = ["pipeline", "compliance", "qualifications", "strength", "committee"];
     expect(normaliseLayout(order)).toEqual(order);
   });
 
@@ -13,6 +13,7 @@ describe("normaliseLayout", () => {
       "qualifications",
       "committee",
       "strength",
+      "compliance",
       "pipeline",
     ]);
   });
@@ -23,6 +24,7 @@ describe("normaliseLayout", () => {
       "committee",
       "strength",
       "qualifications",
+      "compliance",
     ]);
   });
 
@@ -40,12 +42,14 @@ describe("moveSection", () => {
       "strength",
       "committee",
       "qualifications",
+      "compliance",
       "pipeline",
     ]);
     expect(moveSection(order, "strength", 1)).toEqual([
       "committee",
       "qualifications",
       "strength",
+      "compliance",
       "pipeline",
     ]);
   });

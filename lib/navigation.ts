@@ -19,6 +19,7 @@ import {
   FileCheck,
   FileSearch,
   FileText,
+  Footprints,
   GraduationCap,
   LayoutDashboard,
   LayoutGrid,
@@ -108,6 +109,13 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Bot,
         keywords: ["ai", "ask", "chat", "question", "who", "find"],
       },
+      // Staff only (lib/access.ts): the OC sees everyone, others their own (the API decides).
+      {
+        label: "DBS & Training",
+        href: "/staff/compliance",
+        icon: ShieldCheck,
+        keywords: ["dbs", "bpss", "mandatory training", "safeguarding", "vetting", "compliance"],
+      },
       {
         kind: "group",
         label: "OC",
@@ -188,6 +196,13 @@ export const NAV_SECTIONS: NavSection[] = [
           "missed lessons",
           "programme links",
         ],
+      },
+      // Every NCO can see it (lib/access.ts); staff and SNCOs sign off.
+      {
+        label: "Drill",
+        href: "/drill",
+        icon: Footprints,
+        keywords: ["drill syllabus", "5x5", "drill test", "marching", "squad drill", "progressive drill"],
       },
       { label: "Events", href: "/cadets/events", icon: Calendar },
       // Staff-only (see lib/access.ts).
@@ -464,6 +479,7 @@ const NCO_TEAM: MobileTab[] = [
   STATS,
   { label: "Holidays", href: "/nco-holidays", icon: CalendarOff, match: [] },
   { label: "Comments", href: "/nco-comments", icon: MessageSquare, match: [] },
+  { label: "Drill", href: "/drill", icon: Footprints, match: [] },
 ];
 
 const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
