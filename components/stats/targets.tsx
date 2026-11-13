@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { FlightFilter } from "@/components/flight-filter";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SearchableSelect } from "@/components/searchable-select";
-import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,6 +37,7 @@ import {
   targetPct,
   targetSeries,
 } from "@/lib/stats";
+import { deleteWithUndo } from "@/lib/undo-delete";
 import { cn } from "@/lib/utils";
 
 /**
@@ -349,19 +349,30 @@ export function TargetsSection({
 }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const { confirm, confirmDialog } = useConfirm();
   const [adding, setAdding] = useState(false);
 
+  // Targets are quick to set again, so deleting one offers Undo rather than
+  // asking first. `removing` hides it until the delete is sent.
+  const [removing, setRemoving] = useState<Set<number>>(() => new Set());
+  const without = (id: number) =>
+    setRemoving((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   const remove = (t: StatsTarget) =>
-    confirm(`Delete the target "${describeTarget(t)}"?`, async () => {
-      try {
+    deleteWithUndo({
+      message: `Target "${describeTarget(t)}" deleted`,
+      hide: () => setRemoving((prev) => new Set(prev).add(t.id)),
+      restore: () => without(t.id),
+      commit: async () => {
         await apiRequest(session!.id_token!, `${API_BASE}/stats/targets/${t.id}`, { method: "DELETE" });
         await queryClient.invalidateQueries({ queryKey: ["stats", "targets"] });
-        toast.success("Target deleted");
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Couldn't delete the target.");
-      }
+        without(t.id);
+      },
+      failMessage: "Couldn't delete the target.",
     });
+  const shown = targets.filter((t) => !removing.has(t.id));
 
   if (!canEdit && targets.length === 0) return null;
   return (
@@ -379,14 +390,14 @@ export function TargetsSection({
           </Button>
         )}
       </div>
-      {targets.length === 0 ? (
+      {shown.length === 0 ? (
         <p className={cn("text-muted-foreground rounded-md border border-dashed px-4 py-3 text-sm")}>
           No targets yet. Add one to track a badge goal, like 80% of non-juniors with Blue First Aid by the
           summer.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {targets.map((t) => (
+          {shown.map((t) => (
             <TargetCard
               key={t.id}
               target={t}
@@ -401,7 +412,6 @@ export function TargetsSection({
       {canEdit && (
         <AddTargetDialog open={adding} onOpenChange={setAdding} flights={flights} badgeLevels={badgeLevels} />
       )}
-      {confirmDialog}
     </section>
   );
 }

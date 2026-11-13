@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import StatsPage from "@/app/stats/page";
+import { UNDO_MS } from "@/lib/undo-delete";
 
 const SESSION = {
   data: { id_token: "tok", role: "nco", user: { email: "nco@317atc.co.uk", name: "Nat NCO" } },
@@ -727,28 +728,27 @@ describe("targets", () => {
     expect(within(dialog).getByRole("button", { name: "Add target" }).hasAttribute("disabled")).toBe(true);
   });
 
-  it("staff delete a target after confirming", async () => {
+  it("staff delete a target with an Undo window, sending the delete once it closes", async () => {
     SESSION.data.role = "staff";
     const fetch = stubApi({ "/stats/targets": [[targetRow]], "DELETE /stats/targets/3": [null, 204] });
     await renderStats();
-    await act(async () =>
-      screen
-        .getByRole("button", { name: "Delete target: 50% of cadets with First Aid by 1 Jul 2027" })
-        .click()
-    );
-    expect(fetch.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === "DELETE")).toBe(
-      false
-    );
-    await act(async () =>
-      within(screen.getByRole("dialog"))
-        .getByRole("button", { name: /confirm|delete|yes/i })
-        .click()
-    );
-    expect(
-      fetch.mock.calls.some(
-        ([url, init]) => String(url).endsWith("/stats/targets/3") && (init as RequestInit).method === "DELETE"
-      )
-    ).toBe(true);
+    const name = "Delete target: 50% of cadets with First Aid by 1 Jul 2027";
+    const deletes = () =>
+      fetch.mock.calls.filter(
+        ([url, init]) =>
+          String(url).endsWith("/stats/targets/3") && (init as RequestInit | undefined)?.method === "DELETE"
+      );
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await act(async () => screen.getByRole("button", { name }).click());
+      // Gone from the list at once, but nothing sent while Undo is offered.
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+      expect(deletes()).toHaveLength(0);
+      await act(() => vi.advanceTimersByTimeAsync(UNDO_MS));
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(deletes()).toHaveLength(1);
   });
 });
 
