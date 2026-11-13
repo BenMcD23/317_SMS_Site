@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { SearchableSelect } from "@/components/searchable-select";
 import { ErrorAlert } from "@/components/error-alert";
