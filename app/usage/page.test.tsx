@@ -23,6 +23,7 @@ let session: typeof OWNER = OWNER;
 
 const signIn = vi.fn(() => Promise.resolve());
 vi.mock("next-auth/react", () => ({ useSession: () => session, signIn: () => signIn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/usage" }));
 
 const USAGE = {
   days: 30,
@@ -101,6 +102,20 @@ describe("Usage page", () => {
     expect(rows[2]).toHaveTextContent("POST /stores/orders31nco 301 Oct 2026, 09:30");
     expect(screen.getByText("2 / 3")).toBeInTheDocument(); // endpoints used of all served
     expect(screen.getByText("12")).toBeInTheDocument();
+  });
+
+  it("re-sorts endpoints by a heading: least-used first, to spot dead ones", async () => {
+    stubApi(json(USAGE));
+    const user = userEvent.setup();
+    renderWithQuery(<UsagePage />);
+    const table = await screen.findByRole("table", { name: "Endpoints" });
+    await user.click(within(table).getByRole("button", { name: "Calls" }));
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("/stores/orders");
+    expect(within(table).getByRole("columnheader", { name: /Calls/ })).toHaveAttribute(
+      "aria-sort",
+      "ascending"
+    );
   });
 
   it("changing the window reloads that many days", async () => {

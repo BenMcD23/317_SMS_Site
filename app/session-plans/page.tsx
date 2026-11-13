@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DataTable, dataTableColumns } from "@/components/data-table";
 import { Plus, ClipboardList } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { type SessionPlanSummary, STATUS_LABELS, STATUS_STYLE } from "@/lib/session-plans";
@@ -64,13 +63,12 @@ export default function SessionPlansPage() {
       ) : (
         <>
           {data.is_staff && awaiting.length > 0 && (
-            <PlanTable title={`Awaiting your review (${awaiting.length})`} plans={awaiting} showAuthor />
+            <PlanTable title={`Awaiting your review (${awaiting.length})`} plans={awaiting} />
           )}
           {rest.length > 0 && (
             <PlanTable
               title={data.is_staff && awaiting.length > 0 ? "Everything else" : undefined}
               plans={rest}
-              showAuthor
             />
           )}
         </>
@@ -79,60 +77,70 @@ export default function SessionPlansPage() {
   );
 }
 
-function PlanTable({
-  title,
-  plans,
-  showAuthor,
-}: {
-  title?: string;
-  plans: SessionPlanSummary[];
-  showAuthor: boolean;
-}) {
-  const router = useRouter();
+const col = dataTableColumns<SessionPlanSummary>();
+
+// Status sorts by where the plan is in review, not alphabetically.
+const STATUS_ORDER = Object.keys(STATUS_LABELS);
+
+const columns = col.columns([
+  col.accessor((p) => p.session_name || "Untitled plan", {
+    id: "session",
+    header: "Session",
+    sortFn: "text",
+    cell: ({ row, getValue }) => (
+      <Link
+        href={`/session-plans/${row.original.id}`}
+        className="block max-w-[16rem] truncate font-medium hover:underline"
+      >
+        {getValue()}
+      </Link>
+    ),
+  }),
+  col.accessor("author_name", { header: "Written by", sortFn: "text" }),
+  col.accessor((p) => p.session_ic || "—", { id: "session_ic", header: "Session I/C", sortFn: "text" }),
+  col.accessor((p) => p.session_date ?? "", {
+    id: "session_date",
+    header: "Date",
+    sortFn: "text",
+    cell: ({ row }) => formatDate(row.original.session_date),
+  }),
+  col.accessor((p) => STATUS_ORDER.indexOf(p.status), {
+    id: "status",
+    header: "Status",
+    sortFn: "basic",
+    cell: ({ row }) => {
+      const style = STATUS_STYLE[row.original.status];
+      return (
+        <Badge variant={style.variant} className={style.className}>
+          {STATUS_LABELS[row.original.status]}
+        </Badge>
+      );
+    },
+  }),
+  col.accessor((p) => p.updated_at ?? "", {
+    id: "updated_at",
+    header: "Last updated",
+    sortFn: "text",
+    cell: ({ row }) => <span className="text-muted-foreground">{formatDate(row.original.updated_at)}</span>,
+  }),
+]);
+
+function PlanTable({ title, plans }: { title?: string; plans: SessionPlanSummary[] }) {
   return (
     <div className="flex flex-col gap-2">
       {title && <h2 className="text-muted-foreground text-sm font-medium">{title}</h2>}
-      <div className="overflow-x-auto rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Session</TableHead>
-              {showAuthor && <TableHead>Written by</TableHead>}
-              <TableHead>Session I/C</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last updated</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {plans.map((p) => {
-              const style = STATUS_STYLE[p.status];
-              return (
-                <TableRow
-                  key={p.id}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/session-plans/${p.id}`)}
-                >
-                  <TableCell className="max-w-[16rem] truncate font-medium">
-                    <Link href={`/session-plans/${p.id}`} className="hover:underline">
-                      {p.session_name || "Untitled plan"}
-                    </Link>
-                  </TableCell>
-                  {showAuthor && <TableCell>{p.author_name}</TableCell>}
-                  <TableCell>{p.session_ic || "—"}</TableCell>
-                  <TableCell>{formatDate(p.session_date)}</TableCell>
-                  <TableCell>
-                    <Badge variant={style.variant} className={style.className}>
-                      {STATUS_LABELS[p.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(p.updated_at)}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        label={title ?? "Session plans"}
+        data={plans}
+        columns={columns}
+        rowKey={(p) => p.id}
+        rowHref={(p) => `/session-plans/${p.id}`}
+        columnClassName={{
+          author_name: "hidden sm:table-cell",
+          session_ic: "hidden md:table-cell",
+          updated_at: "hidden md:table-cell",
+        }}
+      />
     </div>
   );
 }

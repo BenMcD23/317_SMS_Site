@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DataTable, dataTableColumns } from "@/components/data-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OWNER_EMAIL } from "@/lib/config";
@@ -57,6 +57,61 @@ function MethodBadge({ method }: { method: string }) {
     </Badge>
   );
 }
+
+const routeCol = dataTableColumns<RouteUsage>();
+
+const routeColumns = routeCol.columns([
+  routeCol.accessor("route", {
+    header: "Endpoint",
+    sortFn: "text",
+    cell: ({ row }) => (
+      <span className="font-mono text-xs">
+        <MethodBadge method={row.original.method} /> {row.original.route}
+      </span>
+    ),
+  }),
+  routeCol.accessor("calls", { header: "Calls", sortFn: "basic" }),
+  routeCol.accessor("users", { header: "People", sortFn: "basic" }),
+  routeCol.display({
+    id: "roles",
+    header: "By role",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-xs">
+        {Object.entries(row.original.roles)
+          .sort(([, a], [, b]) => b - a)
+          .map(([role, n]) => `${role} ${n}`)
+          .join(" · ")}
+      </span>
+    ),
+  }),
+  routeCol.accessor("last_used", {
+    header: "Last used",
+    sortFn: "text",
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground text-xs">{formatTimestamp(getValue())}</span>
+    ),
+  }),
+]);
+
+const userCol = dataTableColumns<UserUsage>();
+
+const userColumns = userCol.columns([
+  userCol.accessor("email", { header: "Person", sortFn: "text" }),
+  userCol.accessor("role", {
+    header: "Role",
+    sortFn: "text",
+    cell: ({ getValue }) => <Badge variant="outline">{getValue()}</Badge>,
+  }),
+  userCol.accessor("calls", { header: "Calls", sortFn: "basic" }),
+  userCol.accessor("routes", { header: "Endpoints", sortFn: "basic" }),
+  userCol.accessor("last_used", {
+    header: "Last seen",
+    sortFn: "text",
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground text-xs">{formatTimestamp(getValue())}</span>
+    ),
+  }),
+]);
 
 export default function UsagePage() {
   const { data: session, status } = useSession();
@@ -190,37 +245,19 @@ export default function UsagePage() {
                   No calls recorded in the last {usage.days} days.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Endpoint</TableHead>
-                      <TableHead className="text-right">Calls</TableHead>
-                      <TableHead className="text-right">People</TableHead>
-                      <TableHead>By role</TableHead>
-                      <TableHead>Last used</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {routes.map((r) => (
-                      <TableRow key={`${r.method} ${r.route}`}>
-                        <TableCell className="font-mono text-xs">
-                          <MethodBadge method={r.method} /> {r.route}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{r.calls}</TableCell>
-                        <TableCell className="text-right tabular-nums">{r.users}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {Object.entries(r.roles)
-                            .sort(([, a], [, b]) => b - a)
-                            .map(([role, n]) => `${role} ${n}`)
-                            .join(" · ")}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {formatTimestamp(r.last_used)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  label="Endpoints"
+                  data={routes}
+                  columns={routeColumns}
+                  rowKey={(r) => `${r.method} ${r.route}`}
+                  initialSort={{ id: "calls", desc: true }}
+                  columnClassName={{
+                    calls: "text-right",
+                    users: "text-right",
+                    roles: "hidden md:table-cell",
+                    last_used: "hidden sm:table-cell",
+                  }}
+                />
               )}
             </TabsContent>
 
@@ -231,32 +268,18 @@ export default function UsagePage() {
                     No one signed in has used the API in this window.
                   </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Person</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead className="text-right">Calls</TableHead>
-                        <TableHead className="text-right">Endpoints</TableHead>
-                        <TableHead>Last seen</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((u) => (
-                        <TableRow key={u.email}>
-                          <TableCell>{u.email}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{u.role}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">{u.calls}</TableCell>
-                          <TableCell className="text-right tabular-nums">{u.routes}</TableCell>
-                          <TableCell className="text-muted-foreground text-xs">
-                            {formatTimestamp(u.last_used)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DataTable
+                    label="People"
+                    data={users}
+                    columns={userColumns}
+                    rowKey={(u) => u.email}
+                    initialSort={{ id: "calls", desc: true }}
+                    columnClassName={{
+                      calls: "text-right",
+                      routes: "text-right hidden sm:table-cell",
+                      last_used: "hidden sm:table-cell",
+                    }}
+                  />
                 )}
               </TabsContent>
             </Private>
