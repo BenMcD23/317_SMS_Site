@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -184,10 +185,31 @@ function CriteriaSelector({
   includeMissingAttachments: boolean;
   onToggleMissingAttachments: (v: boolean) => void;
 }) {
-  const leveled = badgeTypes.filter((b) => b.kind === "leveled");
-  const boolean = badgeTypes.filter((b) => b.kind === "boolean");
-  const whts = badgeTypes.filter((b) => b.kind === "wht");
+  // About a hundred chips is a lot to read before seeing any result. The usual
+  // checks are presets; the rest are behind "Show every check" or a search,
+  // with anything already ticked always shown so a choice never disappears.
+  const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const q = query.trim().toLowerCase();
+  const visible = (b: BadgeType) => showAll || b.key in selected || (!!q && b.name.toLowerCase().includes(q));
+  const leveled = badgeTypes.filter((b) => b.kind === "leveled" && visible(b));
+  const boolean = badgeTypes.filter((b) => b.kind === "boolean" && visible(b));
+  const whts = badgeTypes.filter((b) => b.kind === "wht" && visible(b));
+  const hidden = badgeTypes.filter((b) => !visible(b)).length;
   const anySelected = Object.keys(selected).length > 0;
+
+  /** Tick every level of these, and "none", so the check shows who has what and who has nothing. */
+  function preset(types: BadgeType[]) {
+    const next = { ...selected };
+    for (const b of types) next[b.key] = [...b.levels, "none"];
+    onChange(next);
+  }
+  const named = (re: RegExp) => badgeTypes.filter((b) => re.test(b.name));
+  const presets = [
+    { label: "First aid", types: named(/first aid/i) },
+    { label: "Weapon handling", types: badgeTypes.filter((b) => b.kind === "wht") },
+    { label: "Leadership", types: named(/leadership/i) },
+  ].filter((p) => p.types.length > 0);
 
   function setLevels(key: string, levels: string[]) {
     const next = { ...selected };
@@ -243,6 +265,54 @@ function CriteriaSelector({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-semibold">Quick checks</p>
+        <div className="flex flex-wrap gap-2">
+          {presets.map((p) => (
+            <Button key={p.label} type="button" variant="outline" size="sm" onClick={() => preset(p.types)}>
+              {p.label}
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant={includeMissingAttachments ? "secondary" : "outline"}
+            size="sm"
+            aria-pressed={includeMissingAttachments}
+            onClick={() => onToggleMissingAttachments(!includeMissingAttachments)}
+          >
+            Missing attachments
+          </Button>
+          <Private>
+            <Button
+              type="button"
+              variant={includeMedical && includeDietary ? "secondary" : "outline"}
+              size="sm"
+              aria-pressed={includeMedical && includeDietary}
+              onClick={() => {
+                const on = !(includeMedical && includeDietary);
+                onToggleMedical(on);
+                onToggleDietary(on);
+              }}
+            >
+              Medical &amp; dietary
+            </Button>
+          </Private>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5 border-t pt-3">
+        <Label htmlFor="audit-find" className="sr-only">
+          Find a check
+        </Label>
+        <Input
+          id="audit-find"
+          type="search"
+          placeholder="Find a check, e.g. radio, swimming…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Qualifications</p>
         {badgeTypes.length > 0 && (
@@ -256,7 +326,29 @@ function CriteriaSelector({
         )}
       </div>
 
-      <div className="flex flex-col gap-2.5">{leveled.map(levelRow)}</div>
+      {leveled.length > 0 && <div className="flex flex-col gap-2.5">{leveled.map(levelRow)}</div>}
+      {!showAll && hidden > 0 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setShowAll(true)}
+        >
+          Show every check ({hidden} more)
+        </Button>
+      )}
+      {showAll && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setShowAll(false)}
+        >
+          Show fewer
+        </Button>
+      )}
 
       {whts.length > 0 && (
         <>
@@ -266,7 +358,7 @@ function CriteriaSelector({
         </>
       )}
 
-      <p className="border-t pt-3 text-sm font-semibold">Other</p>
+      {boolean.length > 0 && <p className="border-t pt-3 text-sm font-semibold">Other</p>}
       <div className="flex flex-col gap-2.5">
         {boolean.map((b) => {
           const cur = selected[b.key] ?? [];
@@ -310,16 +402,6 @@ function CriteriaSelector({
             </div>
           );
         })}
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="include-missing-attachments"
-            checked={includeMissingAttachments}
-            onCheckedChange={(v) => onToggleMissingAttachments(!!v)}
-          />
-          <Label htmlFor="include-missing-attachments" className="cursor-pointer text-sm font-normal">
-            Missing attachments
-          </Label>
-        </div>
       </div>
 
       <Private>

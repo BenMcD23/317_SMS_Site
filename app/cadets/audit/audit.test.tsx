@@ -110,6 +110,7 @@ describe("audit: weapon handling tests", () => {
 
   it("lists each weapon under Criteria to check, not in a tab of its own", async () => {
     await showAudit();
+    fireEvent.click(await screen.findByRole("button", { name: /Show every check/ }));
     expect(await screen.findByText("Weapon handling tests")).toBeInTheDocument();
     expect(screen.getByText("L98A2")).toBeInTheDocument();
     expect(screen.getByText("Scorpion (single shot)")).toBeInTheDocument();
@@ -119,6 +120,7 @@ describe("audit: weapon handling tests", () => {
   it("checks the chosen weapon and shows current, expired and never tested", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const sent = await showAudit();
+    fireEvent.click(await screen.findByRole("button", { name: /Show every check/ }));
     await screen.findByText("Weapon handling tests");
     selectAllCadets();
     // The L98A2 row's All and None chips: every status, including never tested.
@@ -140,6 +142,7 @@ describe("audit: weapon handling tests", () => {
   it("a chosen status hides the others", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await showAudit();
+    fireEvent.click(await screen.findByRole("button", { name: /Show every check/ }));
     await screen.findByText("Weapon handling tests");
     selectAllCadets();
     const row = screen.getByText("L98A2").parentElement!;
@@ -151,5 +154,30 @@ describe("audit: weapon handling tests", () => {
     expect(screen.queryByText("until 10/01/2027")).not.toBeInTheDocument();
     expect(screen.queryByText("Never tested")).not.toBeInTheDocument();
     vi.useRealTimers();
+  });
+
+  it("offers the usual checks in one tap, and keeps the rest out of the way until asked", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const sent = await showAudit();
+    // Folded away at first: no hundred chips before a result.
+    expect(screen.queryByText("L98A2")).not.toBeInTheDocument();
+    const preset = await screen.findByRole("button", { name: "Weapon handling" });
+    selectAllCadets();
+    fireEvent.click(preset);
+    await act(async () => {
+      vi.advanceTimersByTime(400);
+    });
+    // Every weapon, with every status and never tested.
+    expect(sent.at(-1)).toMatchObject({ qualifications: expect.arrayContaining(["wht:L98A2"]) });
+    // What's ticked stays in view, even folded.
+    expect(screen.getByText("L98A2")).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("finds a check by name without showing them all", async () => {
+    await showAudit();
+    fireEvent.change(await screen.findByLabelText("Find a check"), { target: { value: "scorpion" } });
+    expect(screen.getByText("Scorpion (single shot)")).toBeInTheDocument();
+    expect(screen.queryByText("L98A2")).not.toBeInTheDocument();
   });
 });
