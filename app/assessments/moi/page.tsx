@@ -107,10 +107,10 @@ function ScoreButton({
         "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border text-sm font-semibold transition-all",
         selected
           ? score === 1
-            ? "border-destructive bg-destructive text-white shadow-sm"
+            ? "border-destructive bg-destructive text-white"
             : score === 5
-              ? "border-success bg-success text-white shadow-sm"
-              : "border-primary bg-primary text-primary-foreground shadow-sm"
+              ? "border-success bg-success text-white"
+              : "border-primary bg-primary text-primary-foreground"
           : "border-muted text-muted-foreground hover:border-primary/40 hover:bg-muted"
       )}
     >

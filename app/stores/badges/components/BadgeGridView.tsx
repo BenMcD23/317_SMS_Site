@@ -33,7 +33,7 @@ function BadgeCellCard({
   }
 
   return (
-    <div className="bg-card flex h-full w-full flex-col rounded-lg border shadow-sm">
+    <div className="bg-card flex h-full w-full flex-col rounded-lg border">
       {/* Header */}
       <div className="flex items-center justify-between gap-1 border-b px-2 py-1.5">
         <div className="w-4" />

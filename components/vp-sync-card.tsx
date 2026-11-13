@@ -97,7 +97,7 @@ export function VpSyncCard({
             onClick={(e) => e.preventDefault()}
             aria-disabled={!ready}
             title="Drag me to your bookmarks bar"
-            className="bg-primary text-primary-foreground inline-flex w-fit cursor-grab items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium shadow-sm active:cursor-grabbing aria-disabled:opacity-50"
+            className="bg-primary text-primary-foreground inline-flex w-fit cursor-grab items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium active:cursor-grabbing aria-disabled:opacity-50"
           >
             <GripVertical className="size-4 opacity-70" />
             <Bookmark className="size-4" /> 317 Sync

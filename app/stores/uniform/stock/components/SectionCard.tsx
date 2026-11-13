@@ -70,11 +70,7 @@ export function SectionCard({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="bg-card flex h-full w-full flex-col rounded-lg border shadow-sm"
-    >
+    <div ref={setNodeRef} style={style} className="bg-card flex h-full w-full flex-col rounded-lg border">
       {/* Section header */}
       <div className="flex items-center justify-between gap-1 border-b px-3 py-2">
         {editMode ? (

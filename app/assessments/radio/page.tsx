@@ -60,7 +60,7 @@ function CriterionRow({
   return (
     <div
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-all hover:shadow-sm",
+        "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors",
         checked ? "border-success/40 bg-success/5" : "hover:border-primary/30"
       )}
       onClick={() => onChange(!checked)}

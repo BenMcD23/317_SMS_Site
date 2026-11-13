@@ -95,10 +95,10 @@ function ScoreSelector({
                 "group relative flex flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-md border py-2.5 text-xs font-semibold transition-all",
                 isSelected
                   ? score === 1
-                    ? "border-destructive bg-destructive text-white shadow-sm"
+                    ? "border-destructive bg-destructive text-white"
                     : score === 5
-                      ? "border-success bg-success text-white shadow-sm"
-                      : "border-primary bg-primary text-primary-foreground shadow-sm"
+                      ? "border-success bg-success text-white"
+                      : "border-primary bg-primary text-primary-foreground"
                   : "border-muted text-muted-foreground hover:border-primary/40 hover:bg-muted"
               )}
             >

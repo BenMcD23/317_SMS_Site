@@ -68,7 +68,7 @@ export function BoxCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-card relative flex h-full w-full flex-col gap-1 rounded-lg border p-3 shadow-sm select-none ${
+      className={`bg-card relative flex h-full w-full flex-col gap-1 rounded-lg border p-3 select-none ${
         overlay
           ? "ring-primary shadow-lg ring-2"
           : editMode
