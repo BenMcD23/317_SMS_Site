@@ -10,7 +10,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ErrorAlert } from "@/components/error-alert";
@@ -155,8 +161,8 @@ export function LeavingProcessCard() {
         )}
       </CardContent>
 
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setOpenCin(null)}>
-        <DialogContent className="sm:max-w-xl">
+      <ResponsiveDialog open={!!selected} onOpenChange={(open) => !open && setOpenCin(null)}>
+        <ResponsiveDialogContent className="sm:max-w-xl">
           {selected && (
             <LeavingDialogBody
               cadet={selected}
@@ -164,8 +170,8 @@ export function LeavingProcessCard() {
               onGone={() => setOpenCin(null)}
             />
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </Card>
   );
 }
@@ -243,14 +249,14 @@ function LeavingDialogBody({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{cadet.name}</DialogTitle>
-        <DialogDescription>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle>{cadet.name}</ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>
           Last on parade {formatDate(cadet.lastAttended)}
           {cadet.weeksAbsent !== null && ` — ${cadet.weeksAbsent} weeks ago`}. They&apos;ve been to{" "}
           {attendanceText(cadet)}.
-        </DialogDescription>
-      </DialogHeader>
+        </ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
 
       {cadet.returned && (
         <Alert>

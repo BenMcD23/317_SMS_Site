@@ -20,7 +20,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -886,25 +892,25 @@ function LeaderboardTab() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <ResponsiveDialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           {selected && (
             <>
-              <DialogHeader>
-                <DialogTitle>
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle>
                   {selected.rank ? `${selected.rank} ` : ""}
                   {selected.first_name} {selected.last_name}
-                </DialogTitle>
-                <DialogDescription>
+                </ResponsiveDialogTitle>
+                <ResponsiveDialogDescription>
                   {selected.flight ? `${selected.flight} Flight · ` : ""}
                   Inspection history &amp; uniform trends
-                </DialogDescription>
-              </DialogHeader>
+                </ResponsiveDialogDescription>
+              </ResponsiveDialogHeader>
               <CadetDetail cadet={selected} />
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

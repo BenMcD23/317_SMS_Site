@@ -15,13 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/api-fetch";
@@ -217,12 +217,14 @@ function AddTargetDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add a target</DialogTitle>
-          <DialogDescription>The share of cadets who should hold a badge by a date.</DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Add a target</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            The share of cadets who should hold a badge by a date.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         <form
           className="flex flex-col gap-4"
           onSubmit={(e) => {
@@ -314,17 +316,17 @@ function AddTargetDialog({
               {problem}
             </p>
           )}
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={badPct || saving}>
               {saving ? "Saving…" : "Add target"}
             </Button>
-          </DialogFooter>
+          </ResponsiveDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 

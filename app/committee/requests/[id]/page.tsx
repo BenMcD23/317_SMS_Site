@@ -16,14 +16,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import {
   ArrowLeft,
   Download,
@@ -308,29 +308,29 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
               </Button>
             )}
             {isOc && (req.status === "submitted" || req.status === "sent_to_committee") && (
-              <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-                <DialogTrigger asChild>
+              <ResponsiveDialog open={rejectOpen} onOpenChange={setRejectOpen}>
+                <ResponsiveDialogTrigger asChild>
                   <Button size="sm" variant="destructive" disabled={busy !== null}>
                     <X /> {req.status === "submitted" ? "Reject" : "Committee Rejected"}
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
+                </ResponsiveDialogTrigger>
+                <ResponsiveDialogContent>
+                  <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>
                       {req.status === "submitted" ? "Reject" : "Record committee rejection for"}{" "}
                       {req.reference}
-                    </DialogTitle>
-                    <DialogDescription>
+                    </ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>
                       The requester will be emailed. Add an optional reason.
-                    </DialogDescription>
-                  </DialogHeader>
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
                   <Textarea
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
                     placeholder="Reason (optional)"
                     rows={3}
                   />
-                  <DialogFooter>
+                  <ResponsiveDialogFooter>
                     <Button variant="ghost" onClick={() => setRejectOpen(false)}>
                       Cancel
                     </Button>
@@ -352,9 +352,9 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
                     >
                       {busy === "reject" ? <Loader2 className="animate-spin" /> : null} Reject
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </ResponsiveDialogFooter>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
             )}
             {isOc && req.status === "sent_for_payment" && (
               <Button
@@ -400,8 +400,8 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
 
             {/* Requester can withdraw from any non-terminal state. */}
             {isRequester && req.status !== "paid" && req.status !== "withdrawn" && (
-              <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-                <DialogTrigger asChild>
+              <ResponsiveDialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+                <ResponsiveDialogTrigger asChild>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -410,15 +410,15 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
                   >
                     <Undo2 /> Withdraw
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Withdraw request {req.reference}?</DialogTitle>
-                    <DialogDescription>
+                </ResponsiveDialogTrigger>
+                <ResponsiveDialogContent>
+                  <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>Withdraw request {req.reference}?</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>
                       This cancels the request. The OC will be notified. This cannot be undone.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
+                  <ResponsiveDialogFooter>
                     <Button variant="ghost" onClick={() => setWithdrawOpen(false)}>
                       Keep it
                     </Button>
@@ -432,9 +432,9 @@ export default function CommitteeRequestDetailPage({ params }: { params: Promise
                     >
                       {busy === "withdraw" ? <Loader2 className="animate-spin" /> : null} Withdraw
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </ResponsiveDialogFooter>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
             )}
 
             {isRequester && req.status === "approved" && !hasBankDetails && (

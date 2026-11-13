@@ -9,7 +9,13 @@ import { Copy, ExternalLink, Loader2, Mail, Pencil, RotateCcw } from "lucide-rea
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -129,14 +135,14 @@ export function ParentEmailsCard() {
         )}
       </CardContent>
 
-      <Dialog open={editing} onOpenChange={setEditing}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit parent emails</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={editing} onOpenChange={setEditing}>
+        <ResponsiveDialogContent className="sm:max-w-2xl">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Edit parent emails</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Separate several addresses with a semicolon. Each row saves on its own.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto pr-1">
             {cadets.map((c) => (
               <ParentEmailsRow
@@ -148,8 +154,8 @@ export function ParentEmailsCard() {
               />
             ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </Card>
   );
 }

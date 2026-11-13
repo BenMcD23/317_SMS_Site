@@ -19,13 +19,13 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -341,15 +341,15 @@ export default function NcoAppraisalsPage() {
         </>
       )}
 
-      <Dialog open={reminderOpen} onOpenChange={setReminderOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add an appraisal reminder</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={reminderOpen} onOpenChange={setReminderOpen}>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Add an appraisal reminder</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               For an NCO who hasn&apos;t been appraised yet. They&apos;ll show on the upcoming list from this
               date until an appraisal is written.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="reminder-nco">NCO</Label>
@@ -387,16 +387,16 @@ export default function NcoAppraisalsPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setReminderOpen(false)}>
               Cancel
             </Button>
             <Button onClick={submitReminder} disabled={saving || !reminderCin || !reminderDate}>
               {saving ? "Saving…" : "Add reminder"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {confirmDialog}
     </div>

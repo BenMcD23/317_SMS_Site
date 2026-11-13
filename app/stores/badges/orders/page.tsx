@@ -37,7 +37,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/searchable-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   BadgeOrder,
@@ -1459,11 +1465,11 @@ export default function BadgeOrdersPage() {
       )}
 
       {/* New Order Dialog */}
-      <Dialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>New Badge Order</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
+        <ResponsiveDialogContent className="sm:max-w-lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>New Badge Order</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Cadet</Label>
@@ -1545,7 +1551,7 @@ export default function BadgeOrdersPage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setNewOrderOpen(false)}>
               Cancel
             </Button>
@@ -1555,9 +1561,9 @@ export default function BadgeOrdersPage() {
             >
               {submitting ? "Creating..." : "Create Order"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Mark as Given Dialog */}
       <MarkGivenDialog

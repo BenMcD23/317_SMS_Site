@@ -6,7 +6,13 @@ import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 import { useState } from "react";
 
@@ -101,16 +107,16 @@ export function BoxCard({
           )}
 
           {/* Rename dialog */}
-          <Dialog
+          <ResponsiveDialog
             open={renameOpen}
             onOpenChange={(o) => {
               if (!o) setRenameOpen(false);
             }}
           >
-            <DialogContent className="sm:max-w-xs">
-              <DialogHeader>
-                <DialogTitle>Rename {isMisc ? "Area" : "Box"}</DialogTitle>
-              </DialogHeader>
+            <ResponsiveDialogContent className="sm:max-w-xs">
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle>Rename {isMisc ? "Area" : "Box"}</ResponsiveDialogTitle>
+              </ResponsiveDialogHeader>
               <div className="space-y-1.5">
                 <Label htmlFor={`rename-box-${box.label}`}>Label</Label>
                 <Input
@@ -124,7 +130,7 @@ export function BoxCard({
                   autoFocus
                 />
               </div>
-              <DialogFooter>
+              <ResponsiveDialogFooter>
                 <Button variant="outline" onClick={() => setRenameOpen(false)}>
                   Cancel
                 </Button>
@@ -134,9 +140,9 @@ export function BoxCard({
                 >
                   Save
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </ResponsiveDialogFooter>
+            </ResponsiveDialogContent>
+          </ResponsiveDialog>
 
           {/* Arrow up — top-right */}
           <div className="absolute top-1 right-1" onClick={(e) => e.stopPropagation()}>
@@ -182,21 +188,23 @@ export function BoxCard({
           )}
 
           {/* Delete confirm dialog */}
-          <Dialog
+          <ResponsiveDialog
             open={deleteConfirm}
             onOpenChange={(o) => {
               if (!o) setDeleteConfirm(false);
             }}
           >
-            <DialogContent className="sm:max-w-xs">
-              <DialogHeader>
-                <DialogTitle>Delete {isMisc ? box.label : `Box ${box.label}`}?</DialogTitle>
-              </DialogHeader>
+            <ResponsiveDialogContent className="sm:max-w-xs">
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle>
+                  Delete {isMisc ? box.label : `Box ${box.label}`}?
+                </ResponsiveDialogTitle>
+              </ResponsiveDialogHeader>
               <p className="text-muted-foreground text-sm">
                 Are you sure you want to delete {isMisc ? box.label : `box ${box.label}`}? All sections and
                 their stock will be permanently removed. This cannot be undone.
               </p>
-              <DialogFooter>
+              <ResponsiveDialogFooter>
                 <Button variant="outline" onClick={() => setDeleteConfirm(false)}>
                   Cancel
                 </Button>
@@ -209,9 +217,9 @@ export function BoxCard({
                 >
                   Delete {isMisc ? "Area" : "Box"}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </ResponsiveDialogFooter>
+            </ResponsiveDialogContent>
+          </ResponsiveDialog>
         </>
       )}
 

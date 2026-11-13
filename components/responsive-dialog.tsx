@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Drawer,
@@ -21,6 +22,7 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
+  DrawerTrigger,
 } from "@/components/ui/drawer";
 
 /**
@@ -30,7 +32,7 @@ import {
  * bottom, where the thumb is, and can be swiped away.
  *
  * Same parts as `Dialog` (`ResponsiveDialogContent`, `…Header`, `…Title`,
- * `…Description`, `…Footer`, `…Close`) so a dialog switches by changing its
+ * `…Description`, `…Footer`, `…Close`, `…Trigger`) so a dialog switches by changing its
  * imports. `className` on the content only applies to the dialog; the sheet
  * is always full width.
  */
@@ -42,8 +44,9 @@ export function ResponsiveDialog({
   onOpenChange,
   children,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  /** Leave both out for a dialog its own `ResponsiveDialogTrigger` opens. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
 }) {
   const sheet = useIsMobile();
@@ -102,6 +105,11 @@ export function ResponsiveDialogFooter({ className, ...props }: React.ComponentP
   ) : (
     <DialogFooter className={className} {...props} />
   );
+}
+
+/** The button that opens an uncontrolled dialog (one with no `open`). */
+export function ResponsiveDialogTrigger(props: React.ComponentProps<typeof DialogTrigger>) {
+  return useContext(SheetMode) ? <DrawerTrigger {...props} /> : <DialogTrigger {...props} />;
 }
 
 export function ResponsiveDialogClose(props: React.ComponentProps<typeof DialogClose>) {

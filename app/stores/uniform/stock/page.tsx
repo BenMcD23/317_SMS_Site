@@ -12,7 +12,13 @@ import { PageHeader } from "@/components/page-header";
 import { StockChangesPanel } from "@/components/stock-changes-table";
 import { ErrorAlert } from "@/components/error-alert";
 import { Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { StockItem } from "@/lib/stores-types";
 import { useStoresStock } from "@/lib/stores-stock";
 import { ShelfView } from "./components/ShelfView";
@@ -275,17 +281,17 @@ export default function StockPage() {
       )}
 
       {/* Add Box/Area */}
-      <Dialog
+      <ResponsiveDialog
         open={addBoxAreaOpen}
         onOpenChange={(o) => {
           setAddBoxAreaOpen(o);
           if (!o) setNewBoxAreaName("");
         }}
       >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add Box / Area</DialogTitle>
-          </DialogHeader>
+        <ResponsiveDialogContent className="sm:max-w-sm">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Add Box / Area</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-3">
             <div className="flex overflow-hidden rounded-md border">
               <button
@@ -327,7 +333,7 @@ export default function StockPage() {
                 )}
             </div>
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button
               variant="outline"
               onClick={() => {
@@ -345,9 +351,9 @@ export default function StockPage() {
             >
               Add {addBoxAreaType === "box" ? "Box" : "Area"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

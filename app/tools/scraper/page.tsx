@@ -28,7 +28,13 @@ import {
   Paperclip,
   Plus,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -659,18 +665,18 @@ function RunLogsDialog({
   }, [open, runId, token]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{label} — run logs</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="max-w-3xl">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{label} — run logs</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             {detail
               ? `${formatLastRan(detail.ran_at)}${detail.ran_by ? ` · ${detail.ran_by}` : ""}${
                   detail.success ? "" : " · failed"
                 }`
               : "Logs from the most recent run."}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         {loading && (
           <div className="bg-muted/30 space-y-2 rounded-md border p-4">
             {[...Array(10)].map((_, i) => (
@@ -686,8 +692,8 @@ function RunLogsDialog({
             </pre>
           </ScrollArea>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 

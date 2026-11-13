@@ -25,14 +25,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -450,19 +450,19 @@ function MessageCard({
             </div>
 
             <div className="flex flex-wrap gap-2 sm:ml-auto sm:items-center">
-              <Dialog open={testOpen} onOpenChange={setTestOpen}>
-                <DialogTrigger asChild>
+              <ResponsiveDialog open={testOpen} onOpenChange={setTestOpen}>
+                <ResponsiveDialogTrigger asChild>
                   <Button size="sm" variant="outline" disabled={busy !== null}>
                     Test send
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle>Send a test text</DialogTitle>
-                    <DialogDescription>
+                </ResponsiveDialogTrigger>
+                <ResponsiveDialogContent className="sm:max-w-sm">
+                  <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>Send a test text</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>
                       Sends this message to a single number only (named &quot;Test Recipient&quot;).
-                    </DialogDescription>
-                  </DialogHeader>
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
                   <Field>
                     <FieldLabel htmlFor={`test-phone-${message.id}`}>Phone number</FieldLabel>
                     <Input
@@ -472,7 +472,7 @@ function MessageCard({
                       onChange={(e) => setTestPhone(e.target.value)}
                     />
                   </Field>
-                  <DialogFooter>
+                  <ResponsiveDialogFooter>
                     <Button
                       disabled={!testPhone.trim() || busy !== null}
                       onClick={() =>
@@ -485,9 +485,9 @@ function MessageCard({
                     >
                       {busy === "test" ? <Spinner /> : <Send />} Send test
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </ResponsiveDialogFooter>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>

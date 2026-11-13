@@ -11,14 +11,14 @@ import { ErrorAlert } from "@/components/error-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -125,18 +125,20 @@ export function RecordLessonDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={reset}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog open={open} onOpenChange={reset}>
+      <ResponsiveDialogTrigger asChild>
         <Button size="sm">
           <Plus className="size-4" />
           Record a lesson
         </Button>
-      </DialogTrigger>
-      <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Record a lesson</DialogTitle>
-          <DialogDescription>For cadets who were there but didn&apos;t scan the QR code.</DialogDescription>
-        </DialogHeader>
+      </ResponsiveDialogTrigger>
+      <ResponsiveDialogContent className="flex max-h-[90dvh] flex-col sm:max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Record a lesson</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            For cadets who were there but didn&apos;t scan the QR code.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <div className="flex flex-col gap-3">
           <div className="grid gap-1.5">
@@ -229,12 +231,12 @@ export function RecordLessonDialog({
 
         <ErrorAlert message={error} title="Couldn't save" />
 
-        <DialogFooter>
+        <ResponsiveDialogFooter>
           <Button onClick={save} disabled={!subject || !cins.size || saving} className="w-full sm:w-auto">
             {saving ? "Saving…" : `Record for ${cins.size} cadet${cins.size === 1 ? "" : "s"}`}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

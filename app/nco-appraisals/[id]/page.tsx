@@ -19,13 +19,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Private } from "@/components/private";
@@ -293,14 +293,14 @@ export default function AppraisalDetailPage() {
         </>
       )}
 
-      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Email this appraisal</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Email this appraisal</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Sends the appraisal as a PDF attachment. Replies come back to you, not to the noreply mailbox.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="space-y-1.5">
             <Label htmlFor="appraisal-email-to">Send to</Label>
             <Input
@@ -316,7 +316,7 @@ export default function AppraisalDetailPage() {
               </p>
             )}
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setEmailOpen(false)}>
               Cancel
             </Button>
@@ -324,9 +324,9 @@ export default function AppraisalDetailPage() {
               <Mail className="size-4" />
               {sending ? "Sending…" : "Send PDF"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {confirmDialog}
     </div>

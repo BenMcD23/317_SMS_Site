@@ -9,7 +9,13 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -449,12 +455,12 @@ export default function AttendancePage() {
       )}
 
       {/* Per-night drill-in */}
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selected ? formatDate(selected.date) : ""}</DialogTitle>
-            <DialogDescription>{selected?.registerType ?? "Register"}</DialogDescription>
-          </DialogHeader>
+      <ResponsiveDialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <ResponsiveDialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{selected ? formatDate(selected.date) : ""}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>{selected?.registerType ?? "Register"}</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           {detailQuery.error ? (
             <ErrorAlert message={detailQuery.error.message} title="Could not load this night" />
           ) : !detail ? (
@@ -474,8 +480,8 @@ export default function AttendancePage() {
               )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { MonthPicker } from "@/components/month-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -174,16 +174,18 @@ export function NewsletterDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{mode === "add" ? "Add Newsletter" : `Edit Issue #${newsletter?.issue}`}</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>
+            {mode === "add" ? "Add Newsletter" : `Edit Issue #${newsletter?.issue}`}
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             {mode === "add"
               ? "Upload a new newsletter PDF and its details."
               : "Update the details below. Uploading a PDF is optional — leave it empty to keep the current one."}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <div className="space-y-5">
           {/* PDF upload */}
@@ -284,7 +286,7 @@ export function NewsletterDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <ResponsiveDialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
@@ -300,8 +302,8 @@ export function NewsletterDialog({
               "Save Changes"
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

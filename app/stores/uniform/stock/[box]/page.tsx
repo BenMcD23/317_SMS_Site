@@ -7,7 +7,13 @@ import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 import { useStoresStock } from "@/lib/stores-stock";
@@ -261,13 +267,13 @@ export default function BoxPage() {
       </div>
 
       {/* Add Item */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Stock Item</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={addOpen} onOpenChange={setAddOpen}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Add Stock Item</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <ItemForm form={form} setForm={setForm} boxes={boxLabels} structure={structureCompat} />
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
@@ -277,9 +283,9 @@ export default function BoxPage() {
             >
               {submitting ? "Adding…" : "Add Item"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Edit Item */}
       {shelfStructure && (

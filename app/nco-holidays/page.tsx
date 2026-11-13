@@ -16,7 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
@@ -387,17 +393,17 @@ function HolidayDialog({
   };
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={open}
       onOpenChange={(o) => {
         if (!o) reset();
         onOpenChange(o);
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{holiday ? "Edit holiday" : "Book a holiday"}</DialogTitle>
-        </DialogHeader>
+      <ResponsiveDialogContent className="sm:max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{holiday ? "Edit holiday" : "Book a holiday"}</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
         <div className="flex flex-col gap-4">
           <p className="text-muted-foreground text-sm">
             {holiday
@@ -458,15 +464,15 @@ function HolidayDialog({
             </p>
           )}
         </div>
-        <DialogFooter>
+        <ResponsiveDialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={invalid || submitting}>
             {holiday ? (submitting ? "Saving…" : "Save Changes") : submitting ? "Booking…" : "Book Holiday"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
