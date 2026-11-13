@@ -8,6 +8,7 @@ import { Loader2, Mic, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ErrorAlert } from "@/components/error-alert";
 import {
@@ -21,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { deleteNote, editNote, type NcoNote, type NcoNoteRow } from "@/lib/nco-notes";
@@ -183,21 +183,13 @@ function EditNoteDialog({
         {note.cadet_cin !== null && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={`${formId}-nco`}>About</Label>
-            <Select
+            <SearchableSelect
+              id={`${formId}-nco`}
               value={String(cadetCin)}
               onValueChange={(v) => form.setValue("cadetCin", Number(v), { shouldDirty: true })}
-            >
-              <SelectTrigger id={`${formId}-nco`} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ncos.map((n) => (
-                  <SelectItem key={n.cin} value={String(n.cin)}>
-                    {n.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              searchPlaceholder="Find an NCO…"
+              options={ncos.map((n) => ({ value: String(n.cin), label: n.name }))}
+            />
           </div>
         )}
 

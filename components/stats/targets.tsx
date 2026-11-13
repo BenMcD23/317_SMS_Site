@@ -7,6 +7,7 @@ import { CircleCheck, Plus, Trash2, TrendingUp, TriangleAlert } from "lucide-rea
 import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -232,24 +233,16 @@ function AddTargetDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="target-badge">Badge</Label>
-              <Select
+              <SearchableSelect
+                id="target-badge"
                 value={badge}
                 onValueChange={(v) => {
                   setBadge(v);
                   setMinLevel(ANY);
                 }}
-              >
-                <SelectTrigger id="target-badge" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(BADGE_LABELS).map(([key, name]) => (
-                    <SelectItem key={key} value={key}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                searchPlaceholder="Find a badge…"
+                options={Object.entries(BADGE_LABELS).map(([key, name]) => ({ value: key, label: name }))}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="target-level">At least</Label>

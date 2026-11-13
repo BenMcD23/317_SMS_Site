@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { NotesPicker } from "@/components/nco-appraisals/notes-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,22 +111,18 @@ export function AppraisalForm({
             {lockedNco ? (
               <Input id="appraisal-nco" value={draft.nco_name} disabled />
             ) : (
-              <Select
+              <SearchableSelect
+                id="appraisal-nco"
                 value={draft.cadet_id ? String(draft.cadet_id) : ""}
                 onValueChange={(value) => chooseNco(Number(value))}
-              >
-                <SelectTrigger id="appraisal-nco" className="w-full">
-                  <SelectValue placeholder="Choose an NCO…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ncos.map((nco) => (
-                    <SelectItem key={nco.cin} value={String(nco.cin)}>
-                      {nco.nco_name}
-                      {nco.appraisal_count === 0 ? " — never appraised" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Choose an NCO…"
+                searchPlaceholder="Find an NCO…"
+                options={ncos.map((nco) => ({
+                  value: String(nco.cin),
+                  label: nco.nco_name,
+                  hint: nco.appraisal_count === 0 ? "never appraised" : undefined,
+                }))}
+              />
             )}
             {selected && selected.last_appraisal_date && (
               <p className="text-muted-foreground text-xs">

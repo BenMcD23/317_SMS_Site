@@ -14,3 +14,15 @@ MotionGlobalConfig.skipAnimations = true;
 afterEach(() => {
   cleanup();
 });
+
+// jsdom lacks the browser APIs the searchable pickers (cmdk) and the menu
+// lean on. No-op versions, set once and only where missing, so a test can
+// still stub its own with vi.stubGlobal.
+if (typeof window !== "undefined") {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Element.prototype.scrollIntoView ??= function () {};
+}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { ErrorAlert } from "@/components/error-alert";
 import {
   ResponsiveDialog,
@@ -16,15 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -167,7 +160,8 @@ export function SessionDialog({
             render={({ field }) => (
               <Field>
                 <FieldLabel htmlFor="session-lesson">Lesson</FieldLabel>
-                <Select
+                <SearchableSelect
+                  id="session-lesson"
                   value={field.value || NONE}
                   onValueChange={(v) => {
                     const next = v === NONE ? "" : v;
@@ -178,28 +172,22 @@ export function SessionDialog({
                       if (grouping === "need") setValue("grouping", "one");
                     }
                   }}
-                >
-                  <SelectTrigger id="session-lesson" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Not a lesson (drill, sport, anything else)</SelectItem>
-                    {categoriesOf(subjects).map((category) => (
-                      <SelectGroup key={category}>
-                        <SelectLabel>{category}</SelectLabel>
-                        {subjects
-                          .filter((s) => s.category === category)
-                          .flatMap((s) =>
-                            Array.from({ length: s.parts }, (_, i) => (
-                              <SelectItem key={`${s.key}:${i + 1}`} value={`${s.key}:${i + 1}`}>
-                                {lessonName(s.name, i + 1, s.parts)}
-                              </SelectItem>
-                            ))
-                          )}
-                      </SelectGroup>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  searchPlaceholder="Find a lesson…"
+                  options={[
+                    { value: NONE, label: "Not a lesson (drill, sport, anything else)" },
+                    ...categoriesOf(subjects).flatMap((category) =>
+                      subjects
+                        .filter((s) => s.category === category)
+                        .flatMap((s) =>
+                          Array.from({ length: s.parts }, (_, i) => ({
+                            value: `${s.key}:${i + 1}`,
+                            label: lessonName(s.name, i + 1, s.parts),
+                            group: category,
+                          }))
+                        )
+                    ),
+                  ]}
+                />
                 <FieldDescription>
                   Cadets record a lesson by scanning its QR code. Add new subjects on the QR codes tab.
                 </FieldDescription>

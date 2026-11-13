@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { ErrorAlert } from "@/components/error-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,15 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   categoriesOf,
@@ -149,25 +141,18 @@ export function RecordLessonDialog({
         <div className="flex flex-col gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="record-subject">Subject</Label>
-            <Select value={key} onValueChange={(v) => pickLesson(v)}>
-              <SelectTrigger id="record-subject" className="w-full">
-                <SelectValue placeholder="Choose a subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {categoriesOf(subjects).map((category) => (
-                  <SelectGroup key={category}>
-                    <SelectLabel>{category}</SelectLabel>
-                    {subjects
-                      .filter((s) => s.category === category)
-                      .map((s) => (
-                        <SelectItem key={s.key} value={s.key}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              id="record-subject"
+              value={key}
+              onValueChange={(v) => pickLesson(v)}
+              placeholder="Choose a subject"
+              searchPlaceholder="Find a subject…"
+              options={categoriesOf(subjects).flatMap((category) =>
+                subjects
+                  .filter((s) => s.category === category)
+                  .map((s) => ({ value: s.key, label: s.name, group: category }))
+              )}
+            />
           </div>
           {subject && subject.parts > 1 && (
             <div className="grid gap-1.5">

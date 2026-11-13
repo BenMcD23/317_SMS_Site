@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { Check, Link2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { DataTable, dataTableColumns } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
@@ -22,15 +23,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate } from "@/lib/format";
 import { categoriesOf, THEORY_KEYS } from "@/lib/theory";
@@ -105,28 +97,27 @@ function LinkDialog({
         </ResponsiveDialogHeader>
         <Field>
           <FieldLabel htmlFor="link-lesson">Lesson</FieldLabel>
-          <Select value={value} onValueChange={setValue}>
-            <SelectTrigger id="link-lesson" className="w-full">
-              <SelectValue placeholder="Pick a lesson" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NOT_LESSON}>Not a lesson (drill, sport, socials…)</SelectItem>
-              {categoriesOf(subjects).map((category) => (
-                <SelectGroup key={category}>
-                  <SelectLabel>{category}</SelectLabel>
-                  {subjects
-                    .filter((s) => s.category === category)
-                    .flatMap((s) =>
-                      Array.from({ length: s.parts }, (_, i) => (
-                        <SelectItem key={`${s.key}:${i + 1}`} value={`${s.key}:${i + 1}`}>
-                          {lessonName(s.name, i + 1, s.parts)}
-                        </SelectItem>
-                      ))
-                    )}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            id="link-lesson"
+            value={value}
+            onValueChange={setValue}
+            placeholder="Pick a lesson"
+            searchPlaceholder="Find a lesson…"
+            options={[
+              { value: NOT_LESSON, label: "Not a lesson (drill, sport, socials…)" },
+              ...categoriesOf(subjects).flatMap((category) =>
+                subjects
+                  .filter((s) => s.category === category)
+                  .flatMap((s) =>
+                    Array.from({ length: s.parts }, (_, i) => ({
+                      value: `${s.key}:${i + 1}`,
+                      label: lessonName(s.name, i + 1, s.parts),
+                      group: category,
+                    }))
+                  )
+              ),
+            ]}
+          />
           <FieldDescription>Not in the list? Add the subject on the QR codes tab first.</FieldDescription>
         </Field>
         <ResponsiveDialogFooter>

@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, BellPlus, CalendarClock, ClipboardList, Plus, Trash2 } from "lucide-react";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -25,7 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -353,18 +353,14 @@ export default function NcoAppraisalsPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="reminder-nco">NCO</Label>
-              <Select value={reminderCin} onValueChange={setReminderCin}>
-                <SelectTrigger id="reminder-nco" className="w-full">
-                  <SelectValue placeholder="Choose an NCO…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {remindable.map((nco) => (
-                    <SelectItem key={nco.cin} value={String(nco.cin)}>
-                      {nco.nco_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="reminder-nco"
+                value={reminderCin}
+                onValueChange={setReminderCin}
+                placeholder="Choose an NCO…"
+                searchPlaceholder="Find an NCO…"
+                options={remindable.map((nco) => ({ value: String(nco.cin), label: nco.nco_name }))}
+              />
               {remindable.length === 0 && (
                 <p className="text-muted-foreground text-xs">
                   Every NCO has an appraisal already, so their next review date is set from it.
