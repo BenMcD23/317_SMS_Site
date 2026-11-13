@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { SectionHeading } from "@/components/section-heading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -632,6 +633,7 @@ export default function InspectionPage() {
               onChange={(e) => setSheet((s) => ({ ...s, date: e.target.value }))}
               className="w-40"
             />
+            <DateShortcuts value={sheet.date} onChange={(d) => setSheet((s) => ({ ...s, date: d }))} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" disabled={Object.keys(sheet.marks).length === 0}>

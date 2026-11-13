@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, MessageSquare, MessageSquarePlus, Plus, Trash2, User } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { PageHeader } from "@/components/page-header";
 import { useConfirm } from "@/components/confirm-dialog";
 import { CadetSearchInput } from "@/components/cadet-search";
@@ -450,7 +451,16 @@ function NewCommentDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="comment-date">Date</Label>
-            <Input id="comment-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id="comment-date"
+                type="date"
+                className="w-fit"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+              <DateShortcuts value={date} onChange={setDate} yesterday />
+            </div>
           </div>
 
           <div className="space-y-2">

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCopy, GraduationCap, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { ErrorAlert } from "@/components/error-alert";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -296,6 +297,7 @@ export function ClassificationPlanner() {
             className="h-9 w-[9.5rem]"
           />
         </div>
+        <DateShortcuts value={date} onChange={setDate} className="self-end" />
         <div className="grid gap-1.5">
           <Label htmlFor="cd-lessons" className="text-muted-foreground text-xs">
             Lessons running

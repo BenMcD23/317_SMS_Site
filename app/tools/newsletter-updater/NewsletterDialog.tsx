@@ -9,11 +9,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { MonthPicker } from "@/components/month-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Upload, RefreshCw, FileText } from "lucide-react";
 import { API_BASE } from "@/lib/config";
@@ -231,36 +231,18 @@ export function NewsletterDialog({
 
           {/* Month / Year / Issue */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Month</Label>
-              <Select value={month} onValueChange={setMonth}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Year</Label>
-              <Select value={year} onValueChange={setYear}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {YEARS.map((y) => (
-                    <SelectItem key={y} value={String(y)}>
-                      {y}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="col-span-2 space-y-2">
+              <Label>Issue month</Label>
+              <MonthPicker
+                label="Issue month"
+                value={{ month: MONTHS.indexOf(month) + 1, year: Number(year) }}
+                onChange={(m) => {
+                  setMonth(MONTHS[m.month - 1]);
+                  setYear(String(m.year));
+                }}
+                min={{ month: 1, year: Math.min(...YEARS) }}
+                max={{ month: 12, year: Math.max(...YEARS) }}
+              />
             </div>
 
             <div className="space-y-2">

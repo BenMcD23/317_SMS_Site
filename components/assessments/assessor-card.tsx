@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -369,6 +370,7 @@ export function AssessorCard({
                   value={date ?? ""}
                   onChange={(e) => onDateChange(e.target.value)}
                 />
+                <DateShortcuts value={date ?? ""} onChange={onDateChange} yesterday />
               </div>
             )
           )}
@@ -378,6 +380,7 @@ export function AssessorCard({
           <div className="space-y-1.5">
             <Label htmlFor="date">Date</Label>
             <Input id="date" type="date" value={date ?? ""} onChange={(e) => onDateChange(e.target.value)} />
+            <DateShortcuts value={date ?? ""} onChange={onDateChange} yesterday />
           </div>
         )}
 

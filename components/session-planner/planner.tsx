@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { AlertTriangle, CheckCircle2, ClipboardCopy, ListChecks, Users } from "lucide-react";
 import { toast } from "sonner";
 
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -282,6 +283,7 @@ export function SessionPlanner() {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="plan-date">Date</Label>
             <Input id="plan-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateShortcuts value={date} onChange={setDate} className="-mt-1" />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="plan-kind">Kind of session</Label>
