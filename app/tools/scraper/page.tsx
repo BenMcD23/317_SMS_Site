@@ -289,7 +289,7 @@ function ConsolePanel({
             </span>
           </div>
         ))}
-        {logs.length === 0 && <span className="animate-pulse text-muted-foreground">_ Connecting...</span>}
+        {logs.length === 0 && <span className="text-muted-foreground animate-pulse">_ Connecting...</span>}
         <div ref={logsEndRef} />
       </ScrollArea>
     </div>

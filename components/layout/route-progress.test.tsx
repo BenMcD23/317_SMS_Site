@@ -25,12 +25,20 @@ function setup() {
   );
 }
 
+// jsdom can't follow a link; cancel it on window, after RouteProgress's
+// document listener has already seen the click.
+const stopNavigation = (e: Event) => e.preventDefault();
+
 beforeEach(() => {
+  window.addEventListener("click", stopNavigation);
   vi.useFakeTimers();
   nav.pathname = "/cadets/overview";
   window.history.replaceState(null, "", "/cadets/overview");
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  window.removeEventListener("click", stopNavigation);
+  vi.useRealTimers();
+});
 
 // A link whose own handler cancels the click (a confirm-before-leaving, say).
 const clickCancelled = (name: string) => {
