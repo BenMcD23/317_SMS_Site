@@ -9,6 +9,7 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
+import { CadetLink } from "@/components/cadet-link";
 import { SearchableSelect } from "@/components/searchable-select";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
@@ -237,9 +238,9 @@ function HistoryCadetCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="truncate text-sm font-medium">
+              <CadetLink cin={cadet.cin} className="block truncate text-sm font-medium">
                 {cadet.last_name}, {cadet.first_name}
-              </div>
+              </CadetLink>
               {cadet.rank && <div className="text-muted-foreground text-xs">{cadet.rank}</div>}
             </div>
             {cadet.absent ? (
@@ -298,8 +299,10 @@ function AbsenceLists({ awol, absent }: { awol: SheetCadet[]; absent: SheetCadet
         <ul className="divide-y">
           {people.map((c) => (
             <li key={c.cin} className="px-3 py-1.5 text-sm">
-              {c.rank ? `${c.rank} ` : ""}
-              {c.last_name}, {c.first_name}
+              <CadetLink cin={c.cin}>
+                {c.rank ? `${c.rank} ` : ""}
+                {c.last_name}, {c.first_name}
+              </CadetLink>
             </li>
           ))}
         </ul>
@@ -903,7 +906,10 @@ function LeaderboardTab() {
                 </ResponsiveDialogTitle>
                 <ResponsiveDialogDescription>
                   {selected.flight ? `${selected.flight} Flight · ` : ""}
-                  Inspection history &amp; uniform trends
+                  Inspection history &amp; uniform trends ·{" "}
+                  <CadetLink cin={selected.cin} className="text-primary font-medium">
+                    Open record
+                  </CadetLink>
                 </ResponsiveDialogDescription>
               </ResponsiveDialogHeader>
               <CadetDetail cadet={selected} />

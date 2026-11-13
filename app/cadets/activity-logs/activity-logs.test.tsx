@@ -345,6 +345,13 @@ const LOG: CadetActivityLog = {
 const BASE = "/activity-logs/cadets/2100001";
 
 describe("one cadet's log", () => {
+  it("links to the cadet's own record from the header", async () => {
+    stubApi({ [`GET ${BASE}`]: [LOG] });
+    await show(<CadetActivityLogPage />);
+    await screen.findByRole("heading", { name: "Cpl Cara Cadet" });
+    expect(screen.getByRole("link", { name: "Open record" })).toHaveAttribute("href", "/cadets/2100001");
+  });
+
   it("shows each section's plan, progress and entries", async () => {
     stubApi({ [`GET ${BASE}`]: [LOG] });
     await show(<CadetActivityLogPage />);
