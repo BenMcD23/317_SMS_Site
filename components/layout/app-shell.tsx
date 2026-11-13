@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { OutboxIndicator, OutboxSync } from "@/components/outbox";
 import { RecentPageTracker } from "@/lib/quick-pages";
+import { RouteProgress } from "@/components/layout/route-progress";
 
 /** Auth pages render bare — no sidebar or header. */
 const NO_SHELL_ROUTES = ["/login", "/unauthorized"];
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      <RouteProgress />
       <AppSidebar />
       <SidebarInset className="min-w-0">
         <header className="no-print bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
