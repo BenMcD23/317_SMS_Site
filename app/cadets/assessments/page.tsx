@@ -80,11 +80,13 @@ function typeLabel(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Assessment types are categories, so they take chart hues: red would read
+// as "failed" against the status colours.
 const TYPE_DOT_COLOURS: Record<string, string> = {
-  "Blue Leadership": "bg-blue-500",
-  first_aid: "bg-red-500",
-  radio: "bg-purple-500",
-  MOI: "bg-emerald-500",
+  "Blue Leadership": "bg-chart-1",
+  first_aid: "bg-chart-4",
+  radio: "bg-chart-5",
+  MOI: "bg-chart-3",
 };
 
 function typeDotColour(t: string) {

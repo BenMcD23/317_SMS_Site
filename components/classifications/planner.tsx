@@ -183,7 +183,7 @@ function CadetRow({
           </p>
         )}
         {cadet.awaiting && (
-          <p className="text-xs text-blue-700 dark:text-blue-400">
+          <p className="text-primary text-xs">
             All exams for {cadet.awaiting} passed — classification not on record yet
           </p>
         )}

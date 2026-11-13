@@ -228,7 +228,7 @@ function RegionButton({
               </span>
             )}
             {positives > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-green-600 px-1 text-[11px] font-bold text-white">
+              <span className="bg-success/15 text-success flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold">
                 {positives}
               </span>
             )}
@@ -253,7 +253,7 @@ function RegionButton({
                 {c.type === "fault" ? (
                   <ThumbsDown className="text-destructive mt-0.5 h-3 w-3 shrink-0" />
                 ) : (
-                  <ThumbsUp className="mt-0.5 h-3 w-3 shrink-0 text-green-600" />
+                  <ThumbsUp className="text-success mt-0.5 h-3 w-3 shrink-0" />
                 )}
                 <span className="flex-1">{c.text}</span>
                 <button
@@ -357,7 +357,7 @@ function CadetCard({
             {absent && <Badge variant="secondary">Absent</Badge>}
             {faults > 0 && <Badge variant="destructive">{faults} faults</Badge>}
             {positives > 0 && (
-              <Badge className="bg-green-600 text-white hover:bg-green-600">{positives} good</Badge>
+              <Badge className="bg-success/15 text-success hover:bg-success/15">{positives} good</Badge>
             )}
           </div>
         </CardTitle>
@@ -802,7 +802,7 @@ export default function InspectionPage() {
                         onClick={() => setSelectedCin(c.cin)}
                         className="flex flex-1 items-center gap-2 text-left"
                       >
-                        <Check className="h-4 w-4 shrink-0 text-green-600" />
+                        <Check className="text-success h-4 w-4 shrink-0" />
                         <span className={cn("flex-1 truncate", absent && "line-through opacity-60")}>
                           {c.rank ? `${c.rank} ` : ""}
                           {c.first_name} {c.last_name}
@@ -820,7 +820,7 @@ export default function InspectionPage() {
                                 </Badge>
                               )}
                               {positives > 0 && (
-                                <Badge className="bg-green-600 text-[10px] text-white hover:bg-green-600">
+                                <Badge className="bg-success/15 text-success hover:bg-success/15 text-[10px]">
                                   {positives}
                                 </Badge>
                               )}

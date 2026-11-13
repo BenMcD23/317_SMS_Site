@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { BadgeHistoryPoint } from "@/lib/badge-history";
 import {
+  levelBadgeStyle,
   addDays,
   badgeHistoryFor,
   badgeLabel,
@@ -446,5 +447,21 @@ describe("targets", () => {
       "80% of non-juniors in A Flight with Bronze or better First Aid by 1 Jan 2027"
     );
     expect(describeTarget(target({ min_level: null }))).toBe("50% of cadets with First Aid by 1 Jan 2027");
+  });
+});
+
+describe("levelBadgeStyle", () => {
+  it("tints a pill in the level's chart colour, whichever case the API sends", () => {
+    const style = levelBadgeStyle("bronze");
+    expect(style).toEqual(levelBadgeStyle("Bronze"));
+    expect(style?.backgroundColor).toContain("#b45309");
+    // Mixed toward the theme's text colour so it reads on light and dark.
+    expect(style?.color).toContain("var(--foreground)");
+  });
+
+  it("gives nothing for an unknown level or None, so the caller falls back", () => {
+    expect(levelBadgeStyle("platinum")).toBeUndefined();
+    expect(levelBadgeStyle("None")).toBeUndefined();
+    expect(levelBadgeStyle("")).toBeUndefined();
   });
 });

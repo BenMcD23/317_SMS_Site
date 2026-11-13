@@ -268,28 +268,28 @@ function ConsolePanel({
           </button>
         )}
       </div>
-      <ScrollArea className="h-56 bg-black p-3 font-mono text-xs text-green-400">
+      <ScrollArea className="bg-muted h-56 rounded-md p-3 font-mono text-xs">
         {logs.map((log, i) => (
           <div key={i} className="mb-1 leading-relaxed">
             <span className="mr-2 opacity-30 select-none">[{log.time}]</span>
             <span
               className={
                 log.text.startsWith("[ERROR]")
-                  ? "text-red-400"
+                  ? "text-destructive"
                   : log.text.startsWith("[SUCCESS]")
-                    ? "text-emerald-400"
+                    ? "text-success"
                     : log.text.startsWith("[WARN]") || log.text.startsWith("[STOPPED]")
-                      ? "text-yellow-400"
+                      ? "text-warning"
                       : log.text.startsWith(">")
-                        ? "text-yellow-400"
-                        : ""
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground"
               }
             >
               {log.text}
             </span>
           </div>
         ))}
-        {logs.length === 0 && <span className="animate-pulse text-gray-600">_ Connecting...</span>}
+        {logs.length === 0 && <span className="animate-pulse text-muted-foreground">_ Connecting...</span>}
         <div ref={logsEndRef} />
       </ScrollArea>
     </div>
@@ -875,10 +875,10 @@ export default function ScraperPage() {
       />
 
       {host?.on_oracle && (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+        <Alert className="border-warning/40 bg-warning/10">
           <CloudAlert />
           <AlertTitle>Scrapers may not work right now</AlertTitle>
-          <AlertDescription className="text-amber-900/90 dark:text-amber-200/90">
+          <AlertDescription className="text-foreground/90">
             The home server is down, so 317 SMS is running on the backup Oracle server ({host.node}). The
             Bader scrapers usually fail from there — try again once home is back.
           </AlertDescription>

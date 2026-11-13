@@ -119,6 +119,27 @@ export function levelColor(level: string): string {
   return LEVEL_COLOURS[level] ?? "#9ca3af";
 }
 
+/**
+ * A badge-level pill (border, tint, text) in the level's own colour, for
+ * lists that name a level rather than chart it. Built with color-mix from
+ * the chart colours above so the pill and the stats charts agree, and the
+ * text is mixed toward the page's foreground so it reads in either theme
+ * (a fixed amber text vanished on the dark background). Takes the
+ * lower-case keys the API sends ("bronze") as well as the chart's "Bronze".
+ */
+export function levelBadgeStyle(
+  level: string
+): { borderColor: string; backgroundColor: string; color: string } | undefined {
+  const key = level.charAt(0).toUpperCase() + level.slice(1).toLowerCase();
+  const colour = LEVEL_COLOURS[key];
+  if (!colour || key === "None") return undefined;
+  return {
+    borderColor: `color-mix(in oklab, ${colour} 45%, transparent)`,
+    backgroundColor: `color-mix(in oklab, ${colour} 12%, transparent)`,
+    color: `color-mix(in oklab, ${colour} 70%, var(--foreground))`,
+  };
+}
+
 // Flight colours: chart tokens in the order that best survives colour-vision
 // checks in both themes (dataviz validator). The NCO flight keeps the primary
 // hue; lettered flights take the others by letter, so A, B and C keep their

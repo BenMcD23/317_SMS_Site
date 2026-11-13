@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { SearchableSelect } from "@/components/searchable-select";
@@ -23,23 +23,24 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { todayLocal } from "@/lib/format";
+import { levelBadgeStyle } from "@/lib/stats";
 import { Private } from "@/components/private";
 import { usePersonalDataHidden } from "@/lib/privacy";
 
-const LEVEL_STYLES: Record<string, string> = {
-  blue: "border-blue-200 bg-blue-50 text-blue-700",
-  bronze: "border-amber-300 bg-amber-50 text-amber-800",
-  silver: "border-slate-300 bg-slate-100 text-slate-700",
-  gold: "border-yellow-300 bg-yellow-50 text-yellow-800",
-  nijmegen: "border-purple-200 bg-purple-50 text-purple-700",
-  basic: "border-sky-200 bg-sky-50 text-sky-700",
-  intermediate: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  advanced: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  yes: "border-green-200 bg-green-50 text-green-700",
+// Pass/fail checks use the status colours; badge levels their own colour
+// (levelBadgeStyle), which is the same one the stats charts draw them in.
+const STATUS_STYLES: Record<string, string> = {
+  yes: "border-success/40 bg-success/10 text-success",
   // Weapon handling tests.
-  current: "border-green-200 bg-green-50 text-green-700",
-  expired: "border-red-200 bg-red-50 text-red-700",
+  current: "border-success/40 bg-success/10 text-success",
+  expired: "border-destructive/40 bg-destructive/10 text-destructive",
 };
+
+function levelPill(level: string): { className?: string; style?: CSSProperties } {
+  if (STATUS_STYLES[level]) return { className: STATUS_STYLES[level] };
+  const style = levelBadgeStyle(level);
+  return style ? { style } : {};
+}
 
 function levelLabel(level: string): string {
   return level.charAt(0).toUpperCase() + level.slice(1);
@@ -146,16 +147,16 @@ function LevelChip({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const pill = level ? levelPill(level) : {};
   return (
     <button
       type="button"
       onClick={onClick}
+      style={active && pill.style ? pill.style : undefined}
       className={cn(
         "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
         active
-          ? level
-            ? (LEVEL_STYLES[level] ?? "border-primary bg-primary/10 text-primary")
-            : "border-primary bg-primary/10 text-primary"
+          ? (pill.className ?? (pill.style ? "" : "border-primary bg-primary/10 text-primary"))
           : "bg-muted/60 text-muted-foreground hover:bg-muted border-transparent"
       )}
     >
@@ -667,7 +668,7 @@ function AuditResultsTable({
                             .filter(Boolean)
                             .join(" ")}
                         >
-                          <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                          <Badge variant="outline" {...levelPill(lvl)}>
                             {levelLabel(lvl)}
                           </Badge>
                           <span className="text-muted-foreground text-xs">
@@ -678,7 +679,7 @@ function AuditResultsTable({
                         </div>
                       ) : lvl ? (
                         <div className="flex flex-col items-center gap-0.5">
-                          <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                          <Badge variant="outline" {...levelPill(lvl)}>
                             {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
                           </Badge>
                           {check?.date_achieved && (

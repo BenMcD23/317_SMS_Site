@@ -153,7 +153,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
 
       {/* What staff said */}
       {plan.status === "amendments_requested" && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+        <div className="border-warning/40 bg-warning/10 rounded-md border px-4 py-3 text-sm">
           <p className="font-medium">
             Amendments requested{plan.reviewed_by ? ` by ${plan.reviewed_by}` : ""}
           </p>
@@ -166,7 +166,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
       {plan.status === "approved" && (
-        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm">
+        <div className="border-success/40 bg-success/10 rounded-md border px-4 py-3 text-sm">
           <p className="font-medium">
             Approved{plan.reviewed_by ? ` by ${plan.reviewed_by}` : ""}
             {plan.reviewed_at ? ` on ${formatTimestamp(plan.reviewed_at)}` : ""}
@@ -364,7 +364,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
                 />
               ) : (
                 plan.feedback?.[section.key] && (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+                  <div className="border-warning/40 bg-warning/10 rounded-md border px-3 py-2 text-sm">
                     <span className="font-medium">Staff: </span>
                     <span className="whitespace-pre-wrap">{plan.feedback[section.key]}</span>
                   </div>

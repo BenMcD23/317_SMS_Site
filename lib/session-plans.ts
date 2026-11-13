@@ -192,15 +192,15 @@ export const STATUS_STYLE: Record<SessionPlanStatus, { variant: BadgeVariant; cl
   draft: { variant: "outline", className: "text-muted-foreground" },
   submitted: {
     variant: "outline",
-    className: "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    className: "border-primary/40 bg-primary/10 text-primary",
   },
   amendments_requested: {
     variant: "outline",
-    className: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-500",
+    className: "border-warning/40 bg-warning/10 text-warning",
   },
   approved: {
     variant: "outline",
-    className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    className: "border-success/40 bg-success/10 text-success",
   },
 };
 

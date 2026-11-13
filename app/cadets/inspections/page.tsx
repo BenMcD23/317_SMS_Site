@@ -205,7 +205,7 @@ function InspectionFigureView({
               key={note.n}
               className={cn(
                 "ring-background absolute left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-bold text-white ring-2",
-                note.type === "fault" ? "bg-destructive" : "bg-green-600"
+                note.type === "fault" ? "bg-destructive" : "bg-success"
               )}
               style={{ top: `${top}%` }}
               title={note.text}
@@ -262,7 +262,7 @@ function HistoryCadetCard({
                   <span
                     className={cn(
                       "mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white",
-                      note.type === "fault" ? "bg-destructive" : "bg-green-600"
+                      note.type === "fault" ? "bg-destructive" : "bg-success"
                     )}
                   >
                     {note.n}
@@ -652,7 +652,7 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
           <ThumbsDown className="text-destructive h-4 w-4" />
           Recurring faults by area
           {totalPositives > 0 && (
-            <span className="ml-auto inline-flex items-center gap-1 text-xs font-normal text-green-600">
+            <span className="text-success ml-auto inline-flex items-center gap-1 text-xs font-normal">
               <ThumbsUp className="h-3.5 w-3.5" />
               {totalPositives} positive{totalPositives === 1 ? "" : "s"} logged
             </span>
