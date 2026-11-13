@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,23 +23,24 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
 import { ArrowUp, ArrowDown, ArrowUpDown, Download } from "lucide-react";
 import { todayLocal } from "@/lib/format";
+import { levelBadgeStyle } from "@/lib/stats";
 import { Private } from "@/components/private";
 import { usePersonalDataHidden } from "@/lib/privacy";
 
-const LEVEL_STYLES: Record<string, string> = {
-  blue: "border-blue-200 bg-blue-50 text-blue-700",
-  bronze: "border-amber-300 bg-amber-50 text-amber-800",
-  silver: "border-slate-300 bg-slate-100 text-slate-700",
-  gold: "border-yellow-300 bg-yellow-50 text-yellow-800",
-  nijmegen: "border-purple-200 bg-purple-50 text-purple-700",
-  basic: "border-sky-200 bg-sky-50 text-sky-700",
-  intermediate: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  advanced: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  yes: "border-green-200 bg-green-50 text-green-700",
+// Pass/fail checks use the status colours; badge levels their own colour
+// (levelBadgeStyle), which is the same one the stats charts draw them in.
+const STATUS_STYLES: Record<string, string> = {
+  yes: "border-success/40 bg-success/10 text-success",
   // Weapon handling tests.
-  current: "border-green-200 bg-green-50 text-green-700",
-  expired: "border-red-200 bg-red-50 text-red-700",
+  current: "border-success/40 bg-success/10 text-success",
+  expired: "border-destructive/40 bg-destructive/10 text-destructive",
 };
+
+function levelPill(level: string): { className?: string; style?: CSSProperties } {
+  if (STATUS_STYLES[level]) return { className: STATUS_STYLES[level] };
+  const style = levelBadgeStyle(level);
+  return style ? { style } : {};
+}
 
 function levelLabel(level: string): string {
   return level.charAt(0).toUpperCase() + level.slice(1);
@@ -144,16 +147,16 @@ function LevelChip({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const pill = level ? levelPill(level) : {};
   return (
     <button
       type="button"
       onClick={onClick}
+      style={active && pill.style ? pill.style : undefined}
       className={cn(
         "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
         active
-          ? level
-            ? (LEVEL_STYLES[level] ?? "border-primary bg-primary/10 text-primary")
-            : "border-primary bg-primary/10 text-primary"
+          ? (pill.className ?? (pill.style ? "" : "border-primary bg-primary/10 text-primary"))
           : "bg-muted/60 text-muted-foreground hover:bg-muted border-transparent"
       )}
     >
@@ -183,10 +186,31 @@ function CriteriaSelector({
   includeMissingAttachments: boolean;
   onToggleMissingAttachments: (v: boolean) => void;
 }) {
-  const leveled = badgeTypes.filter((b) => b.kind === "leveled");
-  const boolean = badgeTypes.filter((b) => b.kind === "boolean");
-  const whts = badgeTypes.filter((b) => b.kind === "wht");
+  // About a hundred chips is a lot to read before seeing any result. The usual
+  // checks are presets; the rest are behind "Show every check" or a search,
+  // with anything already ticked always shown so a choice never disappears.
+  const [query, setQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const q = query.trim().toLowerCase();
+  const visible = (b: BadgeType) => showAll || b.key in selected || (!!q && b.name.toLowerCase().includes(q));
+  const leveled = badgeTypes.filter((b) => b.kind === "leveled" && visible(b));
+  const boolean = badgeTypes.filter((b) => b.kind === "boolean" && visible(b));
+  const whts = badgeTypes.filter((b) => b.kind === "wht" && visible(b));
+  const hidden = badgeTypes.filter((b) => !visible(b)).length;
   const anySelected = Object.keys(selected).length > 0;
+
+  /** Tick every level of these, and "none", so the check shows who has what and who has nothing. */
+  function preset(types: BadgeType[]) {
+    const next = { ...selected };
+    for (const b of types) next[b.key] = [...b.levels, "none"];
+    onChange(next);
+  }
+  const named = (re: RegExp) => badgeTypes.filter((b) => re.test(b.name));
+  const presets = [
+    { label: "First aid", types: named(/first aid/i) },
+    { label: "Weapon handling", types: badgeTypes.filter((b) => b.kind === "wht") },
+    { label: "Leadership", types: named(/leadership/i) },
+  ].filter((p) => p.types.length > 0);
 
   function setLevels(key: string, levels: string[]) {
     const next = { ...selected };
@@ -242,6 +266,54 @@ function CriteriaSelector({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-semibold">Quick checks</p>
+        <div className="flex flex-wrap gap-2">
+          {presets.map((p) => (
+            <Button key={p.label} type="button" variant="outline" size="sm" onClick={() => preset(p.types)}>
+              {p.label}
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant={includeMissingAttachments ? "secondary" : "outline"}
+            size="sm"
+            aria-pressed={includeMissingAttachments}
+            onClick={() => onToggleMissingAttachments(!includeMissingAttachments)}
+          >
+            Missing attachments
+          </Button>
+          <Private>
+            <Button
+              type="button"
+              variant={includeMedical && includeDietary ? "secondary" : "outline"}
+              size="sm"
+              aria-pressed={includeMedical && includeDietary}
+              onClick={() => {
+                const on = !(includeMedical && includeDietary);
+                onToggleMedical(on);
+                onToggleDietary(on);
+              }}
+            >
+              Medical &amp; dietary
+            </Button>
+          </Private>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5 border-t pt-3">
+        <Label htmlFor="audit-find" className="sr-only">
+          Find a check
+        </Label>
+        <Input
+          id="audit-find"
+          type="search"
+          placeholder="Find a check, e.g. radio, swimming…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Qualifications</p>
         {badgeTypes.length > 0 && (
@@ -255,7 +327,29 @@ function CriteriaSelector({
         )}
       </div>
 
-      <div className="flex flex-col gap-2.5">{leveled.map(levelRow)}</div>
+      {leveled.length > 0 && <div className="flex flex-col gap-2.5">{leveled.map(levelRow)}</div>}
+      {!showAll && hidden > 0 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setShowAll(true)}
+        >
+          Show every check ({hidden} more)
+        </Button>
+      )}
+      {showAll && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setShowAll(false)}
+        >
+          Show fewer
+        </Button>
+      )}
 
       {whts.length > 0 && (
         <>
@@ -265,7 +359,7 @@ function CriteriaSelector({
         </>
       )}
 
-      <p className="border-t pt-3 text-sm font-semibold">Other</p>
+      {boolean.length > 0 && <p className="border-t pt-3 text-sm font-semibold">Other</p>}
       <div className="flex flex-col gap-2.5">
         {boolean.map((b) => {
           const cur = selected[b.key] ?? [];
@@ -309,16 +403,6 @@ function CriteriaSelector({
             </div>
           );
         })}
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="include-missing-attachments"
-            checked={includeMissingAttachments}
-            onCheckedChange={(v) => onToggleMissingAttachments(!!v)}
-          />
-          <Label htmlFor="include-missing-attachments" className="cursor-pointer text-sm font-normal">
-            Missing attachments
-          </Label>
-        </div>
       </div>
 
       <Private>
@@ -584,7 +668,7 @@ function AuditResultsTable({
                             .filter(Boolean)
                             .join(" ")}
                         >
-                          <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                          <Badge variant="outline" {...levelPill(lvl)}>
                             {levelLabel(lvl)}
                           </Badge>
                           <span className="text-muted-foreground text-xs">
@@ -595,7 +679,7 @@ function AuditResultsTable({
                         </div>
                       ) : lvl ? (
                         <div className="flex flex-col items-center gap-0.5">
-                          <Badge variant="outline" className={LEVEL_STYLES[lvl] ?? ""}>
+                          <Badge variant="outline" {...levelPill(lvl)}>
                             {check?.kind === "boolean" ? "Yes" : levelLabel(lvl)}
                           </Badge>
                           {check?.date_achieved && (
@@ -882,18 +966,14 @@ function EventCheckTab() {
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label className="text-sm">Event</Label>
-                <Select value={selectedEventId} onValueChange={handleEventChange} disabled={loadingEvents}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an event…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((e) => (
-                      <SelectItem key={e.id} value={String(e.id)}>
-                        {e.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  aria-label="Event"
+                  value={selectedEventId}
+                  onValueChange={handleEventChange}
+                  disabled={loadingEvents}
+                  placeholder="Select an event…"
+                  options={events.map((e) => ({ value: String(e.id), label: e.title }))}
+                />
               </div>
 
               {subApps.length > 0 && (

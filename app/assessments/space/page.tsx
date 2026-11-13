@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { StickyActions } from "@/components/sticky-actions";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -36,7 +37,7 @@ function ChecklistRow({
   return (
     <div
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-all hover:shadow-sm",
+        "flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors",
         checked ? "border-success/40 bg-success/5" : "hover:border-primary/30"
       )}
       onClick={() => onChange(!checked)}
@@ -417,7 +418,7 @@ export default function SpaceAssessmentPage() {
             </p>
           )}
 
-          <div className="flex gap-3">
+          <StickyActions>
             <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
               {loading ? (
                 <>
@@ -434,7 +435,7 @@ export default function SpaceAssessmentPage() {
             <Button variant="outline" onClick={handleReset}>
               Reset Form
             </Button>
-          </div>
+          </StickyActions>
         </>
       )}
     </div>

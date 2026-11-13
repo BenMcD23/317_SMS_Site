@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -12,13 +13,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -561,41 +562,44 @@ export default function TextRecipientsPage() {
         </>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{editing ? `Edit ${editing.name || "recipient"}` : "Add a number"}</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <ResponsiveDialogContent className="sm:max-w-sm">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>
+              {editing ? `Edit ${editing.name || "recipient"}` : "Add a number"}
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {!editing && addMode !== "extra"
                 ? "The number goes onto their own record, so the greeting comes from the roster and stays right as they’re promoted."
                 : editingExtra
                   ? "Rank and surname are used in the text greeting, e.g. “Sgt Smith”."
                   : "The greeting comes from their record on the squadron roster, so only the number is editable here."}
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="flex flex-col gap-3">
             {!editing && (
               <Field>
                 <FieldLabel htmlFor="add-mode">Who is this number for?</FieldLabel>
-                <Select
+                <ToggleGroup
+                  id="add-mode"
+                  aria-label="Who is this number for?"
+                  type="single"
+                  variant="outline"
+                  className="w-full flex-wrap"
                   value={addMode}
                   onValueChange={(v) => {
+                    if (!v) return;
                     setAddMode(v as AddMode);
                     setPicked(null);
                     setQuery("");
                   }}
                 >
-                  <SelectTrigger id="add-mode" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ADD_MODE_LABEL).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {Object.entries(ADD_MODE_LABEL).map(([value, label]) => (
+                    <ToggleGroupItem key={value} value={value} className="px-3">
+                      {label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </Field>
             )}
             {!editing && addMode !== "extra" && (
@@ -681,7 +685,7 @@ export default function TextRecipientsPage() {
               />
             </Field>
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
@@ -692,25 +696,25 @@ export default function TextRecipientsPage() {
               {saving && <Spinner />}
               {editing ? "Save changes" : "Add number"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
-      <Dialog
+      <ResponsiveDialog
         open={importOpen}
         onOpenChange={(open) => {
           setImportOpen(open);
           if (!open) setImportFile(null);
         }}
       >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Import numbers</DialogTitle>
-            <DialogDescription>
+        <ResponsiveDialogContent className="sm:max-w-sm">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Import numbers</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Upload a .csv or .xlsx with columns: phone number, rank, surname (same layout as the old Numbers
               sheet). Each number goes onto the cadet or staff member it names, where the name can be matched.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="flex flex-col gap-3">
             <Field>
               <FieldLabel htmlFor="import-file">File</FieldLabel>
@@ -740,7 +744,7 @@ export default function TextRecipientsPage() {
               </p>
             )}
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)}>
               Cancel
             </Button>
@@ -748,9 +752,9 @@ export default function TextRecipientsPage() {
               {importing && <Spinner />}
               Import
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>

@@ -25,6 +25,7 @@ import {
   Inbox,
   Award,
 } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
@@ -34,8 +35,15 @@ import { ErrorAlert } from "@/components/error-alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   BadgeOrder,
@@ -96,50 +104,45 @@ function BadgePicker({
   const { badgeCategories } = useReference();
   return (
     <div className="space-y-2">
-      <Select
+      {/* Searchable: the badge catalogue is too long to scroll on a phone. */}
+      <SearchableSelect
+        aria-label="Badge type"
         value={category?.id ?? ""}
         onValueChange={(v) => onCategory(badgeCategories.find((c) => c.id === v) ?? null)}
-      >
-        <SelectTrigger className="h-8 text-sm">
-          <SelectValue placeholder="Badge type…" />
-        </SelectTrigger>
-        <SelectContent>
-          {badgeCategories.map((c) => (
-            <SelectItem key={c.id} value={c.id}>
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        placeholder="Badge type…"
+        searchPlaceholder="Find a badge type…"
+        className="h-8 text-sm"
+        options={badgeCategories.map((c) => ({ value: c.id, label: c.name }))}
+      />
 
       {category && (category.subTypes || category.items) && (
-        <Select value={subType ?? ""} onValueChange={(v) => onSubType(v)}>
-          <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder={category.subTypes ? "Sub-type…" : "Badge…"} />
-          </SelectTrigger>
-          <SelectContent>
-            {(category.subTypes ?? category.items ?? []).map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          aria-label={category.subTypes ? "Sub-type" : "Badge"}
+          value={subType ?? ""}
+          onValueChange={(v) => onSubType(v)}
+          placeholder={category.subTypes ? "Sub-type…" : "Badge…"}
+          className="h-8 text-sm"
+          options={(category.subTypes ?? category.items ?? []).map((v) => ({ value: v, label: v }))}
+        />
       )}
 
       {category?.levels && (!category.subTypes || subType) && (
-        <Select value={level ?? ""} onValueChange={(v) => onLevel(v)}>
-          <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Level…" />
-          </SelectTrigger>
-          <SelectContent>
-            {category.levels.map((l) => (
-              <SelectItem key={l} value={l}>
-                {l}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        // A handful of levels: one tap each, and the choice stays in view.
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          aria-label="Level"
+          className="flex-wrap"
+          value={level ?? ""}
+          onValueChange={(v) => v && onLevel(v)}
+        >
+          {category.levels.map((l) => (
+            <ToggleGroupItem key={l} value={l} className="px-3">
+              {l}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       )}
     </div>
   );
@@ -1462,11 +1465,11 @@ export default function BadgeOrdersPage() {
       )}
 
       {/* New Order Dialog */}
-      <Dialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>New Badge Order</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
+        <ResponsiveDialogContent className="sm:max-w-lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>New Badge Order</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Cadet</Label>
@@ -1548,7 +1551,7 @@ export default function BadgeOrdersPage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setNewOrderOpen(false)}>
               Cancel
             </Button>
@@ -1558,9 +1561,9 @@ export default function BadgeOrdersPage() {
             >
               {submitting ? "Creating..." : "Create Order"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Mark as Given Dialog */}
       <MarkGivenDialog

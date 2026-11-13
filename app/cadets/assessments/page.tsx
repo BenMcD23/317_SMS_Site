@@ -2,19 +2,17 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { OrderList } from "@/components/order-disclosure";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
-import { cadetInitials } from "@/lib/cadet-format";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
@@ -82,11 +80,13 @@ function typeLabel(t: string) {
   return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Assessment types are categories, so they take chart hues: red would read
+// as "failed" against the status colours.
 const TYPE_DOT_COLOURS: Record<string, string> = {
-  "Blue Leadership": "bg-blue-500",
-  first_aid: "bg-red-500",
-  radio: "bg-purple-500",
-  MOI: "bg-emerald-500",
+  "Blue Leadership": "bg-chart-1",
+  first_aid: "bg-chart-4",
+  radio: "bg-chart-5",
+  MOI: "bg-chart-3",
 };
 
 function typeDotColour(t: string) {
@@ -639,10 +639,10 @@ function AssessmentGroupRow({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-card rounded-lg border">
+    <div>
       {/* Header: stacks on mobile (type row, then passes + actions full-width),
           two columns on sm+ (type left, passes + actions stacked right). */}
-      <div className="hover:bg-muted/40 flex w-full flex-col gap-2 px-4 py-3 transition-colors sm:flex-row sm:items-start sm:gap-3">
+      <div className="hover:bg-muted/40 flex w-full flex-col gap-2 py-3 pr-4 pl-4 transition-colors sm:flex-row sm:items-start sm:gap-3 sm:pl-6">
         <div
           role="button"
           tabIndex={0}
@@ -735,7 +735,13 @@ function AssessmentGroupRow({
   );
 }
 
-function CadetAssessmentCard({
+/**
+ * One cadet's assessments as a block of the results list: their name (a link
+ * to their record) and what's ready, then a row per qualification. One frame
+ * for the whole list with hairlines between, not a card per cadet holding a
+ * card per qualification.
+ */
+function CadetAssessmentBlock({
   cadet,
   token,
   uploadStatuses,
@@ -750,70 +756,36 @@ function CadetAssessmentCard({
   onUploaded: () => void;
   onAssessmentDeleted: (id: number) => void;
 }) {
-  const router = useRouter();
-
-  const totalAssessments = cadet.groups.reduce((s, g) => s + g.assessments.length, 0);
   const readyCount = cadet.groups.filter((g) => g.can_upload && !g.uploaded).length;
+  const name = `${cadet.first_name} ${cadet.last_name}`;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Avatar className="size-9 shrink-0">
-              <AvatarFallback className="text-sm">
-                {cadetInitials(cadet.first_name, cadet.last_name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold">
-                  {cadet.first_name} {cadet.last_name}
-                </p>
-                {cadet.rank && (
-                  <Badge variant="secondary" className="hidden sm:inline-flex">
-                    {cadet.rank}
-                  </Badge>
-                )}
-                {readyCount > 0 && (
-                  <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning gap-1">
-                    <Upload className="size-2.5" />
-                    {readyCount} ready
-                  </Badge>
-                )}
-              </div>
-              <p className="text-muted-foreground text-xs">
-                {totalAssessments} assessment{totalAssessments !== 1 ? "s" : ""}
-              </p>
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground shrink-0 text-xs"
-            onClick={() => router.push(`/cadets/${cadet.cin}`)}
-          >
-            View profile
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-2 pt-0">
-        {cadet.groups.map((group) => (
-          <AssessmentGroupRow
-            key={group.assessment_type}
-            cin={cadet.cin}
-            group={group}
-            token={token}
-            uploadStatus={uploadStatuses[uploadKey(cadet.cin, group.assessment_type)]}
-            onUpload={() => onUpload(cadet, group)}
-            onUploaded={onUploaded}
-            onAssessmentDeleted={onAssessmentDeleted}
-          />
-        ))}
-      </CardContent>
-    </Card>
+    <section aria-label={name} className="divide-y">
+      <div className="bg-muted/30 flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2.5">
+        <Link href={`/cadets/${cadet.cin}`} className="font-semibold hover:underline">
+          {name}
+        </Link>
+        {cadet.rank && <span className="text-muted-foreground text-sm">{cadet.rank}</span>}
+        {readyCount > 0 && (
+          <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning ml-auto gap-1">
+            <Upload className="size-2.5" />
+            {readyCount} ready
+          </Badge>
+        )}
+      </div>
+      {cadet.groups.map((group) => (
+        <AssessmentGroupRow
+          key={group.assessment_type}
+          cin={cadet.cin}
+          group={group}
+          token={token}
+          uploadStatus={uploadStatuses[uploadKey(cadet.cin, group.assessment_type)]}
+          onUpload={() => onUpload(cadet, group)}
+          onUploaded={onUploaded}
+          onAssessmentDeleted={onAssessmentDeleted}
+        />
+      ))}
+    </section>
   );
 }
 
@@ -958,6 +930,7 @@ export default function AssessmentsOverviewPage() {
           <ToggleGroup
             type="single"
             variant="outline"
+            aria-label="Status"
             value={filter}
             onValueChange={(v) => v && setFilter(v as AssessmentFilter)}
           >
@@ -973,36 +946,26 @@ export default function AssessmentsOverviewPage() {
         </div>
 
         {availableTypes.length > 1 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTypeFilter(null)}
-              className={cn(
-                "cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                typeFilter === null
-                  ? "border-foreground/20 bg-foreground/10 text-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/70 border-transparent"
-              )}
-            >
+          // The same control as the status filter beside it: both narrow one list.
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            aria-label="Assessment type"
+            className="flex-wrap"
+            value={typeFilter ?? "all"}
+            onValueChange={(v) => v && setTypeFilter(v === "all" ? null : v)}
+          >
+            <ToggleGroupItem value="all" className="px-3">
               All types
-            </button>
+            </ToggleGroupItem>
             {availableTypes.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTypeFilter(typeFilter === t ? null : t)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                  typeFilter === t
-                    ? "border-foreground/20 bg-foreground/10 text-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/70 border-transparent"
-                )}
-              >
-                <span className={cn("size-2 rounded-full", typeDotColour(t))} />
+              <ToggleGroupItem key={t} value={t} className="gap-1.5 px-3">
+                <span className={cn("size-2 rounded-full", typeDotColour(t))} aria-hidden />
                 {typeLabel(t)}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
         )}
       </div>
 
@@ -1047,7 +1010,7 @@ export default function AssessmentsOverviewPage() {
       {loading && (
         <div className="flex flex-col gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
+            <Skeleton key={i} className="h-20" />
           ))}
         </div>
       )}
@@ -1070,18 +1033,21 @@ export default function AssessmentsOverviewPage() {
         />
       )}
 
-      {!loading &&
-        filtered.map((cadet) => (
-          <CadetAssessmentCard
-            key={cadet.cin}
-            cadet={cadet}
-            token={token}
-            uploadStatuses={uploadStatuses}
-            onUpload={uploadGroup}
-            onUploaded={() => fetchData()}
-            onAssessmentDeleted={handleAssessmentDeleted}
-          />
-        ))}
+      {!loading && filtered.length > 0 && (
+        <OrderList>
+          {filtered.map((cadet) => (
+            <CadetAssessmentBlock
+              key={cadet.cin}
+              cadet={cadet}
+              token={token}
+              uploadStatuses={uploadStatuses}
+              onUpload={uploadGroup}
+              onUploaded={() => fetchData()}
+              onAssessmentDeleted={handleAssessmentDeleted}
+            />
+          ))}
+        </OrderList>
+      )}
       {confirmDialog}
     </div>
   );

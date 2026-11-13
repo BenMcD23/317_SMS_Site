@@ -2,17 +2,10 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { MonthPicker } from "@/components/month-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { FieldGroup } from "@/components/ui/field";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/page-header";
@@ -22,21 +15,6 @@ import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
-
-const MONTHS = [
-  { label: "January", value: "1" },
-  { label: "February", value: "2" },
-  { label: "March", value: "3" },
-  { label: "April", value: "4" },
-  { label: "May", value: "5" },
-  { label: "June", value: "6" },
-  { label: "July", value: "7" },
-  { label: "August", value: "8" },
-  { label: "September", value: "9" },
-  { label: "October", value: "10" },
-  { label: "November", value: "11" },
-  { label: "December", value: "12" },
-];
 
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 3 }, (_, i) => currentYear - i);
@@ -91,43 +69,15 @@ export default function ProgrammeUpdaterPage() {
       <Card>
         <CardContent>
           <FieldGroup>
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="month">Month</FieldLabel>
-                <Select value={month} onValueChange={setMonth}>
-                  <SelectTrigger id="month">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {MONTHS.map((m) => (
-                        <SelectItem key={m.value} value={m.value}>
-                          {m.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="year">Year</FieldLabel>
-                <Select value={year} onValueChange={setYear}>
-                  <SelectTrigger id="year">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {YEARS.map((y) => (
-                        <SelectItem key={y} value={String(y)}>
-                          {y}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
+            <MonthPicker
+              value={{ month: Number(month), year: Number(year) }}
+              onChange={(m) => {
+                setMonth(String(m.month));
+                setYear(String(m.year));
+              }}
+              min={{ month: 1, year: Math.min(...YEARS) }}
+              max={{ month: 12, year: Math.max(...YEARS) }}
+            />
 
             {result && (
               <Alert>

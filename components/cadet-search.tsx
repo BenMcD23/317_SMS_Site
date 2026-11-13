@@ -73,7 +73,7 @@ export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }:
           >
             <span className="flex min-w-0 items-center gap-2">
               {selectedCin ? (
-                <Check className="h-4 w-4 shrink-0 text-green-600" />
+                <Check className="text-success h-4 w-4 shrink-0" />
               ) : (
                 <Search className="h-4 w-4 shrink-0" />
               )}

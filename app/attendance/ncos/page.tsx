@@ -6,7 +6,13 @@ import { ShieldUser } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -374,18 +380,18 @@ export default function NcoAttendancePage() {
       )}
 
       {/* Per-NCO register */}
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
+      <ResponsiveDialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <ResponsiveDialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>
               {selected ? [selected.rank, selected.name].filter(Boolean).join(" ") : ""}
-            </DialogTitle>
-            <DialogDescription>
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {from || to
                 ? `${from ? formatDate(from) : "the start"} to ${to ? formatDate(to) : "today"}`
                 : "Every night on record"}
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           {selectedNights.length === 0 ? (
             <p className="text-muted-foreground text-sm">Nothing on the register in this range.</p>
           ) : (
@@ -406,8 +412,8 @@ export default function NcoAttendancePage() {
               ))}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

@@ -168,10 +168,10 @@ export default function VpSyncPage() {
       />
 
       {outdated && (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+        <Alert className="border-warning/40 bg-warning/10">
           <Bookmark />
           <AlertTitle>Your 317 Sync bookmark is out of date</AlertTitle>
-          <AlertDescription className="text-amber-900/90 dark:text-amber-200/90">
+          <AlertDescription className="text-foreground/90">
             <p>
               Delete it and drag a fresh one from{" "}
               <Link href="/tools/scraper" className="underline">
@@ -219,9 +219,9 @@ function SyncResult({ counts, problems }: { counts: SyncCounts; problems: number
     <div className="flex w-full flex-col gap-4">
       <div className="flex items-start gap-3">
         {problems ? (
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-500" />
+          <AlertTriangle className="text-warning mt-0.5 size-5 shrink-0" />
         ) : (
-          <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-green-600" />
+          <CheckCircle2 className="text-success mt-0.5 size-5 shrink-0" />
         )}
         <div className="pt-0.5">
           <p className="font-medium">

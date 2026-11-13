@@ -35,6 +35,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@/components/responsive-dialog";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -411,7 +412,8 @@ function FilterRow({
           control={control}
           name={`filters.${index}.field`}
           render={({ field: f }) => (
-            <Select
+            <SearchableSelect
+              id={`${id}-field`}
               value={f.value}
               onValueChange={(v) => {
                 f.onChange(v);
@@ -419,18 +421,10 @@ function FilterRow({
                 setValue(`filters.${index}.op`, "eq");
                 setValue(`filters.${index}.value`, "");
               }}
-            >
-              <SelectTrigger id={`${id}-field`} className="w-full">
-                <SelectValue placeholder="Field" />
-              </SelectTrigger>
-              <SelectContent>
-                {dataset?.fields.map((d) => (
-                  <SelectItem key={d.key} value={d.key}>
-                    {d.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Field"
+              className="w-full"
+              options={(dataset?.fields ?? []).map((d) => ({ value: d.key, label: d.label }))}
+            />
           )}
         />
       </div>

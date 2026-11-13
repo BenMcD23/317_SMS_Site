@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
+import { CadetLink } from "@/components/cadet-link";
 import { SectionHeading } from "@/components/section-heading";
 import { ErrorAlert } from "@/components/error-alert";
 import { EmptyState } from "@/components/empty-state";
@@ -110,11 +111,14 @@ export default function CadetActivityLogPage() {
       <PageHeader
         title={log?.name ?? "DofE activity log"}
         description={
-          log
-            ? log.enabled
-              ? `${log.level} DofE activity log`
-              : "Not shown on their cadet portal"
-            : undefined
+          log ? (
+            <>
+              {log.enabled ? `${log.level} DofE activity log` : "Not shown on their cadet portal"} ·{" "}
+              <CadetLink cin={cin} className="text-primary font-medium">
+                Open record
+              </CadetLink>
+            </>
+          ) : undefined
         }
         actions={
           log?.enabled && (

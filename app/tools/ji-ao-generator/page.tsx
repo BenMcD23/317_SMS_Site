@@ -1,16 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -154,20 +147,14 @@ export default function JiGenerator() {
         <CardContent>
           <Field>
             <FieldLabel htmlFor="event">Event</FieldLabel>
-            <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-              <SelectTrigger id="event">
-                <SelectValue placeholder="Choose an event…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {events.map((event) => (
-                    <SelectItem key={event.id} value={event.id.toString()}>
-                      {event.title}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              id="event"
+              value={selectedEvent}
+              onValueChange={setSelectedEvent}
+              placeholder="Choose an event…"
+              searchPlaceholder="Find an event…"
+              options={events.map((event) => ({ value: event.id.toString(), label: event.title }))}
+            />
             <FieldDescription>
               Events come from the cadet event scraper — run it if something is missing.
             </FieldDescription>

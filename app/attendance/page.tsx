@@ -5,10 +5,17 @@ import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarCheck, ChevronRight, ShieldUser, Users, UserCog } from "lucide-react";
 
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -265,17 +272,27 @@ export default function AttendancePage() {
             </div>
             <div className="grid gap-1.5">
               <Label className="text-muted-foreground text-xs">Who</Label>
-              <Select value={group} onValueChange={(v) => setGroup(v as Group)}>
-                <SelectTrigger className="h-9 w-[10rem]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Cadets &amp; staff</SelectItem>
-                  <SelectItem value="cadets">Cadets only</SelectItem>
-                  <SelectItem value="ncos">NCOs only</SelectItem>
-                  <SelectItem value="staff">Staff only</SelectItem>
-                </SelectContent>
-              </Select>
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                aria-label="Who"
+                className="flex-wrap"
+                value={group}
+                onValueChange={(v) => v && setGroup(v as Group)}
+              >
+                <ToggleGroupItem value="all" className="px-3">
+                  Everyone
+                </ToggleGroupItem>
+                <ToggleGroupItem value="cadets" className="px-3">
+                  Cadets
+                </ToggleGroupItem>
+                <ToggleGroupItem value="ncos" className="px-3">
+                  NCOs
+                </ToggleGroupItem>
+                <ToggleGroupItem value="staff" className="px-3">
+                  Staff
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
             {registerTypes.length > 1 && (
               <div className="grid gap-1.5">
@@ -438,12 +455,12 @@ export default function AttendancePage() {
       )}
 
       {/* Per-night drill-in */}
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{selected ? formatDate(selected.date) : ""}</DialogTitle>
-            <DialogDescription>{selected?.registerType ?? "Register"}</DialogDescription>
-          </DialogHeader>
+      <ResponsiveDialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <ResponsiveDialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{selected ? formatDate(selected.date) : ""}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>{selected?.registerType ?? "Register"}</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           {detailQuery.error ? (
             <ErrorAlert message={detailQuery.error.message} title="Could not load this night" />
           ) : !detail ? (
@@ -463,8 +480,8 @@ export default function AttendancePage() {
               )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

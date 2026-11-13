@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { SectionHeading } from "@/components/section-heading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -228,7 +228,7 @@ function RegionButton({
               </span>
             )}
             {positives > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-green-600 px-1 text-[11px] font-bold text-white">
+              <span className="bg-success/15 text-success flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold">
                 {positives}
               </span>
             )}
@@ -253,7 +253,7 @@ function RegionButton({
                 {c.type === "fault" ? (
                   <ThumbsDown className="text-destructive mt-0.5 h-3 w-3 shrink-0" />
                 ) : (
-                  <ThumbsUp className="mt-0.5 h-3 w-3 shrink-0 text-green-600" />
+                  <ThumbsUp className="text-success mt-0.5 h-3 w-3 shrink-0" />
                 )}
                 <span className="flex-1">{c.text}</span>
                 <button
@@ -357,7 +357,7 @@ function CadetCard({
             {absent && <Badge variant="secondary">Absent</Badge>}
             {faults > 0 && <Badge variant="destructive">{faults} faults</Badge>}
             {positives > 0 && (
-              <Badge className="bg-green-600 text-white hover:bg-green-600">{positives} good</Badge>
+              <Badge className="bg-success/15 text-success hover:bg-success/15">{positives} good</Badge>
             )}
           </div>
         </CardTitle>
@@ -608,18 +608,21 @@ export default function InspectionPage() {
             <Label htmlFor="insp-uniform" className="text-sm">
               Uniform
             </Label>
-            <Select value={uniform} onValueChange={(v) => setSheet((s) => ({ ...s, uniform: v as Uniform }))}>
-              <SelectTrigger id="insp-uniform" className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {UNIFORMS.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ToggleGroup
+              id="insp-uniform"
+              aria-label="Uniform"
+              type="single"
+              variant="outline"
+              className="w-fit"
+              value={uniform}
+              onValueChange={(v) => v && setSheet((s) => ({ ...s, uniform: v as Uniform }))}
+            >
+              {UNIFORMS.map((u) => (
+                <ToggleGroupItem key={u.id} value={u.id} className="px-3">
+                  {u.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
             <Label htmlFor="insp-date" className="text-sm">
               Date
             </Label>
@@ -630,6 +633,7 @@ export default function InspectionPage() {
               onChange={(e) => setSheet((s) => ({ ...s, date: e.target.value }))}
               className="w-40"
             />
+            <DateShortcuts value={sheet.date} onChange={(d) => setSheet((s) => ({ ...s, date: d }))} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" disabled={Object.keys(sheet.marks).length === 0}>
@@ -798,7 +802,7 @@ export default function InspectionPage() {
                         onClick={() => setSelectedCin(c.cin)}
                         className="flex flex-1 items-center gap-2 text-left"
                       >
-                        <Check className="h-4 w-4 shrink-0 text-green-600" />
+                        <Check className="text-success h-4 w-4 shrink-0" />
                         <span className={cn("flex-1 truncate", absent && "line-through opacity-60")}>
                           {c.rank ? `${c.rank} ` : ""}
                           {c.first_name} {c.last_name}
@@ -816,7 +820,7 @@ export default function InspectionPage() {
                                 </Badge>
                               )}
                               {positives > 0 && (
-                                <Badge className="bg-green-600 text-[10px] text-white hover:bg-green-600">
+                                <Badge className="bg-success/15 text-success hover:bg-success/15 text-[10px]">
                                   {positives}
                                 </Badge>
                               )}

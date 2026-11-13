@@ -60,7 +60,7 @@ export default function LoginPage() {
               alt="317 Squadron crest"
               width={72}
               height={72}
-              className="rounded-xl object-cover shadow-sm lg:hidden"
+              className="rounded-xl object-cover lg:hidden"
               priority
             />
             <div className="flex flex-col gap-1.5">

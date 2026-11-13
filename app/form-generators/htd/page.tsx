@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -346,18 +347,20 @@ export default function HTDPage() {
             <CardContent className="space-y-4">
               <div className="max-w-xs space-y-1.5">
                 <Label>Claim half</Label>
-                <Select value={halfId} onValueChange={onSelectHalf}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select half-year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {halves.map((h) => (
-                      <SelectItem key={h.id} value={h.id}>
-                        {h.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <ToggleGroup
+                  aria-label="Claim half"
+                  type="single"
+                  variant="outline"
+                  className="w-fit flex-wrap"
+                  value={halfId}
+                  onValueChange={(v) => v && onSelectHalf(v)}
+                >
+                  {halves.map((h) => (
+                    <ToggleGroupItem key={h.id} value={h.id} className="px-3">
+                      {h.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 {months.map((m) => {

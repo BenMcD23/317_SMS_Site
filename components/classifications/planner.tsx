@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCopy, GraduationCap, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { ErrorAlert } from "@/components/error-alert";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { FlightFilter, type FlightChoice } from "@/components/flight-filter";
 import { Stat, StatGroup } from "@/components/stat";
+import { SearchableSelect, type SearchableOption } from "@/components/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,16 +18,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { flightBadgeClass, flightsIn } from "@/lib/cadet-format";
 import {
@@ -112,40 +104,24 @@ function MoveSelect({
   // Keep whatever they're on listed, even if it isn't one of the usual choices.
   const fixed = ["not_offered", "first_class", "complete"].includes(slot.kind);
 
+  // Searchable: twenty-odd lessons and exams are too many to scroll on a phone.
+  const options: SearchableOption[] = [
+    ...(fixed ? [{ value: current, label: "Leave as is" }] : []),
+    ...cadet.ready_exams.map((key) => ({ value: `exam:${key}`, label: `${name(key)} exam`, group: "Exams" })),
+    ...subjects.map((s) => ({ value: `lesson:${s.key}`, label: s.name, group: "Lessons" })),
+    { value: "float", label: "Float", group: "Other" },
+    { value: "none", label: "Not on tonight's list", group: "Other" },
+  ];
+
   return (
-    <Select value={current} onValueChange={(v) => onMove(parseSlotId(v))}>
-      <SelectTrigger
-        size="sm"
-        className="h-8 w-full sm:w-56"
-        aria-label={`Move ${cadet.first_name} ${cadet.last_name}`}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {fixed && <SelectItem value={current}>Leave as is</SelectItem>}
-        {cadet.ready_exams.length > 0 && (
-          <SelectGroup>
-            <SelectLabel>Exams</SelectLabel>
-            {cadet.ready_exams.map((key) => (
-              <SelectItem key={key} value={`exam:${key}`}>
-                {name(key)} exam
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        )}
-        <SelectGroup>
-          <SelectLabel>Lessons</SelectLabel>
-          {subjects.map((s) => (
-            <SelectItem key={s.key} value={`lesson:${s.key}`}>
-              {s.name}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-        <SelectSeparator />
-        <SelectItem value="float">Float</SelectItem>
-        <SelectItem value="none">Not on tonight&apos;s list</SelectItem>
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      value={current}
+      onValueChange={(v) => onMove(parseSlotId(v))}
+      options={options}
+      searchPlaceholder="Find a lesson…"
+      className="h-8 w-full sm:w-56"
+      aria-label={`Move ${cadet.first_name} ${cadet.last_name}`}
+    />
   );
 }
 
@@ -207,7 +183,7 @@ function CadetRow({
           </p>
         )}
         {cadet.awaiting && (
-          <p className="text-xs text-blue-700 dark:text-blue-400">
+          <p className="text-primary text-xs">
             All exams for {cadet.awaiting} passed — classification not on record yet
           </p>
         )}
@@ -321,6 +297,7 @@ export function ClassificationPlanner() {
             className="h-9 w-[9.5rem]"
           />
         </div>
+        <DateShortcuts value={date} onChange={setDate} className="self-end" />
         <div className="grid gap-1.5">
           <Label htmlFor="cd-lessons" className="text-muted-foreground text-xs">
             Lessons running

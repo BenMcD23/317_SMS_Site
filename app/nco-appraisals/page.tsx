@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, BellPlus, CalendarClock, ClipboardList, Plus, Trash2 } from "lucide-react";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -18,14 +19,13 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -35,9 +35,11 @@ import {
   saveReminder,
   todayInput,
   type AppraisalOverview,
+  type AppraisalSummary,
   type UpcomingReview,
 } from "@/lib/nco-appraisals";
 import { EmptyState } from "@/components/empty-state";
+import { DataTable, dataTableColumns } from "@/components/data-table";
 
 /** How the countdown to a review is worded. "Due in 9 days" is more use at a
  *  glance than the date alone, and overdue has to be unmissable. */
@@ -50,6 +52,78 @@ function dueLabel(row: UpcomingReview): string {
   if (row.days_until <= 31) return `In ${row.days_until} day${row.days_until === 1 ? "" : "s"}`;
   return `In ${Math.round(row.days_until / 30)} months`;
 }
+
+const appraisalCol = dataTableColumns<AppraisalSummary>();
+
+const appraisalColumns = appraisalCol.columns([
+  appraisalCol.accessor("nco_name", {
+    header: "NCO",
+    sortFn: "text",
+    cell: ({ row }) => (
+      <Link href={`/nco-appraisals/${row.original.id}`} className="font-medium hover:underline">
+        {row.original.nco_name}
+      </Link>
+    ),
+  }),
+  appraisalCol.accessor((a) => a.appraisal_date ?? "", {
+    id: "appraisal_date",
+    header: "Date",
+    sortFn: "text",
+    cell: ({ row }) => formatDate(row.original.appraisal_date),
+  }),
+  appraisalCol.accessor((a) => a.next_review_date ?? "", {
+    id: "next_review_date",
+    header: "Next review",
+    sortFn: "text",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {formatDate(row.original.next_review_date)}
+        <span className="ml-1 text-xs">({row.original.next_review_months}m)</span>
+      </span>
+    ),
+  }),
+  // Flagged appraisals sort to the top: cause for concern above an extension.
+  appraisalCol.accessor((a) => (a.cause_for_concern ? 2 : 0) + (a.extend_probation ? 1 : 0), {
+    id: "flags",
+    header: "Flags",
+    sortFn: "basic",
+    cell: ({ row }) => {
+      const a = row.original;
+      return (
+        <div className="flex flex-wrap gap-1">
+          {a.cause_for_concern && (
+            <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-destructive">
+              Cause for concern
+            </Badge>
+          )}
+          {a.extend_probation && (
+            <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning">
+              Probation extended
+            </Badge>
+          )}
+          {!a.cause_for_concern && !a.extend_probation && (
+            <span className="text-muted-foreground text-sm">—</span>
+          )}
+        </div>
+      );
+    },
+  }),
+  appraisalCol.accessor("author_name", {
+    header: "Written by",
+    sortFn: "text",
+    cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span>,
+  }),
+  appraisalCol.accessor((a) => a.emailed_at ?? "", {
+    id: "emailed_at",
+    header: "Sent",
+    sortFn: "text",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {row.original.emailed_at ? formatDate(row.original.emailed_at) : "Not sent"}
+      </span>
+    ),
+  }),
+]);
 
 export default function NcoAppraisalsPage() {
   const { data: session } = useSession();
@@ -265,106 +339,57 @@ export default function NcoAppraisalsPage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ClipboardList className="size-4" />
-                All appraisals
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {appraisals.length === 0 ? (
-                <EmptyState
-                  icon={ClipboardList}
-                  title="No appraisals yet"
-                  description="Write the first one and it'll be kept here, ready to download or email to the NCO."
-                />
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>NCO</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Next review</TableHead>
-                      <TableHead>Flags</TableHead>
-                      <TableHead>Written by</TableHead>
-                      <TableHead>Sent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {appraisals.map((appraisal) => (
-                      <TableRow key={appraisal.id}>
-                        <TableCell className="font-medium">
-                          <Link href={`/nco-appraisals/${appraisal.id}`} className="hover:underline">
-                            {appraisal.nco_name}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{formatDate(appraisal.appraisal_date)}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(appraisal.next_review_date)}
-                          <span className="ml-1 text-xs">({appraisal.next_review_months}m)</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {appraisal.cause_for_concern && (
-                              <Badge
-                                variant="outline"
-                                className="border-destructive/40 bg-destructive/10 text-destructive"
-                              >
-                                Cause for concern
-                              </Badge>
-                            )}
-                            {appraisal.extend_probation && (
-                              <Badge
-                                variant="outline"
-                                className="border-warning/40 bg-warning/15 text-warning"
-                              >
-                                Probation extended
-                              </Badge>
-                            )}
-                            {!appraisal.cause_for_concern && !appraisal.extend_probation && (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{appraisal.author_name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {appraisal.emailed_at ? formatDate(appraisal.emailed_at) : "Not sent"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+          {/* A framed table on its own, not a card around a table: one frame, not two. */}
+          <section className="flex flex-col gap-2" aria-labelledby="all-appraisals">
+            <h2 id="all-appraisals" className="flex items-center gap-2 text-base font-semibold">
+              <ClipboardList className="size-4" />
+              All appraisals
+            </h2>
+            {appraisals.length === 0 ? (
+              <EmptyState
+                icon={ClipboardList}
+                title="No appraisals yet"
+                description="Write the first one and it'll be kept here, ready to download or email to the NCO."
+              />
+            ) : (
+              <DataTable
+                label="All appraisals"
+                data={appraisals}
+                columns={appraisalColumns}
+                rowKey={(a) => a.id}
+                rowHref={(a) => `/nco-appraisals/${a.id}`}
+                initialSort={{ id: "appraisal_date", desc: true }}
+                columnClassName={{
+                  next_review_date: "hidden sm:table-cell",
+                  author_name: "hidden md:table-cell",
+                  emailed_at: "hidden md:table-cell",
+                }}
+              />
+            )}
+          </section>
         </>
       )}
 
-      <Dialog open={reminderOpen} onOpenChange={setReminderOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add an appraisal reminder</DialogTitle>
-            <DialogDescription>
+      <ResponsiveDialog open={reminderOpen} onOpenChange={setReminderOpen}>
+        <ResponsiveDialogContent>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Add an appraisal reminder</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               For an NCO who hasn&apos;t been appraised yet. They&apos;ll show on the upcoming list from this
               date until an appraisal is written.
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="reminder-nco">NCO</Label>
-              <Select value={reminderCin} onValueChange={setReminderCin}>
-                <SelectTrigger id="reminder-nco" className="w-full">
-                  <SelectValue placeholder="Choose an NCO…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {remindable.map((nco) => (
-                    <SelectItem key={nco.cin} value={String(nco.cin)}>
-                      {nco.nco_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="reminder-nco"
+                value={reminderCin}
+                onValueChange={setReminderCin}
+                placeholder="Choose an NCO…"
+                searchPlaceholder="Find an NCO…"
+                options={remindable.map((nco) => ({ value: String(nco.cin), label: nco.nco_name }))}
+              />
               {remindable.length === 0 && (
                 <p className="text-muted-foreground text-xs">
                   Every NCO has an appraisal already, so their next review date is set from it.
@@ -391,16 +416,16 @@ export default function NcoAppraisalsPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setReminderOpen(false)}>
               Cancel
             </Button>
             <Button onClick={submitReminder} disabled={saving || !reminderCin || !reminderDate}>
               {saving ? "Saving…" : "Add reminder"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {confirmDialog}
     </div>

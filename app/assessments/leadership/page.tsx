@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { StickyActions } from "@/components/sticky-actions";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
 import { API_BASE } from "@/lib/config";
@@ -73,7 +74,7 @@ function ScoreSelector({
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="bg-card rounded-lg border p-4 transition-shadow hover:shadow-sm">
+    <div className="p-4" role="group" aria-label={`Question ${question.id}`}>
       <div className="mb-3 flex items-start gap-3">
         <span className="bg-primary/10 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold">
           {question.id}
@@ -88,15 +89,17 @@ function ScoreSelector({
             <button
               key={score}
               type="button"
+              aria-pressed={isSelected}
+              aria-label={label ? `${score}, ${label}` : String(score)}
               onClick={() => onChange(score)}
               className={cn(
-                "group relative flex flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-md border py-2.5 text-xs font-semibold transition-all",
+                "group relative flex min-h-12 flex-1 cursor-pointer flex-col items-center gap-0.5 rounded-md border py-3 text-sm font-semibold transition-colors sm:min-h-0 sm:py-2.5 sm:text-xs",
                 isSelected
                   ? score === 1
-                    ? "border-destructive bg-destructive text-white shadow-sm"
+                    ? "border-destructive bg-destructive text-white"
                     : score === 5
-                      ? "border-success bg-success text-white shadow-sm"
-                      : "border-primary bg-primary text-primary-foreground shadow-sm"
+                      ? "border-success bg-success text-white"
+                      : "border-primary bg-primary text-primary-foreground"
                   : "border-muted text-muted-foreground hover:border-primary/40 hover:bg-muted"
               )}
             >
@@ -459,8 +462,8 @@ export default function LeadershipAssessmentPage() {
             )}
           </div>
 
-          {/* Questions */}
-          <div className="space-y-3">
+          {/* Questions: one frame with hairlines between, not a box each. */}
+          <div className="bg-card divide-y rounded-lg border">
             {QUESTIONS.map((q) => (
               <ScoreSelector
                 key={q.id}
@@ -552,7 +555,7 @@ export default function LeadershipAssessmentPage() {
             </p>
           )}
 
-          <div className="flex gap-3">
+          <StickyActions>
             <Button onClick={handleSubmit} disabled={loading} className="flex-1 sm:min-w-48 sm:flex-none">
               {loading ? (
                 <>
@@ -569,7 +572,7 @@ export default function LeadershipAssessmentPage() {
             <Button variant="outline" onClick={handleReset}>
               Reset Form
             </Button>
-          </div>
+          </StickyActions>
         </>
       )}
     </div>

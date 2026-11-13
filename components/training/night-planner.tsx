@@ -18,6 +18,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { OrderDisclosure, OrderList } from "@/components/order-disclosure";
 import { QrImage } from "@/components/qr-code";
 import {
   ResponsiveDialog,
@@ -110,13 +111,22 @@ function countsText(s: NightSession): string {
   return parts.join(" · ");
 }
 
-/** One session on the night: its inputs in a line, then who's in which group. */
-function SessionBlock({
+/**
+ * One session on the night as a row of the session list: what it is, when and
+ * for whom, and its head count, always on show; who's in which group opens
+ * beneath it. Collapsed, a night of four sessions fits a phone screen, where
+ * every group of every session open at once ran to several screens.
+ */
+function SessionRow({
   session,
+  open,
+  onToggle,
   onEdit,
   onQr,
 }: {
   session: NightSession;
+  open: boolean;
+  onToggle: () => void;
   onEdit: () => void;
   onQr: () => void;
 }) {
@@ -125,73 +135,87 @@ function SessionBlock({
   const how = [GROUPING_LABELS[s.grouping]];
   if (s.include === "need") how.unshift("Only who needs it");
   if (s.max_group) how.push(`up to ${s.max_group} a group`);
-  const headingId = `session-${s.id}-title`;
 
   return (
-    <article className="bg-card rounded-lg border" aria-labelledby={headingId}>
-      <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
-        <div className="flex min-w-48 flex-1 flex-col gap-0.5">
-          <p className="text-muted-foreground text-xs">
+    <OrderDisclosure
+      open={open}
+      onToggle={onToggle}
+      label={s.title}
+      title={
+        <>
+          <span className="min-w-0">{s.title}</span>
+          {s.warnings.length > 0 && (
+            <TriangleAlert className="text-warning size-4 shrink-0" aria-label="Has a warning" />
+          )}
+        </>
+      }
+      meta={
+        <>
+          <span className="block">
             {[periodLabel(s.period), flightsText(s.flights), s.instructor].filter(Boolean).join(" · ")}
-          </p>
-          <h3 id={headingId} className="font-semibold">
-            {s.title}
-          </h3>
-          {lesson && <p className="text-sm">{lesson}</p>}
-          <p className="text-muted-foreground text-xs">{how.join(" · ")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+          </span>
+          {lesson && <span className="text-foreground mt-0.5 block text-sm">{lesson}</span>}
+        </>
+      }
+      aside={
+        <>
+          <Badge variant="outline" className="tabular-nums">
+            {s.counts.cadets} cadet{s.counts.cadets === 1 ? "" : "s"}
+          </Badge>
           {s.lesson?.code && (
-            <Button variant="outline" size="sm" className="h-9" onClick={onQr}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              onClick={onQr}
+              aria-label={`QR code for ${s.title}`}
+            >
               <QrCode />
-              QR code
             </Button>
           )}
           <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
+            variant="ghost"
+            size="icon"
+            className="size-9"
             onClick={onEdit}
             aria-label={`Change ${s.title}`}
           >
             <Pencil />
-            Change
           </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 border-t px-4 py-3 sm:px-5">
-        <p className="text-muted-foreground text-sm">
-          {countsText(s)}
-          {s.planning_with === "expected" &&
-            s.counts.cadets > 0 &&
-            " · nobody's checked in yet, so this is who's expected"}
+        </>
+      }
+    >
+      <p className="text-muted-foreground text-xs">{how.join(" · ")}</p>
+      <p className="text-muted-foreground text-sm">
+        {countsText(s)}
+        {s.planning_with === "expected" &&
+          s.counts.cadets > 0 &&
+          " · nobody's checked in yet, so this is who's expected"}
+      </p>
+      {s.notes && <p className="text-sm whitespace-pre-line">{s.notes}</p>}
+      {s.warnings.map((w) => (
+        <p key={w} className="text-warning flex items-start gap-1.5 text-sm">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {w}
         </p>
-        {s.notes && <p className="text-sm whitespace-pre-line">{s.notes}</p>}
-        {s.warnings.map((w) => (
-          <p key={w} className="text-warning flex items-start gap-1.5 text-sm">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-            {w}
-          </p>
-        ))}
-        {s.groups.length > 0 && (
-          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-            {s.groups.map((g) => (
-              <section key={g.label} aria-label={`${s.title}: ${g.label}`}>
-                <h4 className="text-sm font-medium">
-                  {g.label} <span className="text-muted-foreground font-normal">{g.cadets.length}</span>
-                </h4>
-                <ul className="divide-y">
-                  {g.cadets.map((c) => (
-                    <CadetRow key={c.cin} cadet={c} showStatus={s.grouping !== "need"} />
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
-      </div>
-    </article>
+      ))}
+      {s.groups.length > 0 && (
+        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          {s.groups.map((g) => (
+            <section key={g.label} aria-label={`${s.title}: ${g.label}`}>
+              <h4 className="text-sm font-medium">
+                {g.label} <span className="text-muted-foreground font-normal">{g.cadets.length}</span>
+              </h4>
+              <ul className="divide-y">
+                {g.cadets.map((c) => (
+                  <CadetRow key={c.cin} cadet={c} showStatus={s.grouping !== "need"} />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+    </OrderDisclosure>
   );
 }
 
@@ -270,6 +294,9 @@ export function NightPlanner() {
   const [opened, setOpened] = useState(0);
   const [qrFor, setQrFor] = useState<NightSession | null>(null);
   const [starting, setStarting] = useState(false);
+  // Which sessions are open. A night with one session opens it; otherwise
+  // they start closed so the whole night fits on a screen.
+  const [toggled, setToggled] = useState<Record<number, boolean>>({});
 
   const nightQuery = useApiQuery<TrainingNight>(TRAINING_KEYS.night(date), `/training/nights/${date}`, {
     enabled: !!date,
@@ -328,6 +355,9 @@ export function NightPlanner() {
   const lessonSessions = sessions.filter((s) => s.lesson);
   const needs = lessonSessions.reduce((n, s) => n + s.counts.needs + s.counts.behind, 0);
   const scanned = lessonSessions.reduce((n, s) => n + s.counts.scanned, 0);
+  const isOpen = (s: NightSession) => toggled[s.id] ?? sessions.length === 1;
+  const allOpen = sessions.length > 0 && sessions.every(isOpen);
+  const setAll = (open: boolean) => setToggled(Object.fromEntries(sessions.map((s) => [s.id, open])));
 
   return (
     <div className="flex flex-col gap-6">
@@ -406,11 +436,28 @@ export function NightPlanner() {
             <section className="flex flex-col gap-3" aria-labelledby="sessions-heading">
               <SectionHeading
                 title={<span id="sessions-heading">Sessions</span>}
-                description="Groups follow who's checked in and who's scanned in. They refresh every minute."
+                description="Open a session to see its groups. They follow who's checked in and scanned in, and refresh every minute."
+                actions={
+                  sessions.length > 1 ? (
+                    <Button variant="ghost" size="sm" className="h-9" onClick={() => setAll(!allOpen)}>
+                      {allOpen ? "Close all" : "Open all"}
+                    </Button>
+                  ) : undefined
+                }
               />
-              {sessions.map((s) => (
-                <SessionBlock key={s.id} session={s} onEdit={() => openDialog(s)} onQr={() => setQrFor(s)} />
-              ))}
+              <OrderList>
+                {sessions.map((s) => (
+                  <article key={s.id} aria-label={s.title}>
+                    <SessionRow
+                      session={s}
+                      open={isOpen(s)}
+                      onToggle={() => setToggled((t) => ({ ...t, [s.id]: !isOpen(s) }))}
+                      onEdit={() => openDialog(s)}
+                      onQr={() => setQrFor(s)}
+                    />
+                  </article>
+                ))}
+              </OrderList>
             </section>
           )}
         </>

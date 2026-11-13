@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { NotesPicker } from "@/components/nco-appraisals/notes-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate } from "@/lib/format";
 import {
@@ -110,22 +110,18 @@ export function AppraisalForm({
             {lockedNco ? (
               <Input id="appraisal-nco" value={draft.nco_name} disabled />
             ) : (
-              <Select
+              <SearchableSelect
+                id="appraisal-nco"
                 value={draft.cadet_id ? String(draft.cadet_id) : ""}
                 onValueChange={(value) => chooseNco(Number(value))}
-              >
-                <SelectTrigger id="appraisal-nco" className="w-full">
-                  <SelectValue placeholder="Choose an NCO…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ncos.map((nco) => (
-                    <SelectItem key={nco.cin} value={String(nco.cin)}>
-                      {nco.nco_name}
-                      {nco.appraisal_count === 0 ? " — never appraised" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Choose an NCO…"
+                searchPlaceholder="Find an NCO…"
+                options={ncos.map((nco) => ({
+                  value: String(nco.cin),
+                  label: nco.nco_name,
+                  hint: nco.appraisal_count === 0 ? "never appraised" : undefined,
+                }))}
+              />
             )}
             {selected && selected.last_appraisal_date && (
               <p className="text-muted-foreground text-xs">
@@ -264,21 +260,21 @@ export function AppraisalForm({
         <CardContent className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="appraisal-interval">Next NCO review</Label>
-            <Select
+            <ToggleGroup
+              id="appraisal-interval"
+              aria-label="Next NCO review"
+              type="single"
+              variant="outline"
+              className="w-fit"
               value={String(draft.next_review_months)}
-              onValueChange={(value) => set("next_review_months", Number(value) as ReviewInterval)}
+              onValueChange={(value) => value && set("next_review_months", Number(value) as ReviewInterval)}
             >
-              <SelectTrigger id="appraisal-interval" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {REVIEW_INTERVALS.map((months) => (
-                  <SelectItem key={months} value={String(months)}>
-                    {months} months
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {REVIEW_INTERVALS.map((months) => (
+                <ToggleGroupItem key={months} value={String(months)} className="px-3">
+                  {months} months
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
             {reviewDate && (
               <p className="text-muted-foreground text-xs">Due {formatDate(reviewDate.toISOString())}</p>
             )}

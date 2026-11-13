@@ -181,7 +181,7 @@ function SourceItem({
             quotes.map((q, i) => (
               <blockquote
                 key={i}
-                className="rounded-r-md border-l-2 border-amber-500/60 bg-amber-500/10 px-3 py-2 text-sm leading-relaxed"
+                className="border-primary/50 bg-primary/5 rounded-r-md border-l-2 px-3 py-2 text-sm leading-relaxed"
               >
                 “{oneLine(q.text)}”
                 {q.location && q.location !== s.location && (
@@ -208,7 +208,7 @@ function SourceItem({
                 >
                   {highlightRuns(s.text, quotes).map((r, i) =>
                     r.mark ? (
-                      <mark key={i} className="text-foreground rounded-sm bg-amber-500/30">
+                      <mark key={i} className="text-foreground bg-primary/20 rounded-sm">
                         {r.text}
                       </mark>
                     ) : (

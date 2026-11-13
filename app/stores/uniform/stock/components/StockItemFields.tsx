@@ -2,9 +2,9 @@
 
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { Input } from "@/components/ui/input";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SizeCombobox } from "@/components/size-combobox";
 import { useReference } from "@/lib/reference";
 import type { StockForm, StockFormContext } from "@/lib/stock-form";
@@ -54,24 +54,17 @@ export function StockItemFields({
           control={control}
           name="itemType"
           render={({ field }) => (
-            <Select
+            <SearchableSelect
+              id={id("type")}
               value={field.value}
               onValueChange={(v) => {
                 field.onChange(v);
                 onItemTypeChange?.();
               }}
-            >
-              <SelectTrigger id={id("type")} className="w-full">
-                <SelectValue placeholder="Select item type…" />
-              </SelectTrigger>
-              <SelectContent>
-                {stockItemTypes.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Select item type…"
+              className="w-full"
+              options={stockItemTypes.map((t) => ({ value: t, label: t }))}
+            />
           )}
         />
       </Field>
@@ -122,25 +115,18 @@ export function StockItemFields({
             control={control}
             name="box"
             render={({ field }) => (
-              <Select
+              <SearchableSelect
+                id={id("box")}
                 value={field.value}
                 onValueChange={(v) => {
                   field.onChange(v);
                   setValue("section", "", { shouldValidate: true });
                   onLocationPicked?.();
                 }}
-              >
-                <SelectTrigger id={id("box")} className="w-full">
-                  <SelectValue placeholder="Box…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {shelfStructure.boxes.map((b) => (
-                    <SelectItem key={b.label} value={b.label}>
-                      {b.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Box…"
+                className="w-full"
+                options={shelfStructure.boxes.map((b) => ({ value: b.label, label: b.label }))}
+              />
             )}
           />
         </Field>
@@ -150,25 +136,17 @@ export function StockItemFields({
             control={control}
             name="section"
             render={({ field }) => (
-              <Select
+              <SearchableSelect
+                id={id("section")}
                 value={field.value}
                 onValueChange={(v) => {
                   field.onChange(v);
                   onLocationPicked?.();
                 }}
                 disabled={!box || sections.length === 0}
-              >
-                <SelectTrigger id={id("section")} className="w-full">
-                  <SelectValue placeholder={box && sections.length === 0 ? "No sections" : "Section…"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {sections.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                className="w-full"
+                options={sections.map((s) => ({ value: s, label: s }))}
+              />
             )}
           />
         </Field>

@@ -2,19 +2,12 @@
 
 import { Fragment, useEffect, useMemo, useState, type SetStateAction } from "react";
 import { useSession } from "next-auth/react";
+import { MonthPicker } from "@/components/month-picker";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,14 +25,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -457,19 +450,19 @@ function MessageCard({
             </div>
 
             <div className="flex flex-wrap gap-2 sm:ml-auto sm:items-center">
-              <Dialog open={testOpen} onOpenChange={setTestOpen}>
-                <DialogTrigger asChild>
+              <ResponsiveDialog open={testOpen} onOpenChange={setTestOpen}>
+                <ResponsiveDialogTrigger asChild>
                   <Button size="sm" variant="outline" disabled={busy !== null}>
                     Test send
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle>Send a test text</DialogTitle>
-                    <DialogDescription>
+                </ResponsiveDialogTrigger>
+                <ResponsiveDialogContent className="sm:max-w-sm">
+                  <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>Send a test text</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>
                       Sends this message to a single number only (named &quot;Test Recipient&quot;).
-                    </DialogDescription>
-                  </DialogHeader>
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
                   <Field>
                     <FieldLabel htmlFor={`test-phone-${message.id}`}>Phone number</FieldLabel>
                     <Input
@@ -479,7 +472,7 @@ function MessageCard({
                       onChange={(e) => setTestPhone(e.target.value)}
                     />
                   </Field>
-                  <DialogFooter>
+                  <ResponsiveDialogFooter>
                     <Button
                       disabled={!testPhone.trim() || busy !== null}
                       onClick={() =>
@@ -492,9 +485,9 @@ function MessageCard({
                     >
                       {busy === "test" ? <Spinner /> : <Send />} Send test
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </ResponsiveDialogFooter>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -773,40 +766,15 @@ export default function TextMessagesPage() {
       />
 
       <div className="flex flex-wrap items-end gap-3">
-        <Field className="w-36">
-          <FieldLabel htmlFor="month">Month</FieldLabel>
-          <Select value={month} onValueChange={setMonth}>
-            <SelectTrigger id="month">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {MONTHS.map((m, i) => (
-                  <SelectItem key={m} value={String(i + 1)}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="w-28">
-          <FieldLabel htmlFor="year">Year</FieldLabel>
-          <Select value={year} onValueChange={setYear}>
-            <SelectTrigger id="year">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {YEARS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
+        <MonthPicker
+          value={{ month: Number(month), year: Number(year) }}
+          onChange={(m) => {
+            setMonth(String(m.month));
+            setYear(String(m.year));
+          }}
+          min={{ month: 1, year: Math.min(...YEARS) }}
+          max={{ month: 12, year: Math.max(...YEARS) }}
+        />
 
         <AlertDialog>
           <AlertDialogTrigger asChild>

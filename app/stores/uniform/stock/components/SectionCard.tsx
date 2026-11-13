@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { BoxSection, StockItem } from "@/lib/stores-types";
 import { useState } from "react";
 
@@ -64,11 +70,7 @@ export function SectionCard({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="bg-card flex h-full w-full flex-col rounded-lg border shadow-sm"
-    >
+    <div ref={setNodeRef} style={style} className="bg-card flex h-full w-full flex-col rounded-lg border">
       {/* Section header */}
       <div className="flex items-center justify-between gap-1 border-b px-3 py-2">
         {editMode ? (
@@ -150,16 +152,16 @@ export function SectionCard({
       </div>
 
       {/* Rename section dialog */}
-      <Dialog
+      <ResponsiveDialog
         open={renameOpen}
         onOpenChange={(o) => {
           if (!o) setRenameOpen(false);
         }}
       >
-        <DialogContent className="sm:max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Rename Section</DialogTitle>
-          </DialogHeader>
+        <ResponsiveDialogContent className="sm:max-w-xs">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Rename Section</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-1.5">
             <Label htmlFor={`rename-section-${section.label}`}>Name</Label>
             <Input
@@ -172,7 +174,7 @@ export function SectionCard({
               autoFocus
             />
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setRenameOpen(false)}>
               Cancel
             </Button>
@@ -182,27 +184,27 @@ export function SectionCard({
             >
               Save
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Delete section confirm dialog */}
-      <Dialog
+      <ResponsiveDialog
         open={deleteConfirm}
         onOpenChange={(o) => {
           if (!o) setDeleteConfirm(false);
         }}
       >
-        <DialogContent className="sm:max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Delete Section {section.label}?</DialogTitle>
-          </DialogHeader>
+        <ResponsiveDialogContent className="sm:max-w-xs">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Delete Section {section.label}?</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <p className="text-muted-foreground text-sm">
             Are you sure you want to delete section {section.label}?
             {items.length > 0 && ` ${items.length} item${items.length !== 1 ? "s" : ""} will be removed.`}{" "}
             This cannot be undone.
           </p>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(false)}>
               Cancel
             </Button>
@@ -215,9 +217,9 @@ export function SectionCard({
             >
               Delete Section
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Item list */}
       <div className="flex-1 space-y-1.5 overflow-y-auto p-2" style={{ maxHeight: "280px" }}>

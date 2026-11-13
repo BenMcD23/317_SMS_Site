@@ -7,21 +7,22 @@ import { CircleCheck, Plus, Trash2, TrendingUp, TriangleAlert } from "lucide-rea
 import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
-import { useConfirm } from "@/components/confirm-dialog";
+import { FlightFilter } from "@/components/flight-filter";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
 import { formatDate, formatShortDate, todayLocal } from "@/lib/format";
@@ -29,7 +30,6 @@ import {
   BADGE_LABELS,
   cohortOf,
   describeTarget,
-  flightLabel,
   type SquadronStats,
   type StatsPoint,
   type StatsTarget,
@@ -37,6 +37,7 @@ import {
   targetPct,
   targetSeries,
 } from "@/lib/stats";
+import { deleteWithUndo } from "@/lib/undo-delete";
 import { cn } from "@/lib/utils";
 
 /**
@@ -216,12 +217,14 @@ function AddTargetDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add a target</DialogTitle>
-          <DialogDescription>The share of cadets who should hold a badge by a date.</DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Add a target</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            The share of cadets who should hold a badge by a date.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         <form
           className="flex flex-col gap-4"
           onSubmit={(e) => {
@@ -232,56 +235,46 @@ function AddTargetDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="target-badge">Badge</Label>
-              <Select
+              <SearchableSelect
+                id="target-badge"
                 value={badge}
                 onValueChange={(v) => {
                   setBadge(v);
                   setMinLevel(ANY);
                 }}
-              >
-                <SelectTrigger id="target-badge" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(BADGE_LABELS).map(([key, name]) => (
-                    <SelectItem key={key} value={key}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                searchPlaceholder="Find a badge…"
+                options={Object.entries(BADGE_LABELS).map(([key, name]) => ({ value: key, label: name }))}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="target-level">At least</Label>
-              <Select value={minLevel} onValueChange={setMinLevel}>
-                <SelectTrigger id="target-level" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ANY}>Any level</SelectItem>
-                  {levels.map((l) => (
-                    <SelectItem key={l} value={l}>
-                      {l} or better
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ToggleGroup
+                id="target-level"
+                aria-label="At least"
+                type="single"
+                variant="outline"
+                size="sm"
+                className="flex-wrap"
+                value={minLevel}
+                onValueChange={(v) => v && setMinLevel(v)}
+              >
+                <ToggleGroupItem value={ANY} className="px-3">
+                  Any
+                </ToggleGroupItem>
+                {levels.map((l) => (
+                  <ToggleGroupItem key={l} value={l} aria-label={`${l} or better`} className="px-3">
+                    {l}+
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="target-flight">Who</Label>
-              <Select value={flight} onValueChange={setFlight}>
-                <SelectTrigger id="target-flight" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>Whole squadron</SelectItem>
-                  {flights.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {flightLabel(f)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FlightFilter
+                flights={flights}
+                value={flight === ALL ? "" : flight}
+                onChange={(f) => setFlight(f || ALL)}
+              />
             </div>
             <div className="flex items-end gap-2 pb-2">
               <Checkbox
@@ -323,17 +316,17 @@ function AddTargetDialog({
               {problem}
             </p>
           )}
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={badPct || saving}>
               {saving ? "Saving…" : "Add target"}
             </Button>
-          </DialogFooter>
+          </ResponsiveDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
@@ -356,19 +349,30 @@ export function TargetsSection({
 }) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const { confirm, confirmDialog } = useConfirm();
   const [adding, setAdding] = useState(false);
 
+  // Targets are quick to set again, so deleting one offers Undo rather than
+  // asking first. `removing` hides it until the delete is sent.
+  const [removing, setRemoving] = useState<Set<number>>(() => new Set());
+  const without = (id: number) =>
+    setRemoving((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   const remove = (t: StatsTarget) =>
-    confirm(`Delete the target "${describeTarget(t)}"?`, async () => {
-      try {
+    deleteWithUndo({
+      message: `Target "${describeTarget(t)}" deleted`,
+      hide: () => setRemoving((prev) => new Set(prev).add(t.id)),
+      restore: () => without(t.id),
+      commit: async () => {
         await apiRequest(session!.id_token!, `${API_BASE}/stats/targets/${t.id}`, { method: "DELETE" });
         await queryClient.invalidateQueries({ queryKey: ["stats", "targets"] });
-        toast.success("Target deleted");
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Couldn't delete the target.");
-      }
+        without(t.id);
+      },
+      failMessage: "Couldn't delete the target.",
     });
+  const shown = targets.filter((t) => !removing.has(t.id));
 
   if (!canEdit && targets.length === 0) return null;
   return (
@@ -386,14 +390,14 @@ export function TargetsSection({
           </Button>
         )}
       </div>
-      {targets.length === 0 ? (
+      {shown.length === 0 ? (
         <p className={cn("text-muted-foreground rounded-md border border-dashed px-4 py-3 text-sm")}>
           No targets yet. Add one to track a badge goal, like 80% of non-juniors with Blue First Aid by the
           summer.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {targets.map((t) => (
+          {shown.map((t) => (
             <TargetCard
               key={t.id}
               target={t}
@@ -408,7 +412,6 @@ export function TargetsSection({
       {canEdit && (
         <AddTargetDialog open={adding} onOpenChange={setAdding} flights={flights} badgeLevels={badgeLevels} />
       )}
-      {confirmDialog}
     </section>
   );
 }

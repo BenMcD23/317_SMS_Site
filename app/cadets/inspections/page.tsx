@@ -9,6 +9,8 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
+import { CadetLink } from "@/components/cadet-link";
+import { SearchableSelect } from "@/components/searchable-select";
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,10 +19,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -199,7 +206,7 @@ function InspectionFigureView({
               key={note.n}
               className={cn(
                 "ring-background absolute left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-bold text-white ring-2",
-                note.type === "fault" ? "bg-destructive" : "bg-green-600"
+                note.type === "fault" ? "bg-destructive" : "bg-success"
               )}
               style={{ top: `${top}%` }}
               title={note.text}
@@ -231,9 +238,9 @@ function HistoryCadetCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="truncate text-sm font-medium">
+              <CadetLink cin={cadet.cin} className="block truncate text-sm font-medium">
                 {cadet.last_name}, {cadet.first_name}
-              </div>
+              </CadetLink>
               {cadet.rank && <div className="text-muted-foreground text-xs">{cadet.rank}</div>}
             </div>
             {cadet.absent ? (
@@ -256,7 +263,7 @@ function HistoryCadetCard({
                   <span
                     className={cn(
                       "mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white",
-                      note.type === "fault" ? "bg-destructive" : "bg-green-600"
+                      note.type === "fault" ? "bg-destructive" : "bg-success"
                     )}
                   >
                     {note.n}
@@ -292,8 +299,10 @@ function AbsenceLists({ awol, absent }: { awol: SheetCadet[]; absent: SheetCadet
         <ul className="divide-y">
           {people.map((c) => (
             <li key={c.cin} className="px-3 py-1.5 text-sm">
-              {c.rank ? `${c.rank} ` : ""}
-              {c.last_name}, {c.first_name}
+              <CadetLink cin={c.cin}>
+                {c.rank ? `${c.rank} ` : ""}
+                {c.last_name}, {c.first_name}
+              </CadetLink>
             </li>
           ))}
         </ul>
@@ -392,21 +401,17 @@ function HistoryTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <SearchableSelect
+          aria-label="Inspection date"
           value={sheetId != null ? String(sheetId) : undefined}
           onValueChange={(v) => setSheetId(Number(v))}
-        >
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Choose an inspection date" />
-          </SelectTrigger>
-          <SelectContent>
-            {sheets.map((s) => (
-              <SelectItem key={s.id} value={String(s.id)}>
-                {s.date} · {s.present}/{s.cadet_count} present · {UNIFORM_LABELS[s.uniform] ?? s.uniform}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Choose an inspection date"
+          className="w-64"
+          options={sheets.map((s) => ({
+            value: String(s.id),
+            label: `${s.date} · ${s.present}/${s.cadet_count} present · ${UNIFORM_LABELS[s.uniform] ?? s.uniform}`,
+          }))}
+        />
         <Button variant="outline" onClick={exportPdf} disabled={exporting || sheetId == null}>
           {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
           Export PDF
@@ -650,7 +655,7 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
           <ThumbsDown className="text-destructive h-4 w-4" />
           Recurring faults by area
           {totalPositives > 0 && (
-            <span className="ml-auto inline-flex items-center gap-1 text-xs font-normal text-green-600">
+            <span className="text-success ml-auto inline-flex items-center gap-1 text-xs font-normal">
               <ThumbsUp className="h-3.5 w-3.5" />
               {totalPositives} positive{totalPositives === 1 ? "" : "s"} logged
             </span>
@@ -890,25 +895,28 @@ function LeaderboardTab() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <ResponsiveDialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           {selected && (
             <>
-              <DialogHeader>
-                <DialogTitle>
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle>
                   {selected.rank ? `${selected.rank} ` : ""}
                   {selected.first_name} {selected.last_name}
-                </DialogTitle>
-                <DialogDescription>
+                </ResponsiveDialogTitle>
+                <ResponsiveDialogDescription>
                   {selected.flight ? `${selected.flight} Flight · ` : ""}
-                  Inspection history &amp; uniform trends
-                </DialogDescription>
-              </DialogHeader>
+                  Inspection history &amp; uniform trends ·{" "}
+                  <CadetLink cin={selected.cin} className="text-primary font-medium">
+                    Open record
+                  </CadetLink>
+                </ResponsiveDialogDescription>
+              </ResponsiveDialogHeader>
               <CadetDetail cadet={selected} />
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

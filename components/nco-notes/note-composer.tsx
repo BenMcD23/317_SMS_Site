@@ -4,11 +4,11 @@ import { useState, useSyncExternalStore } from "react";
 import { Loader2, Plus, Sparkles, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { canRecord, VoiceButton } from "@/components/nco-notes/voice-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { todayLocal } from "@/lib/format";
@@ -292,24 +292,15 @@ export function NoteComposer({
               <li key={row.key} className="flex flex-col gap-2 p-3">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor={`review-nco-${row.key}`}>NCO</Label>
-                  <Select
+                  <SearchableSelect
+                    id={`review-nco-${row.key}`}
                     value={row.cin === null ? "" : String(row.cin)}
                     onValueChange={(v) => updateRow(row.key, { cin: Number(v) })}
-                  >
-                    <SelectTrigger
-                      id={`review-nco-${row.key}`}
-                      className={cn("w-full sm:w-72", row.cin === null && "border-warning")}
-                    >
-                      <SelectValue placeholder="Choose the NCO…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ncos.map((n) => (
-                        <SelectItem key={n.cin} value={String(n.cin)}>
-                          {n.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Choose the NCO…"
+                    searchPlaceholder="Find an NCO…"
+                    className={cn("w-full sm:w-72", row.cin === null && "border-warning")}
+                    options={ncos.map((n) => ({ value: String(n.cin), label: n.name }))}
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor={`review-body-${row.key}`}>Note {i + 1}</Label>

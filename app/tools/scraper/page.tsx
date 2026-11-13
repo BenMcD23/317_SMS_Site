@@ -28,7 +28,13 @@ import {
   Paperclip,
   Plus,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -262,28 +268,28 @@ function ConsolePanel({
           </button>
         )}
       </div>
-      <ScrollArea className="h-56 bg-black p-3 font-mono text-xs text-green-400">
+      <ScrollArea className="bg-muted h-56 rounded-md p-3 font-mono text-xs">
         {logs.map((log, i) => (
           <div key={i} className="mb-1 leading-relaxed">
             <span className="mr-2 opacity-30 select-none">[{log.time}]</span>
             <span
               className={
                 log.text.startsWith("[ERROR]")
-                  ? "text-red-400"
+                  ? "text-destructive"
                   : log.text.startsWith("[SUCCESS]")
-                    ? "text-emerald-400"
+                    ? "text-success"
                     : log.text.startsWith("[WARN]") || log.text.startsWith("[STOPPED]")
-                      ? "text-yellow-400"
+                      ? "text-warning"
                       : log.text.startsWith(">")
-                        ? "text-yellow-400"
-                        : ""
+                        ? "text-primary font-medium"
+                        : "text-muted-foreground"
               }
             >
               {log.text}
             </span>
           </div>
         ))}
-        {logs.length === 0 && <span className="animate-pulse text-gray-600">_ Connecting...</span>}
+        {logs.length === 0 && <span className="text-muted-foreground animate-pulse">_ Connecting...</span>}
         <div ref={logsEndRef} />
       </ScrollArea>
     </div>
@@ -659,18 +665,18 @@ function RunLogsDialog({
   }, [open, runId, token]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{label} — run logs</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="max-w-3xl">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{label} — run logs</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             {detail
               ? `${formatLastRan(detail.ran_at)}${detail.ran_by ? ` · ${detail.ran_by}` : ""}${
                   detail.success ? "" : " · failed"
                 }`
               : "Logs from the most recent run."}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         {loading && (
           <div className="bg-muted/30 space-y-2 rounded-md border p-4">
             {[...Array(10)].map((_, i) => (
@@ -686,8 +692,8 @@ function RunLogsDialog({
             </pre>
           </ScrollArea>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
@@ -869,10 +875,10 @@ export default function ScraperPage() {
       />
 
       {host?.on_oracle && (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200">
+        <Alert className="border-warning/40 bg-warning/10">
           <CloudAlert />
           <AlertTitle>Scrapers may not work right now</AlertTitle>
-          <AlertDescription className="text-amber-900/90 dark:text-amber-200/90">
+          <AlertDescription className="text-foreground/90">
             The home server is down, so 317 SMS is running on the backup Oracle server ({host.node}). The
             Bader scrapers usually fail from there — try again once home is back.
           </AlertDescription>

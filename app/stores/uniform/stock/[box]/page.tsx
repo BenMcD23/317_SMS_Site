@@ -3,11 +3,17 @@
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Check, Settings2 } from "lucide-react";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 import { useStoresStock } from "@/lib/stores-stock";
@@ -261,13 +267,13 @@ export default function BoxPage() {
       </div>
 
       {/* Add Item */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Stock Item</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={addOpen} onOpenChange={setAddOpen}>
+        <ResponsiveDialogContent className="sm:max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Add Stock Item</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <ItemForm form={form} setForm={setForm} boxes={boxLabels} structure={structureCompat} />
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
@@ -277,9 +283,9 @@ export default function BoxPage() {
             >
               {submitting ? "Adding…" : "Add Item"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Edit Item */}
       {shelfStructure && (
@@ -326,18 +332,13 @@ function ItemForm({
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="itemType">Item Type</Label>
-        <Select value={form.itemType} onValueChange={handleItemTypeChange}>
-          <SelectTrigger id="itemType">
-            <SelectValue placeholder="Select item type" />
-          </SelectTrigger>
-          <SelectContent>
-            {stockItemTypes.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          id="itemType"
+          value={form.itemType}
+          onValueChange={handleItemTypeChange}
+          placeholder="Select item type"
+          options={stockItemTypes.map((t) => ({ value: t, label: t }))}
+        />
       </div>
 
       {!noSize && (
@@ -356,38 +357,24 @@ function ItemForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="box">Box</Label>
-          <Select value={form.box} onValueChange={(v) => setForm((f) => ({ ...f, box: v, section: "" }))}>
-            <SelectTrigger id="box">
-              <SelectValue placeholder="Box" />
-            </SelectTrigger>
-            <SelectContent>
-              {boxes.map((b) => (
-                <SelectItem key={b} value={b}>
-                  Box {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            id="box"
+            value={form.box}
+            onValueChange={(v) => setForm((f) => ({ ...f, box: v, section: "" }))}
+            placeholder="Box"
+            options={boxes.map((b) => ({ value: b, label: `Box ${b}` }))}
+          />
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="section">Section</Label>
-          <Select
+          <SearchableSelect
+            id="section"
             value={form.section}
             onValueChange={(v) => setForm((f) => ({ ...f, section: v }))}
             disabled={!form.box || sections.length === 0}
-          >
-            <SelectTrigger id="section">
-              <SelectValue placeholder={sections.length === 0 ? "No sections" : "Section"} />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map((s) => (
-                <SelectItem key={s} value={s}>
-                  Section {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={sections.map((s) => ({ value: s, label: `Section ${s}` }))}
+          />
         </div>
       </div>
 

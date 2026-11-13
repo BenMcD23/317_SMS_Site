@@ -1,10 +1,13 @@
+import Link from "next/link";
 import { CheckCircle2, CloudUpload } from "lucide-react";
 
 /**
  * The top of a marking sheet's "done" screen, shared by the Leadership, Radio,
  * Space and MOI sheets. Says plainly whether the sheet reached the server or
  * is waiting on this phone for signal (lib/outbox.ts), so nobody walks away
- * thinking a queued sheet is already recorded.
+ * thinking a queued sheet is already recorded. Once it's recorded, links to
+ * Results, where it's downloaded, uploaded to SMS or marked complete, so the
+ * sheet isn't a dead end.
  */
 export function SavedHeading({
   title,
@@ -33,6 +36,14 @@ export function SavedHeading({
             : `${what} has been recorded.`}
         </p>
         {assessmentId && <p className="text-muted-foreground mt-1 text-xs">Assessment ID: #{assessmentId}</p>}
+        {!queued && (
+          <Link
+            href="/cadets/assessments"
+            className="text-primary mt-2 inline-block text-sm font-medium hover:underline"
+          >
+            See it in Results
+          </Link>
+        )}
       </div>
     </>
   );

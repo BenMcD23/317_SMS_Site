@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { ErrorAlert } from "@/components/error-alert";
 import {
   ResponsiveDialog,
@@ -228,19 +229,15 @@ export function TaskDialog({
               );
             })}
             {unpicked.length > 0 ? (
-              <Select value="" onValueChange={(v) => kitRows.append({ kitId: Number(v), quantity: 1 })}>
-                <SelectTrigger aria-label="Add kit to this task" className="w-full sm:w-64">
-                  <Plus />
-                  <SelectValue placeholder="Add kit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unpicked.map((k) => (
-                    <SelectItem key={k.id} value={String(k.id)}>
-                      {k.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                aria-label="Add kit to this task"
+                value=""
+                onValueChange={(v) => kitRows.append({ kitId: Number(v), quantity: 1 })}
+                placeholder="Add kit"
+                searchPlaceholder="Find kit…"
+                className="w-full sm:w-64"
+                options={unpicked.map((k) => ({ value: String(k.id), label: k.name }))}
+              />
             ) : (
               kitList.length === 0 && (
                 <p className="text-muted-foreground text-sm">Add kit on the Kit tab first.</p>

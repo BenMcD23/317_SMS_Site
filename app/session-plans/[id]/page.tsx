@@ -17,14 +17,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import {
   ArrowLeft,
   Check,
@@ -153,7 +153,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
 
       {/* What staff said */}
       {plan.status === "amendments_requested" && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+        <div className="border-warning/40 bg-warning/10 rounded-md border px-4 py-3 text-sm">
           <p className="font-medium">
             Amendments requested{plan.reviewed_by ? ` by ${plan.reviewed_by}` : ""}
           </p>
@@ -166,7 +166,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
       {plan.status === "approved" && (
-        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm">
+        <div className="border-success/40 bg-success/10 rounded-md border px-4 py-3 text-sm">
           <p className="font-medium">
             Approved{plan.reviewed_by ? ` by ${plan.reviewed_by}` : ""}
             {plan.reviewed_at ? ` on ${formatTimestamp(plan.reviewed_at)}` : ""}
@@ -207,18 +207,18 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
               </p>
             )}
 
-            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-              <DialogTrigger asChild>
+            <ResponsiveDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <ResponsiveDialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-muted-foreground" disabled={busy !== null}>
                   <Trash2 /> Delete
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete this session plan?</DialogTitle>
-                  <DialogDescription>This can&apos;t be undone.</DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
+              </ResponsiveDialogTrigger>
+              <ResponsiveDialogContent>
+                <ResponsiveDialogHeader>
+                  <ResponsiveDialogTitle>Delete this session plan?</ResponsiveDialogTitle>
+                  <ResponsiveDialogDescription>This can&apos;t be undone.</ResponsiveDialogDescription>
+                </ResponsiveDialogHeader>
+                <ResponsiveDialogFooter>
                   <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
                     Keep it
                   </Button>
@@ -235,9 +235,9 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
                   >
                     {busy === "delete" ? <Loader2 className="animate-spin" /> : null} Delete
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </ResponsiveDialogFooter>
+              </ResponsiveDialogContent>
+            </ResponsiveDialog>
 
             {plan.can_edit && missing.length > 0 && (
               <p className="text-muted-foreground w-full text-xs">
@@ -283,21 +283,21 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
               >
                 {busy === "approve" ? <Loader2 className="animate-spin" /> : <Check />} Approve
               </Button>
-              <Dialog open={amendOpen} onOpenChange={setAmendOpen}>
-                <DialogTrigger asChild>
+              <ResponsiveDialog open={amendOpen} onOpenChange={setAmendOpen}>
+                <ResponsiveDialogTrigger asChild>
                   <Button size="sm" variant="outline" disabled={busy !== null || !hasAmendmentDetail}>
                     <Undo2 /> Send back for amendment
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Send this plan back?</DialogTitle>
-                    <DialogDescription>
+                </ResponsiveDialogTrigger>
+                <ResponsiveDialogContent>
+                  <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>Send this plan back?</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>
                       {plan.author_name} will be emailed your note and any section comments, and can edit the
                       plan and resubmit it.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
+                  <ResponsiveDialogFooter>
                     <Button variant="ghost" onClick={() => setAmendOpen(false)}>
                       Cancel
                     </Button>
@@ -314,9 +314,9 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
                     >
                       {busy === "amend" ? <Loader2 className="animate-spin" /> : null} Send back
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </ResponsiveDialogFooter>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
               {!hasAmendmentDetail && (
                 <p className="text-muted-foreground w-full text-xs">
                   Add a note or a section comment before sending it back, so the NCO knows what to change.
@@ -364,7 +364,7 @@ export default function SessionPlanDetailPage({ params }: { params: Promise<{ id
                 />
               ) : (
                 plan.feedback?.[section.key] && (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+                  <div className="border-warning/40 bg-warning/10 rounded-md border px-3 py-2 text-sm">
                     <span className="font-medium">Staff: </span>
                     <span className="whitespace-pre-wrap">{plan.feedback[section.key]}</span>
                   </div>

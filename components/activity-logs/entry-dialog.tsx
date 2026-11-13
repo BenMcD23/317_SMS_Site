@@ -14,6 +14,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from "@/components/responsive-dialog";
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -120,6 +121,11 @@ export function EntryDialog({
               className="w-fit"
               aria-invalid={!!err("date") || undefined}
               {...register("date")}
+            />
+            <DateShortcuts
+              value={form.watch("date") ?? ""}
+              onChange={(d) => form.setValue("date", d, { shouldValidate: true, shouldDirty: true })}
+              yesterday
             />
             <FieldError>{err("date")}</FieldError>
           </Field>

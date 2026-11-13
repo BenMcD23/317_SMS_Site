@@ -13,7 +13,13 @@ import {
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "./SectionCard";
 import { BoxSection, ShelfBox, ShelfStructure, StockItem } from "@/lib/stores-types";
@@ -442,21 +448,21 @@ export function BoxDetailView({
       )}
 
       {/* Delete box confirm dialog */}
-      <Dialog
+      <ResponsiveDialog
         open={deleteBoxConfirm}
         onOpenChange={(o) => {
           if (!o) setDeleteBoxConfirm(false);
         }}
       >
-        <DialogContent className="sm:max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Delete {isMisc ? "Area" : `Box ${box.label}`}?</DialogTitle>
-          </DialogHeader>
+        <ResponsiveDialogContent className="sm:max-w-xs">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Delete {isMisc ? "Area" : `Box ${box.label}`}?</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <p className="text-muted-foreground text-sm">
             Are you sure you want to delete {isMisc ? "this area" : `box ${box.label}`}? All sections and
             their stock will be permanently removed. This cannot be undone.
           </p>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setDeleteBoxConfirm(false)}>
               Cancel
             </Button>
@@ -469,9 +475,9 @@ export function BoxDetailView({
             >
               Delete {isMisc ? "Area" : "Box"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

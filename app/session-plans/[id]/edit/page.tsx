@@ -170,7 +170,7 @@ export default function EditSessionPlanPage({ params }: { params: Promise<{ id: 
       />
 
       {saved.status === "amendments_requested" && saved.amendment_note && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+        <div className="border-warning/40 bg-warning/10 rounded-md border px-4 py-3 text-sm">
           <p className="font-medium">Staff asked for:</p>
           <p className="whitespace-pre-wrap">{saved.amendment_note}</p>
         </div>

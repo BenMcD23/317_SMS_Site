@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
+import { SearchableSelect } from "@/components/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate } from "@/lib/format";
 import { linkSheet, taskLabel, type BankTask, type UnlinkedSheet } from "@/lib/session-planner";
 
@@ -49,19 +49,17 @@ function SheetRow({
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={taskId} onValueChange={setTaskId}>
-          <SelectTrigger aria-label={`Task for ${who}'s sheet`} className="w-full sm:w-56">
-            <SelectValue placeholder="Which task was it?" />
-          </SelectTrigger>
-          <SelectContent>
-            {tasks.map((t) => (
-              <SelectItem key={t.id} value={String(t.id)}>
-                {taskLabel(t)}
-                {!t.active && " (retired)"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          aria-label={`Task for ${who}'s sheet`}
+          value={taskId}
+          onValueChange={setTaskId}
+          placeholder="Which task was it?"
+          className="w-full sm:w-56"
+          options={tasks.map((t) => ({
+            value: String(t.id),
+            label: `${taskLabel(t)}${t.active ? "" : " (retired)"}`,
+          }))}
+        />
         <Button className="h-9" disabled={!taskId || saving} onClick={link}>
           {saving ? "Linking…" : "Link"}
         </Button>

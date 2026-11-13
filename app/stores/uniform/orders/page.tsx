@@ -21,6 +21,7 @@ import {
   Lock,
   ShoppingCart,
 } from "lucide-react";
+import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
@@ -31,8 +32,13 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import {
   Order,
   OrderItem,
@@ -920,21 +926,14 @@ export default function OrdersPage() {
                         <p className="text-muted-foreground text-xs font-medium">Add item to order</p>
                         <div className="flex flex-wrap items-end gap-2">
                           <div className="min-w-36 flex-1">
-                            <Select
+                            <SearchableSelect
+                              aria-label="Item type"
                               value={addItemDraft.itemType}
                               onValueChange={(v) => setAddItemDraft((d) => ({ ...d, itemType: v }))}
-                            >
-                              <SelectTrigger className="h-8 text-sm">
-                                <SelectValue placeholder="Item type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {itemTypes.map((t) => (
-                                  <SelectItem key={t} value={t}>
-                                    {t}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              placeholder="Item type"
+                              className="h-8 text-sm"
+                              options={itemTypes.map((t) => ({ value: t, label: t }))}
+                            />
                           </div>
                           {!noSizeItems.has(addItemDraft.itemType) && (
                             <div className="w-28">
@@ -1203,13 +1202,13 @@ export default function OrdersPage() {
       )}
 
       {/* Tie variant dialog */}
-      <Dialog open={tieItemId !== null} onOpenChange={(open) => !open && setTieItemId(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Necktie Length</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={tieItemId !== null} onOpenChange={(open) => !open && setTieItemId(null)}>
+        <ResponsiveDialogContent className="sm:max-w-sm">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Necktie Length</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <p className="text-muted-foreground text-sm">Which necktie should be demanded on the logs form?</p>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button
               variant="outline"
               onClick={() => {
@@ -1227,16 +1226,16 @@ export default function OrdersPage() {
             >
               Standard
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* New Order Dialog */}
-      <Dialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>New Order</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
+        <ResponsiveDialogContent className="sm:max-w-lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>New Order</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Cadet</Label>
@@ -1271,25 +1270,18 @@ export default function OrdersPage() {
                 <div key={idx} className="space-y-1.5 rounded-md border p-2">
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
-                      <Select
+                      <SearchableSelect
+                        aria-label="Item type"
                         value={item.itemType}
                         onValueChange={(v) =>
                           setNewItems((prev) =>
                             prev.map((it, i) => (i === idx ? { ...it, itemType: v } : it))
                           )
                         }
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Item type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {itemTypes.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {t}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Item type"
+                        className="h-8 text-sm"
+                        options={itemTypes.map((t) => ({ value: t, label: t }))}
+                      />
                     </div>
                     {!noSizeItems.has(item.itemType) && (
                       <div className="w-24">
@@ -1353,7 +1345,7 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setNewOrderOpen(false)}>
               Cancel
             </Button>
@@ -1363,16 +1355,16 @@ export default function OrdersPage() {
             >
               {submitting ? "Creating..." : "Create Order"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* C Flight Kitting — Add Cadet Dialog */}
-      <Dialog open={kittingOpen} onOpenChange={setKittingOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add cadet to C Flight kitting</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={kittingOpen} onOpenChange={setKittingOpen}>
+        <ResponsiveDialogContent className="sm:max-w-lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Add cadet to C Flight kitting</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Cadet</Label>
@@ -1409,16 +1401,16 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setKittingOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleCreateKitting} disabled={kitSubmitting || !kitCadetCin}>
               {kitSubmitting ? "Adding..." : "Add cadet"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Mark as Given Dialog */}
       <MarkGivenDialog
@@ -1442,11 +1434,11 @@ export default function OrdersPage() {
       {confirmDialog}
 
       {/* Edit Size / Sizing Dialog */}
-      <Dialog open={editSizeOpen} onOpenChange={setEditSizeOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Size & Sizing Details</DialogTitle>
-          </DialogHeader>
+      <ResponsiveDialog open={editSizeOpen} onOpenChange={setEditSizeOpen}>
+        <ResponsiveDialogContent className="sm:max-w-sm">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>Size & Sizing Details</ResponsiveDialogTitle>
+          </ResponsiveDialogHeader>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Checkbox
@@ -1489,16 +1481,16 @@ export default function OrdersPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button variant="outline" onClick={() => setEditSizeOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleSaveEditSize} disabled={editNeedSizing ? false : !editSizeValue.trim()}>
               Save
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }

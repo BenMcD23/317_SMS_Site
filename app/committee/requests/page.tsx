@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useApiQuery } from "@/lib/use-api-query";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DataTable, dataTableColumns } from "@/components/data-table";
 import { Plus, ReceiptText } from "lucide-react";
 import {
   type CommitteeRequestSummary,
@@ -24,8 +23,54 @@ interface ListResponse {
   is_oc: boolean;
 }
 
+const col = dataTableColumns<CommitteeRequestSummary>();
+
+// Status sorts by where the request is in its life, not alphabetically.
+const STATUS_ORDER = Object.keys(STATUS_LABELS);
+
+const columns = col.columns([
+  col.accessor("reference", {
+    header: "Reference",
+    sortFn: "alphanumeric",
+    cell: ({ row }) => (
+      <Link href={`/committee/requests/${row.original.id}`} className="font-medium hover:underline">
+        {row.original.reference}
+      </Link>
+    ),
+  }),
+  col.accessor("title", {
+    header: "Title",
+    sortFn: "text",
+    cell: ({ getValue }) => <span className="block max-w-[16rem] truncate">{getValue()}</span>,
+  }),
+  col.accessor("requester_name", { header: "Requester", sortFn: "text" }),
+  col.accessor("total", {
+    header: "Total",
+    sortFn: "basic",
+    cell: ({ getValue }) => <span className="tabular-nums">{formatGBP(getValue())}</span>,
+  }),
+  col.accessor((r) => STATUS_ORDER.indexOf(r.status), {
+    id: "status",
+    header: "Status",
+    sortFn: "basic",
+    cell: ({ row }) => {
+      const style = STATUS_STYLE[row.original.status];
+      return (
+        <Badge variant={style.variant} className={style.className}>
+          {STATUS_LABELS[row.original.status]}
+        </Badge>
+      );
+    },
+  }),
+  col.accessor((r) => r.created_at ?? "", {
+    id: "created_at",
+    header: "Submitted",
+    sortFn: "text",
+    cell: ({ row }) => <span className="text-muted-foreground">{formatDate(row.original.created_at)}</span>,
+  }),
+]);
+
 export default function CommitteeRequestsPage() {
-  const router = useRouter();
   const { data, isLoading, error } = useApiQuery<ListResponse>(["committee-requests"], "/committee-requests");
 
   return (
@@ -59,47 +104,19 @@ export default function CommitteeRequestsPage() {
           </Button>
         </EmptyState>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Requester</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.requests.map((r) => {
-                const style = STATUS_STYLE[r.status];
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/committee/requests/${r.id}`)}
-                  >
-                    <TableCell className="font-medium">
-                      <Link href={`/committee/requests/${r.id}`} className="hover:underline">
-                        {r.reference}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="max-w-[16rem] truncate">{r.title}</TableCell>
-                    <TableCell>{r.requester_name}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatGBP(r.total)}</TableCell>
-                    <TableCell>
-                      <Badge variant={style.variant} className={style.className}>
-                        {STATUS_LABELS[r.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(r.created_at)}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          label="Committee requests"
+          data={data.requests}
+          columns={columns}
+          rowKey={(r) => r.id}
+          rowHref={(r) => `/committee/requests/${r.id}`}
+          initialSort={{ id: "created_at", desc: true }}
+          columnClassName={{
+            requester_name: "hidden sm:table-cell",
+            created_at: "hidden md:table-cell",
+            total: "text-right",
+          }}
+        />
       )}
     </div>
   );

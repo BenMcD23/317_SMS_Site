@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithQuery } from "@/tests/render-with-query";
 
-const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+const toast = vi.hoisted(() => Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
 
 const SESSION = vi.hoisted(() => ({
@@ -19,6 +19,7 @@ import NcoNotesPage from "@/app/nco-notes/page";
 import NcoNotesProfilePage from "@/app/nco-notes/[cin]/page";
 import { API_BASE } from "@/lib/config";
 import type { NcoNote } from "@/lib/nco-notes";
+import { UNDO_MS } from "@/lib/undo-delete";
 
 function note(overrides: Partial<NcoNote>): NcoNote {
   return {
@@ -149,15 +150,40 @@ describe("NCO notes overview", () => {
     expect(screen.getByText("Cpl Old Leaver (left)")).toBeInTheDocument();
   });
 
-  it("deletes a note after confirming", async () => {
+  it("deletes a note with an Undo instead of a confirm, sending the delete once Undo has gone", async () => {
     renderWithQuery(<NcoNotesPage />);
     const mine = (await screen.findByText("Sharp on drill")).closest("li")!;
-    fireEvent.click(within(mine).getByRole("button", { name: "Delete" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(within(mine).getByRole("button", { name: "Delete" }));
+      expect(screen.queryByText("Sharp on drill")).not.toBeInTheDocument();
+      expect(toast).toHaveBeenCalledWith(
+        "Note deleted",
+        expect.objectContaining({ action: expect.anything() })
+      );
+      expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+      await act(() => vi.advanceTimersByTimeAsync(UNDO_MS));
+    } finally {
+      vi.useRealTimers();
+    }
     await waitFor(() =>
       expect(calls.some((c) => c.method === "DELETE" && c.path === "/nco-notes/1")).toBe(true)
     );
-    expect(toast.success).toHaveBeenCalledWith("Note deleted");
+  });
+
+  it("Undo brings the note back and nothing is deleted", async () => {
+    renderWithQuery(<NcoNotesPage />);
+    const mine = (await screen.findByText("Sharp on drill")).closest("li")!;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(within(mine).getByRole("button", { name: "Delete" }));
+      act(() => toast.mock.calls.at(-1)![1].action.onClick());
+      await act(() => vi.advanceTimersByTimeAsync(UNDO_MS * 2));
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(screen.getByText("Sharp on drill")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
   });
 
   it("moves a misheard note to the right NCO", async () => {

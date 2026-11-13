@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { AlertTriangle, CheckCircle2, ClipboardCopy, ListChecks, Users } from "lucide-react";
 import { toast } from "sonner";
 
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -34,6 +35,7 @@ import {
 } from "@/lib/session-planner";
 import { useApiQuery } from "@/lib/use-api-query";
 import { cn } from "@/lib/utils";
+import { StickyActions } from "@/components/sticky-actions";
 
 /** Below this, or with an absence booked, "Untick unlikely" takes them off. */
 const UNLIKELY = 0.5;
@@ -157,6 +159,11 @@ export function SessionPlanner() {
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [planFor, setPlanFor] = useState("");
+  // Once the door has checked people in, the list shows them (and anyone
+  // ticked by hand); the rest of the roll is one tap away. A list of every
+  // cadet on the books, most of them not there, buried the ones who were.
+  const [showEveryone, setShowEveryone] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   const tasksQuery = useApiQuery<BankTask[]>(
     ["session-planner", "tasks", "active"],
@@ -183,6 +190,9 @@ export function SessionPlanner() {
       ? touched.unticked
       : new Set(checkedIn.length ? roster.filter((c) => !c.checked_in).map((c) => c.cin) : []);
   const ticked = shown.filter((c) => !unticked.has(c.cin));
+  const trimmed = checkedIn.length > 0 && !showEveryone;
+  const listed = trimmed ? shown.filter((c) => c.checked_in || !unticked.has(c.cin)) : shown;
+  const hiddenCount = shown.length - listed.length;
   const leadership = kind === "leadership";
   const stands = wholeNumber(standsText);
   const changeover = wholeNumber(changeoverText);
@@ -224,6 +234,12 @@ export function SessionPlanner() {
       setPlanning(false);
     }
   }
+
+  // The plan lands below the cadet list; bring it into view rather than leave
+  // it off the bottom of the screen. jsdom has no scrollIntoView.
+  useEffect(() => {
+    if (plan) resultRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [plan]);
 
   async function copyPlan() {
     if (!plan) return;
@@ -268,6 +284,7 @@ export function SessionPlanner() {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="plan-date">Date</Label>
             <Input id="plan-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateShortcuts value={date} onChange={setDate} className="-mt-1" />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="plan-kind">Kind of session</Label>
@@ -420,7 +437,7 @@ export function SessionPlanner() {
           <EmptyState icon={Users} title="No cadets" description="Pick a flight to see its cadets." />
         ) : (
           <ul className="bg-card divide-y rounded-lg border">
-            {shown.map((c) => (
+            {listed.map((c) => (
               <CadetRow
                 key={c.cin}
                 cadet={c}
@@ -431,9 +448,19 @@ export function SessionPlanner() {
             ))}
           </ul>
         )}
+        {checkedIn.length > 0 && (hiddenCount > 0 || showEveryone) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 self-start"
+            onClick={() => setShowEveryone((v) => !v)}
+          >
+            {showEveryone ? "Only show who's checked in" : `Show ${hiddenCount} more not checked in`}
+          </Button>
+        )}
       </Section>
 
-      <div className="bg-background sticky bottom-16 z-10 -mx-4 flex flex-wrap items-center gap-3 border-t px-4 py-3 md:bottom-0 md:mx-0 md:px-0">
+      <StickyActions>
         <Button className="h-10" onClick={runPlan} disabled={!!blocker || planning}>
           {planning ? "Planning…" : plan ? "Plan again" : "Plan session"}
         </Button>
@@ -448,10 +475,14 @@ export function SessionPlanner() {
             Copy plan
           </Button>
         )}
-      </div>
+      </StickyActions>
 
       <ErrorAlert message={planError} title="Not planned" />
-      {plan && <PlanResult plan={plan} />}
+      {plan && (
+        <div ref={resultRef} className="scroll-mt-4">
+          <PlanResult plan={plan} />
+        </div>
+      )}
     </div>
   );
 }

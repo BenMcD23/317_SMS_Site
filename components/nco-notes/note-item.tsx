@@ -8,7 +8,7 @@ import { Loader2, Mic, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { useConfirm } from "@/components/confirm-dialog";
+import { SearchableSelect } from "@/components/searchable-select";
 import { ErrorAlert } from "@/components/error-alert";
 import {
   ResponsiveDialog,
@@ -21,9 +21,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
+import { deleteWithUndo } from "@/lib/undo-delete";
 import { deleteNote, editNote, type NcoNote, type NcoNoteRow } from "@/lib/nco-notes";
 
 /**
@@ -46,21 +46,25 @@ export function NoteItem({
   showNco?: boolean;
   onChanged: () => void;
 }) {
-  const { confirm, confirmDialog } = useConfirm();
   const [editing, setEditing] = useState(false);
 
-  const onDelete = () =>
-    confirm("Delete this note?", async () => {
-      if (!token) return;
-      try {
+  // A note is small and the author's own: Undo beats an "Are you sure?".
+  const [gone, setGone] = useState(false);
+  const onDelete = () => {
+    if (!token) return;
+    deleteWithUndo({
+      message: "Note deleted",
+      hide: () => setGone(true),
+      restore: () => setGone(false),
+      commit: async () => {
         await deleteNote(token, note.id);
-        toast.success("Note deleted");
         onChanged();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Couldn't delete that note.");
-      }
+      },
+      failMessage: "Couldn't delete that note.",
     });
+  };
 
+  if (gone) return null;
   return (
     <li className="flex flex-col gap-2 px-4 py-3">
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -111,7 +115,6 @@ export function NoteItem({
           onSaved={onChanged}
         />
       )}
-      {confirmDialog}
     </li>
   );
 }
@@ -183,21 +186,13 @@ function EditNoteDialog({
         {note.cadet_cin !== null && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={`${formId}-nco`}>About</Label>
-            <Select
+            <SearchableSelect
+              id={`${formId}-nco`}
               value={String(cadetCin)}
               onValueChange={(v) => form.setValue("cadetCin", Number(v), { shouldDirty: true })}
-            >
-              <SelectTrigger id={`${formId}-nco`} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ncos.map((n) => (
-                  <SelectItem key={n.cin} value={String(n.cin)}>
-                    {n.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              searchPlaceholder="Find an NCO…"
+              options={ncos.map((n) => ({ value: String(n.cin), label: n.name }))}
+            />
           </div>
         )}
 

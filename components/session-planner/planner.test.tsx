@@ -192,15 +192,30 @@ describe("Session planner", () => {
     renderWithQuery(<SessionPlanner />);
     expect(await screen.findByText("2 ticked, 2 checked in")).toBeInTheDocument();
     expect(screen.getAllByText("Checked in")).toHaveLength(2);
+    // Only who's there is listed; the rest of the roll is a tap away, unticked.
+    expect(screen.queryByRole("checkbox", { name: /Able, Sam/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show 2 more not checked in" }));
     expect(screen.getByRole("checkbox", { name: /Able, Sam/ })).not.toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Only show who's checked in" }));
+    expect(screen.queryByRole("checkbox", { name: /Able, Sam/ })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Plan session" }));
     await waitFor(() => expect(sent(fetchMock)).toMatchObject({ cins: [2, 4] }));
+  });
+
+  it("keeps a cadet ticked by hand in the short list, though they never checked in", async () => {
+    api({ roster: [ROSTER[0], { ...ROSTER[1], checked_in: true }, ROSTER[2], ROSTER[3]] });
+    renderWithQuery(<SessionPlanner />);
+    await userEvent.click(await screen.findByRole("button", { name: "Show 3 more not checked in" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Able, Sam/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Only show who's checked in" }));
+    expect(screen.getByRole("checkbox", { name: /Able, Sam/ })).toBeChecked();
   });
 
   it("a tick changed by hand stays, and 'Tick checked in' goes back to the door list", async () => {
     const fetchMock = api({ roster: [ROSTER[0], { ...ROSTER[1], checked_in: true }, ROSTER[2], ROSTER[3]] });
     renderWithQuery(<SessionPlanner />);
-    await userEvent.click(await screen.findByRole("checkbox", { name: /Able, Sam/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Show 3 more not checked in" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Able, Sam/ }));
     expect(screen.getByText("2 ticked, 1 checked in")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Tick checked in" }));
     expect(screen.getByText("1 ticked, 1 checked in")).toBeInTheDocument();
@@ -214,6 +229,9 @@ describe("Session planner", () => {
     expect(await screen.findByText("4 ticked")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tick checked in" })).not.toBeInTheDocument();
     expect(screen.queryByText("Checked in")).not.toBeInTheDocument();
+    // Nobody at the door yet: the whole roll, with nothing hidden.
+    expect(screen.getAllByRole("checkbox", { name: /,/ }).length).toBeGreaterThanOrEqual(4);
+    expect(screen.queryByRole("button", { name: /more not checked in/ })).not.toBeInTheDocument();
   });
 
   it("shows each cadet's leadership so far", async () => {

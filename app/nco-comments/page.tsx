@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, MessageSquare, MessageSquarePlus, Plus, Trash2, User } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
+import { DateShortcuts } from "@/components/date-shortcuts";
 import { PageHeader } from "@/components/page-header";
 import { useConfirm } from "@/components/confirm-dialog";
 import { CadetSearchInput } from "@/components/cadet-search";
@@ -17,7 +18,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
   addReply,
@@ -441,16 +448,25 @@ function NewCommentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New comment</DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>New comment</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="comment-date">Date</Label>
-            <Input id="comment-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id="comment-date"
+                type="date"
+                className="w-fit"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+              <DateShortcuts value={date} onChange={setDate} yesterday />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -512,15 +528,15 @@ function NewCommentDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <ResponsiveDialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button disabled={submitting || invalid} onClick={submit}>
             Post Comment
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

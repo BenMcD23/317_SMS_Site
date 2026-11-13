@@ -101,8 +101,8 @@ export function SessionPlanForm({
                 <Label htmlFor={section.key}>{section.label}</Label>
                 <p className="text-muted-foreground text-xs">{section.hint}</p>
                 {comment && (
-                  <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
-                    <MessageSquareWarning className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-500" />
+                  <div className="border-warning/40 bg-warning/10 flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+                    <MessageSquareWarning className="text-warning mt-0.5 size-4 shrink-0" />
                     <p className="whitespace-pre-wrap">{comment}</p>
                   </div>
                 )}

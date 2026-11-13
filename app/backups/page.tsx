@@ -302,7 +302,7 @@ export default function BackupsPage() {
                       <TableCell
                         className={cn(
                           "text-right tabular-nums",
-                          r.delta > 0 && "text-emerald-600",
+                          r.delta > 0 && "text-success",
                           r.delta < 0 && "text-destructive"
                         )}
                       >
