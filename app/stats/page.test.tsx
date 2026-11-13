@@ -254,7 +254,9 @@ describe("time range picker", () => {
     await renderStats("from=2026-03-01&to=2026-04-15");
     expect(requested(fetch, "/stats/history?start=2026-03-01&end=2026-04-15")).toBe(true);
     expect(requested(fetch, "/stats/awards?start=2026-03-01&end=2026-04-15")).toBe(true);
-    for (const radio of screen.getAllByRole("radio")) expect(radio.getAttribute("data-state")).toBe("off");
+    const quick = screen.getByRole("radiogroup", { name: "Quick time range" });
+    for (const radio of within(quick).getAllByRole("radio"))
+      expect(radio.getAttribute("data-state")).toBe("off");
     expect(screen.getByRole("button", { name: "Time range: 1 Mar 2026 – 15 Apr 2026" })).toBeTruthy();
   });
 
@@ -352,7 +354,8 @@ describe("filters", () => {
   it("stats from before the per-flight breakdown still offer the flights on strength", async () => {
     stubApi({ "/stats/current": [{ ...current, flights: undefined }] });
     await renderStats("flight=A");
-    expect(screen.getByRole("combobox", { name: "Flight" }).textContent).toContain("A Flight");
+    const flights = screen.getByRole("radiogroup", { name: "Filter by flight" });
+    expect(within(flights).getByRole("radio", { name: "A Flight" })).toHaveAttribute("data-state", "on");
     // No breakdown for the flight: the cards show an empty cohort, not the squadron's numbers.
     expect(screen.getAllByText("0/0").length).toBeGreaterThan(0);
   });

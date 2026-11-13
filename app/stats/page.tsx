@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Printer, ZoomOut } from "lucide-react";
 
+import { FlightFilter } from "@/components/flight-filter";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/section-heading";
 import { BadgeGlance } from "@/components/stats/badge-glance";
@@ -28,7 +29,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate, formatShortDate } from "@/lib/format";
@@ -65,7 +65,6 @@ import { useApiQuery } from "@/lib/use-api-query";
 
 // "All time" for the awards feed, which otherwise defaults to 30 days.
 const ALL_AWARDS = "days=36500";
-const ALL_FLIGHTS = "all";
 
 /** useSearchParams needs a Suspense boundary or the page fails to prerender. */
 export default function StatsPage() {
@@ -308,22 +307,7 @@ function Stats() {
             </Button>
           </div>
         </div>
-        <Select
-          value={flight ?? ALL_FLIGHTS}
-          onValueChange={(v) => set({ flight: v === ALL_FLIGHTS ? null : v })}
-        >
-          <SelectTrigger size="sm" aria-label="Flight" className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_FLIGHTS}>All flights</SelectItem>
-            {flights.map((f) => (
-              <SelectItem key={f} value={f}>
-                {flightLabel(f)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FlightFilter flights={flights} value={flight ?? ""} onChange={(f) => set({ flight: f || null })} />
         <div className="flex items-center gap-2">
           <Checkbox
             id="exclude-juniors"
@@ -486,18 +470,20 @@ function Stats() {
                         )
                       }
                     />
-                    <Select value={sort} onValueChange={(v) => set({ sort: v === "catalogue" ? null : v })}>
-                      <SelectTrigger size="sm" aria-label="Sort badges" className="no-print w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BADGE_SORTS.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      aria-label="Sort badges"
+                      className="w-fit flex-wrap"
+                      value={sort}
+                      onValueChange={(v) => v && set({ sort: v === "catalogue" ? null : v })}
+                    >
+                      {BADGE_SORTS.map((s) => (
+                        <ToggleGroupItem key={s.id} value={s.id} className="px-3">
+                          {s.label}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
                   </div>
                 }
               />

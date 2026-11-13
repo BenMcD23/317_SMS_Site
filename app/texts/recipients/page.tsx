@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -577,25 +578,26 @@ export default function TextRecipientsPage() {
             {!editing && (
               <Field>
                 <FieldLabel htmlFor="add-mode">Who is this number for?</FieldLabel>
-                <Select
+                <ToggleGroup
+                  id="add-mode"
+                  aria-label="Who is this number for?"
+                  type="single"
+                  variant="outline"
+                  className="w-full flex-wrap"
                   value={addMode}
                   onValueChange={(v) => {
+                    if (!v) return;
                     setAddMode(v as AddMode);
                     setPicked(null);
                     setQuery("");
                   }}
                 >
-                  <SelectTrigger id="add-mode" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ADD_MODE_LABEL).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {Object.entries(ADD_MODE_LABEL).map(([value, label]) => (
+                    <ToggleGroupItem key={value} value={value} className="px-3">
+                      {label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </Field>
             )}
             {!editing && addMode !== "extra" && (

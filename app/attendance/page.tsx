@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarCheck, ChevronRight, ShieldUser, Users, UserCog } from "lucide-react";
 
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -265,17 +266,27 @@ export default function AttendancePage() {
             </div>
             <div className="grid gap-1.5">
               <Label className="text-muted-foreground text-xs">Who</Label>
-              <Select value={group} onValueChange={(v) => setGroup(v as Group)}>
-                <SelectTrigger className="h-9 w-[10rem]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Cadets &amp; staff</SelectItem>
-                  <SelectItem value="cadets">Cadets only</SelectItem>
-                  <SelectItem value="ncos">NCOs only</SelectItem>
-                  <SelectItem value="staff">Staff only</SelectItem>
-                </SelectContent>
-              </Select>
+              <ToggleGroup
+                type="single"
+                variant="outline"
+                aria-label="Who"
+                className="flex-wrap"
+                value={group}
+                onValueChange={(v) => v && setGroup(v as Group)}
+              >
+                <ToggleGroupItem value="all" className="px-3">
+                  Everyone
+                </ToggleGroupItem>
+                <ToggleGroupItem value="cadets" className="px-3">
+                  Cadets
+                </ToggleGroupItem>
+                <ToggleGroupItem value="ncos" className="px-3">
+                  NCOs
+                </ToggleGroupItem>
+                <ToggleGroupItem value="staff" className="px-3">
+                  Staff
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
             {registerTypes.length > 1 && (
               <div className="grid gap-1.5">

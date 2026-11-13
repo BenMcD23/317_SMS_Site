@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useSession } from "next-auth/react";
 
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ErrorAlert } from "@/components/error-alert";
 import {
   ResponsiveDialog,
@@ -111,18 +112,21 @@ function ItemDialogBody({
             control={control}
             name="gender"
             render={({ field }) => (
-              <Select value={field.value} onValueChange={(v) => field.onChange(v as Gender)}>
-                <SelectTrigger id={id("gender")} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(GENDER_LABELS) as Gender[]).map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {GENDER_LABELS[g]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ToggleGroup
+                id={id("gender")}
+                aria-label="Worn by"
+                type="single"
+                variant="outline"
+                className="w-fit flex-wrap"
+                value={field.value}
+                onValueChange={(v) => v && field.onChange(v as Gender)}
+              >
+                {(Object.keys(GENDER_LABELS) as Gender[]).map((g) => (
+                  <ToggleGroupItem key={g} value={g} className="px-3">
+                    {GENDER_LABELS[g]}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             )}
           />
         </Field>

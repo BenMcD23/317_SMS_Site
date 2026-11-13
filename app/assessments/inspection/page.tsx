@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -608,18 +607,21 @@ export default function InspectionPage() {
             <Label htmlFor="insp-uniform" className="text-sm">
               Uniform
             </Label>
-            <Select value={uniform} onValueChange={(v) => setSheet((s) => ({ ...s, uniform: v as Uniform }))}>
-              <SelectTrigger id="insp-uniform" className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {UNIFORMS.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ToggleGroup
+              id="insp-uniform"
+              aria-label="Uniform"
+              type="single"
+              variant="outline"
+              className="w-fit"
+              value={uniform}
+              onValueChange={(v) => v && setSheet((s) => ({ ...s, uniform: v as Uniform }))}
+            >
+              {UNIFORMS.map((u) => (
+                <ToggleGroupItem key={u.id} value={u.id} className="px-3">
+                  {u.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
             <Label htmlFor="insp-date" className="text-sm">
               Date
             </Label>

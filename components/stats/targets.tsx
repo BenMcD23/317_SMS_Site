@@ -7,6 +7,8 @@ import { CircleCheck, Plus, Trash2, TrendingUp, TriangleAlert } from "lucide-rea
 import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
+import { FlightFilter } from "@/components/flight-filter";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SearchableSelect } from "@/components/searchable-select";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
 import { formatDate, formatShortDate, todayLocal } from "@/lib/format";
@@ -30,7 +31,6 @@ import {
   BADGE_LABELS,
   cohortOf,
   describeTarget,
-  flightLabel,
   type SquadronStats,
   type StatsPoint,
   type StatsTarget,
@@ -246,35 +246,33 @@ function AddTargetDialog({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="target-level">At least</Label>
-              <Select value={minLevel} onValueChange={setMinLevel}>
-                <SelectTrigger id="target-level" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ANY}>Any level</SelectItem>
-                  {levels.map((l) => (
-                    <SelectItem key={l} value={l}>
-                      {l} or better
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ToggleGroup
+                id="target-level"
+                aria-label="At least"
+                type="single"
+                variant="outline"
+                size="sm"
+                className="flex-wrap"
+                value={minLevel}
+                onValueChange={(v) => v && setMinLevel(v)}
+              >
+                <ToggleGroupItem value={ANY} className="px-3">
+                  Any
+                </ToggleGroupItem>
+                {levels.map((l) => (
+                  <ToggleGroupItem key={l} value={l} aria-label={`${l} or better`} className="px-3">
+                    {l}+
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="target-flight">Who</Label>
-              <Select value={flight} onValueChange={setFlight}>
-                <SelectTrigger id="target-flight" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>Whole squadron</SelectItem>
-                  {flights.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {flightLabel(f)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FlightFilter
+                flights={flights}
+                value={flight === ALL ? "" : flight}
+                onChange={(f) => setFlight(f || ALL)}
+              />
             </div>
             <div className="flex items-end gap-2 pb-2">
               <Checkbox
