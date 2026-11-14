@@ -109,13 +109,6 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Bot,
         keywords: ["ai", "ask", "chat", "question", "who", "find"],
       },
-      // Staff only (lib/access.ts): the OC sees everyone, others their own (the API decides).
-      {
-        label: "DBS & Training",
-        href: "/staff/compliance",
-        icon: ShieldCheck,
-        keywords: ["dbs", "bpss", "mandatory training", "safeguarding", "vetting", "compliance"],
-      },
       {
         kind: "group",
         label: "OC",

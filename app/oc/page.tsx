@@ -641,9 +641,6 @@ export default function OcDashboardPage() {
                     {c.ok ? "Everyone synced is up to date." : "Nobody has been synced from the portal yet."}
                   </p>
                 )}
-                <Link href="/staff/compliance" className="no-print w-fit text-sm underline">
-                  Everyone&apos;s DBS and training
-                </Link>
               </>
             );
           })()

@@ -36,21 +36,14 @@ function when(item: ComplianceItem): string {
 }
 
 /**
- * Staff and what they have due. Shared by the DBS & Training page and the OC
- * dashboard so both read the same: worst first, and only what needs doing
- * unless `showAll` (one person looking at their own record wants the lot).
+ * Staff and what they have due, worst first, for the OC dashboard: only
+ * what needs doing, not what's up to date.
  */
-export function StaffComplianceList({
-  staff,
-  showAll = false,
-}: {
-  staff: StaffCompliance[];
-  showAll?: boolean;
-}) {
+export function StaffComplianceList({ staff }: { staff: StaffCompliance[] }) {
   return (
     <ul className="bg-card divide-y overflow-hidden rounded-lg border">
       {byUrgency(staff).map((s) => {
-        const items = showAll ? (s.items ?? []) : itemsToChase(s.items);
+        const items = itemsToChase(s.items);
         return (
           <li key={s.cin} className="flex flex-col gap-2 px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
