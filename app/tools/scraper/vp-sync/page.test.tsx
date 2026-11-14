@@ -405,3 +405,35 @@ describe("Volunteer Portal sync: enrolling ready cadets", () => {
     expect(sentToPortal("sms-vp-done")).toHaveLength(1);
   });
 });
+
+describe("Volunteer Portal sync: when nobody can be offered", () => {
+  it("says nobody is ready, and where readiness comes from, instead of showing nothing", async () => {
+    enrollingBookmark();
+    stubEnrolApi([]);
+    render(<VpSyncPage />);
+    expect(await screen.findByText(/Nobody is ready for a classification exam/)).toBeTruthy();
+    expect(screen.getByText(/ticked in Training/)).toBeTruthy();
+  });
+
+  it("says it couldn't check, rather than that nobody is ready, when the API fails", async () => {
+    enrollingBookmark();
+    fetchMock = vi.fn(async (url: string) => {
+      const path = new URL(url).pathname;
+      if (path.endsWith("/cadets")) return Response.json([{ cin: 111 }]);
+      if (path.endsWith("/exam-ready")) return Response.json({ detail: "boom" }, { status: 500 });
+      return Response.json(path.endsWith("/staff") ? [] : COUNTS);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<VpSyncPage />);
+    expect(await screen.findByText(/Couldn't work out who is ready/)).toBeTruthy();
+    expect(screen.queryByText(/Nobody is ready/)).toBeNull();
+  });
+
+  it("says it couldn't check when the portal's exams couldn't be read", async () => {
+    // No exam subjects from the portal: there's nothing to judge readiness against.
+    relayBookmark();
+    stubApi();
+    render(<VpSyncPage />);
+    expect(await screen.findByText(/Couldn't work out who is ready/)).toBeTruthy();
+  });
+});

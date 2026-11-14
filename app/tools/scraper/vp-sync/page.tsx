@@ -82,6 +82,9 @@ export default function VpSyncPage() {
 
   const [outdated, setOutdated] = useState(false);
   const [enrolGroups, setEnrolGroups] = useState<EnrolGroup[] | null>(null);
+  // True once the sync has tried to work out who's ready, so a null above
+  // means "couldn't check" rather than "hasn't got there yet".
+  const [enrolChecked, setEnrolChecked] = useState(false);
   const [canEnrol, setCanEnrol] = useState(false);
   const relayRef = useRef<Relay | null>(null);
 
@@ -135,18 +138,20 @@ export default function VpSyncPage() {
       }
     };
 
-    /** Who is ready for each portal exam and not yet enrolled; [] if that can't be worked out. */
-    const planEnrolment = async (subjects: ExamSubject[]): Promise<EnrolGroup[]> => {
-      if (!subjects.length) return [];
+    /** Who is ready for each portal exam and not yet enrolled; null if that can't be
+     *  worked out (the exams couldn't be read, or the API failed), so the page can
+     *  tell "nobody's ready" from "couldn't check". */
+    const planEnrolment = async (subjects: ExamSubject[]): Promise<EnrolGroup[] | null> => {
+      if (!subjects.length) return null;
       try {
         const ready = await apiRequest<ExamReady[]>(token, `${API_BASE}/vp-sync/exam-ready`, {
           method: "POST",
           body: { subjects: subjects.map((s) => ({ exam_id: s.examId, course_name: s.courseName })) },
         });
-        return Array.isArray(ready) ? enrolmentPlan(subjects, ready) : [];
+        return Array.isArray(ready) ? enrolmentPlan(subjects, ready) : null;
       } catch {
         // Enrolment is an extra: the sync itself has already succeeded.
-        return [];
+        return null;
       }
     };
 
@@ -173,11 +178,12 @@ export default function VpSyncPage() {
         if (await importCadets(cadets, found, staff)) {
           const groups = await planEnrolment(subjects);
           setEnrolGroups(groups);
+          setEnrolChecked(true);
           const enrollable = version >= ENROL_VERSION;
           setCanEnrol(enrollable);
           // Keep the bookmark listening while there's someone to enrol; the
           // Finish button (or closing this tab) lets it go.
-          keepOpen = enrollable && groups.some((g) => g.toEnrol.length > 0);
+          keepOpen = enrollable && !!groups?.some((g) => g.toEnrol.length > 0);
         }
       } catch (err) {
         setErrors(found);
@@ -293,6 +299,25 @@ export default function VpSyncPage() {
           {status.kind === "done" && <SyncResult counts={status.counts} problems={errors.length} />}
         </CardContent>
       </Card>
+
+      {status.kind === "done" && enrolChecked && !enrolGroups?.length && (
+        <Card>
+          <CardContent className="flex items-start gap-3 text-sm">
+            <GraduationCap className="text-muted-foreground mt-0.5 size-5 shrink-0" />
+            {enrolGroups ? (
+              <p className="pt-0.5">
+                Nobody is ready for a classification exam. Cadets show here once all of a subject&apos;s
+                lessons are ticked in Training and they haven&apos;t passed its exam on the portal.
+              </p>
+            ) : (
+              <p className="pt-0.5">
+                Couldn&apos;t work out who is ready for a classification exam this time, so nobody was
+                offered. Sync again, or enrol them on the portal&apos;s Exams page.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {status.kind === "done" && enrolGroups && enrolGroups.length > 0 && (
         <EnrolSection groups={enrolGroups} canEnrol={canEnrol} relay={relayRef} token={token ?? ""} />
