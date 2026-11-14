@@ -19,6 +19,7 @@ describe("canAccess", () => {
     "/check-in",
     "/nco-holidays",
     "/nco-comments",
+    "/drill",
     "/settings",
     "/stats",
   ])("lets NCOs and SNCOs reach %s", (path) => {

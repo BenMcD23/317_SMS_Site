@@ -194,6 +194,7 @@ describe("mobile tab bar", () => {
         "Stats",
         "Holidays",
         "Comments",
+        "Drill",
       ],
     ],
     [
@@ -209,6 +210,7 @@ describe("mobile tab bar", () => {
         "Stats",
         "Holidays",
         "Comments",
+        "Drill",
       ],
     ],
   ])("%s gets its parade-night tabs", (role, expected) => {

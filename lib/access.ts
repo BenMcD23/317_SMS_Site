@@ -12,6 +12,8 @@ const NCO_ALLOWED_ROUTES = [
   "/check-in",
   "/nco-holidays",
   "/nco-comments",
+  // Drill progress: NCOs see who to teach next; the API keeps sign-off to staff and SNCOs.
+  "/drill",
   "/settings",
 ];
 const INSPECTION_ROUTE = "/assessments/inspection";

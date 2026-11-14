@@ -1,9 +1,19 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Bookmark, Clock, ExternalLink, FileText, GripVertical, ShieldCheck } from "lucide-react";
+import {
+  Bookmark,
+  ChevronDown,
+  Clock,
+  ExternalLink,
+  FileText,
+  GripVertical,
+  ShieldCheck,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 import { bookmarkletHref, VP_ORIGIN } from "@/lib/vp-sync";
 
 // What the sync fills in, and where it shows up in 317 SMS.
@@ -12,6 +22,8 @@ const IMPORTS = [
   "Classification exams → Classifications",
   "Classification dates",
   "Join date",
+  "Staff DBS & training",
+  "Enrol ready cadets on exams",
 ];
 
 /**
@@ -30,6 +42,7 @@ export function VpSyncCard({
 }) {
   const link = useRef<HTMLAnchorElement>(null);
   const [ready, setReady] = useState(false);
+  const [howOpen, setHowOpen] = useState(false);
 
   useEffect(() => {
     // Set by hand: React refuses to render a `javascript:` href.
@@ -121,6 +134,42 @@ export function VpSyncCard({
           </div>
         </li>
       </ol>
+
+      <Collapsible open={howOpen} onOpenChange={setHowOpen} className="border-t pt-3">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="-ml-2 h-9 px-2">
+            <ChevronDown className={cn("size-4 transition-transform", howOpen && "rotate-180")} />
+            How exam enrolment works
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <ol className="text-muted-foreground mt-2 flex list-decimal flex-col gap-2 pl-5 text-sm">
+            <li>
+              Run 317 Sync as above. When it finishes, the sync tab lists cadets who are ready for a
+              classification exam and aren&apos;t enrolled yet.
+            </li>
+            <li>
+              Ready means every lesson of the subject is ticked in <b>Training</b>, and the portal
+              doesn&apos;t show them as having passed its exam. Cadets whose lessons weren&apos;t ticked
+              won&apos;t be listed.
+            </li>
+            <li>
+              Untick anyone who shouldn&apos;t sit it yet, then press <b>Enrol</b>. Switch to the{" "}
+              <b>Volunteer Portal tab</b>: it asks you to confirm the exam and how many cadets. Nothing is
+              sent until you press OK there.
+            </li>
+            <li>
+              The sync tab then checks the portal and says who went on. Anyone it can&apos;t confirm is named,
+              so you can check the portal&apos;s Exams page. Press <b>Finish</b> when you&apos;re done.
+            </li>
+            <li>
+              It only ever enrols, never removes anyone, and your portal login needs permission to manage exam
+              enrolments. A bookmark dragged before this was added syncs but can&apos;t enrol: drag a fresh
+              one.
+            </li>
+          </ol>
+        </CollapsibleContent>
+      </Collapsible>
     </section>
   );
 }
