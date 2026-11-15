@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { useApiQuery } from "@/lib/use-api-query";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { cn } from "@/lib/utils";
+import { ScoreTrendChart } from "@/components/charts/lazy";
 import { CadetLink } from "@/components/cadet-link";
 import { SearchableSelect } from "@/components/searchable-select";
 import { PageHeader } from "@/components/page-header";
@@ -621,30 +621,7 @@ function CadetDetail({ cadet }: { cadet: CadetHistory }) {
       <div>
         <h3 className="mb-2 text-sm font-medium">Score trend</h3>
         {chartData.filter((d) => d.score != null).length >= 2 ? (
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={chartData} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} width={32} tickLine={false} axisLine={false} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--popover)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  color: "var(--popover-foreground)",
-                  fontSize: 12,
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="score"
-                stroke="var(--chart-1)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                connectNulls={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <ScoreTrendChart data={chartData} />
         ) : (
           <p className="text-muted-foreground text-sm">Not enough scored inspections to chart a trend yet.</p>
         )}

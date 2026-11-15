@@ -14,15 +14,15 @@ import {
   AgeChart,
   BadgeTrendCard,
   ClassificationChart,
+  ProgrammeTurnout,
   ServiceChart,
   StrengthChart,
-} from "@/components/stats/charts";
+  TargetsSection,
+} from "@/components/charts/lazy";
 import { CsvButton } from "@/components/stats/csv-button";
-import { ProgrammeTurnout } from "@/components/stats/programme-turnout";
 import { SquadronKpis } from "@/components/stats/kpis";
 import { ClassificationFunnel, IntakeRetention } from "@/components/stats/progression";
 import { ExpiringQuals, RecentAwards } from "@/components/stats/qual-lists";
-import { TargetsSection } from "@/components/stats/targets";
 import { BlueFlyingCard, ClassificationExamsCard } from "@/components/stats/training";
 import { TimeRangePicker } from "@/components/stats/time-range-picker";
 import { Button } from "@/components/ui/button";

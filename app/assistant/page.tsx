@@ -26,7 +26,7 @@ import {
 import { toast } from "sonner";
 
 import { AiMarkdown } from "@/components/ai-markdown";
-import { AnswerChart } from "@/components/assistant/answer-chart";
+import { AnswerChart } from "@/components/charts/lazy";
 import { AnswerTable } from "@/components/assistant/answer-table";
 import { ChatList } from "@/components/assistant/chat-list";
 import { RenameChatDialog } from "@/components/assistant/rename-chat-dialog";
