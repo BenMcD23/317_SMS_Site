@@ -182,4 +182,24 @@ describe("cadets no longer on SMS", () => {
     );
     expect(toast.success).not.toHaveBeenCalled();
   });
+
+  it("opens on the flight it was left on", async () => {
+    respond(ROSTER);
+    const { unmount } = renderPage();
+    await userEvent.click(await screen.findByRole("radio", { name: "B Flight" }));
+    unmount();
+
+    renderPage();
+    await waitFor(() => expect(names()).toEqual(["Baker, Ben", "Cole, Cal"]));
+    expect(screen.getByRole("radio", { name: "B Flight" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  // B Flight was wound up since: show everyone rather than an empty list.
+  it("shows everyone when the remembered flight has gone", async () => {
+    window.localStorage.setItem("sms.view.cadets", JSON.stringify({ filters: { flight: "D" } }));
+    respond(ROSTER);
+    renderPage();
+    await waitFor(() => expect(names()).toHaveLength(4));
+    expect(screen.getByRole("radio", { name: "All" })).toHaveAttribute("aria-checked", "true");
+  });
 });

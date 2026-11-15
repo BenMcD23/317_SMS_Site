@@ -13,6 +13,9 @@ MotionGlobalConfig.skipAnimations = true;
 // Testing Library only auto-cleans when test globals are on; they're off here.
 afterEach(() => {
   cleanup();
+  // Remembered settings (list views, hidden personal data) mustn't carry from
+  // one test into the next.
+  if (typeof window !== "undefined") window.localStorage.clear();
 });
 
 // jsdom lacks the browser APIs the searchable pickers (cmdk) and the menu

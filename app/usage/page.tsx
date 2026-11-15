@@ -247,6 +247,7 @@ export default function UsagePage() {
               ) : (
                 <DataTable
                   label="Endpoints"
+                  viewKey="usage-endpoints"
                   data={routes}
                   columns={routeColumns}
                   rowKey={(r) => `${r.method} ${r.route}`}
@@ -270,6 +271,7 @@ export default function UsagePage() {
                 ) : (
                   <DataTable
                     label="People"
+                    viewKey="usage-people"
                     data={users}
                     columns={userColumns}
                     rowKey={(u) => u.email}

@@ -96,4 +96,31 @@ describe("DataTable", () => {
     renderTable();
     expect(screen.getByRole("table", { name: "People" })).toBeInTheDocument();
   });
+
+  it("opens sorted the way it was left when it has a view key", async () => {
+    const { unmount } = renderTable({ viewKey: "people" });
+    await userEvent.click(within(screen.getByRole("columnheader", { name: /Rank/ })).getByRole("button"));
+    await userEvent.click(within(screen.getByRole("columnheader", { name: /Rank/ })).getByRole("button"));
+    expect(names()).toEqual(["Cole", "Baker", "Able"]);
+    unmount();
+
+    renderTable({ viewKey: "people" });
+    expect(names()).toEqual(["Cole", "Baker", "Able"]);
+    expect(screen.getByRole("columnheader", { name: /Rank/ })).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("starts from its usual sort every time without a view key", async () => {
+    const { unmount } = renderTable({ initialSort: { id: "name" } });
+    await userEvent.click(within(screen.getByRole("columnheader", { name: /Rank/ })).getByRole("button"));
+    unmount();
+    renderTable({ initialSort: { id: "name" } });
+    expect(names()).toEqual(["Able", "Baker", "Cole"]);
+  });
+
+  // A column renamed or removed since the sort was remembered.
+  it("ignores a remembered sort on a column it no longer has", () => {
+    window.localStorage.setItem("sms.view.people", JSON.stringify({ sort: { id: "gone", desc: true } }));
+    renderTable({ viewKey: "people", initialSort: { id: "name" } });
+    expect(names()).toEqual(["Able", "Baker", "Cole"]);
+  });
 });

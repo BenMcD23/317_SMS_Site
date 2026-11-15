@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createColumnHelper,
@@ -12,9 +13,11 @@ import {
   useTable,
   type ColumnDef,
   type RowData,
+  type SortingState,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 
+import { useListView } from "@/lib/list-view";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -45,6 +48,10 @@ type Columns<T extends RowData> = ColumnDef<typeof features, T, any>[];
  * real `<Link>` so it works from the keyboard and opens in a new tab.
  * `columnClassName` (by column id) hides columns on a phone
  * (`"hidden sm:table-cell"`) or sets widths.
+ *
+ * `viewKey` remembers the sort in this browser (`lib/list-view.ts`), so the
+ * list opens sorted the way it was left. Without it the sort starts from
+ * `initialSort` every time.
  */
 export function DataTable<T extends RowData>({
   data,
@@ -54,6 +61,7 @@ export function DataTable<T extends RowData>({
   initialSort,
   columnClassName = {},
   label,
+  viewKey,
 }: {
   data: T[];
   columns: Columns<T>;
@@ -62,15 +70,28 @@ export function DataTable<T extends RowData>({
   initialSort?: { id: string; desc?: boolean };
   columnClassName?: Record<string, string>;
   label: string;
+  viewKey?: string;
 }) {
   const router = useRouter();
+  const defaultSorting: SortingState = initialSort ? [{ id: initialSort.id, desc: !!initialSort.desc }] : [];
+  const [localSorting, setLocalSorting] = useState<SortingState>(defaultSorting);
+  const [view, setView] = useListView(viewKey ?? "");
+  // A remembered sort on a column the table no longer has is ignored.
+  const columnIds = columns.map((c) => c.id ?? (c as { accessorKey?: string }).accessorKey);
+  const remembered = viewKey && view.sort && columnIds.includes(view.sort.id) ? [view.sort] : null;
+  const sorting = viewKey ? (remembered ?? defaultSorting) : localSorting;
   const table = useTable({
     features,
     columns,
     data,
     getRowId: (row) => String(rowKey(row)),
     enableSortingRemoval: false,
-    initialState: initialSort ? { sorting: [{ id: initialSort.id, desc: !!initialSort.desc }] } : undefined,
+    state: { sorting },
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      if (!viewKey) return setLocalSorting(next);
+      setView({ sort: next[0] ? { id: next[0].id, desc: !!next[0].desc } : undefined });
+    },
   });
 
   return (

@@ -121,6 +121,7 @@ export default function RecruitsPage() {
       {!isLoading && recruits.length > 0 && (
         <DataTable
           label="Recruits"
+          viewKey="recruits"
           data={recruits}
           columns={columns}
           rowKey={(r) => r.id}
