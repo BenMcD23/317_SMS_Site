@@ -50,7 +50,8 @@ import { ReadyStamp } from "@/components/ready-stamp";
 import { MarkGivenDialog } from "@/components/mark-given-dialog";
 import { useOrderWorkflow } from "@/lib/use-order-workflow";
 import { useBadgeGrid } from "@/lib/badge-grid";
-import { useApiQuery } from "@/lib/use-api-query";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
+import { apiRequest } from "@/lib/api-fetch";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/format";
 import { completeOrderBlockers } from "@/lib/badge-orders";
@@ -114,6 +115,8 @@ export default function BadgeOrdersPage() {
   // Order list — each entry moves queued -> ordered -> received on its own
   const orderListQuery = useApiQuery<BadgeOrderListEntry[]>(ORDER_LIST_KEY, "/api/stores/badges/order-lists");
   const orderListEntries = orderListQuery.data ?? NO_ENTRIES;
+  const setOrderList = useSetApiQueryData<BadgeOrderListEntry[]>(ORDER_LIST_KEY);
+  const [markingMany, setMarkingMany] = useState<"ordered" | "received" | null>(null);
   // The page waits for all three: matching a badge to the grid needs the grid.
   const error = workflow.error ?? gridQuery.error?.message ?? orderListQuery.error?.message ?? null;
   const loading = !error && (workflow.loading || gridQuery.isPending || orderListQuery.isPending);
@@ -382,6 +385,29 @@ export default function BadgeOrdersPage() {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setMarkingOrderedId(null);
+    }
+  }
+
+  // Many at once: the supplier order has gone, or a delivery has come in. The
+  // API moves all or none and answers with the moved entries, which go
+  // straight into the list. Resolves true once they're moved.
+  async function handleMarkMany(step: "ordered" | "received", entryIds: string[]): Promise<boolean> {
+    setMarkingMany(step);
+    try {
+      const moved = await apiRequest<BadgeOrderListEntry[]>(
+        token ?? "",
+        `/api/stores/badges/order-lists/mark-${step}`,
+        { method: "POST", body: { entryIds, by: currentUser } },
+        `Failed to mark as ${step}`
+      );
+      const byId = new Map(moved.map((e) => [e.id, e]));
+      setOrderList((prev) => prev?.map((e) => byId.get(e.id) ?? e));
+      return true;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+      return false;
+    } finally {
+      setMarkingMany(null);
     }
   }
 
@@ -1006,6 +1032,8 @@ export default function BadgeOrdersPage() {
           onMarkReceived={handleMarkEntryReceived}
           markingOrderedId={markingOrderedId}
           markingReceivedId={markingReceivedId}
+          onMarkMany={handleMarkMany}
+          markingMany={markingMany}
           onAddNote={workflow.addNote}
           onDeleteNote={workflow.deleteNote}
         />

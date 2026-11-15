@@ -31,6 +31,8 @@ const ACTIONS = {
   onMarkReceived: vi.fn(),
   markingOrderedId: null,
   markingReceivedId: null,
+  onMarkMany: vi.fn(async () => true),
+  markingMany: null,
   onAddNote: vi.fn(async () => {}),
   onDeleteNote: vi.fn(),
 };
@@ -106,5 +108,94 @@ describe("badge Order List tab", () => {
     const row = within(screen.getByText("Squadron").closest("li")!);
     expect(row.getByText("Original order no longer available")).toBeInTheDocument();
     expect(row.queryByRole("button", { name: /Go to/ })).toBeNull();
+  });
+
+  it("offers no tick boxes for a single badge, whose own button does the job", () => {
+    render(
+      <BadgeOrderListTab
+        {...ACTIONS}
+        toOrder={[entry("a", "Squadron", "Amy Able")]}
+        ordered={[]}
+        received={[]}
+      />
+    );
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("marks the whole supplier order ordered in one go, then clears the ticks", async () => {
+    const user = userEvent.setup();
+    const onMarkMany = vi.fn(async () => true);
+    render(
+      <BadgeOrderListTab
+        {...ACTIONS}
+        onMarkMany={onMarkMany}
+        toOrder={[entry("a", "First Aid – Blue", "Amy Able"), entry("b", "Squadron", "Ben Bell")]}
+        ordered={[]}
+        received={[]}
+      />
+    );
+    // Nothing ticked, nothing to press.
+    expect(screen.queryByRole("button", { name: /^Mark \d+ as ordered$/ })).toBeNull();
+    await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+    await user.click(screen.getByRole("button", { name: "Mark 2 as ordered" }));
+    expect(onMarkMany).toHaveBeenCalledWith("ordered", ["a", "b"]);
+    expect(screen.getByRole("checkbox", { name: "Select all" })).not.toBeChecked();
+  });
+
+  it("marks just the badges that came in a delivery received", async () => {
+    const user = userEvent.setup();
+    const onMarkMany = vi.fn(async () => true);
+    const sent = { orderedAt: "2026-10-02" };
+    render(
+      <BadgeOrderListTab
+        {...ACTIONS}
+        onMarkMany={onMarkMany}
+        toOrder={[]}
+        ordered={[
+          entry("a", "First Aid – Blue", "Amy Able", sent),
+          entry("b", "Squadron", "Zoë Ångström", sent),
+        ]}
+        received={[]}
+      />
+    );
+    await user.click(screen.getByRole("checkbox", { name: "Select Squadron for Zoë Ångström" }));
+    // One of two: the select-all box shows it's part-way.
+    expect(screen.getByRole("checkbox", { name: "Select all" })).toHaveAttribute(
+      "data-state",
+      "indeterminate"
+    );
+    await user.click(screen.getByRole("button", { name: "Mark 1 as received" }));
+    expect(onMarkMany).toHaveBeenCalledWith("received", ["b"]);
+  });
+
+  it("keeps the ticks when the page couldn't move them, so it can be tried again", async () => {
+    const user = userEvent.setup();
+    const onMarkMany = vi.fn(async () => false);
+    render(
+      <BadgeOrderListTab
+        {...ACTIONS}
+        onMarkMany={onMarkMany}
+        toOrder={[entry("a", "First Aid – Blue", "Amy Able"), entry("b", "Squadron", "Ben Bell")]}
+        ordered={[]}
+        received={[]}
+      />
+    );
+    await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+    await user.click(screen.getByRole("button", { name: "Mark 2 as ordered" }));
+    expect(screen.getByRole("button", { name: "Mark 2 as ordered" })).toBeInTheDocument();
+  });
+
+  it("says it's working and can't be pressed twice while a bulk mark is going", async () => {
+    const user = userEvent.setup();
+    const props = {
+      ...ACTIONS,
+      toOrder: [entry("a", "First Aid – Blue", "Amy Able"), entry("b", "Squadron", "Ben Bell")],
+      ordered: [],
+      received: [],
+    };
+    const { rerender } = render(<BadgeOrderListTab {...props} />);
+    await user.click(screen.getByRole("checkbox", { name: "Select all" }));
+    rerender(<BadgeOrderListTab {...props} markingMany="ordered" />);
+    expect(screen.getByRole("button", { name: "Marking…" })).toBeDisabled();
   });
 });

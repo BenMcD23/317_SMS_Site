@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, X, Copy, Check, Lock, ExternalLink, Truck, Inbo
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { BadgeOrder, BadgeOrderItem, BadgeOrderListEntry } from "@/lib/stores-types";
 import { QmNotes } from "@/components/qm-notes";
 import { formatTimestamp } from "@/lib/format";
@@ -23,6 +24,9 @@ type Actions = {
   onMarkReceived: (entryId: string) => void;
   markingOrderedId: string | null;
   markingReceivedId: string | null;
+  /** Moves several entries on at once; resolves true once they're moved. */
+  onMarkMany: (step: "ordered" | "received", entryIds: string[]) => Promise<boolean>;
+  markingMany: "ordered" | "received" | null;
   onAddNote: (orderId: string, itemId: string, content: string) => Promise<void>;
   onDeleteNote: (orderId: string, itemId: string, noteId: string) => void;
 };
@@ -38,10 +42,13 @@ function OrderListEntry({
   entry,
   stage,
   actions,
+  selection,
 }: {
   entry: BadgeOrderListEntry;
   stage: Stage;
   actions: Actions;
+  /** A tick box for moving several on at once; only offered when there are several. */
+  selection?: { checked: boolean; onChange: (checked: boolean) => void };
 }) {
   const {
     resolveEntry,
@@ -59,6 +66,14 @@ function OrderListEntry({
   return (
     <li key={entry.id} className="bg-muted/30 space-y-2 rounded-md border px-3 py-2">
       <div className="flex items-start justify-between gap-2">
+        {selection && (
+          <Checkbox
+            className="mt-0.5 size-5"
+            checked={selection.checked}
+            onCheckedChange={(c) => selection.onChange(c === true)}
+            aria-label={`Select ${entry.badgeName} for ${entry.cadetName}`}
+          />
+        )}
         {ref ? (
           <button
             type="button"
@@ -159,6 +174,48 @@ function OrderListEntry({
 }
 
 /**
+ * "Select all" and "Mark 3 as ordered" over a list section. After the
+ * supplier email goes, every queued badge moves to ordered in one go; when a
+ * parcel comes, the badges in it move to received. Shown only when a section
+ * holds several badges: for one, its own button does the job.
+ */
+function BulkBar({
+  entries,
+  selected,
+  onSelect,
+  step,
+  busy,
+  onMark,
+}: {
+  entries: BadgeOrderListEntry[];
+  selected: string[];
+  onSelect: (ids: string[]) => void;
+  step: "ordered" | "received";
+  busy: boolean;
+  onMark: () => void;
+}) {
+  const all = selected.length === entries.length;
+  return (
+    <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
+      <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <Checkbox
+          className="size-5"
+          checked={all ? true : selected.length > 0 ? "indeterminate" : false}
+          onCheckedChange={() => onSelect(all ? [] : entries.map((e) => e.id))}
+        />
+        Select all
+      </label>
+      {selected.length > 0 && (
+        <Button size="sm" className="h-9" disabled={busy} onClick={onMark}>
+          {step === "ordered" ? <Truck data-icon="inline-start" /> : <Inbox data-icon="inline-start" />}
+          {busy ? "Marking…" : `Mark ${selected.length} as ${step}`}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
  * The badge orders page's Order List tab: badges queued for the supplier,
  * on order, and received, each moving through its own To Order -> Ordered ->
  * Received. Split out of the page, which had grown past 1,500 lines.
@@ -174,6 +231,33 @@ export function BadgeOrderListTab({
   received: BadgeOrderListEntry[];
 }) {
   const [showReceived, setShowReceived] = useState(false);
+  // Ticked entries per section. Kept to ids still in that section, so a badge
+  // moved on elsewhere (or by someone else) drops out of the selection.
+  const [ticked, setTicked] = useState<{ toOrder: string[]; ordered: string[] }>({
+    toOrder: [],
+    ordered: [],
+  });
+  const inSection = (ids: string[], entries: BadgeOrderListEntry[]) =>
+    ids.filter((id) => entries.some((e) => e.id === id));
+  const selected = {
+    toOrder: inSection(ticked.toOrder, toOrder),
+    ordered: inSection(ticked.ordered, ordered),
+  };
+  const selectionFor = (section: "toOrder" | "ordered", entries: BadgeOrderListEntry[], id: string) =>
+    entries.length > 1
+      ? {
+          checked: selected[section].includes(id),
+          onChange: (checked: boolean) =>
+            setTicked((prev) => ({
+              ...prev,
+              [section]: checked ? [...prev[section], id] : prev[section].filter((x) => x !== id),
+            })),
+        }
+      : undefined;
+  async function markSelected(section: "toOrder" | "ordered") {
+    const step = section === "toOrder" ? "ordered" : "received";
+    if (await actions.onMarkMany(step, selected[section])) setTicked((prev) => ({ ...prev, [section]: [] }));
+  }
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   function handleCopyEntries(entries: BadgeOrderListEntry[], key: string) {
@@ -204,9 +288,25 @@ export function BadgeOrderListTab({
             </p>
           ) : (
             <>
+              {toOrder.length > 1 && (
+                <BulkBar
+                  entries={toOrder}
+                  selected={selected.toOrder}
+                  onSelect={(ids) => setTicked((prev) => ({ ...prev, toOrder: ids }))}
+                  step="ordered"
+                  busy={actions.markingMany === "ordered"}
+                  onMark={() => markSelected("toOrder")}
+                />
+              )}
               <ul className="space-y-1.5">
                 {toOrder.map((entry) => (
-                  <OrderListEntry key={entry.id} entry={entry} stage="toOrder" actions={actions} />
+                  <OrderListEntry
+                    key={entry.id}
+                    entry={entry}
+                    stage="toOrder"
+                    actions={actions}
+                    selection={selectionFor("toOrder", toOrder, entry.id)}
+                  />
                 ))}
               </ul>
               <div className="flex justify-end pt-1">
@@ -240,11 +340,29 @@ export function BadgeOrderListTab({
           {ordered.length === 0 ? (
             <p className="text-muted-foreground py-4 text-center text-sm">Nothing on order.</p>
           ) : (
-            <ul className="space-y-1.5">
-              {ordered.map((entry) => (
-                <OrderListEntry key={entry.id} entry={entry} stage="ordered" actions={actions} />
-              ))}
-            </ul>
+            <>
+              {ordered.length > 1 && (
+                <BulkBar
+                  entries={ordered}
+                  selected={selected.ordered}
+                  onSelect={(ids) => setTicked((prev) => ({ ...prev, ordered: ids }))}
+                  step="received"
+                  busy={actions.markingMany === "received"}
+                  onMark={() => markSelected("ordered")}
+                />
+              )}
+              <ul className="space-y-1.5">
+                {ordered.map((entry) => (
+                  <OrderListEntry
+                    key={entry.id}
+                    entry={entry}
+                    stage="ordered"
+                    actions={actions}
+                    selection={selectionFor("ordered", ordered, entry.id)}
+                  />
+                ))}
+              </ul>
+            </>
           )}
         </CardContent>
       </Card>
