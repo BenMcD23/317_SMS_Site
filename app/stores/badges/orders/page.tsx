@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import {
-  ChevronDown,
-  ChevronUp,
   ChevronsDownUp,
   ChevronsUpDown,
   Plus,
@@ -17,33 +15,18 @@ import {
   RotateCcw,
   Bell,
   ClipboardList,
-  Copy,
   Check,
-  Lock,
-  ExternalLink,
   Truck,
   Inbox,
   Award,
 } from "lucide-react";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { CountTabs } from "@/components/count-tabs";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { SearchableSelect } from "@/components/searchable-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  ResponsiveDialog,
-  ResponsiveDialogContent,
-  ResponsiveDialogFooter,
-  ResponsiveDialogHeader,
-  ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   BadgeOrder,
@@ -54,14 +37,7 @@ import {
   BadgeOrderListEntry,
   isRemovedFromStock,
 } from "@/lib/stores-types";
-import {
-  type BadgeCategory,
-  type GainedWhereOption,
-  buildBadgeName,
-  gainedWhereLabel,
-  useReference,
-} from "@/lib/reference";
-import { CadetSearchInput } from "@/components/cadet-search";
+import { type BadgeCategory, buildBadgeName, useReference } from "@/lib/reference";
 import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
@@ -80,177 +56,18 @@ import { formatTimestamp } from "@/lib/format";
 import { completeOrderBlockers } from "@/lib/badge-orders";
 import { searchOrders } from "@/lib/order-search";
 import { cn } from "@/lib/utils";
+import {
+  BadgePicker,
+  GainedWhereFields,
+  type GainedWhereState,
+  emptyGainedWhere,
+  gainedWhereSummary,
+  isGainedWhereComplete,
+} from "./components/badge-fields";
+import { NewBadgeOrderDialog } from "./components/new-order-dialog";
+import { BadgeOrderListTab, type OrderItemRef } from "./components/order-list-tab";
 
 type StockMatch = { item: BadgeItem; cell: BadgeCell };
-
-/** An order list entry resolved back to the order item it was created from. */
-type OrderItemRef = { order: BadgeOrder; item: BadgeOrderItem };
-
-function BadgePicker({
-  category,
-  subType,
-  level,
-  onCategory,
-  onSubType,
-  onLevel,
-}: {
-  category: BadgeCategory | null;
-  subType: string | null;
-  level: string | null;
-  onCategory: (c: BadgeCategory | null) => void;
-  onSubType: (s: string | null) => void;
-  onLevel: (l: string | null) => void;
-}) {
-  const { badgeCategories } = useReference();
-  return (
-    <div className="space-y-2">
-      {/* Searchable: the badge catalogue is too long to scroll on a phone. */}
-      <SearchableSelect
-        aria-label="Badge type"
-        value={category?.id ?? ""}
-        onValueChange={(v) => onCategory(badgeCategories.find((c) => c.id === v) ?? null)}
-        placeholder="Badge type…"
-        searchPlaceholder="Find a badge type…"
-        className="h-8 text-sm"
-        options={badgeCategories.map((c) => ({ value: c.id, label: c.name }))}
-      />
-
-      {category && (category.subTypes || category.items) && (
-        <SearchableSelect
-          aria-label={category.subTypes ? "Sub-type" : "Badge"}
-          value={subType ?? ""}
-          onValueChange={(v) => onSubType(v)}
-          placeholder={category.subTypes ? "Sub-type…" : "Badge…"}
-          className="h-8 text-sm"
-          options={(category.subTypes ?? category.items ?? []).map((v) => ({ value: v, label: v }))}
-        />
-      )}
-
-      {category?.levels && (!category.subTypes || subType) && (
-        // A handful of levels: one tap each, and the choice stays in view.
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          aria-label="Level"
-          className="flex-wrap"
-          value={level ?? ""}
-          onValueChange={(v) => v && onLevel(v)}
-        >
-          {category.levels.map((l) => (
-            <ToggleGroupItem key={l} value={l} className="px-3">
-              {l}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      )}
-    </div>
-  );
-}
-
-type GainedWhereState = {
-  gainedWhere: string | null;
-  gainedWhereDetail: string;
-  gainedDateFrom: string;
-  gainedDateTo: string;
-};
-
-function emptyGainedWhere(): GainedWhereState {
-  return { gainedWhere: null, gainedWhereDetail: "", gainedDateFrom: "", gainedDateTo: "" };
-}
-
-function isGainedWhereComplete(g: GainedWhereState): boolean {
-  if (!g.gainedWhere) return false;
-  if (g.gainedWhere === "other" && !g.gainedWhereDetail.trim()) return false;
-  if (!g.gainedDateFrom || !g.gainedDateTo) return false;
-  return true;
-}
-
-function GainedWhereFields({
-  value,
-  onChange,
-}: {
-  value: GainedWhereState;
-  onChange: (v: GainedWhereState) => void;
-}) {
-  const { gainedWhereOptions } = useReference();
-  // Every option records the dates attended.
-  const needsDates = !!value.gainedWhere;
-  return (
-    <div className="space-y-2">
-      <Select
-        value={value.gainedWhere ?? ""}
-        onValueChange={(v) =>
-          onChange({ ...value, gainedWhere: v, gainedWhereDetail: "", gainedDateFrom: "", gainedDateTo: "" })
-        }
-      >
-        <SelectTrigger className="h-8 text-sm">
-          <SelectValue placeholder="Gained where…" />
-        </SelectTrigger>
-        <SelectContent>
-          {gainedWhereOptions.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {value.gainedWhere === "other" && (
-        <Input
-          className="h-8 text-sm"
-          placeholder="What was it?"
-          value={value.gainedWhereDetail}
-          onChange={(e) => onChange({ ...value, gainedWhereDetail: e.target.value })}
-        />
-      )}
-
-      {needsDates && (
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            type="date"
-            className="h-8 text-sm"
-            value={value.gainedDateFrom}
-            max={value.gainedDateTo || undefined}
-            onChange={(e) => onChange({ ...value, gainedDateFrom: e.target.value })}
-          />
-          <Input
-            type="date"
-            className="h-8 text-sm"
-            value={value.gainedDateTo}
-            min={value.gainedDateFrom || undefined}
-            onChange={(e) => onChange({ ...value, gainedDateTo: e.target.value })}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function gainedWhereSummary(
-  options: GainedWhereOption[],
-  g: {
-    gainedWhere?: string | null;
-    gainedWhereDetail?: string | null;
-    gainedDateFrom?: string | null;
-    gainedDateTo?: string | null;
-  }
-): string | null {
-  const label = g.gainedWhere === "other" ? g.gainedWhereDetail : gainedWhereLabel(options, g.gainedWhere);
-  if (!label) return null;
-  if (g.gainedDateFrom && g.gainedDateTo) {
-    return `${label} (${g.gainedDateFrom.slice(0, 10)} – ${g.gainedDateTo.slice(0, 10)})`;
-  }
-  return label;
-}
-
-type NewBadgeEntry = {
-  badgeName: string;
-  gainedWhere: string | null;
-  gainedWhereDetail: string;
-  gainedDateFrom: string;
-  gainedDateTo: string;
-};
 
 const BADGE_ORDERS_KEY = ["stores", "badges", "orders"];
 const ORDER_LIST_KEY = ["stores", "badges", "order-lists"];
@@ -303,8 +120,6 @@ export default function BadgeOrdersPage() {
   const [addingToListId, setAddingToListId] = useState<string | null>(null);
   const [markingOrderedId, setMarkingOrderedId] = useState<string | null>(null);
   const [markingReceivedId, setMarkingReceivedId] = useState<string | null>(null);
-  const [showReceived, setShowReceived] = useState(false);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   // Order-list shortcuts from the order item itself — keyed by order item id,
   // separate from the Order List tab's own in-flight state (keyed by entry id).
   const [sendingToOrderedId, setSendingToOrderedId] = useState<string | null>(null);
@@ -312,14 +127,6 @@ export default function BadgeOrdersPage() {
 
   // New order dialog
   const [newOrderOpen, setNewOrderOpen] = useState(false);
-  const [newCadetCin, setNewCadetCin] = useState<number | null>(null);
-  const [newCadetName, setNewCadetName] = useState("");
-  const [newBadges, setNewBadges] = useState<NewBadgeEntry[]>([]);
-  const [newCategory, setNewCategory] = useState<BadgeCategory | null>(null);
-  const [newSubType, setNewSubType] = useState<string | null>(null);
-  const [newLevel, setNewLevel] = useState<string | null>(null);
-  const [newGainedWhere, setNewGainedWhere] = useState<GainedWhereState>(emptyGainedWhere());
-  const [submitting, setSubmitting] = useState(false);
 
   // Add badge to existing order (inline)
   const [addingToOrderId, setAddingToOrderId] = useState<string | null>(null);
@@ -456,56 +263,10 @@ export default function BadgeOrdersPage() {
 
   const handleMarkItemAsReady = workflow.markReady;
 
-  const currentBadgeName = newCategory ? buildBadgeName(newCategory, newSubType, newLevel) : null;
   const addBadgeName = addCategory ? buildBadgeName(addCategory, addSubType, addLevel) : null;
 
   function openNewOrder() {
-    setNewCadetCin(null);
-    setNewCadetName("");
-    setNewBadges([]);
-    setNewCategory(null);
-    setNewSubType(null);
-    setNewLevel(null);
-    setNewGainedWhere(emptyGainedWhere());
     setNewOrderOpen(true);
-  }
-
-  function handleAddBadgeToNew() {
-    if (!currentBadgeName || !isGainedWhereComplete(newGainedWhere)) return;
-    setNewBadges((prev) => [...prev, { badgeName: currentBadgeName, ...newGainedWhere }]);
-    setNewCategory(null);
-    setNewSubType(null);
-    setNewLevel(null);
-    setNewGainedWhere(emptyGainedWhere());
-  }
-
-  async function handleCreateOrder() {
-    if (!newCadetCin || newBadges.length === 0) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/stores/badges/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cadetCin: newCadetCin,
-          items: newBadges.map((b) => ({
-            badgeName: b.badgeName,
-            gainedWhere: b.gainedWhere,
-            gainedWhereDetail: b.gainedWhereDetail,
-            gainedDateFrom: b.gainedDateFrom,
-            gainedDateTo: b.gainedDateTo,
-          })),
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to create order");
-      const created = await res.json();
-      setOrders((prev) => [created, ...prev]);
-      setNewOrderOpen(false);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setSubmitting(false);
-    }
   }
 
   function startAddToOrder(orderId: string) {
@@ -714,129 +475,6 @@ export default function BadgeOrdersPage() {
 
   function handleUndoReceived(item: BadgeOrderItem, entry: BadgeOrderListEntry) {
     void runListUndo(item.id, listStepPost(entry.id, "undo-received"), "Failed to undo received");
-  }
-
-  function handleCopyEntries(entries: BadgeOrderListEntry[], key: string) {
-    const text = entries.map((e) => `${e.badgeName} — ${e.cadetName}`).join("\n");
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
-  }
-
-  /**
-   * One row on the order list. The badge/cadet text links back to the order item the
-   * entry was created from, and its QM notes are shown and editable inline so the
-   * order list can be worked through without leaving the tab. `stage` decides which
-   * action (if any) and audit lines are shown, matching where the entry currently sits
-   * in the queued -> ordered -> received flow.
-   */
-  function renderOrderListEntry(entry: BadgeOrderListEntry, stage: "toOrder" | "ordered" | "received") {
-    const ref = resolveEntry(entry);
-    const notes = ref?.item.qmNotes ?? [];
-    const canEditNotes = stage === "toOrder" && !!ref && !ref.order.completed;
-
-    return (
-      <li key={entry.id} className="bg-muted/30 space-y-2 rounded-md border px-3 py-2">
-        <div className="flex items-start justify-between gap-2">
-          {ref ? (
-            <button
-              type="button"
-              onClick={() => goToOrderItem(ref)}
-              className="group focus-visible:ring-ring min-w-0 flex-1 rounded text-left focus:outline-none focus-visible:ring-2"
-              title={`Go to ${ref.order.cadetName}'s order`}
-            >
-              <p className="text-sm">
-                <span className="font-medium underline-offset-2 group-hover:underline">
-                  {entry.badgeName}
-                </span>
-                <span className="text-muted-foreground"> — {entry.cadetName}</span>
-                <ExternalLink className="text-muted-foreground ml-1.5 inline h-3 w-3 shrink-0 align-[-1px]" />
-              </p>
-              <p className="text-muted-foreground text-[10px]">
-                Ordered {formatTimestamp(ref.order.timestamp)}
-                {ref.order.completed && " · order completed"}
-              </p>
-            </button>
-          ) : (
-            <div className="min-w-0 flex-1">
-              <p className="text-sm">
-                <span className="font-medium">{entry.badgeName}</span>
-                <span className="text-muted-foreground"> — {entry.cadetName}</span>
-              </p>
-              <p className="text-muted-foreground text-[10px]">Original order no longer available</p>
-            </div>
-          )}
-
-          {stage === "toOrder" && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="text-muted-foreground hover:text-destructive h-6 w-6 shrink-0"
-              onClick={() => handleRemoveOrderListEntry(entry.id)}
-              aria-label="Remove from order list"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
-
-        {/* Audit trail — who queued, ordered, and received this badge */}
-        <div className="space-y-0.5">
-          <p className="text-muted-foreground text-[10px]">
-            Added to list {formatTimestamp(entry.addedAt)}
-            {entry.addedBy && <> · {entry.addedBy}</>}
-          </p>
-          {entry.orderedAt && (
-            <p className="text-muted-foreground text-[10px]">
-              Marked ordered {formatTimestamp(entry.orderedAt)}
-              {entry.orderedBy && <> · {entry.orderedBy}</>}
-            </p>
-          )}
-          {entry.receivedAt && (
-            <p className="text-muted-foreground text-[10px]">
-              Marked received {formatTimestamp(entry.receivedAt)}
-              {entry.receivedBy && <> · {entry.receivedBy}</>}
-            </p>
-          )}
-        </div>
-
-        {stage === "toOrder" && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-            disabled={markingOrderedId === entry.id}
-            onClick={() => handleMarkEntryOrdered(entry.id)}
-          >
-            <Truck className="mr-1.5 h-3 w-3" />
-            {markingOrderedId === entry.id ? "Marking..." : "Mark as Ordered"}
-          </Button>
-        )}
-
-        {stage === "ordered" && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-success/40 text-success hover:bg-success/10 hover:text-success h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-            disabled={markingReceivedId === entry.id}
-            onClick={() => handleMarkEntryReceived(entry.id)}
-          >
-            <Inbox className="mr-1.5 h-3 w-3" />
-            {markingReceivedId === entry.id ? "Marking..." : "Mark as Received"}
-          </Button>
-        )}
-
-        {ref && (
-          <QmNotes
-            notes={notes}
-            editable={canEditNotes}
-            itemLabel={entry.badgeName}
-            onAdd={(content) => workflow.addNote(ref.order.id, ref.item.id, content)}
-            onDelete={(noteId) => workflow.deleteNote(ref.order.id, ref.item.id, noteId)}
-          />
-        )}
-      </li>
-    );
   }
 
   async function handleAddToOrder(orderId: string) {
@@ -1357,213 +995,30 @@ export default function BadgeOrdersPage() {
 
       {/* Order List tab — each badge moves through its own To Order -> Ordered -> Received */}
       {!loading && activeTab === "orderlist" && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className="font-semibold">To Order</p>
-                  <p className="text-muted-foreground text-xs">Badges queued for the next supplier order</p>
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  {toOrderEntries.length} badge{toOrderEntries.length !== 1 ? "s" : ""}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-4">
-              {toOrderEntries.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center text-sm">
-                  No badges queued. Use &quot;Add to Order List&quot; on an order item.
-                </p>
-              ) : (
-                <>
-                  <ul className="space-y-1.5">
-                    {toOrderEntries.map((entry) => renderOrderListEntry(entry, "toOrder"))}
-                  </ul>
-                  <div className="flex justify-end pt-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleCopyEntries(toOrderEntries, "toOrder")}
-                    >
-                      {copiedKey === "toOrder" ? (
-                        <Check className="text-success mr-2 h-4 w-4" />
-                      ) : (
-                        <Copy className="mr-2 h-4 w-4" />
-                      )}
-                      {copiedKey === "toOrder" ? "Copied" : "Copy List"}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className="font-semibold">Ordered</p>
-                  <p className="text-muted-foreground text-xs">Sent to the supplier, awaiting delivery</p>
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  {orderedEntries.length} badge{orderedEntries.length !== 1 ? "s" : ""}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-4">
-              {orderedEntries.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center text-sm">Nothing on order.</p>
-              ) : (
-                <ul className="space-y-1.5">
-                  {orderedEntries.map((entry) => renderOrderListEntry(entry, "ordered"))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          {receivedEntries.length > 0 && (
-            <Card className="opacity-80">
-              <CardHeader className="pb-0">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold">Received</p>
-                      <Badge className="border-success/40 bg-success/15 text-success text-xs">
-                        <Lock className="mr-1 h-3 w-3" />
-                        Complete
-                      </Badge>
-                    </div>
-                    <p className="text-muted-foreground text-xs">Delivered and closed out</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {receivedEntries.length} badge{receivedEntries.length !== 1 ? "s" : ""}
-                    </Badge>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => setShowReceived((s) => !s)}
-                      aria-label={showReceived ? "Collapse" : "Expand"}
-                    >
-                      {showReceived ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              {showReceived && (
-                <CardContent className="space-y-3 pt-4">
-                  <ul className="space-y-1.5">
-                    {receivedEntries.map((entry) => renderOrderListEntry(entry, "received"))}
-                  </ul>
-                </CardContent>
-              )}
-            </Card>
-          )}
-        </div>
+        <BadgeOrderListTab
+          toOrder={toOrderEntries}
+          ordered={orderedEntries}
+          received={receivedEntries}
+          resolveEntry={resolveEntry}
+          onGoTo={goToOrderItem}
+          onRemove={handleRemoveOrderListEntry}
+          onMarkOrdered={handleMarkEntryOrdered}
+          onMarkReceived={handleMarkEntryReceived}
+          markingOrderedId={markingOrderedId}
+          markingReceivedId={markingReceivedId}
+          onAddNote={workflow.addNote}
+          onDeleteNote={workflow.deleteNote}
+        />
       )}
 
       {/* New Order Dialog */}
-      <ResponsiveDialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
-        <ResponsiveDialogContent className="sm:max-w-lg">
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>New Badge Order</ResponsiveDialogTitle>
-          </ResponsiveDialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Cadet</Label>
-              <CadetSearchInput
-                token={token}
-                selectedCin={newCadetCin}
-                selectedName={newCadetName}
-                onSelect={(cin, name) => {
-                  setNewCadetCin(cin || null);
-                  setNewCadetName(name);
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Badges</Label>
-
-              {newBadges.length > 0 && (
-                <ul className="space-y-1">
-                  {newBadges.map((b, idx) => (
-                    <li
-                      key={idx}
-                      className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5 text-sm"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block">{b.badgeName}</span>
-                        <span className="text-muted-foreground block text-xs">
-                          {gainedWhereSummary(gainedWhereOptions, b)}
-                        </span>
-                      </span>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="text-muted-foreground h-6 w-6"
-                        onClick={() => setNewBadges((prev) => prev.filter((_, i) => i !== idx))}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="space-y-2 rounded-md border border-dashed p-3">
-                <BadgePicker
-                  category={newCategory}
-                  subType={newSubType}
-                  level={newLevel}
-                  onCategory={(c) => {
-                    setNewCategory(c);
-                    setNewSubType(null);
-                    setNewLevel(null);
-                  }}
-                  onSubType={(s) => {
-                    setNewSubType(s);
-                    setNewLevel(null);
-                  }}
-                  onLevel={setNewLevel}
-                />
-                {currentBadgeName && (
-                  <p className="bg-muted rounded-md px-3 py-1.5 text-xs font-medium">{currentBadgeName}</p>
-                )}
-                {currentBadgeName && (
-                  <GainedWhereFields value={newGainedWhere} onChange={setNewGainedWhere} />
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  disabled={!currentBadgeName || !isGainedWhereComplete(newGainedWhere)}
-                  onClick={handleAddBadgeToNew}
-                >
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Add Badge
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <ResponsiveDialogFooter>
-            <Button variant="outline" onClick={() => setNewOrderOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateOrder}
-              disabled={submitting || !newCadetCin || newBadges.length === 0}
-            >
-              {submitting ? "Creating..." : "Create Order"}
-            </Button>
-          </ResponsiveDialogFooter>
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+      <NewBadgeOrderDialog
+        open={newOrderOpen}
+        onOpenChange={setNewOrderOpen}
+        token={token}
+        onCreated={(created) => setOrders((prev) => [created, ...prev])}
+        onError={setError}
+      />
 
       {/* Mark as Given Dialog */}
       <MarkGivenDialog

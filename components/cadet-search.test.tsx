@@ -93,3 +93,15 @@ describe("CadetSearchInput", () => {
     expect(onSelect).toHaveBeenCalledWith(0, "");
   });
 });
+
+describe("CadetSearchInput, for a screen reader", () => {
+  it("names the box, and the cadet once one is chosen", () => {
+    const { unmount } = render(
+      <CadetSearchInput token="tok" selectedCin={null} selectedName="" onSelect={vi.fn()} />
+    );
+    expect(screen.getByRole("combobox", { name: "Search cadet" })).toBeInTheDocument();
+    unmount();
+    render(<CadetSearchInput token="tok" selectedCin={1} selectedName="Amy Able" onSelect={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "Cadet: Amy Able" })).toBeInTheDocument();
+  });
+});

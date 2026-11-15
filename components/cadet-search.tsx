@@ -39,6 +39,8 @@ export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }:
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            // A combobox isn't named by its text, so say what it is and what's chosen.
+            aria-label={selectedCin ? `Cadet: ${selectedName}` : "Search cadet"}
             className={cn("w-full justify-between", !selectedCin && "text-muted-foreground")}
           >
             <span className="flex min-w-0 items-center gap-2">
