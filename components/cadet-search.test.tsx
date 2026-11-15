@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("next-auth/react", () => ({ signIn: vi.fn() }));
+// One stable object, like the real hook.
+const SESSION = { data: { id_token: "tok" }, status: "authenticated" };
+vi.mock("next-auth/react", () => ({ signIn: vi.fn(), useSession: () => SESSION }));
 
 import { CadetSearchInput } from "@/components/cadet-search";
+import { renderWithQuery as render } from "@/tests/render-with-query";
 
 // cmdk measures with ResizeObserver and scrolls items into view.
 beforeEach(() => {

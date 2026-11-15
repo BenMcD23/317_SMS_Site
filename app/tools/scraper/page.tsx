@@ -39,7 +39,8 @@ import {
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { streamAuthed } from "@/lib/sse";
-import { useApiQuery } from "@/lib/use-api-query";
+import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
+import { ErrorAlert } from "@/components/error-alert";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { VpSyncCard } from "@/components/vp-sync-card";
 import { LEAVING_KEY } from "@/components/oc/leaving-process-card";
@@ -306,6 +307,18 @@ type Schedule = {
   updated_at: string | null;
 };
 
+// A scraper the API sent no schedule for (one added since) shows as off,
+// rather than the card reading a field of undefined.
+const NO_SCHEDULE: Schedule = {
+  enabled: false,
+  days: [],
+  hour: 22,
+  minute: 0,
+  runs_as: null,
+  updated_by: null,
+  updated_at: null,
+};
+
 const DAY_OPTIONS = [
   { id: "mon", label: "Mon" },
   { id: "tue", label: "Tue" },
@@ -436,18 +449,19 @@ function ScheduleCard({
   );
 }
 
+const SCHEDULES_KEY = ["scraper-schedules"] as const;
+const ATTACHMENT_QUALS_KEY = ["attachment-check-quals"] as const;
+
 function ScheduleTab({ token }: { token: string }) {
-  const [schedules, setSchedules] = useState<Record<string, Schedule> | null>(null);
+  // Cached, so switching tabs and back doesn't reload. An error answers
+  // `{detail}`, which useApiQuery turns into an error rather than a schedule.
+  const { data: schedules, error } = useApiQuery<Record<string, Schedule>>(
+    SCHEDULES_KEY,
+    "/scraper-schedules"
+  );
+  const setSchedules = useSetApiQueryData<Record<string, Schedule>>(SCHEDULES_KEY);
 
-  useEffect(() => {
-    apiFetch(`${API_BASE}/scraper-schedules`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then(setSchedules)
-      .catch(() => toast.error("Could not load schedules"));
-  }, [token]);
-
+  if (error) return <ErrorAlert title="Could not load schedules" message={error.message} />;
   if (!schedules) {
     return (
       <div className="flex flex-col gap-4">
@@ -480,9 +494,9 @@ function ScheduleTab({ token }: { token: string }) {
         <ScheduleCard
           key={tool.id}
           tool={tool}
-          schedule={schedules[tool.id]}
+          schedule={schedules[tool.id] ?? NO_SCHEDULE}
           token={token}
-          onSaved={(id, s) => setSchedules((prev) => ({ ...prev!, [id]: s }))}
+          onSaved={(id, s) => setSchedules((prev) => ({ ...prev, [id]: s }))}
         />
       ))}
     </div>
@@ -494,18 +508,13 @@ function ScheduleTab({ token }: { token: string }) {
 // log and saved on each cadet's qualification.
 
 function AttachmentChecksTab({ token }: { token: string }) {
-  const [quals, setQuals] = useState<string[] | null>(null);
+  const { data, error } = useApiQuery<{ quals: string[] }>(ATTACHMENT_QUALS_KEY, "/attachment-check-quals");
+  const setData = useSetApiQueryData<{ quals: string[] }>(ATTACHMENT_QUALS_KEY);
+  // A 200 without a list (it shouldn't happen) is treated as empty, not a crash.
+  const quals = data ? (Array.isArray(data.quals) ? data.quals : []) : null;
+  const setQuals = (next: string[]) => setData(() => ({ quals: next }));
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    apiFetch(`${API_BASE}/attachment-check-quals`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data: { quals: string[] }) => setQuals(data.quals))
-      .catch(() => toast.error("Could not load attachment checks"));
-  }, [token]);
 
   // PUT the full list; on success adopt the server's copy, on failure restore. // ponytail: whole-list PUT, matches the existing endpoint
   const persist = async (next: string[], prev: string[]) => {
@@ -554,6 +563,7 @@ function AttachmentChecksTab({ token }: { token: string }) {
     );
   };
 
+  if (error) return <ErrorAlert title="Could not load attachment checks" message={error.message} />;
   if (quals === null) {
     return (
       <div className="flex flex-col gap-4">

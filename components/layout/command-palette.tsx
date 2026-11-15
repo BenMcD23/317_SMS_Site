@@ -3,14 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
 import { History, Pin, PinOff, Search, User } from "lucide-react";
 
-import { apiFetch } from "@/lib/api-fetch";
-import { API_BASE } from "@/lib/config";
 import { fullLabel } from "@/lib/mobile-pins";
 import { flattenLinks, visibleSections } from "@/lib/navigation";
 import { useQuickPages } from "@/lib/quick-pages";
+import { useCadetSearch } from "@/lib/use-cadet-search";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
@@ -21,23 +19,6 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-
-type CadetHit = {
-  cin: number;
-  first_name: string;
-  last_name: string;
-  rank: string | null;
-  flight: string | null;
-};
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return debounced;
-}
 
 /**
  * ⌘K / Ctrl+K jump box: every page the user can reach, plus a cadet search
@@ -56,8 +37,6 @@ export function CommandPalette({
   const router = useRouter();
   const { data: session } = useSession();
   const [query, setQuery] = useState("");
-  const debouncedQuery = useDebounced(query.trim(), 200);
-  const token = session?.id_token;
 
   const quick = useQuickPages();
   const byHref = new Map(quick.pages.map((p) => [p.href, p]));
@@ -72,16 +51,9 @@ export function CommandPalette({
     visibleSections(session?.role, session?.user?.email ?? undefined, session?.is_oc)
   );
 
-  const { data: cadets = [], isFetching } = useQuery<CadetHit[]>({
-    queryKey: ["cadets", "search", debouncedQuery],
-    queryFn: async () => {
-      const res = await apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(debouncedQuery)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.ok ? res.json() : [];
-    },
-    enabled: open && !!token && debouncedQuery.length >= 2 && session?.role === "staff",
-    staleTime: 30_000,
+  // Only staff search cadets from here.
+  const { hits: cadets, searching: isFetching } = useCadetSearch(query, {
+    enabled: open && session?.role === "staff",
   });
 
   const go = (href: string) => {
