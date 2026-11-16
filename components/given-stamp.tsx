@@ -6,8 +6,8 @@ import type { GivenEvent } from "@/lib/stores-types";
 /**
  * "Given <when> · <who>" for an order item, and the history once there is one.
  * Shared by the uniform and badge order pages so a give reads the same way on
- * both. Undoing is the item's own Mark as Given button (ToggleActionButton),
- * not a control down here.
+ * both. Undoing is the item's tick (OrderItemRow), or Undo in the toast that
+ * follows a tick, not a control down here.
  *
  * The stamp is the current state. History appears only once something has been
  * undone (until then it would just repeat the stamp), and lists every give and

@@ -7,9 +7,7 @@ import {
   ChevronsUpDown,
   Plus,
   Trash2,
-  X,
   ArrowUpDown,
-  PackageCheck,
   PackageMinus,
   CheckCircle2,
   RotateCcw,
@@ -43,11 +41,9 @@ import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/orde
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
 import { GivenStamp } from "@/components/given-stamp";
 import { OrderListHistory } from "@/components/order-list-history";
-import { ToggleActionButton } from "@/components/toggle-action-button";
 import { StockHistory } from "@/components/stock-history";
 import { QmNotes } from "@/components/qm-notes";
 import { ReadyStamp } from "@/components/ready-stamp";
-import { MarkGivenDialog } from "@/components/mark-given-dialog";
 import { useOrderWorkflow } from "@/lib/use-order-workflow";
 import { useBadgeGrid } from "@/lib/badge-grid";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
@@ -56,7 +52,6 @@ import Link from "next/link";
 import { formatTimestamp } from "@/lib/format";
 import { completeOrderBlockers } from "@/lib/badge-orders";
 import { searchOrders } from "@/lib/order-search";
-import { cn } from "@/lib/utils";
 import {
   BadgePicker,
   GainedWhereFields,
@@ -67,6 +62,14 @@ import {
 } from "./components/badge-fields";
 import { NewBadgeOrderDialog } from "./components/new-order-dialog";
 import { BadgeOrderListTab, type OrderItemRef } from "./components/order-list-tab";
+import {
+  GivenProgress,
+  OrderItemList,
+  OrderItemRow,
+  type ItemAction,
+  type ItemStatus,
+} from "@/components/order-item-row";
+import { toast } from "sonner";
 
 type StockMatch = { item: BadgeItem; cell: BadgeCell };
 
@@ -141,9 +144,6 @@ export default function BadgeOrdersPage() {
   // Mark as given
   const [markingAsGiven, setMarkingAsGiven] = useState<string | null>(null);
   const [undoingGiven, setUndoingGiven] = useState<string | null>(null);
-  const [markGivenOpen, setMarkGivenOpen] = useState(false);
-  const [markGivenOrder, setMarkGivenOrder] = useState<BadgeOrder | null>(null);
-  const [markGivenItem, setMarkGivenItem] = useState<BadgeOrderItem | null>(null);
 
   // Sort + search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
@@ -215,18 +215,28 @@ export default function BadgeOrdersPage() {
   const handleCompleteOrder = workflow.completeOrder;
   const handleReopenOrder = workflow.reopenOrder;
 
-  function handleMarkItemAsGiven(order: BadgeOrder, item: BadgeOrderItem) {
-    setMarkGivenOrder(order);
-    setMarkGivenItem(item);
-    setMarkGivenOpen(true);
-  }
-
-  async function confirmMarkAsGiven() {
-    if (!markGivenOrder || !markGivenItem) return;
-    setMarkGivenOpen(false);
-    setMarkingAsGiven(markGivenItem.id);
+  // The tick hands a badge out at once, with Undo in the toast instead of a
+  // confirm first; unticking takes it back. Both go in the item's history.
+  async function toggleGiven(order: BadgeOrder, item: BadgeOrderItem) {
+    const undo = async () => {
+      setUndoingGiven(item.id);
+      try {
+        return await giveCall(order.id, item.id, "undo-given", "Failed to undo");
+      } finally {
+        setUndoingGiven(null);
+      }
+    };
+    if (item.givenAt) {
+      if (await undo()) toast(`${item.badgeName} back to waiting`);
+      return;
+    }
+    setMarkingAsGiven(item.id);
     try {
-      await giveCall(markGivenOrder.id, markGivenItem.id, "mark-given", "Failed to mark as given");
+      if (await giveCall(order.id, item.id, "mark-given", "Failed to mark as given")) {
+        toast(`${item.badgeName} given to ${order.cadetName}`, {
+          action: { label: "Undo", onClick: () => void undo() },
+        });
+      }
     } finally {
       setMarkingAsGiven(null);
     }
@@ -248,23 +258,238 @@ export default function BadgeOrdersPage() {
       failure
     );
     if (updated) replaceOrder(updated);
-  }
-
-  function handleUndoGiven(order: BadgeOrder, item: BadgeOrderItem) {
-    openConfirm(
-      `Undo giving ${item.badgeName} to ${order.cadetName}? It goes back to waiting. The history keeps both.`,
-      async () => {
-        setUndoingGiven(item.id);
-        try {
-          await giveCall(order.id, item.id, "undo-given", "Failed to undo");
-        } finally {
-          setUndoingGiven(null);
-        }
-      }
-    );
+    return !!updated;
   }
 
   const handleMarkItemAsReady = workflow.markReady;
+
+  /**
+   * What the shared OrderItemRow shows for one badge: its status, the one next
+   * step that status calls for, and the rest in the "⋯" menu.
+   */
+  function badgeItemRow(
+    order: BadgeOrder,
+    item: BadgeOrderItem,
+    at: {
+      stockMatch: StockMatch | undefined;
+      removedFromStock: boolean;
+      orderListEntry: BadgeOrderListEntry | undefined;
+      orderListStage: "none" | "toOrder" | "ordered" | "received";
+    }
+  ): React.ComponentProps<typeof OrderItemRow> {
+    const { stockMatch, removedFromStock, orderListEntry, orderListStage: stage } = at;
+    const completed = !!order.completed;
+
+    const status: ItemStatus = item.givenAt
+      ? { label: "Given", tone: "done" }
+      : item.readyToCollect
+        ? { label: "Ready to collect", tone: "ready" }
+        : removedFromStock
+          ? { label: "Taken from stock", tone: "progress" }
+          : stage === "received"
+            ? { label: "Arrived", tone: "progress" }
+            : stage === "ordered"
+              ? { label: "On order", tone: "progress" }
+              : stage === "toOrder"
+                ? { label: "On the order list", tone: "progress" }
+                : stockMatch
+                  ? { label: "In stock", tone: "progress" }
+                  : { label: "To order", tone: "todo" };
+
+    const takeFromStock: ItemAction = {
+      label: "Take from stock",
+      icon: PackageMinus,
+      busy: removingStock === item.id,
+      onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
+    };
+    const addToList: ItemAction = {
+      label: "Add to order list",
+      icon: ClipboardList,
+      busy: addingToListId === item.id,
+      onSelect: () => handleAddToOrderList(item),
+    };
+    const markOrdered: ItemAction = {
+      label: "Mark as ordered",
+      icon: Truck,
+      busy: sendingToOrderedId === item.id,
+      onSelect: () => handleSendToOrdered(item),
+    };
+    const markReceived: ItemAction = {
+      label: "Mark as received",
+      icon: Inbox,
+      busy: markingReceivedQuickId === item.id,
+      onSelect: () => handleMarkReceivedQuick(item),
+    };
+    const ready: ItemAction = {
+      label: "Ready to collect",
+      icon: Bell,
+      busy: markingAsReady === item.id,
+      onSelect: () => handleMarkItemAsReady(order.id, item.id),
+    };
+
+    // The one step that moves it on, in the order the stores work.
+    const next = item.givenAt
+      ? null
+      : !removedFromStock && stage === "none" && stockMatch
+        ? takeFromStock
+        : !removedFromStock && stage === "none"
+          ? addToList
+          : !removedFromStock && stage === "toOrder"
+            ? markOrdered
+            : !removedFromStock && stage === "ordered"
+              ? markReceived
+              : !item.readyToCollect
+                ? ready
+                : null;
+
+    const menu: (ItemAction | "separator")[] = [];
+    if (removedFromStock) {
+      menu.push({
+        label: "Put back in stock",
+        icon: PackageMinus,
+        busy: removingStock === item.id,
+        onSelect: () => handleReturnToStock(order, item),
+      });
+    } else if (stockMatch && next !== takeFromStock && !item.givenAt) menu.push(takeFromStock);
+    if (stage === "none" && next !== addToList && !item.givenAt) {
+      menu.push(addToList);
+      // Already ordered by other means: straight to Ordered, skipping the queue.
+      menu.push({ ...markOrdered, label: "Send to ordered" });
+    }
+    if (orderListEntry && stage === "received") {
+      menu.push({
+        label: "Undo received",
+        icon: Inbox,
+        onSelect: () => handleUndoReceived(item, orderListEntry),
+      });
+    }
+    if (orderListEntry && (stage === "ordered" || stage === "received")) {
+      menu.push({
+        label: "Undo ordered",
+        icon: Truck,
+        onSelect: () => handleUndoOrdered(item, orderListEntry),
+      });
+    }
+    if (orderListEntry) {
+      menu.push({
+        label: "Take off order list",
+        icon: ClipboardList,
+        onSelect: () => handleUndoAddedToList(item, orderListEntry),
+      });
+    }
+    if (next !== ready && !item.readyToCollect && !item.givenAt) menu.push(ready);
+    menu.push("separator", {
+      label: "Delete item",
+      icon: Trash2,
+      destructive: true,
+      onSelect: () => handleDeleteOrderItem(order.id, item.id, item.badgeName),
+    });
+
+    const gained = gainedWhereSummary(gainedWhereOptions, item);
+    const hasHistory =
+      !!item.readyToCollect || !!item.givenEvents?.length || !!item.stockEvents?.length || !!orderListEntry;
+
+    return {
+      id: `badge-order-item-${item.id}`,
+      name: item.badgeName,
+      highlighted: highlightItemId === item.id,
+      status,
+      readOnly: completed,
+      given: !!item.givenAt,
+      giving: markingAsGiven === item.id || undoingGiven === item.id,
+      onToggleGiven: () => void toggleGiven(order, item),
+      next,
+      menu,
+      extra: (
+        <>
+          {item.replacement && (
+            <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning text-xs">
+              Replacement (£2)
+            </Badge>
+          )}
+          {item.qualHeld === false && (
+            <Badge
+              variant="outline"
+              className="border-destructive/40 bg-destructive/10 text-destructive text-xs"
+            >
+              Qualification not held
+            </Badge>
+          )}
+        </>
+      ),
+      details: (
+        <>
+          {item.qualHeld === true && (
+            <span className="text-success flex items-center gap-1">
+              <Check className="size-3.5" aria-hidden />
+              Qualification is held
+            </span>
+          )}
+          {item.qualHeld === false && item.qualStages && (
+            <span>
+              Missing{" "}
+              {item.qualStages
+                .filter((st) => !st.done)
+                .map((st) => `stage ${st.stage}: ${st.name}`)
+                .join("; ")}
+            </span>
+          )}
+          {gained && <span>{gained}</span>}
+          {!completed && !item.givenAt && !removedFromStock && stockMatch && (
+            <span className="text-success">
+              In stock:{" "}
+              {stockMatch.cell.label ?? `Row ${stockMatch.cell.row + 1} Col ${stockMatch.cell.col + 1}`} (×
+              {stockMatch.item.quantity})
+            </span>
+          )}
+          {item.givenAt && (
+            <span>
+              Given {formatTimestamp(item.givenAt)}
+              {item.givenBy && ` · ${item.givenBy}`}
+            </span>
+          )}
+        </>
+      ),
+      notes: (
+        <QmNotes
+          compact
+          notes={item.qmNotes}
+          editable={!completed}
+          itemLabel={item.badgeName}
+          onAdd={(content) => workflow.addNote(order.id, item.id, content)}
+          onDelete={(noteId) => workflow.deleteNote(order.id, item.id, noteId)}
+        />
+      ),
+      history: hasHistory ? (
+        <>
+          <ReadyStamp readyToCollect={item.readyToCollect} givenAt={item.givenAt} />
+          <GivenStamp givenAt={item.givenAt} givenBy={item.givenBy} events={item.givenEvents} />
+          {orderListEntry && (
+            <div className="text-muted-foreground text-xs">
+              <p>
+                Added to order list {formatTimestamp(orderListEntry.addedAt)}
+                {orderListEntry.addedBy && <> · {orderListEntry.addedBy}</>}
+              </p>
+              {orderListEntry.orderedAt && (
+                <p>
+                  Marked ordered {formatTimestamp(orderListEntry.orderedAt)}
+                  {orderListEntry.orderedBy && <> · {orderListEntry.orderedBy}</>}
+                </p>
+              )}
+              {orderListEntry.receivedAt && (
+                <p>
+                  Marked received {formatTimestamp(orderListEntry.receivedAt)}
+                  {orderListEntry.receivedBy && <> · {orderListEntry.receivedBy}</>}
+                </p>
+              )}
+            </div>
+          )}
+          {orderListEntry && <OrderListHistory events={orderListEntry.history} />}
+          <StockHistory events={item.stockEvents} />
+        </>
+      ) : undefined,
+    };
+  }
 
   const addBadgeName = addCategory ? buildBadgeName(addCategory, addSubType, addLevel) : null;
 
@@ -668,6 +893,7 @@ export default function BadgeOrdersPage() {
                         {itemFiltered && `${visibleItems.length} of `}
                         {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                       </Badge>
+                      <GivenProgress items={order.items} completed={!!order.completed} />
                     </>
                   }
                 >
@@ -676,7 +902,7 @@ export default function BadgeOrdersPage() {
                       Showing {visibleItems.length} of {order.items.length} badges matching your search.
                     </p>
                   )}
-                  <ul className="space-y-2">
+                  <OrderItemList>
                     {visibleItems.map((orderItem) => {
                       const stockMatch = findBadgeStockMatch(orderItem.badgeName);
                       const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
@@ -684,224 +910,18 @@ export default function BadgeOrdersPage() {
                       const orderListStage = orderListStageFor(orderItem.id);
 
                       return (
-                        <li
+                        <OrderItemRow
                           key={orderItem.id}
-                          id={`badge-order-item-${orderItem.id}`}
-                          className={cn(
-                            "bg-muted/30 space-y-2 rounded-md border p-3 transition-colors",
-                            highlightItemId === orderItem.id &&
-                              "border-primary bg-primary/10 ring-primary/40 ring-2"
-                          )}
-                        >
-                          {/* On a phone the actions wrap under the item instead
-                                  of taking a fixed column beside it. */}
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 flex-1 space-y-1.5">
-                              <p className="text-sm font-medium">
-                                {orderItem.badgeName}
-                                {orderItem.replacement && (
-                                  <Badge
-                                    variant="outline"
-                                    className="border-warning/40 bg-warning/10 text-warning ml-2"
-                                  >
-                                    Replacement (£2)
-                                  </Badge>
-                                )}
-                              </p>
-                              {orderItem.qualHeld != null &&
-                                (orderItem.qualHeld ? (
-                                  <p className="text-success flex items-center gap-1 text-xs font-medium">
-                                    <Check className="h-3 w-3" />
-                                    Qualification is held
-                                  </p>
-                                ) : (
-                                  <>
-                                    <p className="text-destructive flex items-center gap-1 text-xs font-medium">
-                                      <X className="h-3 w-3" />
-                                      Qualification not held
-                                    </p>
-                                    {orderItem.qualStages && (
-                                      <p className="text-muted-foreground text-xs">
-                                        Missing{" "}
-                                        {orderItem.qualStages
-                                          .filter((s) => !s.done)
-                                          .map((s) => `stage ${s.stage}: ${s.name}`)
-                                          .join("; ")}
-                                      </p>
-                                    )}
-                                  </>
-                                ))}
-                              {gainedWhereSummary(gainedWhereOptions, orderItem) && (
-                                <p className="text-muted-foreground text-xs">
-                                  {gainedWhereSummary(gainedWhereOptions, orderItem)}
-                                </p>
-                              )}
-
-                              {!isCompleted &&
-                                (stockMatch ? (
-                                  <p className="text-success text-xs font-medium">
-                                    In Stock:{" "}
-                                    {stockMatch.cell.label ??
-                                      `Row ${stockMatch.cell.row + 1} Col ${stockMatch.cell.col + 1}`}{" "}
-                                    (×{stockMatch.item.quantity})
-                                  </p>
-                                ) : (
-                                  <p className="text-muted-foreground text-xs">Out of Stock</p>
-                                ))}
-                            </div>
-
-                            {!isCompleted && (
-                              <div className="flex flex-wrap gap-1.5 sm:w-40 sm:shrink-0 sm:flex-col sm:items-stretch">
-                                <ToggleActionButton
-                                  done={removedFromStock}
-                                  label="Remove from Stock"
-                                  doneLabel="Put back in stock"
-                                  icon={PackageMinus}
-                                  tone="destructive"
-                                  itemLabel={orderItem.badgeName}
-                                  busy={removingStock === orderItem.id}
-                                  disabled={!stockMatch}
-                                  onDo={() =>
-                                    stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
-                                  }
-                                  onUndo={() => handleReturnToStock(order, orderItem)}
-                                />
-                                <ToggleActionButton
-                                  done={orderListStage !== "none"}
-                                  label="Add to Order List"
-                                  doneLabel="Undo order list"
-                                  icon={ClipboardList}
-                                  itemLabel={orderItem.badgeName}
-                                  busy={addingToListId === orderItem.id}
-                                  onDo={() => handleAddToOrderList(orderItem)}
-                                  onUndo={() =>
-                                    orderListEntry && handleUndoAddedToList(orderItem, orderListEntry)
-                                  }
-                                />
-                                <ToggleActionButton
-                                  done={orderListStage === "ordered" || orderListStage === "received"}
-                                  label={orderListStage === "toOrder" ? "Mark as Ordered" : "Send to Ordered"}
-                                  doneLabel="Undo ordered"
-                                  icon={Truck}
-                                  itemLabel={orderItem.badgeName}
-                                  busy={
-                                    sendingToOrderedId === orderItem.id || addingToListId === orderItem.id
-                                  }
-                                  onDo={() => handleSendToOrdered(orderItem)}
-                                  onUndo={() =>
-                                    orderListEntry && handleUndoOrdered(orderItem, orderListEntry)
-                                  }
-                                />
-                                <ToggleActionButton
-                                  done={orderListStage === "received"}
-                                  label="Mark as Received"
-                                  doneLabel="Undo received"
-                                  icon={Inbox}
-                                  itemLabel={orderItem.badgeName}
-                                  busy={
-                                    markingReceivedQuickId === orderItem.id || addingToListId === orderItem.id
-                                  }
-                                  onDo={() => handleMarkReceivedQuick(orderItem)}
-                                  onUndo={() =>
-                                    orderListEntry && handleUndoReceived(orderItem, orderListEntry)
-                                  }
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                  disabled={
-                                    markingAsReady === orderItem.id ||
-                                    !!orderItem.readyToCollect ||
-                                    !!orderItem.givenAt
-                                  }
-                                  onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}
-                                >
-                                  <Bell className="mr-1 h-3 w-3" />
-                                  {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
-                                </Button>
-                                <ToggleActionButton
-                                  done={!!orderItem.givenAt}
-                                  label="Mark as Given"
-                                  doneLabel="Undo given"
-                                  icon={PackageCheck}
-                                  tone="success"
-                                  itemLabel={orderItem.badgeName}
-                                  busy={markingAsGiven === orderItem.id || undoingGiven === orderItem.id}
-                                  onDo={() => handleMarkItemAsGiven(order, orderItem)}
-                                  onUndo={() => handleUndoGiven(order, orderItem)}
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-8 text-xs sm:h-7 sm:w-full"
-                                  onClick={() =>
-                                    handleDeleteOrderItem(order.id, orderItem.id, orderItem.badgeName)
-                                  }
-                                >
-                                  <Trash2 className="mr-1 h-3 w-3" />
-                                  Delete
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-
-                          <ReadyStamp readyToCollect={orderItem.readyToCollect} givenAt={orderItem.givenAt} />
-
-                          {/* Given stamp: the hand-over and, once something was undone, the history */}
-                          <GivenStamp
-                            givenAt={orderItem.givenAt}
-                            givenBy={orderItem.givenBy}
-                            events={orderItem.givenEvents}
-                          />
-
-                          {/* Order list stamps — added/ordered/received, each its own line so
-                                the audit trail reads the same as it does on the Order List tab */}
-                          {orderListEntry && (
-                            <div className="space-y-1">
-                              <div className="bg-muted/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                <ClipboardList className="text-muted-foreground h-3 w-3 shrink-0" />
-                                <p className="text-muted-foreground text-xs">
-                                  Added to order list {formatTimestamp(orderListEntry.addedAt)}
-                                  {orderListEntry.addedBy && <> · {orderListEntry.addedBy}</>}
-                                </p>
-                              </div>
-                              {orderListEntry.orderedAt && (
-                                <div className="bg-muted/50 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                  <Truck className="text-muted-foreground h-3 w-3 shrink-0" />
-                                  <p className="text-muted-foreground text-xs">
-                                    Marked ordered {formatTimestamp(orderListEntry.orderedAt)}
-                                    {orderListEntry.orderedBy && <> · {orderListEntry.orderedBy}</>}
-                                  </p>
-                                </div>
-                              )}
-                              {orderListEntry.receivedAt && (
-                                <div className="bg-success/10 border-success/30 flex items-center gap-1.5 rounded-md border px-2.5 py-1.5">
-                                  <Inbox className="text-success h-3 w-3 shrink-0" />
-                                  <p className="text-success text-xs">
-                                    Marked received {formatTimestamp(orderListEntry.receivedAt)}
-                                    {orderListEntry.receivedBy && <> · {orderListEntry.receivedBy}</>}
-                                  </p>
-                                </div>
-                              )}
-                              <OrderListHistory events={orderListEntry.history} />
-                            </div>
-                          )}
-
-                          {/* Stock history */}
-                          <StockHistory events={orderItem.stockEvents} />
-
-                          <QmNotes
-                            notes={orderItem.qmNotes}
-                            editable={!isCompleted}
-                            itemLabel={orderItem.badgeName}
-                            onAdd={(content) => workflow.addNote(order.id, orderItem.id, content)}
-                            onDelete={(noteId) => workflow.deleteNote(order.id, orderItem.id, noteId)}
-                          />
-                        </li>
+                          {...badgeItemRow(order, orderItem, {
+                            stockMatch,
+                            removedFromStock,
+                            orderListEntry,
+                            orderListStage,
+                          })}
+                        />
                       );
                     })}
-                  </ul>
+                  </OrderItemList>
 
                   {/* Add badge to existing order */}
                   {!isCompleted &&
@@ -1052,19 +1072,6 @@ export default function BadgeOrdersPage() {
         onCreated={(created) => setOrders((prev) => [created, ...prev])}
         onError={setError}
       />
-
-      {/* Mark as Given Dialog */}
-      <MarkGivenDialog
-        open={markGivenOpen}
-        onOpenChange={setMarkGivenOpen}
-        busy={markingAsGiven !== null}
-        onConfirm={confirmMarkAsGiven}
-      >
-        <p>
-          <span className="font-medium">{markGivenItem?.badgeName}</span> will be recorded as issued to{" "}
-          <span className="font-medium">{markGivenOrder?.cadetName}</span>.
-        </p>
-      </MarkGivenDialog>
 
       {/* Confirm Dialog */}
       {confirmDialog}

@@ -19,6 +19,8 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/stores/badges/orders",
   useSearchParams: () => new URLSearchParams(),
 }));
+const toast = vi.hoisted(() => Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast, Toaster: () => null }));
 vi.mock("@/lib/reference", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/reference")>()),
   useReference: () => ({ gainedWhereOptions: [], badgeCategories: [] }),
@@ -88,6 +90,12 @@ async function renderPage() {
 const card = (cadet: string) => screen.getByText(cadet).closest("[data-exit-id]") as HTMLElement;
 const expand = (cadet: string) =>
   act(async () => screen.getByRole("button", { name: `Expand order for ${cadet}` }).click());
+// The item's "⋯" menu and the tick that hands it out.
+const openMenu = (cadet: string, badge: string) =>
+  userEvent.click(within(card(cadet)).getByRole("button", { name: `More for ${badge}` }));
+const pick = (label: string) => userEvent.click(screen.getByRole("menuitem", { name: label }));
+const tick = (cadet: string, badge: string) =>
+  within(card(cadet)).getByRole("checkbox", { name: `Given: ${badge}` });
 const confirmDialog = () =>
   act(async () => within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm" }).click());
 const search = (q: string) =>
@@ -113,7 +121,7 @@ afterEach(() => {
 });
 
 describe("acting on a badge doesn't reload the page", () => {
-  it("Ready to Collect updates the badge in place from the API's answer, without refetching", async () => {
+  it("Ready to collect, from the badge's menu, updates it in place from the API's answer", async () => {
     const fetch = stubApi({
       "POST /api/stores/badges/orders/1/items/11/mark-ready": () => {
         const updated = orders()[0];
@@ -125,23 +133,25 @@ describe("acting on a badge doesn't reload the page", () => {
     await expand("Alex Smith");
     const before = card("Alex Smith");
 
-    await act(async () => screen.getAllByRole("button", { name: "Ready to Collect" })[0].click());
+    await openMenu("Alex Smith", "First Aid – Blue");
+    await pick("Ready to collect");
 
-    expect(await screen.findByText(/Cadet notified/)).toBeInTheDocument();
+    expect(await within(card("Alex Smith")).findByText("Ready to collect")).toBeInTheDocument();
     expect(calls(fetch, "GET /api/stores/badges/orders")).toBe(1);
     expect(card("Alex Smith")).toBe(before);
     expect(screen.getByRole("button", { name: "Collapse order for Alex Smith" })).toBeInTheDocument();
   });
 
-  it("a failed Ready to Collect shows the error and leaves the badge as it was", async () => {
+  it("a failed Ready to collect shows the error and leaves the badge as it was", async () => {
     stubApi({ "POST /api/stores/badges/orders/1/items/11/mark-ready": () => json({ detail: "boom" }, 500) });
     await renderPage();
     await expand("Alex Smith");
 
-    await act(async () => screen.getAllByRole("button", { name: "Ready to Collect" })[0].click());
+    await openMenu("Alex Smith", "First Aid – Blue");
+    await pick("Ready to collect");
 
     expect(await screen.findByText("Failed to mark as ready to collect")).toBeInTheDocument();
-    expect(screen.queryByText(/Cadet notified/)).not.toBeInTheDocument();
+    expect(within(card("Alex Smith")).queryByText("Ready to collect")).toBeNull();
   });
 });
 
@@ -187,7 +197,7 @@ describe("orders leaving the list", () => {
     expect(screen.getByText("Bella Jones")).toBeInTheDocument();
   });
 
-  it("marking a badge given records it on the server and updates the order where it is", async () => {
+  it("ticking a badge gives it at once and updates the order where it is", async () => {
     const fetch = stubApi({
       "POST /api/stores/badges/orders/1/items/11/mark-given": () => {
         const updated = orders()[0];
@@ -203,21 +213,55 @@ describe("orders leaving the list", () => {
     await expand("Alex Smith");
     const before = card("Alex Smith");
 
-    await act(async () => screen.getAllByRole("button", { name: "Mark as Given" })[0].click());
-    await act(async () =>
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as Given" }).click()
-    );
+    // No confirm first: the tick is the hand-over.
+    await act(async () => tick("Alex Smith", "First Aid – Blue").click());
+    expect(screen.queryByRole("dialog")).toBeNull();
 
     expect(await screen.findByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(tick("Alex Smith", "First Aid – Blue")).toHaveAttribute("aria-checked", "true");
     const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/mark-given"))!;
     expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
     expect(calls(fetch, "GET /api/stores/badges/orders")).toBe(1);
     expect(card("Alex Smith")).toBe(before);
-    expect(card("Alex Smith")).toHaveClass("grid-rows-[1fr]");
+    expect(toast).toHaveBeenCalledWith("First Aid – Blue given to Alex Smith", expect.anything());
+  });
+
+  it("the toast's Undo takes a tick straight back", async () => {
+    const fetch = stubApi({
+      "POST /api/stores/badges/orders/1/items/11/mark-given": () => {
+        const updated = orders()[0];
+        updated.items[0] = item("11", "First Aid – Blue", GIVEN);
+        return json(updated);
+      },
+      "POST /api/stores/badges/orders/1/items/11/undo-given": () => json(orders()[0]),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await act(async () => tick("Alex Smith", "First Aid – Blue").click());
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    const { action } = toast.mock.calls.at(-1)![1] as { action: { label: string; onClick: () => void } };
+    expect(action.label).toBe("Undo");
+    await act(async () => action.onClick());
+    await waitFor(() => expect(calls(fetch, "POST /api/stores/badges/orders/1/items/11/undo-given")).toBe(1));
+    await waitFor(() =>
+      expect(tick("Alex Smith", "First Aid – Blue")).toHaveAttribute("aria-checked", "false")
+    );
+  });
+
+  it("a refused hand-over says why and leaves the badge unticked, with no Undo offered", async () => {
+    stubApi({
+      "POST /api/stores/badges/orders/1/items/11/mark-given": () => json({ detail: "Already given" }, 409),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await act(async () => tick("Alex Smith", "First Aid – Blue").click());
+    expect(await screen.findByText("Already given")).toBeInTheDocument();
+    expect(tick("Alex Smith", "First Aid – Blue")).toHaveAttribute("aria-checked", "false");
+    expect(toast).not.toHaveBeenCalled();
   });
 });
 
-describe("undoing a given badge", () => {
+describe("unticking a given badge", () => {
   const undoneBella = () => {
     const updated = orders()[1];
     updated.items[0] = item("21", "First Aid – Bronze", {
@@ -229,40 +273,29 @@ describe("undoing a given badge", () => {
     return updated;
   };
 
-  it("takes the badge back to waiting after a confirm, and keeps the history on screen", async () => {
+  it("takes the badge back to waiting at once, and keeps both steps in its history", async () => {
     const fetch = stubApi({
       "POST /api/stores/badges/orders/2/items/21/undo-given": () => json(undoneBella()),
     });
     await renderPage();
     await expand("Bella Jones");
-    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(tick("Bella Jones", "First Aid – Bronze")).toHaveAttribute("aria-checked", "true");
 
-    await act(async () => screen.getByRole("button", { name: "Undo given: First Aid – Bronze" }).click());
-    // Asked first: nothing is sent until it's confirmed.
-    expect(calls(fetch, "POST /api/stores/badges/orders/2/items/21/undo-given")).toBe(0);
-    await confirmDialog();
+    await act(async () => tick("Bella Jones", "First Aid – Bronze").click());
 
+    await waitFor(() =>
+      expect(tick("Bella Jones", "First Aid – Bronze")).toHaveAttribute("aria-checked", "false")
+    );
+    const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/undo-given"))!;
+    expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
+    await userEvent.click(within(card("Bella Jones")).getByRole("button", { name: "History" }));
     const history = await screen.findByRole("list", { name: "Given history" });
     expect(
       within(history)
         .getAllByRole("listitem")
         .map((li) => li.textContent?.split(" ")[0])
     ).toEqual(["Given", "Undone"]);
-    const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/undo-given"))!;
-    expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
-    // Back to waiting: it can be given again, and the Undo is gone.
-    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
-    expect(within(card("Bella Jones")).getByRole("button", { name: "Mark as Given" })).toBeEnabled();
-  });
-
-  it("changes nothing when the confirm is cancelled", async () => {
-    const fetch = stubApi();
-    await renderPage();
-    await expand("Bella Jones");
-    await act(async () => screen.getByRole("button", { name: "Undo given: First Aid – Bronze" }).click());
-    await act(async () => within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }).click());
-    expect(fetch.mock.calls.some(([u]) => String(u).endsWith("/undo-given"))).toBe(false);
-    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(toast).toHaveBeenCalledWith("First Aid – Bronze back to waiting");
   });
 
   it("shows the API's reason and leaves the badge given when the undo is refused", async () => {
@@ -272,15 +305,14 @@ describe("undoing a given badge", () => {
     });
     await renderPage();
     await expand("Bella Jones");
-    await act(async () => screen.getByRole("button", { name: "Undo given: First Aid – Bronze" }).click());
-    await confirmDialog();
+    await act(async () => tick("Bella Jones", "First Aid – Bronze").click());
 
     expect(await screen.findByText("Reopen the order before undoing a badge")).toBeInTheDocument();
-    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(tick("Bella Jones", "First Aid – Bronze")).toHaveAttribute("aria-checked", "true");
   });
 
   // A closed order is a record of what was handed over; reopen it to change it.
-  it("offers no Undo on a completed order", async () => {
+  it("can't untick, or change anything, on a completed order", async () => {
     stubApi({
       "GET /api/stores/badges/orders": () => json([{ ...orders()[1], completed: true }]),
     });
@@ -296,7 +328,8 @@ describe("undoing a given badge", () => {
     await screen.findByText("Bella Jones");
     await expand("Bella Jones");
     expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
+    expect(tick("Bella Jones", "First Aid – Bronze")).toBeDisabled();
+    expect(within(card("Bella Jones")).queryByRole("button", { name: /More for/ })).toBeNull();
   });
 });
 
@@ -510,7 +543,7 @@ describe("the order list", () => {
   });
 });
 
-describe("each order list step's own button undoes it", () => {
+describe("order list steps on the badge", () => {
   const entry = (over: Record<string, unknown> = {}) => ({
     id: "e1",
     orderItemId: "11",
@@ -528,19 +561,36 @@ describe("each order list step's own button undoes it", () => {
   const ORDERED = { orderedAt: "2026-11-06T14:05:00Z", orderedBy: "Sam Staff" };
   const RECEIVED = { receivedAt: "2026-11-06T14:10:00Z", receivedBy: "Sam Staff" };
 
-  it("a done step's button reads as an undo and looks pressed", async () => {
+  it("a badge not in stock offers the order list as its next step", async () => {
+    const fetch = stubApi({
+      "POST /api/stores/badges/order-lists/entries": () => json(entry()),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    expect(within(card("Alex Smith")).getAllByText("To order").length).toBeGreaterThan(0);
+    await act(async () =>
+      within(card("Alex Smith")).getAllByRole("button", { name: "Add to order list" })[0].click()
+    );
+    await waitFor(() => expect(calls(fetch, "POST /api/stores/badges/order-lists/entries")).toBe(1));
+  });
+
+  it("each stage says where the badge is and offers the step after it", async () => {
+    stubApi({ "GET /api/stores/badges/order-lists": () => json([entry()]) });
+    await renderPage();
+    await expand("Alex Smith");
+    expect(within(card("Alex Smith")).getByText("On the order list")).toBeInTheDocument();
+    expect(within(card("Alex Smith")).getByRole("button", { name: "Mark as ordered" })).toBeInTheDocument();
+  });
+
+  it("an ordered badge offers Mark as received, and keeps its undos in the menu", async () => {
     stubApi({ "GET /api/stores/badges/order-lists": () => json([entry(ORDERED)]) });
     await renderPage();
     await expand("Alex Smith");
-    const undo = within(card("Alex Smith")).getByRole("button", { name: "Undo ordered: First Aid – Blue" });
-    expect(undo).toHaveAttribute("aria-pressed", "true");
-    expect(
-      within(card("Alex Smith")).getByRole("button", { name: "Undo order list: First Aid – Blue" })
-    ).toBeEnabled();
-    // Not received yet, so that one is still the forward action.
-    expect(
-      within(card("Alex Smith")).getAllByRole("button", { name: "Mark as Received" })[0]
-    ).toHaveAttribute("aria-pressed", "false");
+    expect(within(card("Alex Smith")).getByText("On order")).toBeInTheDocument();
+    expect(within(card("Alex Smith")).getByRole("button", { name: "Mark as received" })).toBeInTheDocument();
+    await openMenu("Alex Smith", "First Aid – Blue");
+    const items = screen.getAllByRole("menuitem").map((m) => m.textContent);
+    expect(items).toEqual(["Undo ordered", "Take off order list", "Ready to collect", "Delete item"]);
   });
 
   it("undoing the latest step goes straight through, with no confirm", async () => {
@@ -550,7 +600,8 @@ describe("each order list step's own button undoes it", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo ordered: First Aid – Blue" }).click());
+    await openMenu("Alex Smith", "First Aid – Blue");
+    await pick("Undo ordered");
     expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() =>
       expect(calls(fetch, "POST /api/stores/badges/order-lists/entries/e1/undo-ordered")).toBe(1)
@@ -565,7 +616,8 @@ describe("each order list step's own button undoes it", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo ordered: First Aid – Blue" }).click());
+    await openMenu("Alex Smith", "First Aid – Blue");
+    await pick("Undo ordered");
     expect(
       within(screen.getByRole("dialog")).getByText(/received, so that is undone too/)
     ).toBeInTheDocument();
@@ -583,7 +635,9 @@ describe("each order list step's own button undoes it", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo received: First Aid – Blue" }).click());
+    expect(within(card("Alex Smith")).getByText("Arrived")).toBeInTheDocument();
+    await openMenu("Alex Smith", "First Aid – Blue");
+    await pick("Undo received");
     await waitFor(() =>
       expect(calls(fetch, "POST /api/stores/badges/order-lists/entries/e1/undo-received")).toBe(1)
     );
@@ -596,7 +650,8 @@ describe("each order list step's own button undoes it", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo order list: First Aid – Blue" }).click());
+    await openMenu("Alex Smith", "First Aid – Blue");
+    await pick("Take off order list");
     expect(within(screen.getByRole("dialog")).getByText(/ordered step is undone too/)).toBeInTheDocument();
     await confirmDialog();
     await waitFor(() => expect(calls(fetch, "DELETE /api/stores/badges/order-lists/entries/e1")).toBe(1));
@@ -609,12 +664,13 @@ describe("each order list step's own button undoes it", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo ordered: First Aid – Blue" }).click());
+    await openMenu("Alex Smith", "First Aid – Blue");
+    await pick("Undo ordered");
     expect(await screen.findByText("Failed to undo ordered")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Undo ordered: First Aid – Blue" })).toBeInTheDocument();
+    expect(within(card("Alex Smith")).getByText("On order")).toBeInTheDocument();
   });
 
-  it("once a step has been undone, the item shows every step and undo", async () => {
+  it("once a step has been undone, the badge's history shows every step and undo", async () => {
     stubApi({
       "GET /api/stores/badges/order-lists": () =>
         json([
@@ -629,16 +685,17 @@ describe("each order list step's own button undoes it", () => {
     });
     await renderPage();
     await expand("Alex Smith");
+    await userEvent.click(within(card("Alex Smith")).getByRole("button", { name: "History" }));
     const history = within(card("Alex Smith")).getByRole("list", { name: "Order list history" });
     expect(history).toHaveTextContent("Ordered undone");
     expect(history).toHaveTextContent("QM Jones");
   });
 
   // Giving doesn't wait for the supplier: a badge in stock goes out unordered.
-  it("a badge can be given without ever being on the order list", async () => {
+  it("a badge can be ticked off without ever being on the order list", async () => {
     stubApi();
     await renderPage();
     await expand("Alex Smith");
-    expect(within(card("Alex Smith")).getAllByRole("button", { name: "Mark as Given" })[0]).toBeEnabled();
+    expect(tick("Alex Smith", "First Aid – Blue")).toBeEnabled();
   });
 });
