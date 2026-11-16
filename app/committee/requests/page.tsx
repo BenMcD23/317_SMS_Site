@@ -106,6 +106,7 @@ export default function CommitteeRequestsPage() {
       ) : (
         <DataTable
           label="Committee requests"
+          viewKey="committee-requests"
           data={data.requests}
           columns={columns}
           rowKey={(r) => r.id}

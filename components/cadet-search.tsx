@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -14,16 +14,10 @@ import {
 import { cn } from "@/lib/utils";
 import { Search, ChevronsUpDown, Check, X, Loader2 } from "lucide-react";
 
-import { API_BASE } from "@/lib/config";
-import { apiFetch } from "@/lib/api-fetch";
+import { type CadetHit, useCadetSearch } from "@/lib/use-cadet-search";
 
-export type CadetResult = {
-  cin: number;
-  first_name: string;
-  last_name: string;
-  rank: string | null;
-  flight: string | null;
-};
+/** Kept for the pages that name it; the same shape as `CadetHit`. */
+export type CadetResult = CadetHit;
 
 interface CadetSearchInputProps {
   token: string | null;
@@ -35,31 +29,7 @@ interface CadetSearchInputProps {
 export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }: CadetSearchInputProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CadetResult[]>([]);
-  const [searching, setSearching] = useState(false);
-
-  // Debounced server search; Command's own filtering is off so the API decides.
-  // The spinner is flipped on in the change handler, not here — setState in an
-  // effect body cascades a render.
-  useEffect(() => {
-    if (query.trim().length < 2) return;
-    const t = setTimeout(async () => {
-      try {
-        const res = await apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(query)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        // An error answers with `{detail}`, not a list — rendering that would
-        // throw on `.map` and take the whole page down with the search box.
-        const data = res.ok ? await res.json() : [];
-        setResults(Array.isArray(data) ? data : []);
-      } catch {
-        setResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [query, token]);
+  const { hits: results, searching } = useCadetSearch(query, { enabled: !!token });
 
   return (
     <div className="flex items-center gap-2">
@@ -69,6 +39,8 @@ export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }:
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            // A combobox isn't named by its text, so say what it is and what's chosen.
+            aria-label={selectedCin ? `Cadet: ${selectedName}` : "Search cadet"}
             className={cn("w-full justify-between", !selectedCin && "text-muted-foreground")}
           >
             <span className="flex min-w-0 items-center gap-2">
@@ -84,16 +56,7 @@ export function CadetSearchInput({ token, selectedCin, selectedName, onSelect }:
         </PopoverTrigger>
         <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
           <Command shouldFilter={false}>
-            <CommandInput
-              placeholder="Type a name…"
-              value={query}
-              onValueChange={(v) => {
-                setQuery(v);
-                const short = v.trim().length < 2;
-                setSearching(!short);
-                if (short) setResults([]);
-              }}
-            />
+            <CommandInput placeholder="Type a name…" value={query} onValueChange={setQuery} />
             <CommandList>
               <CommandEmpty>
                 {searching ? (

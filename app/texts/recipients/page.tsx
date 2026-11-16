@@ -47,6 +47,7 @@ import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
+import { useCadetSearch } from "@/lib/use-cadet-search";
 import { apiFetch } from "@/lib/api-fetch";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Private, usePrivateText } from "@/components/private";
@@ -66,15 +67,6 @@ type Recipient = {
 // Extras are the only rows whose name is stored here — a cadet's or staff
 // member's comes off the roster, so those fields are read-only below.
 type ExtraForm = { rank: string; surname: string; phone_number: string };
-
-// What /cadets/search answers with, trimmed to what the picker shows.
-type CadetHit = {
-  cin: number;
-  first_name: string;
-  last_name: string;
-  rank: string | null;
-  flight: string | null;
-};
 
 // What /staff answers with. Only the roster fields the picker needs.
 type StaffRow = {
@@ -131,7 +123,6 @@ export default function TextRecipientsPage() {
   // Adding under an account vs adding someone with no account behind them.
   const [addMode, setAddMode] = useState<AddMode>("cadet");
   const [query, setQuery] = useState("");
-  const [cadetHits, setCadetHits] = useState<CadetHit[]>([]);
   // Fetched the first time "Staff" is picked, then kept.
   const staffQuery = useApiQuery<StaffRow[]>(["staff", "roster"], "/staff", { enabled: addMode === "staff" });
   const staffRoster = Array.isArray(staffQuery.data) ? staffQuery.data : NO_STAFF;
@@ -170,31 +161,8 @@ export default function TextRecipientsPage() {
   }, [session?.id_token, authHeaders]);
 
   // Cadet search for the add dialog. Hundreds of cadets, so the roster stays on
-  // the server. Debounced because it fires per keystroke, and abandoned on the
-  // next one so a slow reply can't overwrite a newer list.
-  useEffect(() => {
-    const q = query.trim();
-    if (addMode !== "cadet" || !session?.id_token || q.length < 2) {
-      setCadetHits([]);
-      return;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      apiFetch(`${API_BASE}/cadets/search?q=${encodeURIComponent(q)}`, {
-        headers: authHeaders,
-        signal: controller.signal,
-      })
-        .then((resp) => (resp.ok ? resp.json() : []))
-        .then(setCadetHits)
-        .catch(() => {
-          // Aborted, or the server is down — the empty list says enough.
-        });
-    }, 250);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, addMode, session?.id_token, authHeaders]);
+  // the server; the shared search debounces and drops stale replies.
+  const { hits: cadetHits } = useCadetSearch(query, { enabled: addMode === "cadet" });
 
   // Staff are a few dozen, so the whole roster comes down once and the filtering
   // happens below — a search endpoint for that many rows would earn nothing.
@@ -273,7 +241,6 @@ export default function TextRecipientsPage() {
   const resetPicker = () => {
     setAddMode("cadet");
     setQuery("");
-    setCadetHits([]);
     setPicked(null);
   };
 

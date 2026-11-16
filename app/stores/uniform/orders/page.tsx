@@ -3,13 +3,10 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  ChevronDown,
-  ChevronUp,
   ChevronsDownUp,
   ChevronsUpDown,
   Plus,
   Trash2,
-  X,
   ArrowUpDown,
   PackageCheck,
   PackageMinus,
@@ -17,8 +14,6 @@ import {
   RotateCcw,
   Bell,
   FileSpreadsheet,
-  Download,
-  Lock,
   ShoppingCart,
 } from "lucide-react";
 import { SearchableSelect } from "@/components/searchable-select";
@@ -28,7 +23,6 @@ import { PageHeader } from "@/components/page-header";
 import { CountTabs } from "@/components/count-tabs";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorAlert } from "@/components/error-alert";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,7 +43,6 @@ import {
 } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
-import { CadetSearchInput } from "@/components/cadet-search";
 import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
@@ -67,33 +60,10 @@ import Link from "next/link";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import { compareByLastName } from "@/lib/cadet-format";
 import { searchOrders } from "@/lib/order-search";
-
-type DraftItem = {
-  itemType: string;
-  size: string;
-  needSizing: boolean;
-  sizingDetails: string;
-};
-
-function emptyDraftItem(): DraftItem {
-  return { itemType: "", size: "", needSizing: false, sizingDetails: "" };
-}
-
-// C Flight initial kitting: 1 of each standard item, gendered variants chosen on add.
-const KIT_ITEMS: Record<"male" | "female", string[]> = {
-  male: ["Beret", "Brassard", "Jumper", "Wedgewood Male", "Working Blue Male", "Tie", "Belt", "Trousers"],
-  female: [
-    "Beret",
-    "Brassard",
-    "Jumper",
-    "Wedgewood Female",
-    "Working Blue Female",
-    "Tie",
-    "Belt",
-    "Slacks",
-    "Skirts",
-  ],
-};
+import { type DraftItem, emptyDraftItem } from "./components/draft-item";
+import { KittingDialog } from "./components/kitting-dialog";
+import { NewUniformOrderDialog } from "./components/new-order-dialog";
+import { LogsFormTab } from "./components/logs-form-tab";
 
 type OrdersTab = "active" | "completed" | "kitting" | "logsform";
 
@@ -193,24 +163,14 @@ export default function OrdersPage() {
   const error = workflow.error ?? stockQuery.error?.message ?? logsFormsQuery.error?.message ?? null;
   const loading = !error && (workflow.loading || stockQuery.isPending || logsFormsQuery.isPending);
 
-  // C Flight initial kitting — add cadet dialog
   const [kittingOpen, setKittingOpen] = useState(false);
-  const [kitCadetCin, setKitCadetCin] = useState<number | null>(null);
-  const [kitCadetName, setKitCadetName] = useState("");
-  const [kitGender, setKitGender] = useState<"male" | "female">("male");
-  const [kitSubmitting, setKitSubmitting] = useState(false);
+  const [pullingIn, setPullingIn] = useState(false);
 
   // Logs form batches
   const [addingToLogsFormId, setAddingToLogsFormId] = useState<string | null>(null);
   const [tieItemId, setTieItemId] = useState<string | null>(null);
-  const [expandedFormIds, setExpandedFormIds] = useState<Set<string>>(new Set());
 
-  // New order dialog
   const [newOrderOpen, setNewOrderOpen] = useState(false);
-  const [newCadetCin, setNewCadetCin] = useState<number | null>(null);
-  const [newCadetName, setNewCadetName] = useState("");
-  const [newItems, setNewItems] = useState<DraftItem[]>([emptyDraftItem()]);
-  const [submitting, setSubmitting] = useState(false);
 
   // Edit size dialog — also handles needSizing + sizingDetails
   const [editSizeOpen, setEditSizeOpen] = useState(false);
@@ -312,68 +272,15 @@ export default function OrdersPage() {
   const handleReopenOrder = workflow.reopenOrder;
 
   function openNewOrder() {
-    setNewCadetCin(null);
-    setNewCadetName("");
-    setNewItems([emptyDraftItem()]);
     setNewOrderOpen(true);
   }
 
-  async function handleCreateOrder() {
-    const validItems = newItems.filter((i) => i.itemType);
-    if (!newCadetCin || validItems.length === 0) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/stores/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cadetCin: newCadetCin, items: validItems }),
-      });
-      if (!res.ok) throw new Error("Failed to create order");
-      const created = await res.json();
-      setOrders((prev) => [created, ...prev]);
-      setNewOrderOpen(false);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   function openKitting() {
-    setKitCadetCin(null);
-    setKitCadetName("");
-    setKitGender("male");
     setKittingOpen(true);
   }
 
-  async function handleCreateKitting() {
-    if (!kitCadetCin) return;
-    setKitSubmitting(true);
-    try {
-      const items = KIT_ITEMS[kitGender].map((itemType) => ({
-        itemType,
-        size: "",
-        needSizing: false,
-        sizingDetails: "",
-      }));
-      const res = await fetch("/api/stores/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cadetCin: kitCadetCin, kitting: true, items }),
-      });
-      if (!res.ok) throw new Error("Failed to create kitting");
-      const created = await res.json();
-      setOrders((prev) => [created, ...prev]);
-      setKittingOpen(false);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setKitSubmitting(false);
-    }
-  }
-
   async function doPullInCFlight() {
-    setKitSubmitting(true);
+    setPullingIn(true);
     try {
       const res = await fetch("/api/stores/orders/kit-flight", { method: "POST" });
       if (!res.ok) throw new Error("Failed to pull in C Flight");
@@ -382,7 +289,7 @@ export default function OrdersPage() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
-      setKitSubmitting(false);
+      setPullingIn(false);
     }
   }
 
@@ -536,15 +443,6 @@ export default function OrdersPage() {
     );
   }
 
-  function toggleFormExpand(id: string) {
-    setExpandedFormIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   async function handleAddToOrder(orderId: string) {
     if (!addItemDraft.itemType) return;
     const order = orders.find((o) => o.id === orderId);
@@ -650,9 +548,9 @@ export default function OrdersPage() {
 
       {activeTab === "kitting" && (
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handlePullInCFlight} size="sm" disabled={kitSubmitting}>
+          <Button onClick={handlePullInCFlight} size="sm" disabled={pullingIn}>
             <Plus data-icon="inline-start" />
-            {kitSubmitting ? "Pulling in…" : "Pull in C Flight"}
+            {pullingIn ? "Pulling in…" : "Pull in C Flight"}
           </Button>
           <Button onClick={openKitting} size="sm" variant="outline">
             <Plus data-icon="inline-start" />
@@ -1052,153 +950,12 @@ export default function OrdersPage() {
 
       {/* Logs Form tab */}
       {!loading && activeTab === "logsform" && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-0">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className="font-semibold">Current Logs Form</p>
-                  <p className="text-muted-foreground text-xs">
-                    {openLogsForm
-                      ? `Started ${formatTimestamp(openLogsForm.createdAt)}`
-                      : "Nothing added yet"}
-                  </p>
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  {openLogsForm?.entries.length ?? 0} item
-                  {(openLogsForm?.entries.length ?? 0) !== 1 ? "s" : ""}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-4">
-              {!openLogsForm || openLogsForm.entries.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center text-sm">
-                  No items on the current logs form. Use &quot;Add to Logs Form&quot; on an order item.
-                </p>
-              ) : (
-                <>
-                  <ul className="space-y-1.5">
-                    {openLogsForm.entries.map((entry) => (
-                      <li
-                        key={entry.id}
-                        className="bg-muted/30 flex items-center justify-between gap-2 rounded-md border px-3 py-2"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">
-                            {entry.itemType}
-                            {entry.size && (
-                              <span className="text-muted-foreground font-normal"> · {entry.size}</span>
-                            )}
-                          </p>
-                          <p className="text-muted-foreground text-xs">{entry.cadetName}</p>
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive h-6 w-6 shrink-0"
-                          onClick={() => handleRemoveLogsFormEntry(entry.id)}
-                          aria-label="Remove from logs form"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button size="sm" variant="outline" asChild>
-                      <a href={`/api/stores/logs-forms/${openLogsForm.id}/download`}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Logs Form
-                      </a>
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-success hover:bg-success/90 text-white"
-                      onClick={() => handleMarkLogsFormOrdered(openLogsForm.id)}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Mark as Ordered
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {pastLogsForms.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Previous Orders
-              </p>
-              {pastLogsForms.map((form) => {
-                const expanded = expandedFormIds.has(form.id);
-                return (
-                  <Card key={form.id} className="opacity-80">
-                    <CardHeader className="pb-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-1 flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold">Logs Form</p>
-                            <Badge className="border-success/40 bg-success/15 text-success text-xs">
-                              <Lock className="mr-1 h-3 w-3" />
-                              Ordered
-                            </Badge>
-                          </div>
-                          <p className="text-muted-foreground text-xs">
-                            Ordered {form.orderedAt ? formatTimestamp(form.orderedAt) : "—"}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {form.entries.length} item{form.entries.length !== 1 ? "s" : ""}
-                          </Badge>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8"
-                            onClick={() => toggleFormExpand(form.id)}
-                            aria-label={expanded ? "Collapse" : "Expand"}
-                          >
-                            {expanded ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    {expanded && (
-                      <CardContent className="space-y-3 pt-4">
-                        <ul className="space-y-1.5">
-                          {form.entries.map((entry) => (
-                            <li key={entry.id} className="bg-muted/30 rounded-md border px-3 py-2">
-                              <p className="text-sm font-medium">
-                                {entry.itemType}
-                                {entry.size && (
-                                  <span className="text-muted-foreground font-normal"> · {entry.size}</span>
-                                )}
-                              </p>
-                              <p className="text-muted-foreground text-xs">{entry.cadetName}</p>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="flex justify-end pt-1">
-                          <Button size="sm" variant="outline" asChild>
-                            <a href={`/api/stores/logs-forms/${form.id}/download`}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Download Logs Form
-                            </a>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <LogsFormTab
+          openForm={openLogsForm}
+          pastForms={pastLogsForms}
+          onRemoveEntry={(entryId) => handleRemoveLogsFormEntry(entryId)}
+          onMarkOrdered={handleMarkLogsFormOrdered}
+        />
       )}
 
       {/* Tie variant dialog */}
@@ -1231,186 +988,22 @@ export default function OrdersPage() {
       </ResponsiveDialog>
 
       {/* New Order Dialog */}
-      <ResponsiveDialog open={newOrderOpen} onOpenChange={setNewOrderOpen}>
-        <ResponsiveDialogContent className="sm:max-w-lg">
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>New Order</ResponsiveDialogTitle>
-          </ResponsiveDialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Cadet</Label>
-              <CadetSearchInput
-                token={token}
-                selectedCin={newCadetCin}
-                selectedName={newCadetName}
-                onSelect={(cin, name) => {
-                  setNewCadetCin(cin || null);
-                  setNewCadetName(name);
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Items</Label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setNewItems((prev) => [...prev, emptyDraftItem()])}
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add Item
-                </Button>
-              </div>
-
-              {newItems.length === 0 && <p className="text-muted-foreground text-sm">No items added yet.</p>}
-
-              {newItems.map((item, idx) => (
-                <div key={idx} className="space-y-1.5 rounded-md border p-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <SearchableSelect
-                        aria-label="Item type"
-                        value={item.itemType}
-                        onValueChange={(v) =>
-                          setNewItems((prev) =>
-                            prev.map((it, i) => (i === idx ? { ...it, itemType: v } : it))
-                          )
-                        }
-                        placeholder="Item type"
-                        className="h-8 text-sm"
-                        options={itemTypes.map((t) => ({ value: t, label: t }))}
-                      />
-                    </div>
-                    {!noSizeItems.has(item.itemType) && (
-                      <div className="w-24">
-                        <SizeCombobox
-                          strict
-                          className="h-8 text-sm"
-                          itemType={item.itemType}
-                          value={item.size}
-                          disabled={item.needSizing}
-                          onChange={(v) =>
-                            setNewItems((prev) => prev.map((it, i) => (i === idx ? { ...it, size: v } : it)))
-                          }
-                        />
-                      </div>
-                    )}
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-muted-foreground h-8 w-8 shrink-0"
-                      onClick={() => setNewItems((prev) => prev.filter((_, i) => i !== idx))}
-                      aria-label="Remove item"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {!noSizeItems.has(item.itemType) && (
-                    <>
-                      <div className="flex items-center gap-1.5 px-0.5">
-                        <Checkbox
-                          id={`ns-new-${idx}`}
-                          checked={item.needSizing}
-                          onCheckedChange={(c) =>
-                            setNewItems((prev) =>
-                              prev.map((it, i) =>
-                                i === idx ? { ...it, needSizing: !!c, size: !!c ? "" : it.size } : it
-                              )
-                            )
-                          }
-                        />
-                        <Label htmlFor={`ns-new-${idx}`} className="cursor-pointer text-xs">
-                          Need Sizing
-                        </Label>
-                      </div>
-                      {item.needSizing && (
-                        <Input
-                          className="h-8 text-sm"
-                          placeholder="Sizing details (optional)"
-                          value={item.sizingDetails}
-                          onChange={(e) =>
-                            setNewItems((prev) =>
-                              prev.map((it, i) => (i === idx ? { ...it, sizingDetails: e.target.value } : it))
-                            )
-                          }
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <ResponsiveDialogFooter>
-            <Button variant="outline" onClick={() => setNewOrderOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateOrder}
-              disabled={submitting || !newCadetCin || newItems.filter((i) => i.itemType).length === 0}
-            >
-              {submitting ? "Creating..." : "Create Order"}
-            </Button>
-          </ResponsiveDialogFooter>
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+      <NewUniformOrderDialog
+        open={newOrderOpen}
+        onOpenChange={setNewOrderOpen}
+        token={token}
+        onCreated={(created) => setOrders((prev) => [created, ...prev])}
+        onError={setError}
+      />
 
       {/* C Flight Kitting — Add Cadet Dialog */}
-      <ResponsiveDialog open={kittingOpen} onOpenChange={setKittingOpen}>
-        <ResponsiveDialogContent className="sm:max-w-lg">
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>Add cadet to C Flight kitting</ResponsiveDialogTitle>
-          </ResponsiveDialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Cadet</Label>
-              <CadetSearchInput
-                token={token}
-                selectedCin={kitCadetCin}
-                selectedName={kitCadetName}
-                onSelect={(cin, name) => {
-                  setKitCadetCin(cin || null);
-                  setKitCadetName(name);
-                }}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Kit</Label>
-              <div className="flex gap-2">
-                {(["male", "female"] as const).map((g) => (
-                  <Button
-                    key={g}
-                    type="button"
-                    variant={kitGender === g ? "default" : "outline"}
-                    size="sm"
-                    className="flex-1 capitalize"
-                    onClick={() => setKitGender(g)}
-                  >
-                    {g}
-                  </Button>
-                ))}
-              </div>
-              <p className="text-muted-foreground text-xs">
-                Pre-fills 1 of each: {KIT_ITEMS[kitGender].join(", ")}. Sizes are set later via Edit Size.
-              </p>
-            </div>
-          </div>
-
-          <ResponsiveDialogFooter>
-            <Button variant="outline" onClick={() => setKittingOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateKitting} disabled={kitSubmitting || !kitCadetCin}>
-              {kitSubmitting ? "Adding..." : "Add cadet"}
-            </Button>
-          </ResponsiveDialogFooter>
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+      <KittingDialog
+        open={kittingOpen}
+        onOpenChange={setKittingOpen}
+        token={token}
+        onCreated={(created) => setOrders((prev) => [created, ...prev])}
+        onError={setError}
+      />
 
       {/* Mark as Given Dialog */}
       <MarkGivenDialog

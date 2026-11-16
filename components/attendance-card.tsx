@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarCheck } from "lucide-react";
 
+import { TrendBarChart } from "@/components/charts/lazy";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -212,33 +212,14 @@ export function AttendanceCard({ baseUrl }: Props) {
                   <p className="text-muted-foreground mb-2 text-xs font-medium">
                     Nights attended per {byYear ? "year" : "month"}
                   </p>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={trend} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 11 }}
-                        stroke="var(--muted-foreground)"
-                        interval="preserveStartEnd"
-                        minTickGap={16}
-                      />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-                      <Tooltip
-                        cursor={{ fill: "var(--muted)", opacity: 0.4 }}
-                        contentStyle={{
-                          background: "var(--popover)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                        }}
-                        formatter={(value, _name, item) => [
-                          `${value} of ${item?.payload?.total}`,
-                          "Attended",
-                        ]}
-                      />
-                      <Bar dataKey="attended" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <TrendBarChart
+                    data={trend}
+                    dataKey="attended"
+                    name="Attended"
+                    height={180}
+                    marginLeft={-20}
+                    describe={(t) => `${t.attended} of ${t.total}`}
+                  />
                 </div>
 
                 {/* Register */}

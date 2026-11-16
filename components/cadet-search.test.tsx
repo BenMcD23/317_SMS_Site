@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("next-auth/react", () => ({ signIn: vi.fn() }));
+// One stable object, like the real hook.
+const SESSION = { data: { id_token: "tok" }, status: "authenticated" };
+vi.mock("next-auth/react", () => ({ signIn: vi.fn(), useSession: () => SESSION }));
 
 import { CadetSearchInput } from "@/components/cadet-search";
+import { renderWithQuery as render } from "@/tests/render-with-query";
 
 // cmdk measures with ResizeObserver and scrolls items into view.
 beforeEach(() => {
@@ -88,5 +91,17 @@ describe("CadetSearchInput", () => {
     expect(screen.getByRole("combobox", { expanded: false })).toHaveTextContent("Amy Able");
     await user.click(screen.getByRole("button", { name: "Clear selected cadet" }));
     expect(onSelect).toHaveBeenCalledWith(0, "");
+  });
+});
+
+describe("CadetSearchInput, for a screen reader", () => {
+  it("names the box, and the cadet once one is chosen", () => {
+    const { unmount } = render(
+      <CadetSearchInput token="tok" selectedCin={null} selectedName="" onSelect={vi.fn()} />
+    );
+    expect(screen.getByRole("combobox", { name: "Search cadet" })).toBeInTheDocument();
+    unmount();
+    render(<CadetSearchInput token="tok" selectedCin={1} selectedName="Amy Able" onSelect={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "Cadet: Amy Able" })).toBeInTheDocument();
   });
 });

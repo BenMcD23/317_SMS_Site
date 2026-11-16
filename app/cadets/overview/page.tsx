@@ -13,6 +13,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { PageHeader } from "@/components/page-header";
 import { ErrorAlert } from "@/components/error-alert";
 import { FlightFilter } from "@/components/flight-filter";
+import { useListView } from "@/lib/list-view";
 import { DataTable, dataTableColumns } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import { flightBadgeClass, flightsIn, flightLabel, RANK_ORDER } from "@/lib/cadet-format";
@@ -160,7 +161,12 @@ function NotOnSms({ cadets }: { cadets: Cadet[] }) {
 export default function CadetsPage() {
   const { data: cadets = [], isLoading: loading, error } = useApiQuery<Cadet[]>(["cadets"], "/cadets");
   const [search, setSearch] = useState("");
-  const [flight, setFlight] = useState("");
+  // The flight is remembered in this browser (lib/list-view.ts); a flight
+  // that has since gone is ignored rather than leaving the list empty.
+  const [view, setView] = useListView("cadets");
+  const remembered = view.filters?.flight ?? "";
+  const flight = remembered && (loading || flightsIn(cadets).includes(remembered)) ? remembered : "";
+  const setFlight = (value: string) => setView({ filters: { flight: value } });
 
   const notOnSms = cadets.filter((c) => c.missing_since);
   const filtered = cadets.filter((c) => {
@@ -232,6 +238,7 @@ export default function CadetsPage() {
           rowKey={(c) => c.cin}
           rowHref={(c) => `/cadets/${c.cin}`}
           initialSort={{ id: "name" }}
+          viewKey="cadets"
           columnClassName={{ cin: "hidden sm:table-cell", flight: "w-20" }}
         />
       )}

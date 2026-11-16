@@ -430,6 +430,46 @@ describe("the order list", () => {
     receivedBy: null,
   };
 
+  const SECOND = { ...ENTRY, id: "e2", orderItemId: "11", badgeName: "First Aid – Blue" };
+
+  it("marks every ticked badge ordered in one request and shows them under Ordered", async () => {
+    const fetch = stubApi({
+      "GET /api/stores/badges/order-lists": () => json([ENTRY, SECOND]),
+      "POST /api/stores/badges/order-lists/mark-ordered": () =>
+        json(
+          [ENTRY, SECOND].map((e) => ({ ...e, orderedAt: "2026-11-15T19:00:00Z", orderedBy: "Sam Staff" }))
+        ),
+    });
+    await renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: /Order List/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select all" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark 2 as ordered" }));
+
+    const post = fetch.mock.calls.find(([url]) => String(url).endsWith("/order-lists/mark-ordered"))!;
+    expect(JSON.parse(String(post[1]!.body))).toEqual({ entryIds: ["e1", "e2"], by: "Sam Staff" });
+    // Straight from the answer, no refetch of the list.
+    expect(await screen.findByText(/No badges queued/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Mark as Received" })).toHaveLength(2);
+    expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/order-lists")).length).toBe(1);
+  });
+
+  it("shows the API's reason when a bulk mark is refused, and moves nothing", async () => {
+    stubApi({
+      "GET /api/stores/badges/order-lists": () => json([ENTRY, SECOND]),
+      "POST /api/stores/badges/order-lists/mark-ordered": () =>
+        json({ detail: "Already marked ordered: First Aid – Blue (Alex Smith)" }, 409),
+    });
+    await renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: /Order List/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select all" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark 2 as ordered" }));
+
+    expect(
+      await screen.findByText("Already marked ordered: First Aid – Blue (Alex Smith)")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Nothing on order.")).toBeInTheDocument();
+  });
+
   it("an entry links back to the badge on its order, opening it", async () => {
     stubApi({ "GET /api/stores/badges/order-lists": () => json([ENTRY]) });
     await renderPage();

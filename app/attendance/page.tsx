@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarCheck, ChevronRight, ShieldUser, Users, UserCog } from "lucide-react";
 
+import { TrendBarChart } from "@/components/charts/lazy";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -343,38 +343,14 @@ export default function AttendancePage() {
                   <CardTitle className="text-base">Turnout per {byYear ? "year" : "month"}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={monthly} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 11 }}
-                        stroke="var(--muted-foreground)"
-                        interval="preserveStartEnd"
-                        minTickGap={16}
-                      />
-                      <YAxis
-                        domain={[0, 100]}
-                        unit="%"
-                        tick={{ fontSize: 11 }}
-                        stroke="var(--muted-foreground)"
-                      />
-                      <Tooltip
-                        cursor={{ fill: "var(--muted)", opacity: 0.4 }}
-                        contentStyle={{
-                          background: "var(--popover)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                        }}
-                        formatter={(value, _name, item) => [
-                          `${value}% — ${item?.payload?.present} of ${item?.payload?.total} across ${item?.payload?.nights} night(s)`,
-                          "Turnout",
-                        ]}
-                      />
-                      <Bar dataKey="rate" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <TrendBarChart
+                    data={monthly}
+                    dataKey="rate"
+                    name="Turnout"
+                    percent
+                    height={220}
+                    describe={(m) => `${m.rate}% — ${m.present} of ${m.total} across ${m.nights} night(s)`}
+                  />
                 </CardContent>
               </Card>
 

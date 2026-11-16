@@ -354,6 +354,7 @@ export default function NcoAppraisalsPage() {
             ) : (
               <DataTable
                 label="All appraisals"
+                viewKey="nco-appraisals"
                 data={appraisals}
                 columns={appraisalColumns}
                 rowKey={(a) => a.id}

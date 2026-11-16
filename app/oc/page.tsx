@@ -10,6 +10,7 @@ import { useApiQuery } from "@/lib/use-api-query";
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE, isOc } from "@/lib/config";
 import { normaliseLayout, OC_SECTION_TITLES, type OcLayout, type OcSection } from "@/lib/oc-layout";
+import { TrendBarChart } from "@/components/charts/lazy";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ShieldAlert, GraduationCap, Check, LayoutList, Printer, RotateCcw } from "lucide-react";
 import {
   type CommitteeRequestSummary,
@@ -191,33 +191,16 @@ function TurnoutChart({
         {data.length === 0 ? (
           <p className="text-muted-foreground text-sm">No parade nights recorded yet.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={data} barSize={22} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11 }}
-                stroke="var(--muted-foreground)"
-                interval="preserveStartEnd"
-                minTickGap={12}
-              />
-              <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-              <Tooltip
-                cursor={{ fill: "var(--muted)", opacity: 0.4 }}
-                contentStyle={{
-                  background: "var(--popover)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                }}
-                formatter={(value, _name, item) => [
-                  `${value}% — ${item?.payload?.[presentKey]} of ${item?.payload?.[totalKey]}`,
-                  "Turnout",
-                ]}
-              />
-              <Bar dataKey={dataKey} fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <TrendBarChart
+            data={data}
+            dataKey={dataKey}
+            name="Turnout"
+            percent
+            height={200}
+            barSize={22}
+            minTickGap={12}
+            describe={(row) => `${row[dataKey]}% — ${row[presentKey]} of ${row[totalKey]}`}
+          />
         )}
       </CardContent>
     </Card>
