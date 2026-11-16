@@ -70,6 +70,16 @@ describe("cadet record", () => {
     expect(screen.queryByText(/expir/)).not.toBeInTheDocument();
   });
 
+  it("shows the headline figures, each named, with the age when personal data is shown", async () => {
+    respond(CADET);
+    renderWithQuery(<CadetRecordPage />);
+    await screen.findByRole("heading", { name: "Amy Able" });
+    for (const label of ["Qualifications", "Events attended", "Assessments passed", "Age", "Date of birth"]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    }
+    expect(screen.getByText(/^of \d+ events?$/)).toBeInTheDocument();
+  });
+
   it("makes the email and mobile tappable", async () => {
     respond(CADET);
     renderWithQuery(<CadetRecordPage />);
@@ -87,7 +97,7 @@ describe("cadet record", () => {
     expect(await screen.findByRole("heading", { name: "Amy Able" })).toBeInTheDocument();
     expect(screen.queryByText(/amy@example\.com|07700|2012/)).not.toBeInTheDocument();
     // The fields go with their labels, and leave no placeholder behind.
-    for (const label of ["Email", "Mobile", "Date of Birth", "Age"]) {
+    for (const label of ["Email", "Mobile", "Date of birth", "Age"]) {
       expect(screen.queryByText(label)).not.toBeInTheDocument();
     }
     expect(screen.queryByText(/Hidden/)).not.toBeInTheDocument();
