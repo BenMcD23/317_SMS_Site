@@ -470,6 +470,14 @@ describe("the order list", () => {
     expect(screen.getByText("Nothing on order.")).toBeInTheDocument();
   });
 
+  // It used to count the orders on the tab, so always read "0 orders" here.
+  it("the header says how many badges are to order and on order while that tab is open", async () => {
+    stubApi({ "GET /api/stores/badges/order-lists": () => json([ENTRY, SECOND]) });
+    await renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: /Order List/ }));
+    expect(await screen.findByText("2 to order · 0 on order")).toBeInTheDocument();
+  });
+
   it("an entry links back to the badge on its order, opening it", async () => {
     stubApi({ "GET /api/stores/badges/order-lists": () => json([ENTRY]) });
     await renderPage();
@@ -488,7 +496,7 @@ describe("the order list", () => {
     });
     await renderPage();
     await userEvent.click(screen.getByRole("tab", { name: /Order List/ }));
-    await userEvent.click(await screen.findByRole("button", { name: "Add QM Note" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add note" }));
     await userEvent.type(
       screen.getByRole("textbox", { name: "QM note on Leadership – Bronze" }),
       "Wing out of stock"

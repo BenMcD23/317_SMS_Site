@@ -71,3 +71,14 @@ describe("ReadyStamp", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe("QmNotes, compact (rows in a list)", () => {
+  it("offers a small 'Add note' instead of the full-width button, and no divider until there are notes", () => {
+    const { container } = render(
+      <QmNotes compact notes={[]} editable itemLabel="Squadron" onAdd={async () => {}} onDelete={() => {}} />
+    );
+    expect(screen.getByRole("button", { name: "Add note" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add QM Note" })).toBeNull();
+    expect(container.firstElementChild).not.toHaveClass("border-t");
+  });
+});

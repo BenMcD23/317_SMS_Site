@@ -543,7 +543,12 @@ export default function BadgeOrdersPage() {
       <PageHeader
         title="Badge Orders"
         description={
-          loading ? "Loading…" : `${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`
+          loading
+            ? "Loading…"
+            : // The Order List tab holds badges, not orders, so it counts those.
+              activeTab === "orderlist"
+              ? `${toOrderEntries.length} to order · ${orderedEntries.length} on order`
+              : `${filteredOrders.length} order${filteredOrders.length !== 1 ? "s" : ""}`
         }
         actions={
           <Button onClick={openNewOrder} size="sm">
