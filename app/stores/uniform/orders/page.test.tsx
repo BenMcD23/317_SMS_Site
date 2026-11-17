@@ -287,8 +287,12 @@ describe("unticking a given item", () => {
     expect(card("Alex Smith")).toBe(before);
     // Both the give and the undo stay in the item's history.
     await userEvent.click(within(card("Alex Smith")).getAllByRole("button", { name: "History" })[0]);
-    const history = await screen.findByRole("list", { name: "Given history" });
-    expect(within(history).getAllByRole("listitem")).toHaveLength(2);
+    const history = await within(card("Alex Smith")).findByRole("list", { name: "History" });
+    expect(
+      within(history)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent?.split(" · ")[0])
+    ).toEqual(["Given to the cadet", "Undid: given (back to waiting)"]);
     expect(toast).toHaveBeenCalledWith("Beret back to waiting");
   });
 

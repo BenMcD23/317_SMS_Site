@@ -46,10 +46,7 @@ import { SizeCombobox } from "@/components/size-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
-import { GivenStamp } from "@/components/given-stamp";
-import { StockHistory } from "@/components/stock-history";
 import { QmNotes } from "@/components/qm-notes";
-import { ReadyStamp } from "@/components/ready-stamp";
 import { useOrderWorkflow } from "@/lib/use-order-workflow";
 import { useStockList } from "@/lib/stores-stock";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -70,6 +67,13 @@ import {
   type ItemStatus,
 } from "@/components/order-item-row";
 import { toast } from "sonner";
+import {
+  ItemTimeline,
+  givenTimeline,
+  logsFormTimeline,
+  readyTimeline,
+  stockTimeline,
+} from "@/components/item-timeline";
 
 type OrdersTab = "active" | "completed" | "kitting" | "logsform";
 
@@ -486,7 +490,12 @@ export default function OrdersPage() {
               ? "ready"
               : null;
 
-    const hasHistory = !!item.readyToCollect || !!item.givenEvents?.length || !!item.stockEvents?.length;
+    const timeline = [
+      ...givenTimeline(item),
+      ...stockTimeline(item.stockEvents),
+      ...logsFormTimeline(onForm),
+      ...readyTimeline(item.readyToCollect),
+    ];
 
     return {
       name: item.itemType,
@@ -538,13 +547,7 @@ export default function OrdersPage() {
           onDelete={(noteId) => workflow.deleteNote(order.id, item.id, noteId)}
         />
       ),
-      history: hasHistory ? (
-        <>
-          <ReadyStamp readyToCollect={item.readyToCollect} givenAt={item.givenAt} />
-          <GivenStamp givenAt={item.givenAt} givenBy={item.givenBy} events={item.givenEvents} />
-          <StockHistory events={item.stockEvents} />
-        </>
-      ) : undefined,
+      history: timeline.length > 0 ? <ItemTimeline events={timeline} /> : undefined,
     };
   }
 
@@ -563,7 +566,10 @@ export default function OrdersPage() {
     logsForms.flatMap((f) =>
       f.entries
         .filter((e) => e.orderItemId)
-        .map((e) => [e.orderItemId as string, { entryId: e.id, sent: !!f.orderedAt }] as const)
+        .map(
+          (e) =>
+            [e.orderItemId as string, { entryId: e.id, sent: !!f.orderedAt, sentAt: f.orderedAt }] as const
+        )
     )
   );
 

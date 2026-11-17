@@ -289,12 +289,13 @@ describe("unticking a given badge", () => {
     const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/undo-given"))!;
     expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
     await userEvent.click(within(card("Bella Jones")).getByRole("button", { name: "History" }));
-    const history = await screen.findByRole("list", { name: "Given history" });
+    const history = await within(card("Bella Jones")).findByRole("list", { name: "History" });
+    // Each line says what happened, the undo naming what it took back.
     expect(
       within(history)
         .getAllByRole("listitem")
-        .map((li) => li.textContent?.split(" ")[0])
-    ).toEqual(["Given", "Undone"]);
+        .map((li) => li.textContent?.split(" · ")[0])
+    ).toEqual(["Given to the cadet", "Undid: given (back to waiting)"]);
     expect(toast).toHaveBeenCalledWith("First Aid – Bronze back to waiting");
   });
 
@@ -694,9 +695,16 @@ describe("order list steps on the badge", () => {
     await renderPage();
     await expand("Alex Smith");
     await userEvent.click(within(card("Alex Smith")).getByRole("button", { name: "History" }));
-    const history = within(card("Alex Smith")).getByRole("list", { name: "Order list history" });
-    expect(history).toHaveTextContent("Ordered undone");
-    expect(history).toHaveTextContent("QM Jones");
+    const history = within(card("Alex Smith")).getByRole("list", { name: "History" });
+    expect(
+      within(history)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent)
+    ).toEqual([
+      expect.stringMatching(/^Added to order list · .* · Sam Staff$/),
+      expect.stringMatching(/^Marked ordered · .* · Sam Staff$/),
+      expect.stringMatching(/^Undid: ordered · .* · QM Jones$/),
+    ]);
   });
 
   // These used to vanish: the steps are reachable until they're done.
@@ -722,6 +730,19 @@ describe("order list steps on the badge", () => {
     await openMenu("Alex Smith", "First Aid – Blue");
     expect(screen.getByRole("menuitem", { name: "Mark as ordered" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Mark as received" })).toBeInTheDocument();
+  });
+
+  // The paperwork often catches up after the badge has gone out.
+  it("a badge already given can still be put on the list, ordered and received", async () => {
+    stubApi();
+    await renderPage();
+    await expand("Bella Jones");
+    await openMenu("Bella Jones", "First Aid – Bronze");
+    for (const name of ["Add to order list", "Mark as ordered", "Mark as received"]) {
+      expect(screen.getByRole("menuitem", { name })).not.toHaveAttribute("data-disabled");
+    }
+    // Stock and collection are done with once it's been handed over.
+    expect(screen.getByRole("menuitem", { name: "Ready to collect" })).toHaveAttribute("data-disabled");
   });
 
   // Giving doesn't wait for the supplier: a badge in stock goes out unordered.

@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { QmNotes } from "@/components/qm-notes";
-import { ReadyStamp } from "@/components/ready-stamp";
 
 const NOTE = { id: "n1", content: "Sized at parade", timestamp: "2026-10-06T19:00:00", addedBy: "Sgt Smith" };
 
@@ -57,17 +56,6 @@ describe("QmNotes", () => {
     const { container } = render(
       <QmNotes notes={undefined} editable={false} itemLabel="Beret" onAdd={vi.fn()} onDelete={vi.fn()} />
     );
-    expect(container).toBeEmptyDOMElement();
-  });
-});
-
-describe("ReadyStamp", () => {
-  it("shows when the cadet was told, until the item is given", () => {
-    const { rerender, container } = render(
-      <ReadyStamp readyToCollect="2026-10-06T19:00:00" givenAt={null} />
-    );
-    expect(screen.getByText(/Cadet notified/)).toBeInTheDocument();
-    rerender(<ReadyStamp readyToCollect="2026-10-06T19:00:00" givenAt="2026-10-08T19:00:00" />);
     expect(container).toBeEmptyDOMElement();
   });
 });

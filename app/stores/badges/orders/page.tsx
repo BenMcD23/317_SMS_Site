@@ -39,11 +39,7 @@ import { type BadgeCategory, buildBadgeName, useReference } from "@/lib/referenc
 import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
-import { GivenStamp } from "@/components/given-stamp";
-import { OrderListHistory } from "@/components/order-list-history";
-import { StockHistory } from "@/components/stock-history";
 import { QmNotes } from "@/components/qm-notes";
-import { ReadyStamp } from "@/components/ready-stamp";
 import { useOrderWorkflow } from "@/lib/use-order-workflow";
 import { useBadgeGrid } from "@/lib/badge-grid";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
@@ -70,6 +66,13 @@ import {
   type ItemStatus,
 } from "@/components/order-item-row";
 import { toast } from "sonner";
+import {
+  ItemTimeline,
+  givenTimeline,
+  orderListTimeline,
+  readyTimeline,
+  stockTimeline,
+} from "@/components/item-timeline";
 
 type StockMatch = { item: BadgeItem; cell: BadgeCell };
 
@@ -298,6 +301,8 @@ export default function BadgeOrdersPage() {
 
     const given = !!item.givenAt;
     const ordered = stage === "ordered" || stage === "received";
+    // The supplier steps (list, ordered, received) stay open after a badge is
+    // given: the paperwork often catches up after the badge has gone out.
     // Every step in its fixed slot, in the order the stores work: stock, then
     // the supplier's three (list, ordered, received), then collection. A done
     // step stays put, ticked, and taps back to undo. Any step can be done from
@@ -324,7 +329,6 @@ export default function BadgeOrdersPage() {
         group: "order",
         icon: ClipboardList,
         busy: addingToListId === item.id,
-        disabled: given,
         onSelect: () => handleAddToOrderList(item),
         done: stage !== "none",
         doneLabel: "On order list",
@@ -337,7 +341,6 @@ export default function BadgeOrdersPage() {
         group: "order",
         icon: Truck,
         busy: sendingToOrderedId === item.id,
-        disabled: given,
         onSelect: () => handleSendToOrdered(item),
         done: ordered,
         doneLabel: "Ordered",
@@ -350,7 +353,6 @@ export default function BadgeOrdersPage() {
         group: "order",
         icon: Inbox,
         busy: markingReceivedQuickId === item.id,
-        disabled: given,
         onSelect: () => handleMarkReceivedQuick(item),
         done: stage === "received",
         doneLabel: "Received",
@@ -393,8 +395,12 @@ export default function BadgeOrdersPage() {
                 : null;
 
     const gained = gainedWhereSummary(gainedWhereOptions, item);
-    const hasHistory =
-      !!item.readyToCollect || !!item.givenEvents?.length || !!item.stockEvents?.length || !!orderListEntry;
+    const timeline = [
+      ...givenTimeline(item),
+      ...stockTimeline(item.stockEvents),
+      ...orderListTimeline(orderListEntry),
+      ...readyTimeline(item.readyToCollect),
+    ];
 
     return {
       id: `badge-order-item-${item.id}`,
@@ -467,34 +473,7 @@ export default function BadgeOrdersPage() {
           onDelete={(noteId) => workflow.deleteNote(order.id, item.id, noteId)}
         />
       ),
-      history: hasHistory ? (
-        <>
-          <ReadyStamp readyToCollect={item.readyToCollect} givenAt={item.givenAt} />
-          <GivenStamp givenAt={item.givenAt} givenBy={item.givenBy} events={item.givenEvents} />
-          {orderListEntry && (
-            <div className="text-muted-foreground text-xs">
-              <p>
-                Added to order list {formatTimestamp(orderListEntry.addedAt)}
-                {orderListEntry.addedBy && <> · {orderListEntry.addedBy}</>}
-              </p>
-              {orderListEntry.orderedAt && (
-                <p>
-                  Marked ordered {formatTimestamp(orderListEntry.orderedAt)}
-                  {orderListEntry.orderedBy && <> · {orderListEntry.orderedBy}</>}
-                </p>
-              )}
-              {orderListEntry.receivedAt && (
-                <p>
-                  Marked received {formatTimestamp(orderListEntry.receivedAt)}
-                  {orderListEntry.receivedBy && <> · {orderListEntry.receivedBy}</>}
-                </p>
-              )}
-            </div>
-          )}
-          {orderListEntry && <OrderListHistory events={orderListEntry.history} />}
-          <StockHistory events={item.stockEvents} />
-        </>
-      ) : undefined,
+      history: timeline.length > 0 ? <ItemTimeline events={timeline} /> : undefined,
     };
   }
 
