@@ -13,6 +13,8 @@ const SESSION = {
   status: "authenticated",
 };
 vi.mock("next-auth/react", () => ({ useSession: () => SESSION }));
+const toast = vi.hoisted(() => Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast, Toaster: () => null }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => "/stores/uniform/orders",
@@ -105,6 +107,10 @@ async function renderPage() {
 const card = (cadet: string) => screen.getByText(cadet).closest("[data-exit-id]") as HTMLElement;
 const expand = (cadet: string) =>
   act(async () => screen.getByRole("button", { name: `Expand order for ${cadet}` }).click());
+// The item's "⋯" menu and the tick that hands it out.
+const openMenu = (name: string) =>
+  userEvent.click(within(card("Alex Smith")).getByRole("button", { name: `More for ${name}` }));
+const tick = (name: string) => within(card("Alex Smith")).getByRole("checkbox", { name: `Given: ${name}` });
 const confirmDialog = () =>
   act(async () => within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm" }).click());
 
@@ -124,7 +130,7 @@ afterEach(() => {
 });
 
 describe("acting on an item doesn't reload the page", () => {
-  it("Ready to Collect updates the item in place from the API's answer, without refetching", async () => {
+  it("Ready to collect, from the item's menu, updates it in place from the API's answer", async () => {
     const fetch = stubApi({
       "POST /api/stores/orders/1/items/11/mark-ready": () => {
         const updated = orders()[0];
@@ -136,16 +142,17 @@ describe("acting on an item doesn't reload the page", () => {
     await expand("Alex Smith");
     const before = card("Alex Smith");
 
-    await act(async () => screen.getAllByRole("button", { name: "Ready to Collect" })[0].click());
+    await openMenu("Beret");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Ready to collect" }));
 
-    expect(await screen.findByRole("button", { name: "Notified" })).toBeDisabled();
+    expect(await within(card("Alex Smith")).findByText("Ready to collect")).toBeInTheDocument();
     expect(calls(fetch, "GET /api/stores/orders")).toBe(1);
-    // Same DOM node, still expanded — nothing was torn down and rebuilt.
+    // Same DOM node, still expanded: nothing was torn down and rebuilt.
     expect(card("Alex Smith")).toBe(before);
     expect(screen.getByRole("button", { name: "Collapse order for Alex Smith" })).toBeInTheDocument();
   });
 
-  it("Mark as Given keeps every card on screen while it refreshes the orders", async () => {
+  it("ticking an item gives it at once and keeps every card on screen while the orders refresh", async () => {
     let releaseReload: () => void = () => {};
     let ordersLoads = 0;
     const fetch = stubApi({
@@ -166,35 +173,64 @@ describe("acting on an item doesn't reload the page", () => {
     await expand("Alex Smith");
     const before = card("Alex Smith");
 
-    await act(async () => screen.getAllByRole("button", { name: "Mark as Given" })[0].click());
-    await act(async () =>
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as Given" }).click()
-    );
+    // No confirm first: the tick is the hand-over.
+    await act(async () => tick("Beret").click());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/issuances/101"))!;
+    expect(JSON.parse(String(init?.body))).toEqual({
+      givenBy: "Sam Staff",
+      items: [{ itemType: "Beret", sizeGiven: "56", orderItemId: "11" }],
+    });
 
     // Mid-refresh: the old page is still there, not a wall of skeletons.
     expect(calls(fetch, "GET /api/stores/orders")).toBe(2);
     expect(card("Alex Smith")).toBe(before);
-    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
 
     await act(async () => releaseReload());
     expect(await screen.findByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(tick("Beret")).toHaveAttribute("aria-checked", "true");
+    expect(toast).toHaveBeenCalledWith("Beret given to Alex Smith", expect.anything());
     expect(card("Alex Smith")).toBe(before);
-    expect(screen.getByRole("button", { name: "Collapse order for Alex Smith" })).toBeInTheDocument();
   });
 
-  it("a failed Ready to Collect shows the error and leaves the item as it was", async () => {
+  it("the toast's Undo takes a tick straight back", async () => {
+    const fetch = stubApi({
+      "POST /api/stores/issuances/101": () => json([]),
+      "POST /api/stores/orders/1/items/11/undo-given": () => json(orders()[0]),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await act(async () => tick("Beret").click());
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    const { action } = toast.mock.calls.at(-1)![1] as { action: { label: string; onClick: () => void } };
+    expect(action.label).toBe("Undo");
+    await act(async () => action.onClick());
+    expect(calls(fetch, "POST /api/stores/orders/1/items/11/undo-given")).toBe(1);
+  });
+
+  it("a failed Ready to collect shows the error and leaves the item as it was", async () => {
     stubApi({ "POST /api/stores/orders/1/items/11/mark-ready": () => json({ detail: "boom" }, 500) });
     await renderPage();
     await expand("Alex Smith");
 
-    await act(async () => screen.getAllByRole("button", { name: "Ready to Collect" })[0].click());
+    await openMenu("Beret");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Ready to collect" }));
 
     expect(await screen.findByText("Failed to mark as ready to collect")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Notified" })).not.toBeInTheDocument();
-    expect(screen.getByText("Alex Smith")).toBeInTheDocument();
+    expect(within(card("Alex Smith")).queryByText("Ready to collect")).toBeNull();
   });
 
-  it("a failed quiet refresh after Mark as Given reports the error but keeps the orders shown", async () => {
+  it("a failed hand-over shows the error, leaves the item unticked and offers no Undo", async () => {
+    stubApi({ "POST /api/stores/issuances/101": () => json({ detail: "nope" }, 500) });
+    await renderPage();
+    await expand("Alex Smith");
+    await act(async () => tick("Beret").click());
+    expect(await screen.findByText("Failed to mark as given")).toBeInTheDocument();
+    expect(tick("Beret")).toHaveAttribute("aria-checked", "false");
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("a failed quiet refresh after a tick reports the error but keeps the orders shown", async () => {
     let ordersLoads = 0;
     stubApi({
       "POST /api/stores/issuances/101": () => json([]),
@@ -202,18 +238,13 @@ describe("acting on an item doesn't reload the page", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-
-    await act(async () => screen.getAllByRole("button", { name: "Mark as Given" })[0].click());
-    await act(async () =>
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Mark as Given" }).click()
-    );
-
+    await act(async () => tick("Beret").click());
     expect(await screen.findByText("down")).toBeInTheDocument();
     expect(screen.getByText("Alex Smith")).toBeInTheDocument();
   });
 });
 
-describe("undoing a given item", () => {
+describe("unticking a given item", () => {
   const GIVEN_BERET = {
     givenAt: "2026-10-01T18:00:00Z",
     givenBy: "Sam Staff",
@@ -235,7 +266,7 @@ describe("undoing a given item", () => {
     return list;
   };
 
-  it("asks first, then undoes it, reloads the orders quietly and keeps the history", async () => {
+  it("takes it back at once, reloads the orders quietly and keeps the history", async () => {
     let loads = 0;
     const fetch = stubApi({
       "GET /api/stores/orders": () => json(++loads === 1 ? withGivenBeret() : afterUndo()),
@@ -244,30 +275,25 @@ describe("undoing a given item", () => {
     await renderPage();
     await expand("Alex Smith");
     const before = card("Alex Smith");
+    expect(tick("Beret")).toHaveAttribute("aria-checked", "true");
 
-    await act(async () => screen.getByRole("button", { name: "Undo given: Beret" }).click());
-    expect(calls(fetch, "POST /api/stores/orders/1/items/11/undo-given")).toBe(0);
-    await confirmDialog();
+    await act(async () => tick("Beret").click());
 
-    const history = await screen.findByRole("list", { name: "Given history" });
-    expect(within(history).getAllByRole("listitem")).toHaveLength(2);
+    await waitFor(() => expect(tick("Beret")).toHaveAttribute("aria-checked", "false"));
     const [, init] = fetch.mock.calls.find(([u]) => String(u).endsWith("/undo-given"))!;
     expect(JSON.parse(String(init?.body))).toEqual({ by: "Sam Staff" });
     // Undoing restores the cadet's "last received", which shows on their other orders.
     expect(calls(fetch, "GET /api/stores/orders")).toBe(2);
     expect(card("Alex Smith")).toBe(before);
-    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
-    expect(within(card("Alex Smith")).getAllByRole("button", { name: "Mark as Given" })).not.toHaveLength(0);
-  });
-
-  it("changes nothing when the confirm is cancelled", async () => {
-    const fetch = stubApi({ "GET /api/stores/orders": () => json(withGivenBeret()) });
-    await renderPage();
-    await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo given: Beret" }).click());
-    await act(async () => within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }).click());
-    expect(fetch.mock.calls.some(([u]) => String(u).endsWith("/undo-given"))).toBe(false);
-    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    // Both the give and the undo stay in the item's history.
+    await userEvent.click(within(card("Alex Smith")).getAllByRole("button", { name: "History" })[0]);
+    const history = await within(card("Alex Smith")).findByRole("list", { name: "History" });
+    expect(
+      within(history)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent?.split(" · ")[0])
+    ).toEqual(["Given to the cadet", "Undid: given (back to waiting)"]);
+    expect(toast).toHaveBeenCalledWith("Beret back to waiting");
   });
 
   it("shows the API's reason and leaves the item given when the undo is refused", async () => {
@@ -278,14 +304,13 @@ describe("undoing a given item", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo given: Beret" }).click());
-    await confirmDialog();
+    await act(async () => tick("Beret").click());
     expect(await screen.findByText("Reopen the order before undoing an item")).toBeInTheDocument();
-    expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
+    expect(tick("Beret")).toHaveAttribute("aria-checked", "true");
   });
 
   // A closed order is a record of what was handed over; reopen it to change it.
-  it("offers no Undo on a completed order", async () => {
+  it("can't untick, or change anything, on a completed order", async () => {
     stubApi({
       "GET /api/stores/orders": () => json([{ ...withGivenBeret()[0], completed: true }]),
     });
@@ -297,7 +322,71 @@ describe("undoing a given item", () => {
     await screen.findByText("Alex Smith");
     await expand("Alex Smith");
     expect(screen.getByText(/Given .* · Sam Staff/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Undo given/ })).toBeNull();
+    expect(tick("Beret")).toBeDisabled();
+    expect(within(card("Alex Smith")).queryByRole("button", { name: /More for/ })).toBeNull();
+  });
+});
+
+describe("each item offers the step it needs next", () => {
+  it("an item that needs sizing asks for a size first, and can't be ticked until it has one", async () => {
+    const list = orders();
+    list[0].items[0] = item("11", "Beret", { size: "", needSizing: true, sizingDetails: "" });
+    stubApi({ "GET /api/stores/orders": () => json(list) });
+    await renderPage();
+    await expand("Alex Smith");
+    const alex = within(card("Alex Smith"));
+    expect(alex.getByRole("button", { name: "Enter size" })).toBeInTheDocument();
+    expect(alex.getAllByText("Needs sizing").length).toBeGreaterThan(0);
+    expect(tick("Beret")).toBeDisabled();
+    await userEvent.click(alex.getByRole("button", { name: "Enter size" }));
+    expect(screen.getByRole("dialog", { name: "Size & Sizing Details" })).toBeInTheDocument();
+  });
+
+  it("an item on the shelf says where, and offers to take it from stock", async () => {
+    stubApi({
+      "GET /api/stores/stock": () =>
+        json([{ id: 5, itemType: "Beret", size: "56", quantity: 2, box: "3", section: "B" }]),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    const alex = within(card("Alex Smith"));
+    expect(alex.getByText("In box 3, section B (2 left)")).toBeInTheDocument();
+    expect(alex.getByRole("button", { name: "Remove from stock" })).toBeInTheDocument();
+  });
+
+  it("an item that isn't in stock offers the logs form", async () => {
+    stubApi();
+    await renderPage();
+    await expand("Alex Smith");
+    expect(
+      within(card("Alex Smith")).getAllByRole("button", { name: "Add to logs form" }).length
+    ).toBeGreaterThan(0);
+  });
+
+  // Always in the same place, greyed out with the reason when there's nothing to take.
+  it("lists Remove from stock greyed out when that size isn't on the shelf", async () => {
+    stubApi();
+    await renderPage();
+    await expand("Alex Smith");
+    await openMenu("Beret");
+    const remove = screen.getByRole("menuitem", { name: /Remove from stock/ });
+    expect(remove).toHaveAttribute("data-disabled");
+    expect(remove).toHaveTextContent("None in stock");
+  });
+
+  it("lists every step in the item's menu in its fixed order, Delete last", async () => {
+    stubApi();
+    await renderPage();
+    await expand("Alex Smith");
+    await openMenu("Beret");
+    const items = screen.getAllByRole("menuitem").map((m) => m.textContent);
+    expect(items).toEqual([
+      "Edit size",
+      "Remove from stockNone in stock",
+      "Add to logs form",
+      "Ready to collect",
+      "Delete item",
+    ]);
   });
 });
 
@@ -509,7 +598,7 @@ describe("QM notes", () => {
     await renderPage();
     await expand("Alex Smith");
     const alex = within(card("Alex Smith"));
-    await userEvent.click(alex.getAllByRole("button", { name: "Add QM Note" })[0]);
+    await userEvent.click(alex.getAllByRole("button", { name: "Add note" })[0]);
     await userEvent.type(alex.getByRole("textbox", { name: "QM note on Beret" }), "Try a 57");
     await userEvent.click(alex.getByRole("button", { name: "Save Note" }));
 
@@ -524,7 +613,7 @@ describe("QM notes", () => {
     await renderPage();
     await expand("Alex Smith");
     const alex = within(card("Alex Smith"));
-    await userEvent.click(alex.getAllByRole("button", { name: "Add QM Note" })[0]);
+    await userEvent.click(alex.getAllByRole("button", { name: "Add note" })[0]);
     await userEvent.type(alex.getByRole("textbox", { name: "QM note on Beret" }), "Try a 57");
     await userEvent.click(alex.getByRole("button", { name: "Save Note" }));
 
@@ -533,7 +622,7 @@ describe("QM notes", () => {
   });
 });
 
-describe("the Logs Form button undoes itself", () => {
+describe("taking an item off the logs form", () => {
   const form = (orderedAt: string | null) => [
     {
       id: "f1",
@@ -553,25 +642,27 @@ describe("the Logs Form button undoes itself", () => {
     },
   ];
 
-  it("an item on the open form offers to take it off, from the same button", async () => {
+  it("an item on the open form says so, and its menu takes it off", async () => {
     const fetch = stubApi({
       "GET /api/stores/logs-forms": () => json(form(null)),
       "DELETE /api/stores/logs-forms/entries/e1": () => new Response(null, { status: 204 }),
     });
     await renderPage();
     await expand("Alex Smith");
-    const undo = within(card("Alex Smith")).getByRole("button", { name: "Undo Logs Form: Beret" });
-    expect(undo).toHaveAttribute("aria-pressed", "true");
-    await act(async () => undo.click());
+    expect(within(card("Alex Smith")).getByText("On logs form")).toBeInTheDocument();
+    await openMenu("Beret");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Take off logs form" }));
     await waitFor(() => expect(calls(fetch, "DELETE /api/stores/logs-forms/entries/e1")).toBe(1));
   });
 
   // Once the form has gone to RAFAC the entry is part of what was ordered.
-  it("an item on a form already sent can't be taken off", async () => {
+  it("an item on a form already sent reads Ordered and can't be taken off", async () => {
     stubApi({ "GET /api/stores/logs-forms": () => json(form("2026-11-05T10:00:00Z")) });
     await renderPage();
     await expand("Alex Smith");
-    expect(within(card("Alex Smith")).getByRole("button", { name: "Logs Form sent: Beret" })).toBeDisabled();
+    expect(within(card("Alex Smith")).getByText("Ordered")).toBeInTheDocument();
+    await openMenu("Beret");
+    expect(screen.getByRole("menuitem", { name: "Logs form sent" })).toHaveAttribute("data-disabled");
   });
 
   it("a failed removal says so and leaves it on the form", async () => {
@@ -581,30 +672,9 @@ describe("the Logs Form button undoes itself", () => {
     });
     await renderPage();
     await expand("Alex Smith");
-    await act(async () => screen.getByRole("button", { name: "Undo Logs Form: Beret" }).click());
+    await openMenu("Beret");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Take off logs form" }));
     expect(await screen.findByText("Failed to remove entry")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Undo Logs Form: Beret" })).toBeInTheDocument();
-  });
-});
-
-describe("the Mark as Given button undoes itself", () => {
-  it("a given item's button reads Undo given and asks before taking it back", async () => {
-    const given = orders();
-    given[0].items[0] = item("11", "Beret", { givenAt: "2026-11-06T13:58:00Z", givenBy: "Dev Staff" });
-    stubApi({ "GET /api/stores/orders": () => json(given) });
-    await renderPage();
-    await expand("Alex Smith");
-    const undo = within(card("Alex Smith")).getByRole("button", { name: "Undo given: Beret" });
-    expect(undo).toHaveAttribute("aria-pressed", "true");
-    // The stamp below has no controls of its own any more.
-    expect(
-      within(card("Alex Smith"))
-        .getByText(/Given 06 Nov 2026, 13:58/)
-        .closest("div")
-    ).not.toContainElement(undo);
-    await act(async () => undo.click());
-    expect(
-      within(screen.getByRole("dialog")).getByText(/Undo giving Beret to Alex Smith/)
-    ).toBeInTheDocument();
+    expect(within(card("Alex Smith")).getByText("On logs form")).toBeInTheDocument();
   });
 });

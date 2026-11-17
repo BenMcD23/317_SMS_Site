@@ -8,13 +8,13 @@ import {
   Plus,
   Trash2,
   ArrowUpDown,
-  PackageCheck,
   PackageMinus,
   CheckCircle2,
   RotateCcw,
   Bell,
   FileSpreadsheet,
   ShoppingCart,
+  Ruler,
 } from "lucide-react";
 import { SearchableSelect } from "@/components/searchable-select";
 import { Button } from "@/components/ui/button";
@@ -46,12 +46,7 @@ import { SizeCombobox } from "@/components/size-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
 import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
-import { GivenStamp } from "@/components/given-stamp";
-import { ToggleActionButton } from "@/components/toggle-action-button";
-import { StockHistory } from "@/components/stock-history";
 import { QmNotes } from "@/components/qm-notes";
-import { ReadyStamp } from "@/components/ready-stamp";
-import { MarkGivenDialog } from "@/components/mark-given-dialog";
 import { useOrderWorkflow } from "@/lib/use-order-workflow";
 import { useStockList } from "@/lib/stores-stock";
 import { useApiQuery } from "@/lib/use-api-query";
@@ -64,6 +59,21 @@ import { type DraftItem, emptyDraftItem } from "./components/draft-item";
 import { KittingDialog } from "./components/kitting-dialog";
 import { NewUniformOrderDialog } from "./components/new-order-dialog";
 import { LogsFormTab } from "./components/logs-form-tab";
+import {
+  ItemCount,
+  OrderItemList,
+  OrderItemRow,
+  type ItemAction,
+  type ItemStatus,
+} from "@/components/order-item-row";
+import { toast } from "sonner";
+import {
+  ItemTimeline,
+  givenTimeline,
+  logsFormTimeline,
+  readyTimeline,
+  stockTimeline,
+} from "@/components/item-timeline";
 
 type OrdersTab = "active" | "completed" | "kitting" | "logsform";
 
@@ -188,9 +198,6 @@ export default function OrdersPage() {
   // Mark as given
   const [markingAsGiven, setMarkingAsGiven] = useState<string | null>(null);
   const [undoingGiven, setUndoingGiven] = useState<string | null>(null);
-  const [markGivenOpen, setMarkGivenOpen] = useState(false);
-  const [markGivenOrder, setMarkGivenOrder] = useState<Order | null>(null);
-  const [markGivenItem, setMarkGivenItem] = useState<OrderItem | null>(null);
 
   // Sort and search
   const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
@@ -300,7 +307,8 @@ export default function OrdersPage() {
     );
   }
 
-  async function doMarkItemAsGiven(order: Order, item: OrderItem) {
+  /** Records the hand-over; true once it's saved. */
+  async function doMarkItemAsGiven(order: Order, item: OrderItem): Promise<boolean> {
     setMarkingAsGiven(item.id);
     try {
       const isUserOrder = (order as { subjectType?: string }).subjectType === "user";
@@ -323,8 +331,10 @@ export default function OrdersPage() {
       // The issuance can change "last received" on this cadet's other orders
       // too, so reload them all. The cards stay on screen while it does.
       await workflow.reload();
+      return true;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Unknown error");
+      return false;
     } finally {
       setMarkingAsGiven(null);
     }
@@ -348,23 +358,197 @@ export default function OrdersPage() {
     }
   }
 
-  function handleUndoGiven(order: Order, item: OrderItem) {
-    openConfirm(
-      `Undo giving ${item.itemType} to ${order.cadetName}? It goes back to waiting and their last received size is put back as it was. The history keeps both.`,
-      () => doUndoGiven(order, item)
-    );
+  // The tick hands an item out at once, with Undo in the toast instead of a
+  // confirm first: on parade night it's tap, tap, tap down the list. Unticking
+  // takes it back the same way. Both go in the item's history.
+  async function toggleGiven(order: Order, item: OrderItem) {
+    if (item.givenAt) {
+      await doUndoGiven(order, item);
+      toast(`${item.itemType} back to waiting`);
+      return;
+    }
+    if (await doMarkItemAsGiven(order, item)) {
+      toast(`${item.itemType} given to ${order.cadetName}`, {
+        action: { label: "Undo", onClick: () => void doUndoGiven(order, item) },
+      });
+    }
   }
 
-  function handleMarkItemAsGiven(order: Order, item: OrderItem) {
-    setMarkGivenOrder(order);
-    setMarkGivenItem(item);
-    setMarkGivenOpen(true);
-  }
+  /**
+   * What the shared OrderItemRow shows for one uniform item: its status, the
+   * one next step that status calls for, and the rest in the "⋯" menu.
+   */
+  function uniformItemRow(
+    order: Order,
+    item: OrderItem,
+    stock: { stockMatch: StockItem | undefined; inStock: boolean; removedFromStock: boolean }
+  ): React.ComponentProps<typeof OrderItemRow> {
+    const { stockMatch, inStock, removedFromStock } = stock;
+    const completed = !!order.completed;
+    const sized = !noSizeItems.has(item.itemType);
+    const needsSize = item.needSizing || (sized && !item.size);
+    const onForm = logsFormEntryByItem.get(item.id);
+    const canForm = item.itemType !== "Brassard";
 
-  async function confirmMarkAsGiven() {
-    if (!markGivenOrder || !markGivenItem) return;
-    setMarkGivenOpen(false);
-    await doMarkItemAsGiven(markGivenOrder, markGivenItem);
+    const status: ItemStatus = item.givenAt
+      ? { label: "Given", tone: "done" }
+      : needsSize
+        ? { label: "Needs sizing", tone: "todo" }
+        : item.readyToCollect
+          ? { label: "Ready to collect", tone: "ready" }
+          : removedFromStock
+            ? { label: "Taken from stock", tone: "progress" }
+            : onForm
+              ? { label: onForm.sent ? "Ordered" : "On logs form", tone: "progress" }
+              : inStock
+                ? { label: "In stock", tone: "progress" }
+                : { label: "To order", tone: "todo" };
+
+    const given = !!item.givenAt;
+    const noSize = needsSize ? "Needs a size first" : undefined;
+    // Every step in its fixed slot, in the order the stores work. A done step
+    // stays put, ticked, and taps back to undo. Once given, the forward steps
+    // rest (untick to change anything) but undos still work.
+    const actions: ItemAction[] = [
+      ...(sized
+        ? [
+            {
+              key: "size",
+              label: needsSize ? "Enter size" : "Edit size",
+              group: "size",
+              icon: Ruler,
+              disabled: given,
+              onSelect: () => openEditSize(order.id, item),
+            } satisfies ItemAction,
+          ]
+        : []),
+      {
+        key: "stock",
+        label: "Remove from stock",
+        group: "stock",
+        icon: PackageMinus,
+        busy: removingStock === item.id,
+        disabled: given || !inStock,
+        hint: given ? undefined : (noSize ?? "None in stock"),
+        onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
+        done: removedFromStock,
+        doneLabel: "Removed from stock",
+        undoLabel: "Put back in stock",
+        onUndo: () => handleReturnToStock(order, item),
+      },
+      ...(canForm
+        ? [
+            {
+              key: "form",
+              label: "Add to logs form",
+              group: "order",
+              icon: FileSpreadsheet,
+              busy: addingToLogsFormId === item.id,
+              disabled: given || needsSize,
+              hint: given ? undefined : noSize,
+              onSelect: () => handleAddToLogsForm(item),
+              done: !!onForm,
+              doneLabel: onForm?.sent ? "Logs form sent" : "On logs form",
+              undoLabel: "Take off logs form",
+              // A form that's gone to RAFAC is part of what was ordered.
+              onUndo:
+                onForm && !onForm.sent ? () => handleRemoveLogsFormEntry(onForm.entryId, item.id) : undefined,
+            } satisfies ItemAction,
+          ]
+        : []),
+      {
+        key: "ready",
+        label: "Ready to collect",
+        group: "collect",
+        icon: Bell,
+        busy: markingAsReady === item.id,
+        disabled: given || needsSize,
+        hint: given ? undefined : noSize,
+        onSelect: () => handleMarkItemAsReady(order.id, item.id),
+        done: !!item.readyToCollect,
+        doneLabel: "Cadet told",
+      },
+      {
+        key: "delete",
+        label: "Delete item",
+        group: "delete",
+        icon: Trash2,
+        onSelect: () => handleDeleteOrderItem(order.id, item.id, item.itemType),
+      },
+    ];
+
+    // The one step that moves it on, tinted where it sits.
+    const nextKey = given
+      ? null
+      : needsSize && sized
+        ? "size"
+        : !removedFromStock && inStock
+          ? "stock"
+          : !removedFromStock && !onForm && canForm
+            ? "form"
+            : !item.readyToCollect && (removedFromStock || !!onForm)
+              ? "ready"
+              : null;
+
+    const timeline = [
+      ...givenTimeline(item),
+      ...stockTimeline(item.stockEvents),
+      ...logsFormTimeline(onForm),
+      ...readyTimeline(item.readyToCollect),
+    ];
+
+    return {
+      name: item.itemType,
+      status,
+      readOnly: completed,
+      given: !!item.givenAt,
+      giveDisabledReason: needsSize ? "Needs a size first" : null,
+      giving: markingAsGiven === item.id || undoingGiven === item.id,
+      onToggleGiven: () => void toggleGiven(order, item),
+      actions,
+      nextKey,
+      details: (
+        <>
+          {item.needSizing ? (
+            item.sizingDetails ? (
+              <SizingDetailsDisplay raw={item.sizingDetails} />
+            ) : null
+          ) : (
+            sized && <span>Size {item.size || "—"}</span>
+          )}
+          {!completed && !item.givenAt && stockMatch && !removedFromStock && (
+            <span className={inStock ? "text-success" : undefined}>
+              {inStock
+                ? `In box ${stockMatch.box}, section ${stockMatch.section} (${stockMatch.quantity} left)`
+                : "None left in stock"}
+            </span>
+          )}
+          {item.givenAt ? (
+            <span>
+              Given {formatTimestamp(item.givenAt)}
+              {item.givenBy && ` · ${item.givenBy}`}
+            </span>
+          ) : (
+            <span>
+              {item.lastIssued
+                ? `Last had ${formatDate(item.lastIssued.date)}${item.lastIssued.size ? `, size ${item.lastIssued.size}` : ""}`
+                : "Never had one"}
+            </span>
+          )}
+        </>
+      ),
+      notes: (
+        <QmNotes
+          compact
+          notes={item.qmNotes}
+          editable={!completed && !item.givenAt}
+          itemLabel={item.itemType}
+          onAdd={(content) => workflow.addNote(order.id, item.id, content)}
+          onDelete={(noteId) => workflow.deleteNote(order.id, item.id, noteId)}
+        />
+      ),
+      history: timeline.length > 0 ? <ItemTimeline events={timeline} /> : undefined,
+    };
   }
 
   const handleMarkItemAsReady = workflow.markReady;
@@ -382,7 +566,10 @@ export default function OrdersPage() {
     logsForms.flatMap((f) =>
       f.entries
         .filter((e) => e.orderItemId)
-        .map((e) => [e.orderItemId as string, { entryId: e.id, sent: !!f.orderedAt }] as const)
+        .map(
+          (e) =>
+            [e.orderItemId as string, { entryId: e.id, sent: !!f.orderedAt, sentAt: f.orderedAt }] as const
+        )
     )
   );
 
@@ -633,10 +820,11 @@ export default function OrdersPage() {
                           {needSizingCount} need sizing
                         </Badge>
                       )}
-                      <Badge variant="secondary" className="text-xs tabular-nums">
-                        {itemFiltered && `${visibleItems.length} of `}
-                        {order.items.length} item{order.items.length !== 1 ? "s" : ""}
-                      </Badge>
+                      <ItemCount
+                        items={order.items}
+                        shown={itemFiltered ? visibleItems.length : undefined}
+                        completed={!!order.completed}
+                      />
                     </>
                   }
                 >
@@ -645,177 +833,24 @@ export default function OrdersPage() {
                       Showing {visibleItems.length} of {order.items.length} items matching your search.
                     </p>
                   )}
-                  <ul className="space-y-2">
+                  <OrderItemList>
                     {visibleItems.map((orderItem) => {
                       const stockMatch = findStockMatch(orderItem.itemType, orderItem.size);
                       const inStock = stockMatch && stockMatch.quantity > 0;
                       const removedFromStock = isRemovedFromStock(orderItem.stockEvents);
 
                       return (
-                        <li key={orderItem.id} className="bg-muted/30 space-y-2 rounded-md border p-3">
-                          {/* Item header row. On a phone the actions wrap under the
-                                  item instead of taking a fixed column beside it. */}
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 flex-1 space-y-1.5">
-                              <p className="text-sm font-medium">{orderItem.itemType}</p>
-                              <p className="text-muted-foreground text-xs">
-                                {orderItem.lastIssued
-                                  ? `Last received: ${formatDate(orderItem.lastIssued.date)}${
-                                      orderItem.lastIssued.size ? ` (size ${orderItem.lastIssued.size})` : ""
-                                    }`
-                                  : "Never received"}
-                              </p>
-
-                              {orderItem.needSizing ? (
-                                <div className="space-y-1">
-                                  <p className="text-warning text-xs font-medium">Needs Sizing</p>
-                                  {orderItem.sizingDetails && (
-                                    <div className="bg-muted/40 rounded-md border px-2.5 py-1.5">
-                                      <p className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">
-                                        Sizing Details
-                                      </p>
-                                      <SizingDetailsDisplay raw={orderItem.sizingDetails} />
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-muted-foreground text-xs">Size: {orderItem.size || "—"}</p>
-                              )}
-
-                              {!isCompleted && (
-                                <div>
-                                  {stockMatch ? (
-                                    inStock ? (
-                                      <p className="text-success text-xs font-medium">
-                                        Box {stockMatch.box} Section {stockMatch.section} (qty:{" "}
-                                        {stockMatch.quantity})
-                                      </p>
-                                    ) : (
-                                      <p className="text-destructive text-xs font-medium">Out of Stock</p>
-                                    )
-                                  ) : !orderItem.needSizing ? (
-                                    <p className="text-muted-foreground text-xs">Not in stock</p>
-                                  ) : null}
-                                </div>
-                              )}
-                            </div>
-
-                            {!isCompleted && (
-                              <div className="flex flex-wrap gap-1.5 sm:w-40 sm:shrink-0 sm:flex-col sm:items-stretch">
-                                {!noSizeItems.has(orderItem.itemType) && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs sm:h-7 sm:w-full"
-                                    onClick={() => openEditSize(order.id, orderItem)}
-                                  >
-                                    {orderItem.needSizing ? "Enter Size" : "Edit Size"}
-                                  </Button>
-                                )}
-                                <ToggleActionButton
-                                  done={removedFromStock}
-                                  label="Remove from Stock"
-                                  doneLabel="Put back in stock"
-                                  icon={PackageMinus}
-                                  tone="destructive"
-                                  itemLabel={orderItem.itemType}
-                                  busy={removingStock === orderItem.id}
-                                  disabled={!stockMatch || !inStock}
-                                  onDo={() =>
-                                    stockMatch && handleRemoveFromStock(order, orderItem, stockMatch)
-                                  }
-                                  onUndo={() => handleReturnToStock(order, orderItem)}
-                                />
-                                {orderItem.itemType !== "Brassard" &&
-                                  (() => {
-                                    const onForm = logsFormEntryByItem.get(orderItem.id);
-                                    return (
-                                      <ToggleActionButton
-                                        done={!!onForm}
-                                        label="Add to Logs Form"
-                                        doneLabel={onForm?.sent ? "Logs Form sent" : "Undo Logs Form"}
-                                        icon={FileSpreadsheet}
-                                        itemLabel={orderItem.itemType}
-                                        busy={addingToLogsFormId === orderItem.id}
-                                        disabled={
-                                          orderItem.needSizing ||
-                                          (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
-                                        }
-                                        undoDisabled={onForm?.sent}
-                                        onDo={() => handleAddToLogsForm(orderItem)}
-                                        onUndo={() =>
-                                          onForm && handleRemoveLogsFormEntry(onForm.entryId, orderItem.id)
-                                        }
-                                      />
-                                    );
-                                  })()}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary h-8 text-xs disabled:opacity-40 sm:h-7 sm:w-full"
-                                  disabled={
-                                    markingAsReady === orderItem.id ||
-                                    !!orderItem.readyToCollect ||
-                                    !!orderItem.givenAt
-                                  }
-                                  onClick={() => handleMarkItemAsReady(order.id, orderItem.id)}
-                                >
-                                  <Bell className="mr-1 h-3 w-3" />
-                                  {orderItem.readyToCollect ? "Notified" : "Ready to Collect"}
-                                </Button>
-                                <ToggleActionButton
-                                  done={!!orderItem.givenAt}
-                                  label="Mark as Given"
-                                  doneLabel="Undo given"
-                                  icon={PackageCheck}
-                                  tone="success"
-                                  itemLabel={orderItem.itemType}
-                                  busy={markingAsGiven === orderItem.id || undoingGiven === orderItem.id}
-                                  disabled={
-                                    orderItem.needSizing ||
-                                    (!noSizeItems.has(orderItem.itemType) && !orderItem.size)
-                                  }
-                                  onDo={() => handleMarkItemAsGiven(order, orderItem)}
-                                  onUndo={() => handleUndoGiven(order, orderItem)}
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-8 text-xs sm:h-7 sm:w-full"
-                                  onClick={() =>
-                                    handleDeleteOrderItem(order.id, orderItem.id, orderItem.itemType)
-                                  }
-                                >
-                                  <Trash2 className="mr-1 h-3 w-3" />
-                                  Delete
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-
-                          <ReadyStamp readyToCollect={orderItem.readyToCollect} givenAt={orderItem.givenAt} />
-
-                          {/* Given stamp: the hand-over and, once something was undone, the history */}
-                          <GivenStamp
-                            givenAt={orderItem.givenAt}
-                            givenBy={orderItem.givenBy}
-                            events={orderItem.givenEvents}
-                          />
-
-                          {/* Stock history */}
-                          <StockHistory events={orderItem.stockEvents} />
-
-                          <QmNotes
-                            notes={orderItem.qmNotes}
-                            editable={!isCompleted}
-                            itemLabel={orderItem.itemType}
-                            onAdd={(content) => workflow.addNote(order.id, orderItem.id, content)}
-                            onDelete={(noteId) => workflow.deleteNote(order.id, orderItem.id, noteId)}
-                          />
-                        </li>
+                        <OrderItemRow
+                          key={orderItem.id}
+                          {...uniformItemRow(order, orderItem, {
+                            stockMatch,
+                            inStock: !!inStock,
+                            removedFromStock,
+                          })}
+                        />
                       );
                     })}
-                  </ul>
+                  </OrderItemList>
 
                   {/* Add item to existing order (active only) */}
                   {!isCompleted &&
@@ -1004,24 +1039,6 @@ export default function OrdersPage() {
         onCreated={(created) => setOrders((prev) => [created, ...prev])}
         onError={setError}
       />
-
-      {/* Mark as Given Dialog */}
-      <MarkGivenDialog
-        open={markGivenOpen}
-        onOpenChange={setMarkGivenOpen}
-        busy={markingAsGiven !== null}
-        onConfirm={confirmMarkAsGiven}
-      >
-        <p>
-          <span className="font-medium">{markGivenItem?.itemType}</span> (size{" "}
-          <span className="font-medium">{markGivenItem?.size}</span>) will be recorded as issued to{" "}
-          <span className="font-medium">{markGivenOrder?.cadetName}</span>.
-        </p>
-        <p className="text-muted-foreground">
-          This updates their uniform issuance record on their cadet profile, replacing any record already
-          there for this item.
-        </p>
-      </MarkGivenDialog>
 
       {/* Confirm Dialog */}
       {confirmDialog}

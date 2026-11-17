@@ -19,8 +19,11 @@ export function QmNotes({
   itemLabel,
   onAdd,
   onDelete,
+  compact = false,
 }: {
   notes: QmNote[] | undefined;
+  /** A small "Add note" and no divider until there are notes: for rows in a list, where a full-width button per row drowns the list. */
+  compact?: boolean;
   /** False on a completed order: notes stay readable but can't change. */
   editable: boolean;
   /** What the notes are about ("Beret"), for the controls' accessible names. */
@@ -51,7 +54,7 @@ export function QmNotes({
   }
 
   return (
-    <div className="space-y-1.5 border-t pt-2">
+    <div className={compact && list.length === 0 && !adding ? "" : "space-y-1.5 border-t pt-2"}>
       {list.length > 0 && (
         <div className="space-y-1">
           {list.map((note) => (
@@ -110,15 +113,15 @@ export function QmNotes({
         ) : (
           <Button
             size="sm"
-            variant="outline"
-            className="h-8 w-full px-2 text-xs"
+            variant={compact ? "ghost" : "outline"}
+            className={compact ? "text-muted-foreground -ml-2 h-8 px-2 text-xs" : "h-8 w-full px-2 text-xs"}
             onClick={() => {
               setAdding(true);
               setText("");
             }}
           >
             <StickyNote className="mr-1.5 h-3 w-3" />
-            Add QM Note
+            {compact ? "Add note" : "Add QM Note"}
           </Button>
         ))}
     </div>

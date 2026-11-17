@@ -72,7 +72,11 @@ describe("badge Order List tab", () => {
       />
     );
     expect(screen.queryByText("Squadron")).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Expand" }));
+    // The whole heading opens it, and says whether it's open.
+    const heading = screen.getByRole("button", { name: /Received · 1 badge/ });
+    expect(heading).toHaveAttribute("aria-expanded", "false");
+    await user.click(heading);
+    expect(heading).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Squadron")).toBeInTheDocument();
   });
 

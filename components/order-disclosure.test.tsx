@@ -73,4 +73,13 @@ describe("OrderDisclosure", () => {
     const panel = document.getElementById(toggle().getAttribute("aria-controls")!);
     expect(panel).toContainElement(screen.getByText("Beret, size 55"));
   });
+
+  // jsdom can't measure, so this checks the strip may wrap: one that couldn't
+  // pushed an order's card past a phone's screen and clipped its right edge.
+  it("lets the header's badges wrap instead of widening the card", () => {
+    render(<Harness />);
+    const strip = toggle().parentElement!;
+    expect(strip).toHaveClass("flex-wrap");
+    expect(strip).not.toHaveClass("shrink-0");
+  });
 });
