@@ -63,7 +63,7 @@ import { KittingDialog } from "./components/kitting-dialog";
 import { NewUniformOrderDialog } from "./components/new-order-dialog";
 import { LogsFormTab } from "./components/logs-form-tab";
 import {
-  GivenProgress,
+  ItemCount,
   OrderItemList,
   OrderItemRow,
   type ItemAction,
@@ -438,7 +438,8 @@ export default function OrdersPage() {
               : null;
 
     const menu: (ItemAction | "separator")[] = [];
-    if (sized && next !== enterSize) menu.push(enterSize);
+    // A given item's size is what was handed out; untick it to change that.
+    if (sized && next !== enterSize && !item.givenAt) menu.push(enterSize);
     if (removedFromStock) {
       menu.push({
         label: "Put back in stock",
@@ -510,7 +511,7 @@ export default function OrdersPage() {
         <QmNotes
           compact
           notes={item.qmNotes}
-          editable={!completed}
+          editable={!completed && !item.givenAt}
           itemLabel={item.itemType}
           onAdd={(content) => workflow.addNote(order.id, item.id, content)}
           onDelete={(noteId) => workflow.deleteNote(order.id, item.id, noteId)}
@@ -792,11 +793,11 @@ export default function OrdersPage() {
                           {needSizingCount} need sizing
                         </Badge>
                       )}
-                      <Badge variant="secondary" className="text-xs tabular-nums">
-                        {itemFiltered && `${visibleItems.length} of `}
-                        {order.items.length} item{order.items.length !== 1 ? "s" : ""}
-                      </Badge>
-                      <GivenProgress items={order.items} completed={!!order.completed} />
+                      <ItemCount
+                        items={order.items}
+                        shown={itemFiltered ? visibleItems.length : undefined}
+                        completed={!!order.completed}
+                      />
                     </>
                   }
                 >

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, MoreHorizontal, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,8 @@ const TONE: Record<ItemStatus["tone"], string> = {
  * - its name, one status ("Needs sizing", "In stock", "Ready to collect")
  *   and a line or two of detail;
  * - the one next step its status calls for, as a button;
- * - everything else in a "⋯" menu: edit size, stock, undo a step, delete;
+ * - everything else in a "⋯" menu on a phone (edit size, stock, undo a step,
+ *   delete), or as quieter buttons beside the next step on a laptop;
  * - its notes, and its history folded away under "History".
  */
 export function OrderItemRow({
@@ -92,13 +93,15 @@ export function OrderItemRow({
   history?: React.ReactNode;
 }) {
   const [showHistory, setShowHistory] = useState(false);
+  const wide = useWideScreen();
   const canTick = !readOnly && !giving && (given || !giveDisabledReason);
+  const actions = menu.filter((a): a is ItemAction => a !== "separator");
 
   return (
     <li
       id={id}
       className={cn(
-        "flex gap-3 px-3 py-3 transition-colors sm:px-4",
+        "flex gap-3 px-3 py-2.5 transition-colors sm:px-4 sm:py-3",
         highlighted && "bg-primary/10 ring-primary/40 ring-2 ring-inset"
       )}
     >
@@ -112,7 +115,7 @@ export function OrderItemRow({
         disabled={!canTick}
         onClick={onToggleGiven}
         className={cn(
-          "focus-visible:ring-ring/50 mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-2",
+          "focus-visible:ring-ring/50 flex size-10 shrink-0 items-center justify-center rounded-full border-2 outline-none focus-visible:ring-2",
           given
             ? "border-success bg-success text-white"
             : "border-muted-foreground/40 hover:border-success hover:text-success/50 text-transparent",
@@ -123,26 +126,36 @@ export function OrderItemRow({
         {giving ? <Spinner /> : <Check className="size-5" strokeWidth={3} aria-hidden />}
       </button>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-start gap-2">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className={cn("font-medium", given && "text-muted-foreground line-through")}>{name}</span>
+              <span
+                className={cn(
+                  "min-w-0 font-medium break-words",
+                  given && "text-muted-foreground line-through"
+                )}
+              >
+                {name}
+              </span>
               <Badge variant="outline" className={cn("text-xs", TONE[status.tone])}>
                 {status.label}
               </Badge>
               {extra}
             </div>
-            {details && <div className="text-muted-foreground flex flex-col gap-0.5 text-sm">{details}</div>}
+            {details && (
+              <div className="text-muted-foreground flex flex-col gap-0.5 text-sm break-words">{details}</div>
+            )}
           </div>
 
-          {!readOnly && menu.length > 0 && (
+          {/* On a phone, everything but the next step waits behind "⋯". */}
+          {!wide && !readOnly && actions.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="text-muted-foreground -mt-1 size-9 shrink-0"
+                  className="text-muted-foreground -mt-1 -mr-1 size-9 shrink-0"
                   aria-label={`More for ${name}`}
                 >
                   <MoreHorizontal />
@@ -169,46 +182,83 @@ export function OrderItemRow({
           )}
         </div>
 
-        {!readOnly && next && (
-          <div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-9"
-              disabled={next.disabled || next.busy}
-              onClick={next.onSelect}
-            >
-              {next.busy ? (
-                <Spinner data-icon="inline-start" />
-              ) : (
-                next.icon && <next.icon data-icon="inline-start" />
-              )}
-              {next.label}
-            </Button>
+        {/* The next step leads; on a laptop, with room to spare, the rest sit
+            beside it as quieter buttons instead of behind "⋯". */}
+        {!readOnly && (next || (wide && actions.length > 0)) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {next && <ActionButton action={next} variant="outline" />}
+            {wide && actions.map((a) => <ActionButton key={a.label} action={a} variant="ghost" />)}
           </div>
         )}
 
-        {notes}
-
-        {history && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowHistory((s) => !s)}
-              aria-expanded={showHistory}
-              className="text-muted-foreground hover:text-foreground -ml-1 flex min-h-8 items-center gap-1 rounded px-1 text-xs"
-            >
-              History
-              <ChevronDown
-                className={cn("size-3.5 transition-transform", showHistory && "rotate-180")}
-                aria-hidden
-              />
-            </button>
-            {showHistory && <div className="mt-1 flex flex-col gap-1.5">{history}</div>}
+        {/* Notes and history share a line until there's something to show. */}
+        {(notes || history) && (
+          <div className="flex flex-wrap items-start gap-x-3">
+            {notes}
+            {history && (
+              <button
+                type="button"
+                onClick={() => setShowHistory((s) => !s)}
+                aria-expanded={showHistory}
+                className="text-muted-foreground hover:text-foreground flex min-h-8 items-center gap-1 rounded px-1 text-xs"
+              >
+                History
+                <ChevronDown
+                  className={cn("size-3.5 transition-transform", showHistory && "rotate-180")}
+                  aria-hidden
+                />
+              </button>
+            )}
           </div>
         )}
+        {history && showHistory && <div className="flex flex-col gap-1.5">{history}</div>}
       </div>
     </li>
+  );
+}
+
+function ActionButton({ action, variant }: { action: ItemAction; variant: "outline" | "ghost" }) {
+  return (
+    <Button
+      size="sm"
+      variant={variant}
+      className={cn(
+        "h-9 sm:h-8",
+        variant === "ghost" && "text-muted-foreground hover:text-foreground",
+        action.destructive && "text-destructive hover:text-destructive hover:bg-destructive/10"
+      )}
+      disabled={action.disabled || action.busy}
+      onClick={action.onSelect}
+    >
+      {action.busy ? (
+        <Spinner data-icon="inline-start" />
+      ) : (
+        action.icon && <action.icon data-icon="inline-start" />
+      )}
+      {action.label}
+    </Button>
+  );
+}
+
+const WIDE = "(min-width: 768px)";
+
+function subscribeWide(onChange: () => void) {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const mql = window.matchMedia(WIDE);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+
+/**
+ * Laptop-wide or more. Unlike useIsMobile, "can't tell" (the server, jsdom)
+ * counts as narrow here: the compact row works anywhere, while a row of
+ * every button would crowd a phone.
+ */
+function useWideScreen() {
+  return useSyncExternalStore(
+    subscribeWide,
+    () => typeof window.matchMedia === "function" && window.matchMedia(WIDE).matches,
+    () => false
   );
 }
 
@@ -218,29 +268,42 @@ export function OrderItemList({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * How far through handing out an order is, for its header: "1 of 3 given",
- * then "All given" once it's ready to complete. Nothing before the first
- * hand-over, or on an order already completed.
+ * An order's item count for its header, which becomes its hand-out progress
+ * once something has been given: "3 items", then "1 of 3 given", then "All
+ * given" when it's ready to complete. One badge, so the header stays on a
+ * phone's width. A search that hides items says how many show.
  */
-export function GivenProgress({
+export function ItemCount({
   items,
+  shown,
   completed,
 }: {
   items: { givenAt: string | null }[];
+  /** How many a search is showing, when it hides some. */
+  shown?: number;
   completed: boolean;
 }) {
+  const n = items.length;
   const given = items.filter((i) => i.givenAt).length;
-  if (completed || given === 0) return null;
-  const all = given === items.length;
+  const all = given === n;
+  const text =
+    shown !== undefined
+      ? `${shown} of ${n} items`
+      : completed || given === 0
+        ? `${n} item${n === 1 ? "" : "s"}`
+        : all
+          ? "All given"
+          : `${given} of ${n} given`;
+  const progress = shown === undefined && !completed && given > 0;
   return (
     <Badge
-      variant="outline"
+      variant={progress ? "outline" : "secondary"}
       className={cn(
         "text-xs tabular-nums",
-        all ? "border-success/40 bg-success/10 text-success" : "text-muted-foreground"
+        progress && (all ? "border-success/40 bg-success/10 text-success" : "text-muted-foreground")
       )}
     >
-      {all ? "All given" : `${given} of ${items.length} given`}
+      {text}
     </Badge>
   );
 }

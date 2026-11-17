@@ -67,7 +67,8 @@ export function OrderDisclosure({
           </div>
           {meta && <div className="text-muted-foreground text-xs">{meta}</div>}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Wraps rather than widening the card past a phone's screen. */}
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           {aside}
           <Button
             size="icon"

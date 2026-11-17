@@ -63,7 +63,7 @@ import {
 import { NewBadgeOrderDialog } from "./components/new-order-dialog";
 import { BadgeOrderListTab, type OrderItemRef } from "./components/order-list-tab";
 import {
-  GivenProgress,
+  ItemCount,
   OrderItemList,
   OrderItemRow,
   type ItemAction,
@@ -351,11 +351,14 @@ export default function BadgeOrdersPage() {
         onSelect: () => handleReturnToStock(order, item),
       });
     } else if (stockMatch && next !== takeFromStock && !item.givenAt) menu.push(takeFromStock);
-    if (stage === "none" && next !== addToList && !item.givenAt) {
-      menu.push(addToList);
-      // Already ordered by other means: straight to Ordered, skipping the queue.
-      menu.push({ ...markOrdered, label: "Send to ordered" });
+    if (stage === "none" && next !== addToList && !item.givenAt) menu.push(addToList);
+    // Every step stays reachable until it's done, whatever the next step is:
+    // a badge taken from stock can still be marked ordered or received, and
+    // one already ordered by other means can skip straight ahead.
+    if ((stage === "none" || stage === "toOrder") && next !== markOrdered && !item.givenAt) {
+      menu.push(stage === "none" ? { ...markOrdered, label: "Send to ordered" } : markOrdered);
     }
+    if (stage !== "received" && next !== markReceived && !item.givenAt) menu.push(markReceived);
     if (orderListEntry && stage === "received") {
       menu.push({
         label: "Undo received",
@@ -454,7 +457,7 @@ export default function BadgeOrdersPage() {
         <QmNotes
           compact
           notes={item.qmNotes}
-          editable={!completed}
+          editable={!completed && !item.givenAt}
           itemLabel={item.badgeName}
           onAdd={(content) => workflow.addNote(order.id, item.id, content)}
           onDelete={(noteId) => workflow.deleteNote(order.id, item.id, noteId)}
@@ -889,11 +892,11 @@ export default function BadgeOrdersPage() {
                           Held
                         </Link>
                       </Button>
-                      <Badge variant="secondary" className="text-xs tabular-nums">
-                        {itemFiltered && `${visibleItems.length} of `}
-                        {order.items.length} item{order.items.length !== 1 ? "s" : ""}
-                      </Badge>
-                      <GivenProgress items={order.items} completed={!!order.completed} />
+                      <ItemCount
+                        items={order.items}
+                        shown={itemFiltered ? visibleItems.length : undefined}
+                        completed={!!order.completed}
+                      />
                     </>
                   }
                 >

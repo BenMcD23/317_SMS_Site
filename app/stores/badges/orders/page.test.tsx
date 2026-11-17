@@ -691,6 +691,31 @@ describe("order list steps on the badge", () => {
     expect(history).toHaveTextContent("QM Jones");
   });
 
+  // These used to vanish: the steps are reachable until they're done.
+  it("a badge taken from stock and on order can still be marked received", async () => {
+    const list = orders();
+    list[0].items[0] = item("11", "First Aid – Blue", {
+      stockEvents: [{ id: "s1", action: "removed", timestamp: "2026-11-06T14:00:00Z", by: "Sam Staff" }],
+    } as Partial<BadgeOrderItem>);
+    stubApi({
+      "GET /api/stores/badges/orders": () => json(list),
+      "GET /api/stores/badges/order-lists": () => json([entry(ORDERED)]),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await openMenu("Alex Smith", "First Aid – Blue");
+    expect(screen.getByRole("menuitem", { name: "Mark as received" })).toBeInTheDocument();
+  });
+
+  it("a badge not yet on the list can go straight to ordered or received", async () => {
+    stubApi();
+    await renderPage();
+    await expand("Alex Smith");
+    await openMenu("Alex Smith", "First Aid – Blue");
+    expect(screen.getByRole("menuitem", { name: "Send to ordered" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Mark as received" })).toBeInTheDocument();
+  });
+
   // Giving doesn't wait for the supplier: a badge in stock goes out unordered.
   it("a badge can be ticked off without ever being on the order list", async () => {
     stubApi();

@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { GivenProgress, OrderItemList, OrderItemRow } from "@/components/order-item-row";
+import { ItemCount, OrderItemList, OrderItemRow } from "@/components/order-item-row";
 
 type Props = React.ComponentProps<typeof OrderItemRow>;
 const BASE: Props = {
@@ -104,24 +104,69 @@ describe("OrderItemRow", () => {
   });
 });
 
-describe("GivenProgress", () => {
+describe("OrderItemRow on a laptop", () => {
+  // matchMedia answers "wide" for this block; jsdom has none by default.
+  function wideScreen() {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(min-width: 768px)",
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+  }
+
+  it("shows every action as a button beside the next step, with no menu to open", async () => {
+    wideScreen();
+    const del = vi.fn();
+    renderRow({
+      next: { label: "Take from stock", onSelect: vi.fn() },
+      menu: [
+        { label: "Edit size", onSelect: vi.fn() },
+        "separator",
+        { label: "Delete item", onSelect: del, destructive: true },
+      ],
+    });
+    expect(screen.queryByRole("button", { name: "More for Beret" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Take from stock" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit size" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete item" }));
+    expect(del).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the compact menu on a phone", () => {
+    renderRow({ menu: [{ label: "Edit size", onSelect: vi.fn() }] });
+    expect(screen.getByRole("button", { name: "More for Beret" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit size" })).toBeNull();
+  });
+});
+
+describe("ItemCount", () => {
   const items = (given: number, of: number) =>
     Array.from({ length: of }, (_, i) => ({ givenAt: i < given ? "2026-11-16T19:00:00Z" : null }));
 
-  it("says nothing before the first hand-over", () => {
-    const { container } = render(<GivenProgress items={items(0, 3)} completed={false} />);
-    expect(container).toBeEmptyDOMElement();
+  it("counts the items before anything has been handed out", () => {
+    render(<ItemCount items={items(0, 3)} completed={false} />);
+    expect(screen.getByText("3 items")).toBeInTheDocument();
   });
 
-  it("counts the hand-overs, then says when all are done", () => {
-    const { rerender } = render(<GivenProgress items={items(1, 3)} completed={false} />);
+  it("turns into the hand-out progress, then says when all are given", () => {
+    const { rerender } = render(<ItemCount items={items(1, 3)} completed={false} />);
     expect(screen.getByText("1 of 3 given")).toBeInTheDocument();
-    rerender(<GivenProgress items={items(3, 3)} completed={false} />);
+    rerender(<ItemCount items={items(3, 3)} completed={false} />);
     expect(screen.getByText("All given")).toBeInTheDocument();
   });
 
-  it("says nothing on a completed order, which is all given by definition", () => {
-    const { container } = render(<GivenProgress items={items(3, 3)} completed />);
-    expect(container).toBeEmptyDOMElement();
+  it("is just a count on a completed order", () => {
+    render(<ItemCount items={items(3, 3)} completed />);
+    expect(screen.getByText("3 items")).toBeInTheDocument();
+  });
+
+  it("says how many a search is showing", () => {
+    render(<ItemCount items={items(1, 3)} shown={1} completed={false} />);
+    expect(screen.getByText("1 of 3 items")).toBeInTheDocument();
+  });
+
+  it("is one badge, so an order's header stays on a phone's width", () => {
+    const { container } = render(<ItemCount items={items(1, 1)} completed={false} />);
+    expect(container.childElementCount).toBe(1);
   });
 });
