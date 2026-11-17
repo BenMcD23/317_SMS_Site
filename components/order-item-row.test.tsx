@@ -205,7 +205,10 @@ describe("OrderItemRow on a laptop", () => {
   it("outlines each kind of step in its own colour, and tints the next one", () => {
     wideScreen();
     renderRow({ actions: [STOCK, ORDERED, { ...DELETE }], nextKey: "ordered" });
-    expect(screen.getByRole("button", { name: "Remove from stock" })).toHaveClass("border-chart-3/60", "dark:border-chart-3/80");
+    expect(screen.getByRole("button", { name: "Remove from stock" })).toHaveClass(
+      "border-chart-3/60",
+      "dark:border-chart-3/80"
+    );
     // Ordering steps share a colour; the next one is tinted, not moved.
     expect(screen.getByRole("button", { name: "Mark as ordered" })).toHaveClass(
       "border-chart-5",
