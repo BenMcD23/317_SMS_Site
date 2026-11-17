@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { ItemCount, OrderItemList, OrderItemRow } from "@/components/order-item-row";
+import { ItemCount, OrderItemList, OrderItemRow, type ItemAction } from "@/components/order-item-row";
 
 type Props = React.ComponentProps<typeof OrderItemRow>;
 const BASE: Props = {
@@ -12,6 +12,19 @@ const BASE: Props = {
   given: false,
   onToggleGiven: vi.fn(),
 };
+const STOCK: ItemAction = { key: "stock", label: "Remove from stock", group: "stock", onSelect: vi.fn() };
+const SIZE: ItemAction = { key: "size", label: "Edit size", group: "size", onSelect: vi.fn() };
+const ORDERED: ItemAction = {
+  key: "ordered",
+  label: "Mark as ordered",
+  group: "order",
+  onSelect: vi.fn(),
+  doneLabel: "Ordered",
+  undoLabel: "Undo ordered",
+  onUndo: vi.fn(),
+};
+const DELETE: ItemAction = { key: "delete", label: "Delete item", group: "delete", onSelect: vi.fn() };
+
 const renderRow = (over: Partial<Props> = {}) =>
   render(
     <OrderItemList>
@@ -50,28 +63,50 @@ describe("OrderItemRow", () => {
     expect(screen.getByText("Ready to collect")).toBeInTheDocument();
   });
 
-  it("offers one next step as a button, and the rest in its menu", async () => {
-    const next = vi.fn();
+  it("on a phone shows the next step as a button, and every step in its menu in order", async () => {
     const del = vi.fn();
+    const take = vi.fn();
     renderRow({
-      next: { label: "Remove from stock", onSelect: next },
-      menu: [
-        { label: "Edit size", onSelect: vi.fn() },
-        "separator",
-        { label: "Delete item", onSelect: del, destructive: true },
-      ],
+      actions: [SIZE, { ...STOCK, onSelect: take }, ORDERED, { ...DELETE, onSelect: del }],
+      nextKey: "stock",
     });
     await userEvent.click(screen.getByRole("button", { name: "Remove from stock" }));
-    expect(next).toHaveBeenCalledOnce();
+    expect(take).toHaveBeenCalledOnce();
 
     await userEvent.click(screen.getByRole("button", { name: "More for Beret" }));
-    expect(screen.getAllByRole("menuitem").map((m) => m.textContent)).toEqual(["Edit size", "Delete item"]);
+    expect(screen.getAllByRole("menuitem").map((m) => m.textContent)).toEqual([
+      "Edit size",
+      "Remove from stock",
+      "Mark as ordered",
+      "Delete item",
+    ]);
     await userEvent.click(screen.getByRole("menuitem", { name: "Delete item" }));
     expect(del).toHaveBeenCalledOnce();
   });
 
+  it("a done step offers its undo in the menu, or just says it's done if it can't be undone", async () => {
+    const onUndo = vi.fn();
+    renderRow({
+      actions: [
+        { ...ORDERED, done: true, onUndo },
+        {
+          key: "ready",
+          label: "Ready to collect",
+          group: "collect",
+          onSelect: vi.fn(),
+          done: true,
+          doneLabel: "Cadet told",
+        },
+      ],
+    });
+    await userEvent.click(screen.getByRole("button", { name: "More for Beret" }));
+    expect(screen.getByRole("menuitem", { name: "Cadet told" })).toHaveAttribute("data-disabled");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Undo ordered" }));
+    expect(onUndo).toHaveBeenCalledOnce();
+  });
+
   it("can't press a step twice while it's working", () => {
-    renderRow({ next: { label: "Remove from stock", onSelect: vi.fn(), busy: true } });
+    renderRow({ actions: [{ ...STOCK, busy: true }], nextKey: "stock" });
     expect(screen.getByRole("button", { name: /Remove from stock/ })).toBeDisabled();
   });
 
@@ -85,12 +120,7 @@ describe("OrderItemRow", () => {
   });
 
   it("on a completed order shows everything but changes nothing", () => {
-    renderRow({
-      readOnly: true,
-      given: true,
-      next: { label: "Remove from stock", onSelect: vi.fn() },
-      menu: [{ label: "Delete item", onSelect: vi.fn() }],
-    });
+    renderRow({ readOnly: true, given: true, actions: [STOCK, DELETE], nextKey: "stock" });
     expect(screen.getByRole("checkbox", { name: "Given: Beret" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Remove from stock" })).toBeNull();
     expect(screen.queryByRole("button", { name: "More for Beret" })).toBeNull();
@@ -114,36 +144,87 @@ describe("OrderItemRow on a laptop", () => {
     }));
   }
 
-  it("shows every action as a button beside the next step, with no menu to open", async () => {
+  it("shows every step as a button, with no menu to open", async () => {
     wideScreen();
     const del = vi.fn();
-    renderRow({
-      next: { label: "Remove from stock", onSelect: vi.fn() },
-      menu: [
-        { label: "Edit size", onSelect: vi.fn() },
-        "separator",
-        { label: "Delete item", onSelect: del, destructive: true },
-      ],
-    });
+    renderRow({ actions: [SIZE, STOCK, ORDERED, { ...DELETE, onSelect: del }], nextKey: "stock" });
     expect(screen.queryByRole("button", { name: "More for Beret" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Remove from stock" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit size" })).toBeInTheDocument();
+    for (const name of ["Edit size", "Remove from stock", "Mark as ordered"]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
     await userEvent.click(screen.getByRole("button", { name: "Delete item" }));
     expect(del).toHaveBeenCalledOnce();
   });
 
-  it("greys out an action that can't be done yet, and says why", () => {
+  // The complaint was buttons jumping about: a step's slot never changes.
+  it("keeps every step in the same place as the item moves along", () => {
+    wideScreen();
+    const order = () =>
+      within(screen.getByRole("listitem"))
+        .getAllByRole("button")
+        .filter((b) => b.getAttribute("role") !== "checkbox")
+        .map((b) => b.textContent);
+    const { rerender } = renderRow({ actions: [STOCK, ORDERED, DELETE], nextKey: "ordered" });
+    expect(order()).toEqual(["Remove from stock", "Mark as ordered", "Delete item"]);
+    rerender(
+      <OrderItemList>
+        <OrderItemRow {...BASE} actions={[STOCK, { ...ORDERED, done: true }, DELETE]} nextKey={null} />
+      </OrderItemList>
+    );
+    expect(order()).toEqual(["Remove from stock", "Ordered", "Delete item"]);
+  });
+
+  it("shows a done step pressed and ticked, and taps it back to undo", async () => {
+    wideScreen();
+    const onUndo = vi.fn();
+    renderRow({ actions: [{ ...ORDERED, done: true, onUndo }] });
+    const done = screen.getByRole("button", { name: "Ordered" });
+    expect(done).toHaveAttribute("aria-pressed", "true");
+    expect(done).toHaveAttribute("title", "Undo ordered?");
+    await userEvent.click(done);
+    expect(onUndo).toHaveBeenCalledOnce();
+  });
+
+  it("a done step that can't be undone stays shown but can't be pressed", () => {
     wideScreen();
     renderRow({
-      menu: [{ label: "Remove from stock", onSelect: vi.fn(), disabled: true, hint: "None in stock" }],
+      actions: [
+        {
+          key: "ready",
+          label: "Ready to collect",
+          group: "collect",
+          onSelect: vi.fn(),
+          done: true,
+          doneLabel: "Cadet told",
+        },
+      ],
     });
+    expect(screen.getByRole("button", { name: "Cadet told" })).toBeDisabled();
+  });
+
+  it("outlines each kind of step in its own colour, and tints the next one", () => {
+    wideScreen();
+    renderRow({ actions: [STOCK, ORDERED, { ...DELETE }], nextKey: "ordered" });
+    expect(screen.getByRole("button", { name: "Remove from stock" })).toHaveClass("border-chart-3/60", "dark:border-chart-3/80");
+    // Ordering steps share a colour; the next one is tinted, not moved.
+    expect(screen.getByRole("button", { name: "Mark as ordered" })).toHaveClass(
+      "border-chart-5",
+      "bg-chart-5/15"
+    );
+    expect(screen.getByRole("button", { name: "Delete item" })).toHaveClass("text-destructive");
+  });
+
+  it("greys out a step that can't be done yet, and says why", () => {
+    wideScreen();
+    renderRow({ actions: [{ ...STOCK, disabled: true, hint: "None in stock" }] });
     const remove = screen.getByRole("button", { name: /Remove from stock/ });
     expect(remove).toBeDisabled();
     expect(remove).toHaveTextContent("None in stock");
   });
 
   it("keeps the compact menu on a phone", () => {
-    renderRow({ menu: [{ label: "Edit size", onSelect: vi.fn() }] });
+    vi.unstubAllGlobals();
+    renderRow({ actions: [SIZE] });
     expect(screen.getByRole("button", { name: "More for Beret" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit size" })).toBeNull();
   });

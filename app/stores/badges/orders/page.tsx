@@ -296,101 +296,101 @@ export default function BadgeOrdersPage() {
                   ? { label: "In stock", tone: "progress" }
                   : { label: "To order", tone: "todo" };
 
-    const takeFromStock: ItemAction = {
-      label: "Remove from stock",
-      icon: PackageMinus,
-      busy: removingStock === item.id,
-      onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
-    };
-    const addToList: ItemAction = {
-      label: "Add to order list",
-      icon: ClipboardList,
-      busy: addingToListId === item.id,
-      onSelect: () => handleAddToOrderList(item),
-    };
-    const markOrdered: ItemAction = {
-      label: "Mark as ordered",
-      icon: Truck,
-      busy: sendingToOrderedId === item.id,
-      onSelect: () => handleSendToOrdered(item),
-    };
-    const markReceived: ItemAction = {
-      label: "Mark as received",
-      icon: Inbox,
-      busy: markingReceivedQuickId === item.id,
-      onSelect: () => handleMarkReceivedQuick(item),
-    };
-    const ready: ItemAction = {
-      label: "Ready to collect",
-      icon: Bell,
-      busy: markingAsReady === item.id,
-      onSelect: () => handleMarkItemAsReady(order.id, item.id),
-    };
-
-    // The one step that moves it on, in the order the stores work.
-    const next = item.givenAt
-      ? null
-      : !removedFromStock && stage === "none" && stockMatch
-        ? takeFromStock
-        : !removedFromStock && stage === "none"
-          ? addToList
-          : !removedFromStock && stage === "toOrder"
-            ? markOrdered
-            : !removedFromStock && stage === "ordered"
-              ? markReceived
-              : !item.readyToCollect
-                ? ready
-                : null;
-
-    const menu: (ItemAction | "separator")[] = [];
-    if (removedFromStock) {
-      menu.push({
-        label: "Put back in stock",
+    const given = !!item.givenAt;
+    const ordered = stage === "ordered" || stage === "received";
+    // Every step in its fixed slot, in the order the stores work: stock, then
+    // the supplier's three (list, ordered, received), then collection. A done
+    // step stays put, ticked, and taps back to undo. Any step can be done from
+    // any stage (a badge taken from stock can still be marked received), and
+    // the earlier ones are filled in with it.
+    const actions: ItemAction[] = [
+      {
+        key: "stock",
+        label: "Remove from stock",
+        group: "stock",
         icon: PackageMinus,
         busy: removingStock === item.id,
-        onSelect: () => handleReturnToStock(order, item),
-      });
-    } else if (!item.givenAt && next !== takeFromStock) {
-      // Always listed, greyed out when there's none to take, so it's found
-      // in the same place every time.
-      menu.push(stockMatch ? takeFromStock : { ...takeFromStock, disabled: true, hint: "None in stock" });
-    }
-    if (stage === "none" && next !== addToList && !item.givenAt) menu.push(addToList);
-    // Every step stays reachable until it's done, whatever the next step is:
-    // a badge taken from stock can still be marked ordered or received, and
-    // one already ordered by other means can skip straight ahead.
-    if ((stage === "none" || stage === "toOrder") && next !== markOrdered && !item.givenAt) {
-      menu.push(stage === "none" ? { ...markOrdered, label: "Send to ordered" } : markOrdered);
-    }
-    if (stage !== "received" && next !== markReceived && !item.givenAt) menu.push(markReceived);
-    if (orderListEntry && stage === "received") {
-      menu.push({
-        label: "Undo received",
-        icon: Inbox,
-        onSelect: () => handleUndoReceived(item, orderListEntry),
-      });
-    }
-    if (orderListEntry && (stage === "ordered" || stage === "received")) {
-      menu.push({
-        label: "Undo ordered",
-        icon: Truck,
-        onSelect: () => handleUndoOrdered(item, orderListEntry),
-      });
-    }
-    if (orderListEntry) {
-      menu.push({
-        label: "Take off order list",
+        disabled: given || !stockMatch,
+        hint: given ? undefined : "None in stock",
+        onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
+        done: removedFromStock,
+        doneLabel: "Removed from stock",
+        undoLabel: "Put back in stock",
+        onUndo: () => handleReturnToStock(order, item),
+      },
+      {
+        key: "list",
+        label: "Add to order list",
+        group: "order",
         icon: ClipboardList,
-        onSelect: () => handleUndoAddedToList(item, orderListEntry),
-      });
-    }
-    if (next !== ready && !item.readyToCollect && !item.givenAt) menu.push(ready);
-    menu.push("separator", {
-      label: "Delete item",
-      icon: Trash2,
-      destructive: true,
-      onSelect: () => handleDeleteOrderItem(order.id, item.id, item.badgeName),
-    });
+        busy: addingToListId === item.id,
+        disabled: given,
+        onSelect: () => handleAddToOrderList(item),
+        done: stage !== "none",
+        doneLabel: "On order list",
+        undoLabel: "Take off order list",
+        onUndo: orderListEntry ? () => handleUndoAddedToList(item, orderListEntry) : undefined,
+      },
+      {
+        key: "ordered",
+        label: "Mark as ordered",
+        group: "order",
+        icon: Truck,
+        busy: sendingToOrderedId === item.id,
+        disabled: given,
+        onSelect: () => handleSendToOrdered(item),
+        done: ordered,
+        doneLabel: "Ordered",
+        undoLabel: "Undo ordered",
+        onUndo: orderListEntry ? () => handleUndoOrdered(item, orderListEntry) : undefined,
+      },
+      {
+        key: "received",
+        label: "Mark as received",
+        group: "order",
+        icon: Inbox,
+        busy: markingReceivedQuickId === item.id,
+        disabled: given,
+        onSelect: () => handleMarkReceivedQuick(item),
+        done: stage === "received",
+        doneLabel: "Received",
+        undoLabel: "Undo received",
+        onUndo: orderListEntry ? () => handleUndoReceived(item, orderListEntry) : undefined,
+      },
+      {
+        key: "ready",
+        label: "Ready to collect",
+        group: "collect",
+        icon: Bell,
+        busy: markingAsReady === item.id,
+        disabled: given,
+        onSelect: () => handleMarkItemAsReady(order.id, item.id),
+        done: !!item.readyToCollect,
+        doneLabel: "Cadet told",
+      },
+      {
+        key: "delete",
+        label: "Delete item",
+        group: "delete",
+        icon: Trash2,
+        onSelect: () => handleDeleteOrderItem(order.id, item.id, item.badgeName),
+      },
+    ];
+
+    // The one step that moves it on, tinted where it sits.
+    const nextKey = given
+      ? null
+      : !removedFromStock && stage === "none" && stockMatch
+        ? "stock"
+        : !removedFromStock && stage === "none"
+          ? "list"
+          : !removedFromStock && stage === "toOrder"
+            ? "ordered"
+            : !removedFromStock && stage === "ordered"
+              ? "received"
+              : !item.readyToCollect
+                ? "ready"
+                : null;
 
     const gained = gainedWhereSummary(gainedWhereOptions, item);
     const hasHistory =
@@ -405,8 +405,8 @@ export default function BadgeOrdersPage() {
       given: !!item.givenAt,
       giving: markingAsGiven === item.id || undoingGiven === item.id,
       onToggleGiven: () => void toggleGiven(order, item),
-      next,
-      menu,
+      actions,
+      nextKey,
       extra: (
         <>
           {item.replacement && (

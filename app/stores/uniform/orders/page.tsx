@@ -400,78 +400,91 @@ export default function OrdersPage() {
                 ? { label: "In stock", tone: "progress" }
                 : { label: "To order", tone: "todo" };
 
-    const enterSize: ItemAction = {
-      label: needsSize ? "Enter size" : "Edit size",
-      icon: Ruler,
-      onSelect: () => openEditSize(order.id, item),
-    };
-    const takeFromStock: ItemAction = {
-      label: "Remove from stock",
-      icon: PackageMinus,
-      busy: removingStock === item.id,
-      onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
-    };
-    const addToForm: ItemAction = {
-      label: "Add to logs form",
-      icon: FileSpreadsheet,
-      busy: addingToLogsFormId === item.id,
-      onSelect: () => handleAddToLogsForm(item),
-    };
-    const ready: ItemAction = {
-      label: "Ready to collect",
-      icon: Bell,
-      busy: markingAsReady === item.id,
-      onSelect: () => handleMarkItemAsReady(order.id, item.id),
-    };
-
-    // The one step that moves it on, in the order the stores work.
-    const next = item.givenAt
-      ? null
-      : needsSize && sized
-        ? enterSize
-        : !removedFromStock && inStock
-          ? takeFromStock
-          : !removedFromStock && !onForm && canForm && !needsSize
-            ? addToForm
-            : !item.readyToCollect && (removedFromStock || !!onForm)
-              ? ready
-              : null;
-
-    const menu: (ItemAction | "separator")[] = [];
-    // A given item's size is what was handed out; untick it to change that.
-    if (sized && next !== enterSize && !item.givenAt) menu.push(enterSize);
-    if (removedFromStock) {
-      menu.push({
-        label: "Put back in stock",
+    const given = !!item.givenAt;
+    const noSize = needsSize ? "Needs a size first" : undefined;
+    // Every step in its fixed slot, in the order the stores work. A done step
+    // stays put, ticked, and taps back to undo. Once given, the forward steps
+    // rest (untick to change anything) but undos still work.
+    const actions: ItemAction[] = [
+      ...(sized
+        ? [
+            {
+              key: "size",
+              label: needsSize ? "Enter size" : "Edit size",
+              group: "size",
+              icon: Ruler,
+              disabled: given,
+              onSelect: () => openEditSize(order.id, item),
+            } satisfies ItemAction,
+          ]
+        : []),
+      {
+        key: "stock",
+        label: "Remove from stock",
+        group: "stock",
         icon: PackageMinus,
         busy: removingStock === item.id,
-        onSelect: () => handleReturnToStock(order, item),
-      });
-    } else if (!item.givenAt && next !== takeFromStock) {
-      // Always listed, greyed out with the reason when there's none to take,
-      // so it's found in the same place every time.
-      menu.push(
-        inStock
-          ? takeFromStock
-          : { ...takeFromStock, disabled: true, hint: needsSize ? "Needs a size first" : "None in stock" }
-      );
-    }
-    if (canForm && onForm) {
-      menu.push({
-        label: onForm.sent ? "Logs form sent" : "Take off logs form",
-        icon: FileSpreadsheet,
-        disabled: onForm.sent,
-        busy: addingToLogsFormId === item.id,
-        onSelect: () => handleRemoveLogsFormEntry(onForm.entryId, item.id),
-      });
-    } else if (canForm && next !== addToForm && !needsSize && !item.givenAt) menu.push(addToForm);
-    if (next !== ready && !item.readyToCollect && !item.givenAt && !needsSize) menu.push(ready);
-    menu.push("separator", {
-      label: "Delete item",
-      icon: Trash2,
-      destructive: true,
-      onSelect: () => handleDeleteOrderItem(order.id, item.id, item.itemType),
-    });
+        disabled: given || !inStock,
+        hint: given ? undefined : (noSize ?? "None in stock"),
+        onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
+        done: removedFromStock,
+        doneLabel: "Removed from stock",
+        undoLabel: "Put back in stock",
+        onUndo: () => handleReturnToStock(order, item),
+      },
+      ...(canForm
+        ? [
+            {
+              key: "form",
+              label: "Add to logs form",
+              group: "order",
+              icon: FileSpreadsheet,
+              busy: addingToLogsFormId === item.id,
+              disabled: given || needsSize,
+              hint: given ? undefined : noSize,
+              onSelect: () => handleAddToLogsForm(item),
+              done: !!onForm,
+              doneLabel: onForm?.sent ? "Logs form sent" : "On logs form",
+              undoLabel: "Take off logs form",
+              // A form that's gone to RAFAC is part of what was ordered.
+              onUndo:
+                onForm && !onForm.sent ? () => handleRemoveLogsFormEntry(onForm.entryId, item.id) : undefined,
+            } satisfies ItemAction,
+          ]
+        : []),
+      {
+        key: "ready",
+        label: "Ready to collect",
+        group: "collect",
+        icon: Bell,
+        busy: markingAsReady === item.id,
+        disabled: given || needsSize,
+        hint: given ? undefined : noSize,
+        onSelect: () => handleMarkItemAsReady(order.id, item.id),
+        done: !!item.readyToCollect,
+        doneLabel: "Cadet told",
+      },
+      {
+        key: "delete",
+        label: "Delete item",
+        group: "delete",
+        icon: Trash2,
+        onSelect: () => handleDeleteOrderItem(order.id, item.id, item.itemType),
+      },
+    ];
+
+    // The one step that moves it on, tinted where it sits.
+    const nextKey = given
+      ? null
+      : needsSize && sized
+        ? "size"
+        : !removedFromStock && inStock
+          ? "stock"
+          : !removedFromStock && !onForm && canForm
+            ? "form"
+            : !item.readyToCollect && (removedFromStock || !!onForm)
+              ? "ready"
+              : null;
 
     const hasHistory = !!item.readyToCollect || !!item.givenEvents?.length || !!item.stockEvents?.length;
 
@@ -483,8 +496,8 @@ export default function OrdersPage() {
       giveDisabledReason: needsSize ? "Needs a size first" : null,
       giving: markingAsGiven === item.id || undoingGiven === item.id,
       onToggleGiven: () => void toggleGiven(order, item),
-      next,
-      menu,
+      actions,
+      nextKey,
       details: (
         <>
           {item.needSizing ? (

@@ -21,16 +21,62 @@ export type ItemStatus = {
   tone: "todo" | "progress" | "ready" | "done" | "problem";
 };
 
-/** One thing that can be done to an item, as the next step or a menu entry. */
+/**
+ * What kind of job an action is. Each kind has one colour on its button's
+ * border and icon, so the ordering steps read as a set apart from stock and
+ * collection. Not the status colours: those mean a state, not a kind of job.
+ */
+export type ActionGroup = "size" | "stock" | "order" | "collect" | "delete";
+
+/**
+ * One step an item can take, in the fixed slot it always sits in. A step
+ * that's done stays in its slot, shown pressed with a tick ("Ordered"), and
+ * taps back to undo it where that's allowed, so buttons never move about as
+ * an item goes along.
+ */
 export type ItemAction = {
+  key: string;
   label: string;
+  group: ActionGroup;
   onSelect: () => void;
   icon?: LucideIcon;
   disabled?: boolean;
   /** Why it can't be done right now ("None in stock"), shown beside it while disabled. */
   hint?: string;
   busy?: boolean;
-  destructive?: boolean;
+  done?: boolean;
+  /** Shown once done: "Ordered". */
+  doneLabel?: string;
+  /** What undoing says in a menu: "Undo ordered". */
+  undoLabel?: string;
+  /** Takes the step back; without it a done step stays put. */
+  onUndo?: () => void;
+};
+
+// Literal class names, one set per kind, so Tailwind sees them all.
+// Dark mode needs stronger borders and tints to tell the kinds apart.
+const GROUP: Record<ActionGroup, { edge: string; next: string; icon: string }> = {
+  size: { edge: "border-border", next: "border-foreground/50 bg-muted", icon: "text-muted-foreground" },
+  stock: {
+    edge: "border-chart-3/60 dark:border-chart-3/80",
+    next: "border-chart-3 bg-chart-3/15 dark:bg-chart-3/30",
+    icon: "text-chart-3",
+  },
+  order: {
+    edge: "border-chart-5/60 dark:border-chart-5/80",
+    next: "border-chart-5 bg-chart-5/15 dark:bg-chart-5/30",
+    icon: "text-chart-5",
+  },
+  collect: {
+    edge: "border-primary/60 dark:border-primary/80",
+    next: "border-primary bg-primary/15 dark:bg-primary/30",
+    icon: "text-primary",
+  },
+  delete: {
+    edge: "border-destructive/40 dark:border-destructive/70",
+    next: "border-destructive bg-destructive/10",
+    icon: "text-destructive",
+  },
 };
 
 const TONE: Record<ItemStatus["tone"], string> = {
@@ -50,9 +96,10 @@ const TONE: Record<ItemStatus["tone"], string> = {
  *   thumb finds it, undone from the toast the page shows;
  * - its name, one status ("Needs sizing", "In stock", "Ready to collect")
  *   and a line or two of detail;
- * - the one next step its status calls for, as a button;
- * - everything else in a "⋯" menu on a phone (edit size, stock, undo a step,
- *   delete), or as quieter buttons beside the next step on a laptop;
+ * - its steps in fixed slots, always in the same order, each outlined in its
+ *   kind's colour (ordering, stock, collection); the next one tinted, done
+ *   ones ticked and tapped to undo. A laptop shows them all; a phone shows the
+ *   next one and keeps the rest, same order, in "⋯";
  * - its notes, and its history folded away under "History".
  */
 export function OrderItemRow({
@@ -65,8 +112,8 @@ export function OrderItemRow({
   giveDisabledReason,
   giving = false,
   onToggleGiven,
-  next,
-  menu = [],
+  actions = [],
+  nextKey = null,
   readOnly = false,
   highlighted = false,
   notes,
@@ -85,8 +132,10 @@ export function OrderItemRow({
   giveDisabledReason?: string | null;
   giving?: boolean;
   onToggleGiven: () => void;
-  next?: ItemAction | null;
-  menu?: (ItemAction | "separator")[];
+  /** Every step the item can take, in the order they always appear. */
+  actions?: ItemAction[];
+  /** The step its status calls for next, tinted in its slot. */
+  nextKey?: string | null;
   /** A completed order: everything shows, nothing changes. */
   readOnly?: boolean;
   /** Briefly ringed after jumping here from the order list. */
@@ -97,7 +146,7 @@ export function OrderItemRow({
   const [showHistory, setShowHistory] = useState(false);
   const wide = useWideScreen();
   const canTick = !readOnly && !giving && (given || !giveDisabledReason);
-  const actions = menu.filter((a): a is ItemAction => a !== "separator");
+  const next = actions.find((a) => a.key === nextKey && !a.done) ?? null;
 
   return (
     <li
@@ -150,7 +199,7 @@ export function OrderItemRow({
             )}
           </div>
 
-          {/* On a phone, everything but the next step waits behind "⋯". */}
+          {/* On a phone, every step is in "⋯" in its fixed order. */}
           {!wide && !readOnly && actions.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -163,34 +212,22 @@ export function OrderItemRow({
                   <MoreHorizontal />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-52">
-                {menu.map((a, i) =>
-                  a === "separator" ? (
-                    <DropdownMenuSeparator key={`sep-${i}`} />
-                  ) : (
-                    <DropdownMenuItem
-                      key={a.label}
-                      disabled={a.disabled || a.busy}
-                      variant={a.destructive ? "destructive" : "default"}
-                      onSelect={a.onSelect}
-                    >
-                      {a.icon && <a.icon />}
-                      {a.label}
-                      {a.disabled && a.hint && <span className="ml-auto pl-3 text-xs">{a.hint}</span>}
-                    </DropdownMenuItem>
-                  )
-                )}
+              <DropdownMenuContent align="end" className="min-w-56">
+                {actions.map((a, i) => (
+                  <MenuEntry key={a.key} action={a} separate={a.group === "delete" && i > 0} />
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
         </div>
 
-        {/* The next step leads; on a laptop, with room to spare, the rest sit
-            beside it as quieter buttons instead of behind "⋯". */}
-        {!readOnly && (next || (wide && actions.length > 0)) && (
+        {/* On a laptop every step sits in its own slot, always in the same
+            order; on a phone only the next one shows, the rest behind "⋯". */}
+        {!readOnly && (wide ? actions.length > 0 : !!next) && (
           <div className="flex flex-wrap items-center gap-1.5">
-            {next && <ActionButton action={next} variant="outline" />}
-            {wide && actions.map((a) => <ActionButton key={a.label} action={a} variant="ghost" />)}
+            {wide
+              ? actions.map((a) => <SlotButton key={a.key} action={a} isNext={a === next} />)
+              : next && <SlotButton action={next} isNext />}
           </div>
         )}
 
@@ -220,27 +257,57 @@ export function OrderItemRow({
   );
 }
 
-function ActionButton({ action, variant }: { action: ItemAction; variant: "outline" | "ghost" }) {
+/** One step as a button: outlined in its kind's colour, tinted when it's next, pressed once done. */
+function SlotButton({ action: a, isNext }: { action: ItemAction; isNext: boolean }) {
+  const g = GROUP[a.group];
+  const Icon = a.done ? Check : a.icon;
   return (
     <Button
       size="sm"
-      variant={variant}
+      variant="outline"
+      aria-pressed={a.onUndo || a.done ? !!a.done : undefined}
+      title={a.done && a.undoLabel && a.onUndo ? `${a.undoLabel}?` : undefined}
       className={cn(
         "h-9 sm:h-8",
-        variant === "ghost" && "text-muted-foreground hover:text-foreground",
-        action.destructive && "text-destructive hover:text-destructive hover:bg-destructive/10"
+        a.done
+          ? "bg-muted text-muted-foreground border-border"
+          : isNext
+            ? cn(g.next, "font-semibold")
+            : g.edge,
+        a.group === "delete" && !a.done && "text-destructive hover:text-destructive"
       )}
-      disabled={action.disabled || action.busy}
-      onClick={action.onSelect}
+      disabled={a.busy || (a.done ? !a.onUndo : a.disabled)}
+      onClick={a.done ? a.onUndo : a.onSelect}
     >
-      {action.busy ? (
+      {a.busy ? (
         <Spinner data-icon="inline-start" />
       ) : (
-        action.icon && <action.icon data-icon="inline-start" />
+        Icon && <Icon data-icon="inline-start" className={a.done ? "text-success" : g.icon} />
       )}
-      {action.label}
-      {action.disabled && action.hint && <span className="text-xs font-normal">· {action.hint}</span>}
+      {a.done ? (a.doneLabel ?? a.label) : a.label}
+      {!a.done && a.disabled && a.hint && <span className="text-xs font-normal">· {a.hint}</span>}
     </Button>
+  );
+}
+
+/** One step in the phone's "⋯" menu: the same slots in the same order, done ones offering their undo. */
+function MenuEntry({ action: a, separate }: { action: ItemAction; separate: boolean }) {
+  const g = GROUP[a.group];
+  // Done: offer the undo, or say it's done where there's no taking it back.
+  const label = a.done ? (a.onUndo && a.undoLabel) || a.doneLabel || a.label : a.label;
+  return (
+    <>
+      {separate && <DropdownMenuSeparator />}
+      <DropdownMenuItem
+        disabled={a.busy || (a.done ? !a.onUndo : a.disabled)}
+        variant={a.group === "delete" ? "destructive" : "default"}
+        onSelect={a.done ? a.onUndo : a.onSelect}
+      >
+        {a.icon && <a.icon className={g.icon} />}
+        {label}
+        {!a.done && a.disabled && a.hint && <span className="ml-auto pl-3 text-xs">{a.hint}</span>}
+      </DropdownMenuItem>
+    </>
   );
 }
 

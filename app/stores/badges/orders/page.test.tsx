@@ -590,10 +590,12 @@ describe("order list steps on the badge", () => {
     expect(within(card("Alex Smith")).getByRole("button", { name: "Mark as received" })).toBeInTheDocument();
     await openMenu("Alex Smith", "First Aid – Blue");
     const items = screen.getAllByRole("menuitem").map((m) => m.textContent);
+    // The same slots in the same order at every stage: done ones offer their undo.
     expect(items).toEqual([
       "Remove from stockNone in stock",
-      "Undo ordered",
       "Take off order list",
+      "Undo ordered",
+      "Mark as received",
       "Ready to collect",
       "Delete item",
     ]);
@@ -718,7 +720,7 @@ describe("order list steps on the badge", () => {
     await renderPage();
     await expand("Alex Smith");
     await openMenu("Alex Smith", "First Aid – Blue");
-    expect(screen.getByRole("menuitem", { name: "Send to ordered" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Mark as ordered" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Mark as received" })).toBeInTheDocument();
   });
 

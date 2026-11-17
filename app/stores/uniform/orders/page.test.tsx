@@ -370,13 +370,19 @@ describe("each item offers the step it needs next", () => {
     expect(remove).toHaveTextContent("None in stock");
   });
 
-  it("keeps everything else in the item's menu, with Delete set apart", async () => {
+  it("lists every step in the item's menu in its fixed order, Delete last", async () => {
     stubApi();
     await renderPage();
     await expand("Alex Smith");
     await openMenu("Beret");
     const items = screen.getAllByRole("menuitem").map((m) => m.textContent);
-    expect(items).toEqual(["Edit size", "Remove from stockNone in stock", "Ready to collect", "Delete item"]);
+    expect(items).toEqual([
+      "Edit size",
+      "Remove from stockNone in stock",
+      "Add to logs form",
+      "Ready to collect",
+      "Delete item",
+    ]);
   });
 });
 
