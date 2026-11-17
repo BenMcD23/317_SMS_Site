@@ -27,6 +27,8 @@ export type ItemAction = {
   onSelect: () => void;
   icon?: LucideIcon;
   disabled?: boolean;
+  /** Why it can't be done right now ("None in stock"), shown beside it while disabled. */
+  hint?: string;
   busy?: boolean;
   destructive?: boolean;
 };
@@ -174,6 +176,7 @@ export function OrderItemRow({
                     >
                       {a.icon && <a.icon />}
                       {a.label}
+                      {a.disabled && a.hint && <span className="ml-auto pl-3 text-xs">{a.hint}</span>}
                     </DropdownMenuItem>
                   )
                 )}
@@ -236,6 +239,7 @@ function ActionButton({ action, variant }: { action: ItemAction; variant: "outli
         action.icon && <action.icon data-icon="inline-start" />
       )}
       {action.label}
+      {action.disabled && action.hint && <span className="text-xs font-normal">· {action.hint}</span>}
     </Button>
   );
 }

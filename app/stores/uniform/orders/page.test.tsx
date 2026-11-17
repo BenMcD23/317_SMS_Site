@@ -347,7 +347,7 @@ describe("each item offers the step it needs next", () => {
     await expand("Alex Smith");
     const alex = within(card("Alex Smith"));
     expect(alex.getByText("In box 3, section B (2 left)")).toBeInTheDocument();
-    expect(alex.getByRole("button", { name: "Take from stock" })).toBeInTheDocument();
+    expect(alex.getByRole("button", { name: "Remove from stock" })).toBeInTheDocument();
   });
 
   it("an item that isn't in stock offers the logs form", async () => {
@@ -359,13 +359,24 @@ describe("each item offers the step it needs next", () => {
     ).toBeGreaterThan(0);
   });
 
+  // Always in the same place, greyed out with the reason when there's nothing to take.
+  it("lists Remove from stock greyed out when that size isn't on the shelf", async () => {
+    stubApi();
+    await renderPage();
+    await expand("Alex Smith");
+    await openMenu("Beret");
+    const remove = screen.getByRole("menuitem", { name: /Remove from stock/ });
+    expect(remove).toHaveAttribute("data-disabled");
+    expect(remove).toHaveTextContent("None in stock");
+  });
+
   it("keeps everything else in the item's menu, with Delete set apart", async () => {
     stubApi();
     await renderPage();
     await expand("Alex Smith");
     await openMenu("Beret");
     const items = screen.getAllByRole("menuitem").map((m) => m.textContent);
-    expect(items).toEqual(["Edit size", "Ready to collect", "Delete item"]);
+    expect(items).toEqual(["Edit size", "Remove from stockNone in stock", "Ready to collect", "Delete item"]);
   });
 });
 

@@ -590,7 +590,13 @@ describe("order list steps on the badge", () => {
     expect(within(card("Alex Smith")).getByRole("button", { name: "Mark as received" })).toBeInTheDocument();
     await openMenu("Alex Smith", "First Aid – Blue");
     const items = screen.getAllByRole("menuitem").map((m) => m.textContent);
-    expect(items).toEqual(["Undo ordered", "Take off order list", "Ready to collect", "Delete item"]);
+    expect(items).toEqual([
+      "Remove from stockNone in stock",
+      "Undo ordered",
+      "Take off order list",
+      "Ready to collect",
+      "Delete item",
+    ]);
   });
 
   it("undoing the latest step goes straight through, with no confirm", async () => {

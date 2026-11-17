@@ -406,7 +406,7 @@ export default function OrdersPage() {
       onSelect: () => openEditSize(order.id, item),
     };
     const takeFromStock: ItemAction = {
-      label: "Take from stock",
+      label: "Remove from stock",
       icon: PackageMinus,
       busy: removingStock === item.id,
       onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
@@ -447,7 +447,15 @@ export default function OrdersPage() {
         busy: removingStock === item.id,
         onSelect: () => handleReturnToStock(order, item),
       });
-    } else if (next !== takeFromStock && inStock) menu.push(takeFromStock);
+    } else if (!item.givenAt && next !== takeFromStock) {
+      // Always listed, greyed out with the reason when there's none to take,
+      // so it's found in the same place every time.
+      menu.push(
+        inStock
+          ? takeFromStock
+          : { ...takeFromStock, disabled: true, hint: needsSize ? "Needs a size first" : "None in stock" }
+      );
+    }
     if (canForm && onForm) {
       menu.push({
         label: onForm.sent ? "Logs form sent" : "Take off logs form",

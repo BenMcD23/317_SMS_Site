@@ -297,7 +297,7 @@ export default function BadgeOrdersPage() {
                   : { label: "To order", tone: "todo" };
 
     const takeFromStock: ItemAction = {
-      label: "Take from stock",
+      label: "Remove from stock",
       icon: PackageMinus,
       busy: removingStock === item.id,
       onSelect: () => stockMatch && handleRemoveFromStock(order, item, stockMatch),
@@ -350,7 +350,11 @@ export default function BadgeOrdersPage() {
         busy: removingStock === item.id,
         onSelect: () => handleReturnToStock(order, item),
       });
-    } else if (stockMatch && next !== takeFromStock && !item.givenAt) menu.push(takeFromStock);
+    } else if (!item.givenAt && next !== takeFromStock) {
+      // Always listed, greyed out when there's none to take, so it's found
+      // in the same place every time.
+      menu.push(stockMatch ? takeFromStock : { ...takeFromStock, disabled: true, hint: "None in stock" });
+    }
     if (stage === "none" && next !== addToList && !item.givenAt) menu.push(addToList);
     // Every step stays reachable until it's done, whatever the next step is:
     // a badge taken from stock can still be marked ordered or received, and

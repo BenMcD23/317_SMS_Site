@@ -54,14 +54,14 @@ describe("OrderItemRow", () => {
     const next = vi.fn();
     const del = vi.fn();
     renderRow({
-      next: { label: "Take from stock", onSelect: next },
+      next: { label: "Remove from stock", onSelect: next },
       menu: [
         { label: "Edit size", onSelect: vi.fn() },
         "separator",
         { label: "Delete item", onSelect: del, destructive: true },
       ],
     });
-    await userEvent.click(screen.getByRole("button", { name: "Take from stock" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove from stock" }));
     expect(next).toHaveBeenCalledOnce();
 
     await userEvent.click(screen.getByRole("button", { name: "More for Beret" }));
@@ -71,8 +71,8 @@ describe("OrderItemRow", () => {
   });
 
   it("can't press a step twice while it's working", () => {
-    renderRow({ next: { label: "Take from stock", onSelect: vi.fn(), busy: true } });
-    expect(screen.getByRole("button", { name: /Take from stock/ })).toBeDisabled();
+    renderRow({ next: { label: "Remove from stock", onSelect: vi.fn(), busy: true } });
+    expect(screen.getByRole("button", { name: /Remove from stock/ })).toBeDisabled();
   });
 
   it("keeps the history folded away until asked for", async () => {
@@ -88,11 +88,11 @@ describe("OrderItemRow", () => {
     renderRow({
       readOnly: true,
       given: true,
-      next: { label: "Take from stock", onSelect: vi.fn() },
+      next: { label: "Remove from stock", onSelect: vi.fn() },
       menu: [{ label: "Delete item", onSelect: vi.fn() }],
     });
     expect(screen.getByRole("checkbox", { name: "Given: Beret" })).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Take from stock" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove from stock" })).toBeNull();
     expect(screen.queryByRole("button", { name: "More for Beret" })).toBeNull();
   });
 
@@ -118,7 +118,7 @@ describe("OrderItemRow on a laptop", () => {
     wideScreen();
     const del = vi.fn();
     renderRow({
-      next: { label: "Take from stock", onSelect: vi.fn() },
+      next: { label: "Remove from stock", onSelect: vi.fn() },
       menu: [
         { label: "Edit size", onSelect: vi.fn() },
         "separator",
@@ -126,10 +126,20 @@ describe("OrderItemRow on a laptop", () => {
       ],
     });
     expect(screen.queryByRole("button", { name: "More for Beret" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Take from stock" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove from stock" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit size" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Delete item" }));
     expect(del).toHaveBeenCalledOnce();
+  });
+
+  it("greys out an action that can't be done yet, and says why", () => {
+    wideScreen();
+    renderRow({
+      menu: [{ label: "Remove from stock", onSelect: vi.fn(), disabled: true, hint: "None in stock" }],
+    });
+    const remove = screen.getByRole("button", { name: /Remove from stock/ });
+    expect(remove).toBeDisabled();
+    expect(remove).toHaveTextContent("None in stock");
   });
 
   it("keeps the compact menu on a phone", () => {
