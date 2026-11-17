@@ -35,6 +35,7 @@ import {
   AlertTriangle,
   Ban,
 } from "lucide-react";
+import { Stat, StatGroup } from "@/components/stat";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
 import { FlyingCard, type Flight, type FlyingStage } from "@/components/flying-card";
 
@@ -146,10 +147,7 @@ function EditableField({
 
   return (
     <div className="group/field">
-      <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-        {Icon && <Icon className="h-3 w-3" />}
-        {label}
-      </p>
+      <DetailLabel icon={Icon}>{label}</DetailLabel>
       {editing ? (
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
@@ -217,29 +215,17 @@ function EditableField({
   );
 }
 
-function StatPill({
-  label,
-  value,
-  variant = "default",
-}: {
-  label: string;
-  value: string | number;
-  variant?: "default" | "success" | "muted";
-}) {
+/**
+ * The name of one detail on the record ("Date of birth"), above its value.
+ * Plain muted text: the small-caps eyebrow style it replaced is one the
+ * site's design rules ask us not to use.
+ */
+function DetailLabel({ icon: Icon, children }: { icon?: React.ElementType; children: React.ReactNode }) {
   return (
-    <div
-      className={cn(
-        "rounded-lg border px-3 py-2 text-center",
-        variant === "success" && "border-success/30 bg-success/10",
-        variant === "muted" && "border-muted bg-muted/40",
-        variant === "default" && "bg-card border"
-      )}
-    >
-      <p className={cn("text-xl font-semibold tabular-nums", variant === "success" && "text-success")}>
-        {value}
-      </p>
-      <p className="text-muted-foreground mt-0.5 text-[11px]">{label}</p>
-    </div>
+    <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-sm">
+      {Icon && <Icon className="size-3.5" aria-hidden />}
+      {children}
+    </p>
   );
 }
 
@@ -396,22 +382,26 @@ export default function CadetOverviewPage() {
         </Alert>
       )}
 
-      {/* Stats row. One row of equal tiles however many there are: the age
-          tile goes when personal data is hidden, and mustn't leave a gap. */}
-      <div className="grid grid-cols-2 gap-3 sm:auto-cols-fr sm:grid-flow-col">
-        <StatPill label="Qualifications" value={cadet.qualifications.length} />
-        <StatPill label="Events Attended" value={`${attendedEvents} / ${cadet.events.length}`} />
-        <StatPill
-          label="Assessments Passed"
+      {/* Headline figures in one strip. Age goes when personal data is
+          hidden, so the strip takes as many columns as it has figures. */}
+      <StatGroup className="grid-cols-2 sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
+        <Stat label="Qualifications" value={cadet.qualifications.length} />
+        <Stat
+          label="Events attended"
+          value={attendedEvents}
+          hint={`of ${cadet.events.length} event${cadet.events.length === 1 ? "" : "s"}`}
+        />
+        <Stat
+          label="Assessments passed"
           value={passedAssessments}
-          variant={passedAssessments > 0 ? "success" : "muted"}
+          tone={passedAssessments > 0 ? "success" : undefined}
         />
         {cadetAge !== null && (
           <Private>
-            <StatPill label="Age" value={cadetAge} />
+            <Stat label="Age" value={cadetAge} />
           </Private>
         )}
-      </div>
+      </StatGroup>
 
       <Tabs defaultValue={initialTab}>
         <TabsList>
@@ -453,9 +443,7 @@ export default function CadetOverviewPage() {
                   href={(v) => `tel:${v.replace(/\s+/g, "")}`}
                 />
                 <div>
-                  <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-                    <Calendar className="h-3 w-3" /> Date of Birth
-                  </p>
+                  <DetailLabel icon={Calendar}>Date of birth</DetailLabel>
                   <span className="text-sm font-medium">
                     {cadet.date_of_birth
                       ? `${formatDate(cadet.date_of_birth)}${cadetAge !== null ? ` (${cadetAge})` : ""}`
@@ -464,21 +452,15 @@ export default function CadetOverviewPage() {
                 </div>
               </Private>
               <div>
-                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-                  <Shield className="h-3 w-3" /> Rank
-                </p>
+                <DetailLabel icon={Shield}>Rank</DetailLabel>
                 <span className="text-sm font-medium">{cadet.rank ?? "—"}</span>
               </div>
               <div>
-                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-                  <Plane className="h-3 w-3" /> Flight
-                </p>
+                <DetailLabel icon={Plane}>Flight</DetailLabel>
                 <span className="text-sm font-medium">{cadet.flight ? `${cadet.flight} Flight` : "—"}</span>
               </div>
               <div>
-                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-                  <Award className="h-3 w-3" /> Classification
-                </p>
+                <DetailLabel icon={Award}>Classification</DetailLabel>
                 <span className="text-sm font-medium">{cadet.classification || "Junior Cadet"}</span>
                 {cadet.classification && cadet.classification_dates?.[cadet.classification] && (
                   <span className="text-muted-foreground text-sm">
@@ -488,9 +470,7 @@ export default function CadetOverviewPage() {
                 )}
               </div>
               <div>
-                <p className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wider uppercase">
-                  <Calendar className="h-3 w-3" /> Joined 317
-                </p>
+                <DetailLabel icon={Calendar}>Joined 317</DetailLabel>
                 <span className="text-sm font-medium">
                   {cadet.joined_on ? formatDate(cadet.joined_on) : "—"}
                 </span>
