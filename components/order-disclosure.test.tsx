@@ -75,7 +75,8 @@ describe("OrderDisclosure", () => {
   });
 
   // jsdom can't measure, so this checks the strip may wrap: one that couldn't
-  // pushed an order's card past a phone's screen and clipped its right edge.
+  // pushed an order's card past a phone's screen and clipped its right edge
+  // (four badges on the SMS site did).
   it("lets the header's badges wrap instead of widening the card", () => {
     render(<Harness />);
     const strip = toggle().parentElement!;

@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * Standard page header — title on the left, optional actions on the right.
- * Every page opens with one so the sidebar's link, the breadcrumb and the
- * heading agree on what the page is called.
+ * Every page opens with one so the sidebar's link, the breadcrumb or header
+ * title and the heading agree on what the page is called.
  */
 export function PageHeader({
   title,

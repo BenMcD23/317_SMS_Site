@@ -342,6 +342,53 @@ describe("each item offers the step it needs next", () => {
     expect(screen.getByRole("dialog", { name: "Size & Sizing Details" })).toBeInTheDocument();
   });
 
+  it("saving sizing details patches just that item and closes the dialog", async () => {
+    const list = orders();
+    list[0].items[0] = item("11", "Beret", { size: "", needSizing: true, sizingDetails: "" });
+    const patched: unknown[] = [];
+    stubApi({
+      "GET /api/stores/orders": () => json(list),
+      "PATCH /api/stores/orders/1": (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        patched.push(body);
+        return json({ ...list[0], items: body.items });
+      },
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await userEvent.click(within(card("Alex Smith")).getByRole("button", { name: "Enter size" }));
+    await userEvent.type(screen.getByLabelText("Sizing Details"), "chest 96cm");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const [body] = patched as { items: OrderItem[] }[];
+    expect(body.items.find((i) => i.id === "11")).toMatchObject({
+      size: "",
+      needSizing: true,
+      sizingDetails: "chest 96cm",
+    });
+    expect(body.items.find((i) => i.id === "12")).toEqual(list[0].items[1]);
+  });
+
+  it("a failed size save keeps the dialog open with the edit, and says why", async () => {
+    // It used to close regardless, losing what had been typed.
+    const list = orders();
+    list[0].items[0] = item("11", "Beret", { size: "", needSizing: true, sizingDetails: "" });
+    stubApi({
+      "GET /api/stores/orders": () => json(list),
+      "PATCH /api/stores/orders/1": () => json({ detail: "boom" }, 500),
+    });
+    await renderPage();
+    await expand("Alex Smith");
+    await userEvent.click(within(card("Alex Smith")).getByRole("button", { name: "Enter size" }));
+    await userEvent.type(screen.getByLabelText("Sizing Details"), "chest 96cm");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Failed to update order")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Size & Sizing Details" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Sizing Details")).toHaveValue("chest 96cm");
+  });
+
   it("an item on the shelf says where, and offers to take it from stock", async () => {
     stubApi({
       "GET /api/stores/stock": () =>

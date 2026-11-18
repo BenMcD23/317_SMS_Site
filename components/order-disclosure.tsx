@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
+ * The same file in the SMS site and the cadet portal, so a cadet and the
+ * stores team see an order behave the same way. Change the SMS site's copy
+ * first: the portal's `npm run shared:check` fails while they differ.
+ *
  * One order in an orders list (uniform, badges): a header that's always
  * visible — who, when, what state — and a body that opens beneath it.
  *
