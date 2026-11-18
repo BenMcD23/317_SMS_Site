@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Heading for a block within a page (the dashboard's "Badge progression", a
- * settings group). Sits between the page title and card titles in weight so
- * the three never compete.
+ * Heading for a block within a page (a group of orders, a settings group).
+ * Sits between the page title and card titles in weight so the three never
+ * compete.
  */
 export function SectionHeading({
   title,

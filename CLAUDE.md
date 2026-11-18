@@ -123,6 +123,14 @@ drifting back to the generic-template look.
 | Form in a dialog         | `ResponsiveDialog` + react-hook-form + zod (`lib/stock-form.ts` is the pattern) |
 | Empty, error, loading    | `EmptyState`, `ErrorAlert`, `ListSkeleton` / `OrderListSkeleton`                |
 
+**Shared with the cadet portal.** `OrderDisclosure`, `ResponsiveDialog`,
+`EmptyState`, `ErrorAlert`, `PageHeader`, `SectionHeading`, `components/ui`
+and `lib/utils.ts` are the same files in `../317_cadet_portal` (its
+`scripts/shared-files.mjs` lists them). This copy is the source: change it
+here, then run `npm run shared:sync -- --from ../317_SMS_Site` in the portal
+and open both pull requests. The portal's "Shared files" check goes red
+until they match.
+
 If the same markup appears on a second page, extract it into `components/`
 with a doc comment saying why it exists, and give it a test. New shadcn parts:
 `npx shadcn@latest add <name>`, then check the generated file's imports (the
