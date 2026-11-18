@@ -26,21 +26,7 @@ import { ErrorAlert } from "@/components/error-alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  ResponsiveDialog,
-  ResponsiveDialogContent,
-  ResponsiveDialogFooter,
-  ResponsiveDialogHeader,
-  ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import {
-  Order,
-  OrderItem,
-  StockItem,
-  SizingDetailsJSON,
-  LogsForm,
-  isRemovedFromStock,
-} from "@/lib/stores-types";
+import { Order, OrderItem, StockItem, LogsForm, isRemovedFromStock } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -59,6 +45,9 @@ import { type DraftItem, emptyDraftItem } from "./components/draft-item";
 import { KittingDialog } from "./components/kitting-dialog";
 import { NewUniformOrderDialog } from "./components/new-order-dialog";
 import { LogsFormTab } from "./components/logs-form-tab";
+import { EditSizeDialog, type SizeEdit } from "./components/edit-size-dialog";
+import { SizingDetailsDisplay } from "./components/sizing-details";
+import { TieLengthDialog } from "./components/tie-length-dialog";
 import {
   ItemCount,
   OrderItemList,
@@ -81,48 +70,6 @@ type OrdersTab = "active" | "completed" | "kitting" | "logsform";
 function orderTab(order: Order): OrdersTab {
   if (order.kitting) return "kitting";
   return order.completed ? "completed" : "active";
-}
-
-const FIT_LABELS: Record<string, string> = { bigger: "Bigger", smaller: "Smaller", same: "Same size" };
-
-function parseSizingDetails(str: string): SizingDetailsJSON | null {
-  if (!str) return null;
-  try {
-    return JSON.parse(str) as SizingDetailsJSON;
-  } catch {
-    return null;
-  }
-}
-
-function SizingDetailsDisplay({ raw }: { raw: string }) {
-  const parsed = parseSizingDetails(raw);
-  if (!parsed) return <p className="text-foreground text-xs">{raw}</p>;
-
-  const rows: { label: string; value: string }[] = [];
-  if (parsed.currentSizeUnknown) rows.push({ label: "Current size", value: "Unknown" });
-  else if (parsed.currentSize) rows.push({ label: "Current size", value: parsed.currentSize });
-  if (parsed.biggerSmaller)
-    rows.push({ label: "Overall fit", value: FIT_LABELS[parsed.biggerSmaller] ?? parsed.biggerSmaller });
-  if (parsed.chest) rows.push({ label: "Chest", value: parsed.chest });
-  if (parsed.collar) rows.push({ label: "Collar", value: parsed.collar });
-  if (parsed.waist) rows.push({ label: "Waist", value: parsed.waist });
-  if (parsed.leg) rows.push({ label: "Leg", value: parsed.leg });
-  if (parsed.seat) rows.push({ label: "Seat", value: parsed.seat });
-  if (parsed.hips) rows.push({ label: "Hips", value: parsed.hips });
-  if (parsed.notes) rows.push({ label: "Notes", value: parsed.notes });
-
-  if (rows.length === 0) return <p className="text-muted-foreground text-xs italic">No sizing details</p>;
-
-  return (
-    <div className="space-y-0.5">
-      {rows.map(({ label, value }) => (
-        <div key={label} className="flex gap-2 text-xs">
-          <span className="text-muted-foreground w-24 shrink-0">{label}</span>
-          <span className="text-foreground">{value}</span>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 /** Where an order's subject's issued sizes live — staff orders are keyed by
@@ -182,14 +129,8 @@ export default function OrdersPage() {
 
   const [newOrderOpen, setNewOrderOpen] = useState(false);
 
-  // Edit size dialog — also handles needSizing + sizingDetails
-  const [editSizeOpen, setEditSizeOpen] = useState(false);
-  const [editSizeOrderId, setEditSizeOrderId] = useState<string | null>(null);
-  const [editSizeItemId, setEditSizeItemId] = useState<string | null>(null);
-  const [editSizeItemType, setEditSizeItemType] = useState("");
-  const [editSizeValue, setEditSizeValue] = useState("");
-  const [editNeedSizing, setEditNeedSizing] = useState(false);
-  const [editSizingDetails, setEditSizingDetails] = useState("");
+  // The item whose size is being edited, and its order
+  const [editingSize, setEditingSize] = useState<{ orderId: string; item: OrderItem } | null>(null);
 
   // Add item to existing order (inline per order)
   const [addingToOrderId, setAddingToOrderId] = useState<string | null>(null);
@@ -246,32 +187,17 @@ export default function OrdersPage() {
     workflow.deleteItem(orderId, itemId, itemType);
 
   function openEditSize(orderId: string, item: OrderItem) {
-    setEditSizeOrderId(orderId);
-    setEditSizeItemId(item.id);
-    setEditSizeItemType(item.itemType);
-    setEditSizeValue(item.size);
-    setEditNeedSizing(item.needSizing);
-    setEditSizingDetails(item.sizingDetails ?? "");
-    setEditSizeOpen(true);
+    setEditingSize({ orderId, item });
   }
 
-  async function handleSaveEditSize() {
-    if (!editSizeOrderId || !editSizeItemId) return;
-    const order = orders.find((o) => o.id === editSizeOrderId);
-    if (!order) return;
-    await patchOrder(editSizeOrderId, {
-      items: order.items.map((i) =>
-        i.id === editSizeItemId
-          ? {
-              ...i,
-              size: editNeedSizing ? "" : editSizeValue,
-              needSizing: editNeedSizing,
-              sizingDetails: editSizingDetails,
-            }
-          : i
-      ),
+  async function handleSaveEditSize(edit: SizeEdit) {
+    if (!editingSize) return false;
+    const { orderId, item } = editingSize;
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return false;
+    return patchOrder(orderId, {
+      items: order.items.map((i) => (i.id === item.id ? { ...i, ...edit } : i)),
     });
-    setEditSizeOpen(false);
   }
 
   const { patchOrder } = workflow;
@@ -993,34 +919,11 @@ export default function OrdersPage() {
         />
       )}
 
-      {/* Tie variant dialog */}
-      <ResponsiveDialog open={tieItemId !== null} onOpenChange={(open) => !open && setTieItemId(null)}>
-        <ResponsiveDialogContent className="sm:max-w-sm">
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>Necktie Length</ResponsiveDialogTitle>
-          </ResponsiveDialogHeader>
-          <p className="text-muted-foreground text-sm">Which necktie should be demanded on the logs form?</p>
-          <ResponsiveDialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (tieItemId) doAddToLogsForm(tieItemId, "Short");
-                setTieItemId(null);
-              }}
-            >
-              Short
-            </Button>
-            <Button
-              onClick={() => {
-                if (tieItemId) doAddToLogsForm(tieItemId, "Standard");
-                setTieItemId(null);
-              }}
-            >
-              Standard
-            </Button>
-          </ResponsiveDialogFooter>
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+      <TieLengthDialog
+        open={tieItemId !== null}
+        onChoose={(length) => tieItemId && doAddToLogsForm(tieItemId, length)}
+        onClose={() => setTieItemId(null)}
+      />
 
       {/* New Order Dialog */}
       <NewUniformOrderDialog
@@ -1043,64 +946,12 @@ export default function OrdersPage() {
       {/* Confirm Dialog */}
       {confirmDialog}
 
-      {/* Edit Size / Sizing Dialog */}
-      <ResponsiveDialog open={editSizeOpen} onOpenChange={setEditSizeOpen}>
-        <ResponsiveDialogContent className="sm:max-w-sm">
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle>Size & Sizing Details</ResponsiveDialogTitle>
-          </ResponsiveDialogHeader>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="edit-needs-sizing"
-                checked={editNeedSizing}
-                onCheckedChange={(c) => {
-                  setEditNeedSizing(!!c);
-                  if (!c) setEditSizingDetails("");
-                }}
-              />
-              <Label htmlFor="edit-needs-sizing" className="cursor-pointer">
-                Needs Sizing
-              </Label>
-            </div>
-
-            {editNeedSizing ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="editSizingDetails">Sizing Details</Label>
-                <textarea
-                  id="editSizingDetails"
-                  className="bg-background focus:ring-ring w-full resize-none rounded-md border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
-                  rows={3}
-                  placeholder="e.g. chest 96cm, height 175cm"
-                  value={editSizingDetails}
-                  onChange={(e) => setEditSizingDetails(e.target.value)}
-                />
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label htmlFor="editSize">Size</Label>
-                <SizeCombobox
-                  strict
-                  id="editSize"
-                  itemType={editSizeItemType}
-                  value={editSizeValue}
-                  onChange={setEditSizeValue}
-                  placeholder="e.g. 95/36"
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveEditSize()}
-                />
-              </div>
-            )}
-          </div>
-          <ResponsiveDialogFooter>
-            <Button variant="outline" onClick={() => setEditSizeOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEditSize} disabled={editNeedSizing ? false : !editSizeValue.trim()}>
-              Save
-            </Button>
-          </ResponsiveDialogFooter>
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+      <EditSizeDialog
+        key={editingSize?.item.id ?? "closed"}
+        item={editingSize?.item ?? null}
+        onClose={() => setEditingSize(null)}
+        onSave={handleSaveEditSize}
+      />
     </div>
   );
 }
