@@ -2,15 +2,15 @@
 
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Label } from "@317/ui-common/components/ui/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { BadgeOrder } from "@/lib/stores-types";
 import { type BadgeCategory, buildBadgeName, useReference } from "@/lib/reference";
 import { CadetSearchInput } from "@/components/cadet-search";

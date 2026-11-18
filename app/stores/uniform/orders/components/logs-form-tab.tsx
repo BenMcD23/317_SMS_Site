@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp, X, CheckCircle2, Download, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@317/ui-common/components/ui/card";
 import { LogsForm } from "@/lib/stores-types";
 import { formatTimestamp } from "@/lib/format";
 

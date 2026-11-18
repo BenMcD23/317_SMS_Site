@@ -6,20 +6,20 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { AlertTriangle, Check, Copy, Loader2, RotateCcw, Send, UserMinus } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogDescription,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@317/ui-common/components/responsive-dialog";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Private } from "@/components/private";
 import { apiRequest } from "@/lib/api-fetch";
@@ -35,7 +35,7 @@ import {
 } from "@/lib/leaving";
 import { useLeavingEmail } from "@/lib/use-leaving-email";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 export const LEAVING_KEY = ["oc-leaving"] as const;
 

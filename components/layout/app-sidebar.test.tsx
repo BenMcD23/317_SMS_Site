@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@317/ui-common/components/ui/sidebar";
 import { resetQuickPagesForTest } from "@/lib/quick-pages";
 
 const KEY = "sms.sidebar.sections";

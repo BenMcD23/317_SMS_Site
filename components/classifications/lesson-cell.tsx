@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Check, GraduationCap } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { Label } from "@317/ui-common/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { lessonLabel, progressLabel, type SubjectProgress, type TheorySubject } from "@/lib/theory";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * A subject's lessons as a row of pips: filled for each lesson had. Taught

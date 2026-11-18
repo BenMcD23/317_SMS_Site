@@ -2,7 +2,14 @@
 
 import { type DrillDown } from "@/components/stats/charts";
 import { CsvButton } from "@/components/stats/csv-button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@317/ui-common/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMonth } from "@/lib/format";
 import type { Funnel, RetentionRow } from "@/lib/stats";

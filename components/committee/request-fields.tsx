@@ -3,10 +3,10 @@
 import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { formatGBP } from "@/lib/committee";
 import { type CommitteeRequestForm, emptyItem, lineTotal, requestTotal } from "@/lib/committee-form";
 

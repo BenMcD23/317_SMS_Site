@@ -8,12 +8,12 @@ import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery } from "@/lib/use-api-query";
-import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ResponsiveDialog,
@@ -23,7 +23,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
   ResponsiveDialogTrigger,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import {
   ArrowLeft,
   Download,
@@ -46,7 +46,7 @@ import {
   formatGBP,
   formatDateTime,
 } from "@/lib/committee";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { usePrivateText } from "@/components/private";
 import { EditCommitteeRequestDialog } from "@/components/committee/edit-request-dialog";
 

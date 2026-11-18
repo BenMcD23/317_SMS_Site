@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import type { TrendBarChartProps } from "@/components/charts/trend-bar-chart";
 
 /**

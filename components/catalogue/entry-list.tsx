@@ -1,8 +1,8 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { cn } from "@317/ui-common/lib/utils";
 
 export type Entry = {
   id: number;

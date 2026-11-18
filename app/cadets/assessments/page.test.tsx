@@ -3,7 +3,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AssessmentsOverviewPage from "@/app/cadets/assessments/page";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@317/ui-common/components/ui/tooltip";
 import { renderWithQuery } from "@/tests/render-with-query";
 
 const STAFF = {

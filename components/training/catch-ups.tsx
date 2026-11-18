@@ -4,18 +4,18 @@ import { useState } from "react";
 import { CheckCircle2, Link2 } from "lucide-react";
 import Link from "next/link";
 
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { FlightFilter, type FlightChoice } from "@/components/flight-filter";
-import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { OrderDisclosure, OrderList, OrderListSkeleton } from "@317/ui-common/components/order-disclosure";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
 import { flightBadgeClass, flightsIn } from "@/lib/cadet-format";
 import { formatShortDate } from "@/lib/format";
 import { personName } from "@/lib/session-planner";
 import { lessonName, TRAINING_KEYS, type CatchUp } from "@/lib/training";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 function ranText(c: CatchUp): string {
   return c.ran.map((r) => `${formatShortDate(r.date)} (${r.flights.join(", ")})`).join(" · ");

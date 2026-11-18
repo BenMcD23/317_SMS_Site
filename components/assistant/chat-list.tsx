@@ -13,19 +13,19 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+} from "@317/ui-common/components/ui/dropdown-menu";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@317/ui-common/components/ui/input-group";
 import { chatGroups, daysUntilDeletion, deletionWhen, type ChatSummary } from "@/lib/assistant";
 import { formatTimestamp } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * The signed-in person's saved assistant chats, grouped (Pinned, Today,

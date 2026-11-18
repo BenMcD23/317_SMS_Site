@@ -3,17 +3,17 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { SearchableSelect } from "@/components/searchable-select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { Order } from "@/lib/stores-types";
 import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";

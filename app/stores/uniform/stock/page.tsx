@@ -3,14 +3,14 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Search, FolderPlus, Check, Settings2, Plus, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/page-header";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card, CardContent } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { StockChangesPanel } from "@/components/stock-changes-table";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { Trash2 } from "lucide-react";
 import {
   ResponsiveDialog,
@@ -18,7 +18,7 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { StockItem } from "@/lib/stores-types";
 import { useStoresStock } from "@/lib/stores-stock";
 import { ShelfView } from "./components/ShelfView";

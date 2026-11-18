@@ -8,16 +8,16 @@ import { toast } from "sonner";
 import { AlertTriangle, BellPlus, CalendarClock, ClipboardList, Plus, Trash2 } from "lucide-react";
 
 import { SearchableSelect } from "@/components/searchable-select";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -25,11 +25,11 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import {
   deleteReminder,
   saveReminder,
@@ -38,7 +38,7 @@ import {
   type AppraisalSummary,
   type UpcomingReview,
 } from "@/lib/nco-appraisals";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { DataTable, dataTableColumns } from "@/components/data-table";
 
 /** How the countdown to a review is worded. "Due in 9 days" is more use at a

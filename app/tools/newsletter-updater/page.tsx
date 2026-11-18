@@ -2,18 +2,18 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card, CardContent } from "@317/ui-common/components/ui/card";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { toast } from "sonner";
 import { Newspaper, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { NewsletterDialog } from "./NewsletterDialog";
 import type { Newsletter } from "./types";
 

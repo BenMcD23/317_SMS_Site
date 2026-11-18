@@ -8,8 +8,8 @@ import { toast } from "sonner";
 
 import { SearchableSelect } from "@/components/searchable-select";
 import { DataTable, dataTableColumns } from "@/components/data-table";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import {
   ResponsiveDialog,
@@ -18,10 +18,10 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { SectionHeading } from "@/components/section-heading";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from "@317/ui-common/components/responsive-dialog";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate } from "@/lib/format";
@@ -41,7 +41,7 @@ import {
   type LinkState,
 } from "@/lib/training";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 type Filter = "review" | "linked" | "not_lesson" | "all";
 

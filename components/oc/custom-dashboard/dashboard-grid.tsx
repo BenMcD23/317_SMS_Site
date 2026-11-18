@@ -13,14 +13,14 @@ import {
   layoutChanged,
   readingOrder,
 } from "@/lib/custom-dashboard";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { cn } from "@317/ui-common/lib/utils";
+import { Button } from "@317/ui-common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@317/ui-common/components/ui/dropdown-menu";
 import { PanelView } from "@/components/oc/custom-dashboard/panel-view";
 
 // Below this the grid's 12 columns are too narrow to read, so panels stack

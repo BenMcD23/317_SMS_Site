@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Card, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@317/ui-common/components/ui/input-group";
 import { FlightFilter } from "@/components/flight-filter";
 import { flightLabel, flightsIn } from "@/lib/cadet-format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 export type PickableCadet = {
   cin: number;

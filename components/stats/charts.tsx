@@ -15,8 +15,8 @@ import {
 } from "recharts";
 
 import { CsvButton } from "@/components/stats/csv-button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
 import type { BadgeHistoryPoint } from "@/lib/badge-history";
 import { formatShortDate } from "@/lib/format";
 import {

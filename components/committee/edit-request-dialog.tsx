@@ -17,7 +17,7 @@ import {
   requestToForm,
 } from "@/lib/committee-form";
 import { CommitteeRequestFields } from "@/components/committee/request-fields";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -25,10 +25,10 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Button } from "@/components/ui/button";
+} from "@317/ui-common/components/responsive-dialog";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 
 // The OC can also reword the reason on a rejected request.
 const editSchema = committeeRequestSchema.extend({ rejectionReason: z.string() });

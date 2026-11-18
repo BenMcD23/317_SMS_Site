@@ -8,13 +8,13 @@ import { toast } from "sonner";
 
 import { SectionDialog, SubjectDialog } from "@/components/classifications/qr-dialogs";
 import { useConfirm } from "@/components/confirm-dialog";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { downloadQr, QrImage } from "@/components/qr-code";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { copyText } from "@/lib/clipboard";
 import {
@@ -34,7 +34,7 @@ import {
   type TheorySection,
 } from "@/lib/theory";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 function LessonQr({ lesson, url }: { lesson: LessonCode; url: string }) {
   const label = lessonLabel(lesson, lesson.part);

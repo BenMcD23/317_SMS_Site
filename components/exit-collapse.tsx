@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 // Long enough to read as "that card went away", short enough not to hold up the next click.
 export const EXIT_MS = 250;

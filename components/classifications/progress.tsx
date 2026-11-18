@@ -6,15 +6,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Search, Users } from "lucide-react";
 import { toast } from "sonner";
 
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { FlightFilter, type FlightChoice } from "@/components/flight-filter";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { LessonCell, LessonPips } from "@/components/classifications/lesson-cell";
 import { RecordLessonDialog } from "@/components/classifications/record-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card } from "@317/ui-common/components/ui/card";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@317/ui-common/components/ui/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { classificationBadgeClass, flightBadgeClass, flightsIn } from "@/lib/cadet-format";
@@ -28,7 +28,7 @@ import {
   type TheorySubject,
 } from "@/lib/theory";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 type Show = "todo" | "all";
 

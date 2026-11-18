@@ -7,9 +7,9 @@ import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { SearchableSelect } from "@/components/searchable-select";
-import { ErrorAlert } from "@/components/error-alert";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -18,9 +18,9 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
   ResponsiveDialogTrigger,
-} from "@/components/responsive-dialog";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Label } from "@/components/ui/label";
+} from "@317/ui-common/components/responsive-dialog";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@317/ui-common/components/ui/input-group";
+import { Label } from "@317/ui-common/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   categoriesOf,

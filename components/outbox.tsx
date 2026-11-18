@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { CloudUpload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import {
   Popover,
   PopoverContent,

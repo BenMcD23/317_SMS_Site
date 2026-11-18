@@ -2,19 +2,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@317/ui-common/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/page-header";
-import { cn } from "@/lib/utils";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { cn } from "@317/ui-common/lib/utils";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -34,14 +34,14 @@ import {
   ResponsiveDialogDescription,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
 import { streamAuthed } from "@/lib/sse";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
-import { ErrorAlert } from "@/components/error-alert";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
 import { VpSyncCard } from "@/components/vp-sync-card";
 import { LEAVING_KEY } from "@/components/oc/leaving-process-card";
 

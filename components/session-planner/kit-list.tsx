@@ -7,9 +7,9 @@ import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
 import { DataTable, dataTableColumns } from "@/components/data-table";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { KitDialog } from "@/components/session-planner/kit-dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { deleteKit, saveKit, type KitForm, type KitItem } from "@/lib/session-planner";
 
 const col = dataTableColumns<KitItem>();

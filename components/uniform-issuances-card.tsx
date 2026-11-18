@@ -5,14 +5,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Check, History, Loader2, Pencil, Shirt, Undo2, X } from "lucide-react";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
 import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { formatDate, todayLocal } from "@/lib/format";
 import { useReference } from "@/lib/reference";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 type Issuance = {
   id: number;

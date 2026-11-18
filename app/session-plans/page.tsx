@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useApiQuery } from "@/lib/use-api-query";
-import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
 import { DataTable, dataTableColumns } from "@/components/data-table";
 import { Plus, ClipboardList } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { type SessionPlanSummary, STATUS_LABELS, STATUS_STYLE } from "@/lib/session-plans";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 
 interface ListResponse {
   plans: SessionPlanSummary[];

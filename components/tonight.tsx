@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronRight, ClipboardList, ScanLine } from "lucide-react";
 
 import { DividedGrid } from "@/components/divided-grid";
-import { SectionHeading } from "@/components/section-heading";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 import type { DoorList } from "@/lib/check-ins";
 import { todayLocal } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";

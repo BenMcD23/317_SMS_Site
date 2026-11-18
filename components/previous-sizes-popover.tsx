@@ -4,13 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Ruler } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Spinner } from "@/components/ui/spinner";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
 import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { useReference } from "@/lib/reference";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 type Issuance = {
   id: number;

@@ -6,11 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSession } from "next-auth/react";
 import { z } from "zod";
 
-import { ErrorAlert } from "@/components/error-alert";
-import { Button } from "@/components/ui/button";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { recordAttempt, type DrillAttempt, type DrillStage } from "@/lib/drill";
 import { todayLocal } from "@/lib/format";

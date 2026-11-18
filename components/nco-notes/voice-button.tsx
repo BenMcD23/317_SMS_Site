@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Mic, RotateCcw, Square } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { pickRecordingType, transcribe } from "@/lib/nco-notes";
 
 /** Long enough for an end-of-night debrief about the whole team; short

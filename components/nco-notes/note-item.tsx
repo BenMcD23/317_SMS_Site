@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { SearchableSelect } from "@/components/searchable-select";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -17,11 +17,11 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Button } from "@/components/ui/button";
+} from "@317/ui-common/components/responsive-dialog";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { deleteWithUndo } from "@/lib/undo-delete";
 import { deleteNote, editNote, type NcoNote, type NcoNoteRow } from "@/lib/nco-notes";

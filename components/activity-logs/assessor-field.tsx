@@ -4,11 +4,11 @@ import { Check } from "lucide-react";
 
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ErrorAlert } from "@/components/error-alert";
-import { cn } from "@/lib/utils";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { cn } from "@317/ui-common/lib/utils";
 import { useApiQuery } from "@/lib/use-api-query";
 
 export type AssessorMode = "staff" | "other";

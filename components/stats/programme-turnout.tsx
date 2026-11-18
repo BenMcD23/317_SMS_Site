@@ -16,12 +16,19 @@ import {
 import { CalendarRange } from "lucide-react";
 
 import { DataTable, dataTableColumns } from "@/components/data-table";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
-import { SectionHeading } from "@/components/section-heading";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 import { CsvButton } from "@/components/stats/csv-button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@317/ui-common/components/ui/card";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { formatDate, formatShortDate } from "@/lib/format";
 import {
   kindsByTurnout,

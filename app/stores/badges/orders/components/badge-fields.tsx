@@ -6,9 +6,15 @@
  * page, which had grown past 1,500 lines.
  */
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Input } from "@/components/ui/input";
+import { Input } from "@317/ui-common/components/ui/input";
 import { SearchableSelect } from "@/components/searchable-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@317/ui-common/components/ui/select";
 import { type BadgeCategory, type GainedWhereOption, gainedWhereLabel, useReference } from "@/lib/reference";
 
 export function BadgePicker({

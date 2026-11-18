@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 
 const UP_INTERVAL = 30_000; // normal polling cadence
 const DOWN_INTERVAL = 5_000; // poll faster while down so recovery shows quickly

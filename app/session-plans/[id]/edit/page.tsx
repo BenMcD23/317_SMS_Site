@@ -7,12 +7,12 @@ import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useApiQuery } from "@/lib/use-api-query";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { SessionPlanForm } from "@/components/session-plans/session-plan-form";
 import { AttachmentList } from "@/components/session-plans/attachment-list";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { ArrowLeft, Loader2, Save, Send, Upload } from "lucide-react";
 import { savePlan, submitPlan, deleteAttachment, uploadAttachments } from "@/lib/session-plans-api";
 import {
@@ -23,7 +23,7 @@ import {
   type SessionPlanContent,
   type SessionPlanDetail,
 } from "@/lib/session-plans";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 
 export default function EditSessionPlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

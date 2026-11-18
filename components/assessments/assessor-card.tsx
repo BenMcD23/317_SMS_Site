@@ -2,10 +2,10 @@
 
 import { useRef, useEffect, useState } from "react";
 import { DateShortcuts } from "@/components/date-shortcuts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Badge } from "@317/ui-common/components/ui/badge";
 import { Loader2, CheckCircle2, RotateCcw, Pencil, AlertCircle } from "lucide-react";
 import Link from "next/link";
 

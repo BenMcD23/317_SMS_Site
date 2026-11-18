@@ -5,18 +5,18 @@ import { AlertTriangle, ClipboardCopy, GraduationCap, RotateCcw } from "lucide-r
 import { toast } from "sonner";
 
 import { DateShortcuts } from "@/components/date-shortcuts";
-import { ErrorAlert } from "@/components/error-alert";
-import { EmptyState } from "@/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { FlightFilter, type FlightChoice } from "@/components/flight-filter";
 import { Stat, StatGroup } from "@/components/stat";
 import { SearchableSelect, type SearchableOption } from "@/components/searchable-select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { flightBadgeClass, flightsIn } from "@/lib/cadet-format";
@@ -35,7 +35,7 @@ import {
 } from "@/lib/classification-day";
 import { formatDate, todayLocal } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /** Pick which lessons are running tonight; none picked means any. */
 function LessonsRunning({

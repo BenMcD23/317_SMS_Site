@@ -1,9 +1,9 @@
 import { CheckCircle2, Circle, Plane } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
 import { formatDate, formatMinutes } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 export type Flight = {
   id: number;

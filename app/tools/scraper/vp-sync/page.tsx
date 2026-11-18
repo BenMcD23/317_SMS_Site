@@ -5,12 +5,12 @@ import { useSession } from "next-auth/react";
 import { AlertTriangle, Bookmark, CheckCircle2, Copy, GraduationCap, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/page-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
 import { API_BASE } from "@/lib/config";
 import { apiRequest } from "@/lib/api-fetch";
 import {

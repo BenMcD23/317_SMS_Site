@@ -2,8 +2,8 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@317/ui-common/components/ui/button";
+import { cn } from "@317/ui-common/lib/utils";
 
 const MONTH_NAMES = [
   "January",

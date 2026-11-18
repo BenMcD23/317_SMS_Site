@@ -18,12 +18,12 @@ import {
   nextPosition,
   starterPanels,
 } from "@/lib/custom-dashboard";
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
 import { OcOnly } from "@/components/oc/oc-access-required";
 import { DashboardGrid } from "@/components/oc/custom-dashboard/dashboard-grid";

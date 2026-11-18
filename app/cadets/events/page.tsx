@@ -2,19 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
-import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Avatar, AvatarFallback } from "@317/ui-common/components/ui/avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@317/ui-common/components/ui/input-group";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { cn } from "@317/ui-common/lib/utils";
 import { flightBadgeClass, cadetInitials } from "@/lib/cadet-format";
 import { Search, CalendarDays, Users, ChevronDown, ChevronRight, Ban } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 
 type EventCadet = {
   cin: number;

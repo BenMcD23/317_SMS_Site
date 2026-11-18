@@ -2,8 +2,14 @@
 
 import { useCallback, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@317/ui-common/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@317/ui-common/components/ui/dialog";
 
 /**
  * Destructive-action confirmation dialog, shared by the pages that used to

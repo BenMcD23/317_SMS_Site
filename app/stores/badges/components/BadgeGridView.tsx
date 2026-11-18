@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
 import { BadgeCell, BadgeGrid, BadgeItem } from "@/lib/stores-types";
 
 function BadgeCellCard({

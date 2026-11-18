@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { ListSkeleton } from "@/components/list-skeleton";
 
 // Instant fallback Next.js swaps in the moment navigation starts (see

@@ -24,6 +24,8 @@ export const CLASSIFICATIONS_REDIRECTS = [
 ];
 
 const nextConfig: NextConfig = {
+  // The shared components ship as TypeScript source; Next compiles them like our own.
+  transpilePackages: ["@317/ui-common"],
   // Otherwise `next dev` appends its own block to CLAUDE.md whenever it sees an
   // AI agent running it, leaving a stray diff in every session.
   agentRules: false,

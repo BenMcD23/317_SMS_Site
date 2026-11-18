@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { ShieldAlert } from "lucide-react";
 
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
 import { isOc } from "@/lib/config";
 
 /**

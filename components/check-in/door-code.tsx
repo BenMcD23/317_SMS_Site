@@ -6,7 +6,7 @@ import { Download, Link2, QrCode, RefreshCw, TriangleAlert } from "lucide-react"
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { downloadQr, QrImage } from "@/components/qr-code";
 import {
   ResponsiveDialog,
@@ -14,10 +14,10 @@ import {
   ResponsiveDialogDescription,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@317/ui-common/components/responsive-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { copyText } from "@/lib/clipboard";
 import { checkInUrl, newCheckInCode, type CheckInCode } from "@/lib/check-ins";
 import { formatDate } from "@/lib/format";

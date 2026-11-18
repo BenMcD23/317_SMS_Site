@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { breadcrumbsFor } from "@/lib/navigation";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@317/ui-common/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,

@@ -15,10 +15,10 @@ import {
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { OrderDisclosure, OrderList } from "@/components/order-disclosure";
+import { OrderDisclosure, OrderList } from "@317/ui-common/components/order-disclosure";
 import { QrImage } from "@/components/qr-code";
 import {
   ResponsiveDialog,
@@ -26,14 +26,14 @@ import {
   ResponsiveDialogDescription,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { SectionHeading } from "@/components/section-heading";
+} from "@317/ui-common/components/responsive-dialog";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 import { Stat, StatGroup } from "@/components/stat";
 import { SessionDialog } from "@/components/training/session-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import { flightBadgeClass, flightLabel } from "@/lib/cadet-format";
 import { copyText } from "@/lib/clipboard";
 import { formatDate, todayLocal } from "@/lib/format";
@@ -56,7 +56,7 @@ import {
   type TrainingNight,
 } from "@/lib/training";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 // Check-ins and QR scans arrive all evening; a minute is fresh enough to run
 // a night from without hammering the API from every open phone.

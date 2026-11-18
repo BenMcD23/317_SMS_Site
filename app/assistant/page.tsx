@@ -31,11 +31,11 @@ import { AnswerTable } from "@/components/assistant/answer-table";
 import { ChatList } from "@/components/assistant/chat-list";
 import { RenameChatDialog } from "@/components/assistant/rename-chat-dialog";
 import { useConfirm } from "@/components/confirm-dialog";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
-import { PageHeader } from "@/components/page-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
+import { Button } from "@317/ui-common/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
 import {
   InputGroup,
@@ -43,10 +43,16 @@ import {
   InputGroupButton,
   InputGroupText,
   InputGroupTextarea,
-} from "@/components/ui/input-group";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
+} from "@317/ui-common/components/ui/input-group";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@317/ui-common/components/ui/sheet";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
 import { apiRequest } from "@/lib/api-fetch";
 import {
   askStream,
