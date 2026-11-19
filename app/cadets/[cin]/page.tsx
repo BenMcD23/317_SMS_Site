@@ -37,7 +37,9 @@ import {
 } from "lucide-react";
 import { Stat, StatGroup } from "@/components/stat";
 import { UniformIssuancesCard } from "@/components/uniform-issuances-card";
+import { FieldcraftCard } from "@/components/fieldcraft-card";
 import { FlyingCard, type Flight, type FlyingStage } from "@/components/flying-card";
+import type { CadetFieldcraftLevel } from "@/lib/fieldcraft";
 
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
@@ -82,6 +84,7 @@ type CadetDetail = {
   classification_dates?: Record<string, string>;
   flights?: Flight[];
   flying_blue_stages?: FlyingStage[];
+  fieldcraft?: CadetFieldcraftLevel[] | null;
   banned: boolean;
   qualifications: Qualification[];
   events: CadetEvent[];
@@ -566,6 +569,9 @@ export default function CadetOverviewPage() {
           </Card>
           <div className="mt-4">
             <FlyingCard flights={cadet.flights ?? []} stages={cadet.flying_blue_stages ?? []} />
+          </div>
+          <div className="mt-4">
+            <FieldcraftCard levels={cadet.fieldcraft ?? null} />
           </div>
         </TabsContent>
 

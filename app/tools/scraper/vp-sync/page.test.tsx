@@ -18,7 +18,7 @@ const COUNTS = { matched: 1, unmatched: 0, saved: 7, failed: 1, kept: 0, theory:
 // What the fake Volunteer Portal answers, by path. Anything else is [].
 const PORTAL: Record<string, { status: number; body: unknown }> = {
   "/api/persons/cadets": { status: 200, body: { data: [{ computerNumber: 111, personnelWebId: "w1" }] } },
-  "/api/shootingmanagement/w1/whts": { status: 403, body: "Forbidden" },
+  "/api/fieldcraftmanagement/w1/completions": { status: 403, body: "Forbidden" },
   "/api/person/w1/aviation/history": { status: 200, body: [{ aircraft: "Tutor" }] },
 };
 
@@ -88,7 +88,7 @@ describe("Volunteer Portal sync page", () => {
     const [cadet] = JSON.parse(init.body).cadets;
     expect(cadet.cin).toBe(111);
     expect(cadet.data.flying).toEqual([{ aircraft: "Tutor" }]);
-    expect(cadet.data.whts).toBeNull();
+    expect(cadet.data.fieldcraft).toBeNull();
 
     expect([stat("Cadets updated"), stat("Records saved"), stat("Theory lessons ticked")]).toEqual([
       "1",
@@ -101,9 +101,9 @@ describe("Volunteer Portal sync page", () => {
   it("lists every failed portal read, grouped, so a tester can report them", async () => {
     render(<VpSyncPage />);
     expect(await screen.findByText(/finished with problems/)).toBeTruthy();
-    const whts = screen.getByRole("region", { name: "whts" });
-    expect(whts.textContent).toContain("403 · your portal login lacks this permission · ×1");
-    expect(whts.textContent).toContain("/api/shootingmanagement/w1/whts");
+    const fieldcraft = screen.getByRole("region", { name: "fieldcraft" });
+    expect(fieldcraft.textContent).toContain("403 · your portal login lacks this permission · ×1");
+    expect(fieldcraft.textContent).toContain("/api/fieldcraftmanagement/w1/completions");
   });
 
   it("copies every problem for sending on", async () => {
@@ -113,7 +113,9 @@ describe("Volunteer Portal sync page", () => {
     await screen.findByText(/finished with problems/);
     act(() => screen.getByRole("button", { name: /Copy all/ }).click());
     await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith('whts\t403\t/api/shootingmanagement/w1/whts\t"Forbidden"')
+      expect(writeText).toHaveBeenCalledWith(
+        'fieldcraft\t403\t/api/fieldcraftmanagement/w1/completions\t"Forbidden"'
+      )
     );
   });
 
@@ -164,11 +166,11 @@ describe("Volunteer Portal sync page", () => {
     await waitFor(() => expect(sentToPortal("sms-vp-ready")).toHaveLength(1));
     // The old bookmark reads the CINs from "ready" and filters itself.
     expect(sentToPortal("sms-vp-ready")[0][0].cins).toEqual([111]);
-    send({ type: "sms-vp-data", cadets: [{ cin: 111, data: { whts: [] } }], errors: [] });
+    send({ type: "sms-vp-data", cadets: [{ cin: 111, data: { fieldcraft: [] } }], errors: [] });
 
     expect(await screen.findByText(/Sync complete/)).toBeTruthy();
     expect(screen.getByText(/bookmark is out of date/)).toBeTruthy();
-    expect(JSON.parse(syncCalls()[0][1].body)).toEqual({ cadets: [{ cin: 111, data: { whts: [] } }] });
+    expect(JSON.parse(syncCalls()[0][1].body)).toEqual({ cadets: [{ cin: 111, data: { fieldcraft: [] } }] });
   });
 
   it("shows an old bookmark's failure with its problems", async () => {
