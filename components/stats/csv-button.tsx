@@ -2,7 +2,7 @@
 
 import { Download } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { downloadCsv } from "@/lib/download";
 
 /**

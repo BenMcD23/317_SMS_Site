@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { SearchableSelect } from "@/components/searchable-select";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { Pencil, X, Check, Loader2, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";

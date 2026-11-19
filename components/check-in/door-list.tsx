@@ -6,20 +6,20 @@ import { CheckCircle2, SearchX, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Stat, StatGroup } from "@/components/stat";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { flightBadgeClass } from "@/lib/cadet-format";
 import { checkedInHow, checkIn, undoCheckIn, type DoorCadet, type DoorList } from "@/lib/check-ins";
 import { formatTime } from "@/lib/format";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 type Show = "waiting" | "in" | "all";
 

@@ -1,5 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { cn } from "@317/ui-common/lib/utils";
 
 /** Placeholder for a list or table while it loads — one bar per expected row. */
 export function ListSkeleton({ rows = 6, className }: { rows?: number; className?: string }) {

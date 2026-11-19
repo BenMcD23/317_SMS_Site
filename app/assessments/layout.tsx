@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { RouteTabs } from "@/components/route-tabs";
 
 const TABS = [

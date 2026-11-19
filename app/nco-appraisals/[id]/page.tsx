@@ -8,16 +8,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, FileDown, FileText, Mail, Pencil, Save, Sparkles, Trash2, X } from "lucide-react";
 
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { AppraisalForm } from "@/components/nco-appraisals/appraisal-form";
 import { useConfirm } from "@/components/confirm-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -25,7 +25,7 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
 import { Private } from "@/components/private";

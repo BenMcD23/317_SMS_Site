@@ -15,7 +15,7 @@ import {
   keyLabel,
 } from "@/lib/custom-dashboard";
 import { PanelChart } from "@/components/charts/lazy";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 /**

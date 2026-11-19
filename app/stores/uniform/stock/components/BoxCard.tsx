@@ -3,16 +3,16 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 import { useState } from "react";
 

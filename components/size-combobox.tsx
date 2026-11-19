@@ -2,8 +2,8 @@
 
 import { useState, useRef } from "react";
 import { useReference } from "@/lib/reference";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Input } from "@317/ui-common/components/ui/input";
+import { cn } from "@317/ui-common/lib/utils";
 
 interface SizeComboboxProps {
   itemType: string;

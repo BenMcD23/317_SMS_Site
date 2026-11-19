@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@317/ui-common/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { HeaderBreadcrumbs } from "@/components/layout/breadcrumbs";
 import { CommandPaletteTrigger } from "@/components/layout/command-palette";

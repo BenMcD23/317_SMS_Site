@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { cn } from "@317/ui-common/lib/utils";
 import { STATUS_LABEL, STATUS_TONE, type WeekStatus } from "@/lib/activity-logs";
 
 const TONE_CLASS = {

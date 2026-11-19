@@ -3,7 +3,7 @@
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form";
 
 import { SearchableSelect } from "@/components/searchable-select";
-import { Input } from "@/components/ui/input";
+import { Input } from "@317/ui-common/components/ui/input";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { SizeCombobox } from "@/components/size-combobox";
 import { useReference } from "@/lib/reference";

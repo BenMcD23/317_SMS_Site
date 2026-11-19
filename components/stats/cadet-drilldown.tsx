@@ -3,14 +3,20 @@
 import Link from "next/link";
 
 import { CsvButton } from "@/components/stats/csv-button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@317/ui-common/components/ui/dialog";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { flightBadgeClass } from "@/lib/cadet-format";
 import { formatDate } from "@/lib/format";
 import { type DrillCadet, flightLabel } from "@/lib/stats";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /** What the page asked to see: the /stats/cadets filters and a heading. */
 export type Drill = { query: Record<string, string>; title: string } | null;

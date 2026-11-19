@@ -6,12 +6,12 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { CircleCheck, Hourglass, UserPlus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
-import { EmptyState } from "@/components/empty-state";
+import { Button } from "@317/ui-common/components/ui/button";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { CountTabs } from "@/components/count-tabs";
-import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
+import { OrderDisclosure, OrderList, OrderListSkeleton } from "@317/ui-common/components/order-disclosure";
 import { Private } from "@/components/private";
 import { ApplicationChecklist } from "@/components/applications/application-checklist";
 import { DeadlineBadge, ProgressBadge } from "@/components/applications/application-badges";

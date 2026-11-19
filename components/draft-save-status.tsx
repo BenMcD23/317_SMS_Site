@@ -2,7 +2,7 @@
 
 import type { ServerSaveStatus } from "@/hooks/useAssessmentDraft";
 import { formatTime } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * The one-line note under an assessment sheet saying whether the server has

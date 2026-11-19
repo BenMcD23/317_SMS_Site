@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * One bordered block split into cells by hairlines — the stat strips and the

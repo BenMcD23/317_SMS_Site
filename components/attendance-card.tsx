@@ -4,18 +4,24 @@ import { useMemo, useState } from "react";
 import { CalendarCheck } from "lucide-react";
 
 import { TrendBarChart } from "@/components/charts/lazy";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@317/ui-common/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Stat, StatGroup } from "@/components/stat";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { useApiQuery } from "@/lib/use-api-query";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import type { AttendanceState } from "@/lib/attendance";
 import { countStates, rateExcludingAuthorised, rateOf, STATE_BADGE } from "@/lib/attendance";
 

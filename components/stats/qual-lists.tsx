@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
 import { flightBadgeClass } from "@/lib/cadet-format";
 import { formatDate } from "@/lib/format";
 import { type Award, badgeLabel, type ExpiringQual, levelColor } from "@/lib/stats";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * Named lists behind the stats: badges recently gained and qualifications about

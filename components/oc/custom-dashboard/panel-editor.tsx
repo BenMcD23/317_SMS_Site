@@ -34,12 +34,18 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { SearchableSelect } from "@/components/searchable-select";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@317/ui-common/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@317/ui-common/components/ui/select";
 import { PanelView, usePanelQuery } from "@/components/oc/custom-dashboard/panel-view";
 
 // Radix Select can't hold "" as a value, so "none" stands in for no grouping.

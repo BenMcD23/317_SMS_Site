@@ -12,9 +12,9 @@
  * page, not part of the app chrome.
  */
 
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
+import { cn } from "@317/ui-common/lib/utils";
 import { Sparkles } from "lucide-react";
 
 export type Fields = Record<string, string>;

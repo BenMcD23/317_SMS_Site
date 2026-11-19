@@ -3,17 +3,17 @@
 import { Check, ChevronDown, MoreHorizontal, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Spinner } from "@/components/ui/spinner";
-import { cn } from "@/lib/utils";
+} from "@317/ui-common/components/ui/dropdown-menu";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
+import { cn } from "@317/ui-common/lib/utils";
 
 /** Where an item is up to, in one word or two; the tone is never the only signal. */
 export type ItemStatus = {

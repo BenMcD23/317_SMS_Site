@@ -11,11 +11,11 @@ import { EntryList } from "@/components/catalogue/entry-list";
 import { ItemDialog } from "@/components/catalogue/item-dialog";
 import { useConfirm } from "@/components/confirm-dialog";
 import { CountTabs } from "@/components/count-tabs";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Button } from "@317/ui-common/components/ui/button";
 import {
   badgeSummary,
   BADGES_KEY,

@@ -2,9 +2,16 @@
 
 import { type DrillDown } from "@/components/stats/charts";
 import { CsvButton } from "@/components/stats/csv-button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@317/ui-common/components/ui/card";
 import { BLUE_FLYING_STATES, type TrainingProgress } from "@/lib/stats";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * Training progress from the Volunteer Portal data (GET /stats/progress):

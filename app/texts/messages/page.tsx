@@ -3,15 +3,15 @@
 import { Fragment, useEffect, useMemo, useState, type SetStateAction } from "react";
 import { useSession } from "next-auth/react";
 import { MonthPicker } from "@/components/month-picker";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/empty-state";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { usePrivateText } from "@/components/private";
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
   ResponsiveDialogTrigger,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -40,8 +40,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { PageHeader } from "@/components/page-header";
+} from "@317/ui-common/components/ui/dropdown-menu";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import {
   Sparkles,
   Send,

@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { CalendarRange, ChevronDown } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { todayLocal } from "@/lib/format";
 import { QUICK_RANGES, type QuickRangeId, rangeLabel, type TimeRange } from "@/lib/stats";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * Grafana-style time picker: one button naming the current range, opening an

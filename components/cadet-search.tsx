@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { Search, ChevronsUpDown, Check, X, Loader2 } from "lucide-react";
 
 import { type CadetHit, useCadetSearch } from "@/lib/use-cadet-search";

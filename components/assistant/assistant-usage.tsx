@@ -1,6 +1,6 @@
 "use client";
 
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Private } from "@/components/private";
 import { Stat, StatGroup } from "@/components/stat";

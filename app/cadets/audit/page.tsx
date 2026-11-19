@@ -5,18 +5,24 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { SearchableSelect } from "@/components/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@317/ui-common/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { CadetMultiPicker } from "@/components/cadet-multi-picker";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { classificationBadgeClass } from "@/lib/cadet-format";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";

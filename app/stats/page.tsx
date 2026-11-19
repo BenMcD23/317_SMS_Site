@@ -6,8 +6,8 @@ import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Printer, ZoomOut } from "lucide-react";
 
 import { FlightFilter } from "@/components/flight-filter";
-import { PageHeader } from "@/components/page-header";
-import { SectionHeading } from "@/components/section-heading";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 import { BadgeGlance } from "@/components/stats/badge-glance";
 import { CadetDrilldown, type Drill } from "@/components/stats/cadet-drilldown";
 import {
@@ -25,11 +25,11 @@ import { ClassificationFunnel, IntakeRetention } from "@/components/stats/progre
 import { ExpiringQuals, RecentAwards } from "@/components/stats/qual-lists";
 import { BlueFlyingCard, ClassificationExamsCard } from "@/components/stats/training";
 import { TimeRangePicker } from "@/components/stats/time-range-picker";
-import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatDate, formatShortDate } from "@/lib/format";
 import {

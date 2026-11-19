@@ -6,14 +6,14 @@ import { toast } from "sonner";
 
 import { SearchableSelect } from "@/components/searchable-select";
 import { canRecord, VoiceButton } from "@/components/nco-notes/voice-button";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { todayLocal } from "@/lib/format";
 import { createNote, createNotes, splitDebrief, type NcoNoteRow } from "@/lib/nco-notes";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 type Mode = "one" | "several";
 

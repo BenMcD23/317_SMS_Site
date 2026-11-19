@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 
 // The resolved theme is only known on the client, so render a placeholder of
 // the same size until hydration to avoid a mismatch.

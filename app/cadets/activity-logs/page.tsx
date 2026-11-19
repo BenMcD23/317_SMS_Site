@@ -6,11 +6,11 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, NotebookPen, Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
-import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { FlightFilter } from "@/components/flight-filter";
 import { Stat, StatGroup } from "@/components/stat";

@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { DividedGrid } from "@/components/divided-grid";
 
 /**

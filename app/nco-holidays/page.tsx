@@ -7,14 +7,14 @@ import { toast } from "sonner";
 import { CalendarOff, Pencil, Plus, Undo2, TriangleAlert, RefreshCw } from "lucide-react";
 
 import { useApiQuery } from "@/lib/use-api-query";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { useConfirm } from "@/components/confirm-dialog";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ResponsiveDialog,
@@ -22,7 +22,7 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate, formatTimestamp } from "@/lib/format";
 import {
@@ -36,8 +36,8 @@ import {
   type NcoHolidayList,
 } from "@/lib/nco-holidays";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 
 type Filter = "upcoming" | "all" | "mine";
 

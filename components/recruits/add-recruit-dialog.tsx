@@ -13,11 +13,11 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "@317/ui-common/components/responsive-dialog";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { addRecruit, type NewRecruit, type Recruit } from "@/lib/recruits";
 
 const required = (what: string) => z.string().trim().min(1, `Enter the ${what}`).max(200, "Too long");

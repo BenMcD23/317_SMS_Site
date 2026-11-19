@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, ChevronRight, Copy, Inbox, Truck, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { SectionHeading } from "@/components/section-heading";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 import { BadgeOrder, BadgeOrderItem, BadgeOrderListEntry } from "@/lib/stores-types";
 import { QmNotes } from "@/components/qm-notes";
 import { formatTimestamp } from "@/lib/format";

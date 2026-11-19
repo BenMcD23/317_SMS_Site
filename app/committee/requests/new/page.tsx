@@ -19,8 +19,8 @@ import {
   formToPayload,
 } from "@/lib/committee-form";
 import { CommitteeRequestFields } from "@/components/committee/request-fields";
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Button } from "@317/ui-common/components/ui/button";
 
 export default function NewCommitteeRequestPage() {
   const router = useRouter();

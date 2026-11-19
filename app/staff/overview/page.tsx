@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { PageHeader } from "@/components/page-header";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { Card } from "@317/ui-common/components/ui/card";
+import { Avatar, AvatarFallback } from "@317/ui-common/components/ui/avatar";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@317/ui-common/components/ui/input-group";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { cadetInitials } from "@/lib/cadet-format";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { Search, ChevronRight, UserCog } from "lucide-react";

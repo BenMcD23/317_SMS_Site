@@ -6,21 +6,21 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { CalendarDays, Plane, Trash2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { useConfirm } from "@/components/confirm-dialog";
 import { API_BASE } from "@/lib/config";
 import { apiRequest } from "@/lib/api-fetch";
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 type Form = "tg21" | "tg23" | "av_med";
 

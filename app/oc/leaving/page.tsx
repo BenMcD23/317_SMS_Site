@@ -1,11 +1,11 @@
 "use client";
 
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { LeavingProcessCard } from "@/components/oc/leaving-process-card";
 import { OcOnly } from "@/components/oc/oc-access-required";
 import { ParentEmailsCard } from "@/components/oc/parent-emails-card";
 import { usePersonalDataHidden } from "@/lib/privacy";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 export default function OcLeavingPage() {
   const [personalHidden] = usePersonalDataHidden();

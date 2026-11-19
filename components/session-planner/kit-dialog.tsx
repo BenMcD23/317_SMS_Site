@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -12,11 +12,11 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Button } from "@/components/ui/button";
+} from "@317/ui-common/components/responsive-dialog";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { kitSchema, type KitForm, type KitItem } from "@/lib/session-planner";
 
 const EMPTY: KitForm = { name: "", quantity: 1, notes: "" };

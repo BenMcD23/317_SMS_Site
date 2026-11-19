@@ -10,9 +10,9 @@ import { toast } from "sonner";
 import { FlightFilter } from "@/components/flight-filter";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SearchableSelect } from "@/components/searchable-select";
-import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -20,9 +20,9 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@317/ui-common/components/responsive-dialog";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE } from "@/lib/config";
 import { formatDate, formatShortDate, todayLocal } from "@/lib/format";
@@ -38,7 +38,7 @@ import {
   targetSeries,
 } from "@/lib/stats";
 import { deleteWithUndo } from "@/lib/undo-delete";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * Squadron goals for badges, set by staff: where each stands now, its trend

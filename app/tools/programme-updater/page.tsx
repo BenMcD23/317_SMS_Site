@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { MonthPicker } from "@/components/month-picker";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent } from "@317/ui-common/components/ui/card";
 import { FieldGroup } from "@/components/ui/field";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Spinner } from "@/components/ui/spinner";
-import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { ProgrammeRecord } from "@/components/programme/programme-record";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";

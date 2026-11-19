@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 
 import { usePersonalDataHidden } from "@/lib/privacy";
-import { Label } from "@/components/ui/label";
+import { Label } from "@317/ui-common/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 /**

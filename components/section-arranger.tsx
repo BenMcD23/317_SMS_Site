@@ -20,8 +20,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { cn } from "@317/ui-common/lib/utils";
+import { Button } from "@317/ui-common/components/ui/button";
 
 interface Item {
   id: string;

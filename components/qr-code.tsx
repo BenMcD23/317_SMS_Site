@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * Static QR codes, drawn in the browser. Shared by the lesson check-in codes

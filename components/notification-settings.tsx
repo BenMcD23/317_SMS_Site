@@ -5,11 +5,11 @@ import { useSession } from "next-auth/react";
 import { BellRing } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import {
   currentSubscription,
   disablePush,

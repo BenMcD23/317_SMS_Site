@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 
 import { DoorCode } from "@/components/check-in/door-code";
 import { DoorList } from "@/components/check-in/door-list";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 
 export default function CheckInPage() {
   const { data: session } = useSession();

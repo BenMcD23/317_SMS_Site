@@ -12,15 +12,15 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Input } from "@/components/ui/input";
+} from "@317/ui-common/components/responsive-dialog";
+import { Input } from "@317/ui-common/components/ui/input";
 import { SectionCard } from "./SectionCard";
 import { BoxSection, ShelfBox, ShelfStructure, StockItem } from "@/lib/stores-types";
 import { useState, useMemo } from "react";

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { API_BASE } from "@/lib/config";
 import { apiFetch } from "@/lib/api-fetch";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { ChevronRight, FileText, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import type { SessionPlanAttachment } from "@/lib/session-plans";
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { StickyNote, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import { formatTimestamp } from "@/lib/format";
 import type { QmNote } from "@/lib/stores-types";
 

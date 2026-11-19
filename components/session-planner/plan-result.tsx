@@ -3,11 +3,11 @@
 import { AlertTriangle } from "lucide-react";
 
 import { Stat, StatGroup } from "@/components/stat";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@317/ui-common/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { flightBadgeClass } from "@/lib/cadet-format";
 import { personName, taskLabel, type SessionPlan } from "@/lib/session-planner";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * A planned session: the headline figures, anything the planner couldn't do,

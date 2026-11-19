@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@317/ui-common/components/ui/badge";
 import { DataTable, dataTableColumns } from "@/components/data-table";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { formatShortDate } from "@/lib/format";
 import { SECTIONS, cellLabel, type CellState, type GridCadet } from "@/lib/activity-logs";
 

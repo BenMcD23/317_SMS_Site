@@ -9,7 +9,7 @@ import { fullLabel } from "@/lib/mobile-pins";
 import { flattenLinks, visibleSections } from "@/lib/navigation";
 import { useQuickPages } from "@/lib/quick-pages";
 import { useCadetSearch } from "@/lib/use-cadet-search";
-import { Button } from "@/components/ui/button";
+import { Button } from "@317/ui-common/components/ui/button";
 import {
   CommandDialog,
   CommandEmpty,

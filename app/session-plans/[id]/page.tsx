@@ -7,14 +7,14 @@ import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useApiQuery } from "@/lib/use-api-query";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { AttachmentList } from "@/components/session-plans/attachment-list";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ResponsiveDialog,
@@ -24,7 +24,7 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
   ResponsiveDialogTrigger,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import {
   ArrowLeft,
   Check,
@@ -48,7 +48,7 @@ import {
   type SessionPlanDetail,
   type SessionPlanSectionKey,
 } from "@/lib/session-plans";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 
 export default function SessionPlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

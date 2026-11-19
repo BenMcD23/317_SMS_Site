@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { useSession } from "next-auth/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { cn } from "@317/ui-common/lib/utils";
 import { StickyActions } from "@/components/sticky-actions";
 import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 
@@ -22,7 +22,7 @@ import { SavedHeading } from "@/components/assessments/saved-heading";
 import { SPACE_CHECKLIST, SPACE_EXPERIMENTS_MAX, spacePassed } from "@/lib/assessment-fields";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { AssessorCard } from "@/components/assessments/assessor-card";
-import { SectionHeading } from "@/components/section-heading";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 import { todayLocal } from "@/lib/format";
 
 function ChecklistRow({

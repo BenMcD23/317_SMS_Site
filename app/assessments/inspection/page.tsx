@@ -5,17 +5,17 @@ import { useSession } from "next-auth/react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { useAssessmentDraft } from "@/hooks/useAssessmentDraft";
 import { DateShortcuts } from "@/components/date-shortcuts";
-import { SectionHeading } from "@/components/section-heading";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
 import {
   Command,
   CommandEmpty,
@@ -35,10 +35,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ThumbsUp, ThumbsDown, X, Loader2, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import { formatDate, todayLocal } from "@/lib/format";
 import { sendOrQueue } from "@/lib/outbox";

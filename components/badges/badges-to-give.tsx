@@ -7,13 +7,13 @@ import { ArrowRight, BadgeCheck, ChevronRight } from "lucide-react";
 import { useApiQuery } from "@/lib/use-api-query";
 import { type BadgeToGive, countByStage, TO_GIVE_STAGE_INFO } from "@/lib/badge-orders";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { cn } from "@317/ui-common/lib/utils";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { SectionHeading } from "@/components/section-heading";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 
 const TONE_CLASS = {
   ready: "border-success/40 bg-success/10 text-success",

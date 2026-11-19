@@ -6,10 +6,10 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { CircleCheck, ExternalLink, Mail, Printer, Trash2, Undo2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Checkbox } from "@317/ui-common/components/ui/checkbox";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { useConfirm } from "@/components/confirm-dialog";
 import {
   type Application,
@@ -20,7 +20,7 @@ import {
   updateApplication,
 } from "@/lib/applications";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * The checklist inside an application row, shared by the staff cadet and

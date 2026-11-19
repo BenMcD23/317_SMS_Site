@@ -7,11 +7,11 @@ import { CalendarRange, History } from "lucide-react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { SectionHeading } from "@/components/section-heading";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
 import { apiRequest } from "@/lib/api-fetch";
 import { API_BASE, OWNER_EMAIL } from "@/lib/config";
 import { formatTimestamp } from "@/lib/format";

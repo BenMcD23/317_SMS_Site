@@ -2,21 +2,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { SearchableSelect } from "@/components/searchable-select";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent } from "@317/ui-common/components/ui/card";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
-import { PageHeader } from "@/components/page-header";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
 import { Download, FileText, RotateCcw, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { API_BASE } from "@/lib/config";
 import { useApiQuery } from "@/lib/use-api-query";
 import { apiFetch } from "@/lib/api-fetch";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { AoPreview, JiPreview, type Fields } from "./document-preview";
 
 type Event317 = { id: number; title: string };

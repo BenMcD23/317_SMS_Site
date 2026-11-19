@@ -9,17 +9,17 @@ import { API_BASE } from "@/lib/config";
 import { flightLabel, flightsIn } from "@/lib/cadet-format";
 import { formatDate, todayLocal } from "@/lib/format";
 import { useApiQuery } from "@/lib/use-api-query";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { AiMarkdown } from "@/components/ai-markdown";
 import { CadetSearchInput } from "@/components/cadet-search";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { Stat, StatGroup } from "@/components/stat";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@317/ui-common/components/ui/alert";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent } from "@317/ui-common/components/ui/card";
+import { Label } from "@317/ui-common/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,8 +29,8 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@317/ui-common/components/ui/select";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 

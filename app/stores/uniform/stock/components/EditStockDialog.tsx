@@ -9,9 +9,9 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Button } from "@/components/ui/button";
-import { ErrorAlert } from "@/components/error-alert";
+} from "@317/ui-common/components/responsive-dialog";
+import { Button } from "@317/ui-common/components/ui/button";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { StockItemFields } from "@/app/stores/uniform/stock/components/StockItemFields";
 import { apiFetch, errorDetail } from "@/lib/api-fetch";
 import { stockPayload, stockResolver, type StockForm, type StockFormContext } from "@/lib/stock-form";

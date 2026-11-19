@@ -1,6 +1,6 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@317/ui-common/components/ui/badge";
 import { deadlineTone } from "@/lib/applications";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 const TONE = {
   success: "border-success/40 bg-success/10 text-success",

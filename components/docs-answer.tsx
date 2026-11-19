@@ -4,9 +4,16 @@ import { useRef, useState } from "react";
 import { Check, ChevronDown, Copy, ExternalLink, FileSearch } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@317/ui-common/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   answerAsText,
@@ -17,7 +24,7 @@ import {
   type DocsAnswer,
   type Source,
 } from "@/lib/docs-answer";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * One docs-assistant answer: the text with clickable [n] citations, then the

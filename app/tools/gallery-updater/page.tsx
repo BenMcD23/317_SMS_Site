@@ -2,9 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
+import { Input } from "@317/ui-common/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -13,12 +13,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
+} from "@317/ui-common/components/ui/select";
+import { Spinner } from "@317/ui-common/components/ui/spinner";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { toast } from "sonner";
 import { Images, Trash2, Upload, X } from "lucide-react";
 import { API_BASE } from "@/lib/config";

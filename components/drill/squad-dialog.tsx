@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
 import { CadetMultiPicker, type PickableCadet } from "@/components/cadet-multi-picker";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -13,9 +13,9 @@ import {
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+} from "@317/ui-common/components/responsive-dialog";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Label } from "@317/ui-common/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,7 +24,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@317/ui-common/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { markSquad, type DrillCadet, type DrillStage } from "@/lib/drill";
 

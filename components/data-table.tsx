@@ -18,7 +18,7 @@ import {
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 
 import { useListView } from "@/lib/list-view";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 /**

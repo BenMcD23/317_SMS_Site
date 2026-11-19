@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Label } from "@317/ui-common/components/ui/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
+} from "@317/ui-common/components/responsive-dialog";
 import { Order } from "@/lib/stores-types";
 import { CadetSearchInput } from "@/components/cadet-search";
 import { KIT_ITEMS } from "./draft-item";

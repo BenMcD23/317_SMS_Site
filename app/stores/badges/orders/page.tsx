@@ -18,14 +18,14 @@ import {
   Inbox,
   Award,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/page-header";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { CountTabs } from "@/components/count-tabs";
-import { EmptyState } from "@/components/empty-state";
-import { ErrorAlert } from "@/components/error-alert";
-import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { EmptyState } from "@317/ui-common/components/empty-state";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@317/ui-common/components/ui/tooltip";
 import {
   BadgeOrder,
   BadgeOrderItem,
@@ -37,7 +37,7 @@ import {
 } from "@/lib/stores-types";
 import { type BadgeCategory, buildBadgeName, useReference } from "@/lib/reference";
 import { useConfirm } from "@/components/confirm-dialog";
-import { OrderDisclosure, OrderList, OrderListSkeleton } from "@/components/order-disclosure";
+import { OrderDisclosure, OrderList, OrderListSkeleton } from "@317/ui-common/components/order-disclosure";
 import { ExitCollapse, useExitCollapse } from "@/components/exit-collapse";
 import { QmNotes } from "@/components/qm-notes";
 import { useOrderWorkflow } from "@/lib/use-order-workflow";

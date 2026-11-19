@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { KitList } from "@/components/session-planner/kit-list";
 import { TaskBank } from "@/components/session-planner/task-bank";

@@ -5,8 +5,8 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
 import { SearchableSelect } from "@/components/searchable-select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
 import { formatDate } from "@/lib/format";
 import { linkSheet, taskLabel, type BankTask, type UnlinkedSheet } from "@/lib/session-planner";
 

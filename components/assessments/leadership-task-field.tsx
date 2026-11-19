@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,7 +12,7 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@317/ui-common/components/ui/select";
 import { taskLabel, type PickerTask } from "@/lib/session-planner";
 import { useApiQuery } from "@/lib/use-api-query";
 

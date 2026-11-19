@@ -10,10 +10,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { bookmarkletHref, VP_ORIGIN } from "@/lib/vp-sync";
 
 // What the sync fills in, and where it shows up in 317 SMS.

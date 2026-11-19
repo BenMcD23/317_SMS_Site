@@ -43,11 +43,11 @@ block, stop and extract it instead.
   Table): sortable headings with `aria-sort`, `rowHref` for click-through.
   Build columns with `dataTableColumns<Row>()`; give odd orders (ranks) a
   `sortFn`.
-- **Forms in a dialog** use `ResponsiveDialog` (`components/responsive-dialog.tsx`):
+- **Forms in a dialog** use `ResponsiveDialog` (`@317/ui-common/components/responsive-dialog`):
   a dialog on a laptop, a bottom sheet on a phone, same parts as `Dialog`.
   Validation is react-hook-form + a zod schema (see `lib/stock-form.ts`).
 - **Expandable orders** are `OrderDisclosure` rows in an `OrderList`
-  (`components/order-disclosure.tsx`): the whole header toggles, the body
+  (`@317/ui-common/components/order-disclosure`): the whole header toggles, the body
   animates open with motion.
 - **Figures** go in a `StatGroup` of `Stat`s (one strip, hairline dividers),
   not a grid of boxed tiles; `DividedGrid` is the same frame for link lists.
@@ -123,19 +123,27 @@ drifting back to the generic-template look.
 | Form in a dialog         | `ResponsiveDialog` + react-hook-form + zod (`lib/stock-form.ts` is the pattern) |
 | Empty, error, loading    | `EmptyState`, `ErrorAlert`, `ListSkeleton` / `OrderListSkeleton`                |
 
-**Shared with the cadet portal.** `OrderDisclosure`, `ResponsiveDialog`,
-`EmptyState`, `ErrorAlert`, `PageHeader`, `SectionHeading`, `components/ui`
-and `lib/utils.ts` are the same files in `../317_cadet_portal` (its
-`scripts/shared-files.mjs` lists them). This copy is the source: change it
-here, then run `npm run shared:sync -- --from ../317_SMS_Site` in the portal
-and open both pull requests. The portal's "Shared files" check goes red
-until they match.
+**Shared with the cadet portal: `@317/ui-common`.** `OrderDisclosure`,
+`ResponsiveDialog`, `EmptyState`, `ErrorAlert`, `PageHeader`,
+`SectionHeading`, the shadcn parts both apps use (`button`, `dialog`,
+`sidebar`…), `useIsMobile` and `cn` live in
+[317-UI-Common](https://github.com/BenMcD23/317-UI-Common), installed from a
+pinned GitHub release and imported as `@317/ui-common/components/…`,
+`/hooks/…` and `/lib/utils`. They are not in this repo, so change them there
+(its README has the steps: change, try in both apps with
+`npm install ../317-ui-common`, release, bump here and in the portal).
+`tests/ui-common.test.ts` checks the wiring: `transpilePackages` in
+`next.config.ts`, the `@source` line in `app/globals.css` (without it Tailwind
+skips the package and its components render unstyled, silently) and a pinned
+release URL. Components only this app uses stay in `components/` here.
 
 If the same markup appears on a second page, extract it into `components/`
-with a doc comment saying why it exists, and give it a test. New shadcn parts:
-`npx shadcn@latest add <name>`, then check the generated file's imports (the
-`drawer` came with `import { cn } from "cn"`, a different npm package; it must
-be `@/lib/utils`).
+with a doc comment saying why it exists, and give it a test. If the portal
+needs it too, it belongs in `@317/ui-common` instead. New shadcn parts:
+`npx shadcn@latest add <name>` puts them in `components/ui` here; check the
+generated file's imports (the `drawer` came with `import { cn } from "cn"`, a
+different npm package; it must be `@317/ui-common/lib/utils`). A part both
+apps will use goes in `@317/ui-common` from the start.
 
 **Libraries.** TanStack Table for in-memory sortable lists; react-hook-form +
 zod for any form with validation (inline error under the field once it's been
@@ -185,7 +193,7 @@ Backend-unreachable in the proxy surfaces a clean `503`, not an opaque `500`.
 - `"use client"` at the top of any component using hooks/browser APIs.
 - Tailwind utility classes via shadcn tokens (`text-muted-foreground`,
   `bg-destructive`, `size-4`); compose conditional classes with `cn()` from
-  `lib/utils.ts`.
+  `@317/ui-common/lib/utils`.
 - Route `params` are a `Promise` in this Next version — always `await` them.
 
 ## Tests are part of every change

@@ -4,20 +4,20 @@ import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Check, Settings2 } from "lucide-react";
 import { SearchableSelect } from "@/components/searchable-select";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogFooter,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@317/ui-common/components/responsive-dialog";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { ShelfBox, StockItem } from "@/lib/stores-types";
 import { useStoresStock } from "@/lib/stores-stock";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { useReference } from "@/lib/reference";
 import { SizeCombobox } from "@/components/size-combobox";
 import { BoxDetailView } from "../components/BoxDetailView";

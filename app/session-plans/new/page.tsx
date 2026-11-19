@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { SessionPlanForm } from "@/components/session-plans/session-plan-form";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
 import { ArrowLeft, FileText, Loader2, Save, Send, Trash2, Upload } from "lucide-react";
 import { savePlan, submitPlan, uploadAttachments } from "@/lib/session-plans-api";
 import {

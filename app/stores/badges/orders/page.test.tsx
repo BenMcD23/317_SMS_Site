@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BadgeOrdersPage from "@/app/stores/badges/orders/page";
 import { renderWithQuery } from "@/tests/render-with-query";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@317/ui-common/components/ui/tooltip";
 import type { BadgeOrder, BadgeOrderItem } from "@/lib/stores-types";
 
 // One stable object, like the real hook — pages key effects on `session`.

@@ -19,7 +19,7 @@ import {
 import { fullLabel } from "@/lib/mobile-pins";
 import { useQuickPages } from "@/lib/quick-pages";
 import { useOpenSections } from "@/lib/sidebar-sections";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -27,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@317/ui-common/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -45,7 +45,7 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@317/ui-common/components/ui/sidebar";
 import { UserMenu } from "@/components/layout/user-menu";
 
 // Swaps a nav item's icon for a spinner while its Link is pending — the

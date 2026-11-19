@@ -8,11 +8,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 
-import { PageHeader } from "@/components/page-header";
-import { ErrorAlert } from "@/components/error-alert";
+import { PageHeader } from "@317/ui-common/components/page-header";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { AppraisalForm } from "@/components/nco-appraisals/appraisal-form";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { useApiQuery } from "@/lib/use-api-query";
 import {
   createAppraisal,

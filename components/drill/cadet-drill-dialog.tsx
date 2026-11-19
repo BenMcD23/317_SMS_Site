@@ -14,8 +14,8 @@ import {
   ResponsiveDialogDescription,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Button } from "@/components/ui/button";
+} from "@317/ui-common/components/responsive-dialog";
+import { Button } from "@317/ui-common/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   deleteAttempt,
@@ -28,7 +28,7 @@ import {
   type LessonState,
 } from "@/lib/drill";
 import { formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 const STATE_LABEL: Record<LessonState, string> = { none: "Not yet", taught: "Taught", passed: "Passed" };
 

@@ -13,7 +13,7 @@ import {
 
 import { formatTimestamp } from "@/lib/format";
 import type { GivenEvent, OrderListEvent, StockEvent } from "@/lib/stores-types";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * Everything that happened to one order item, oldest first, in one list:

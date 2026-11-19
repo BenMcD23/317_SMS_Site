@@ -5,11 +5,11 @@ import { useSession } from "next-auth/react";
 import { Download, ExternalLink, Link2, Lock, LockOpen } from "lucide-react";
 import { toast } from "sonner";
 
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { downloadQr, QrImage } from "@/components/qr-code";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
 import { useConfirm } from "@/components/confirm-dialog";
 import { copyText } from "@/lib/clipboard";
 import { setSignupOpen, SIGNUP_KEY, type SignupState } from "@/lib/recruits";

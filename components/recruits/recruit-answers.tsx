@@ -1,7 +1,7 @@
 "use client";
 
 import { usePersonalDataHidden } from "@/lib/privacy";
-import { SectionHeading } from "@/components/section-heading";
+import { SectionHeading } from "@317/ui-common/components/section-heading";
 import { formatDate } from "@/lib/format";
 import type { Option, Person, RecruitDetail } from "@/lib/recruits";
 

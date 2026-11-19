@@ -5,12 +5,12 @@ import { useSession } from "next-auth/react";
 import { ChevronRight, SquareUser, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/page-header";
+import { Button } from "@317/ui-common/components/ui/button";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { CountTabs } from "@/components/count-tabs";
-import { ErrorAlert } from "@/components/error-alert";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { useConfirm } from "@/components/confirm-dialog";
 import { PersonDialog } from "@/components/website-people/person-dialog";
 import { API_BASE } from "@/lib/config";

@@ -1,6 +1,6 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@317/ui-common/components/ui/badge";
 import { STATUS_LABEL, type StageStatus } from "@/lib/drill";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 /**
  * A drill stage's state as a word on a badge. Shared by the progress list and

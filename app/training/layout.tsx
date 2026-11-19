@@ -1,6 +1,6 @@
 "use client";
 
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@317/ui-common/components/page-header";
 import { RouteTabs, type RouteTab } from "@/components/route-tabs";
 
 /**

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/empty-state";
+import { Button } from "@317/ui-common/components/ui/button";
+import { EmptyState } from "@317/ui-common/components/empty-state";
 import { ShieldX } from "lucide-react";
 
 export default function UnauthorizedPage() {

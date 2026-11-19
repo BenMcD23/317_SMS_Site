@@ -6,21 +6,21 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Copy, ExternalLink, Loader2, Mail, Pencil, RotateCcw } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@317/ui-common/components/ui/badge";
+import { Button } from "@317/ui-common/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@317/ui-common/components/ui/card";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogDescription,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-} from "@/components/responsive-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
-import { ErrorAlert } from "@/components/error-alert";
+} from "@317/ui-common/components/responsive-dialog";
+import { Input } from "@317/ui-common/components/ui/input";
+import { Label } from "@317/ui-common/components/ui/label";
+import { Skeleton } from "@317/ui-common/components/ui/skeleton";
+import { Textarea } from "@317/ui-common/components/ui/textarea";
+import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { useConfirm } from "@/components/confirm-dialog";
 import { LEAVING_KEY } from "@/components/oc/leaving-process-card";
 import { apiRequest } from "@/lib/api-fetch";

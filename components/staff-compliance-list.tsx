@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@317/ui-common/components/ui/badge";
 import { formatDate } from "@/lib/format";
 import {
   byUrgency,
@@ -10,7 +10,7 @@ import {
   type ComplianceStatus,
   type StaffCompliance,
 } from "@/lib/staff-compliance";
-import { cn } from "@/lib/utils";
+import { cn } from "@317/ui-common/lib/utils";
 
 export function ComplianceBadge({ status }: { status: ComplianceStatus }) {
   return (
