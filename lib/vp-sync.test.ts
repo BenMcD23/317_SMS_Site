@@ -301,7 +301,7 @@ const PORTAL: Record<string, unknown> = {
   "/api/person/w1/aviation/history": [{ aircraft: "Tutor" }],
 };
 
-function fakePortal(failing: string[] = ["/api/shootingmanagement/w1/whts"]) {
+function fakePortal(failing: string[] = ["/api/fieldcraftmanagement/w1/completions"]) {
   return vi.fn(async (p: string) => {
     const bare = p.split("?")[0];
     if (failing.includes(bare)) return { status: 403, body: "Forbidden" };
@@ -338,9 +338,70 @@ describe("collectPortalData", () => {
   it("sends a failed read as null and records exactly what failed", async () => {
     const errors: PortalError[] = [];
     const [cadet] = await collectPortalData(fakePortal(), new Set(["111"]), errors);
-    expect(cadet.data.whts).toBeNull();
+    expect(cadet.data.fieldcraft).toBeNull();
     expect(errors).toEqual([
-      { what: "whts", path: "/api/shootingmanagement/w1/whts", status: 403, detail: "Forbidden" },
+      {
+        what: "fieldcraft",
+        path: "/api/fieldcraftmanagement/w1/completions",
+        status: 403,
+        detail: "Forbidden",
+      },
+    ]);
+  });
+
+  /** The fake portal with both 111 and 222 on it, failing per `fail(path)`. */
+  function twoCadetPortal(fail: (bare: string) => number | null) {
+    const both: Record<string, unknown> = {
+      ...PORTAL,
+      "/api/persons/cadets": {
+        data: [
+          { computerNumber: 111, personnelWebId: "w1" },
+          { computerNumber: 222, personnelWebId: "w2" },
+        ],
+      },
+    };
+    return vi.fn(async (p: string) => {
+      const bare = p.split("?")[0];
+      const status = fail(bare);
+      if (status) return { status, body: "Forbidden" };
+      return { status: 200, body: JSON.stringify(bare in both ? both[bare] : []) };
+    });
+  }
+
+  it("asks once for a data set the login isn't allowed, not once per cadet", async () => {
+    const portal = twoCadetPortal((p) => (p.includes("aviation") ? 403 : null));
+    const errors: PortalError[] = [];
+    const cadets = await collectPortalData(portal, new Set(["111", "222"]), errors);
+
+    expect(portal.mock.calls.filter(([p]) => p.includes("aviation"))).toHaveLength(1);
+    expect(cadets.map((c) => c.data.flying)).toEqual([null, null]);
+    expect(errors.filter((e) => e.what === "flying")).toHaveLength(1);
+    // What it is allowed is still read for both.
+    expect(portal.mock.calls.filter(([p]) => p.includes("/classification"))).toHaveLength(2);
+  });
+
+  it("keeps asking every cadet when a read failed for any reason but permission", async () => {
+    let first = true;
+    const portal = twoCadetPortal((p) => {
+      if (!p.includes("aviation") || !first) return null;
+      first = false;
+      return 500;
+    });
+    const cadets = await collectPortalData(portal, new Set(["111", "222"]), []);
+    expect(cadets.map((c) => c.data.flying === null)).toEqual([true, false]);
+  });
+
+  it("no longer asks for WHTs or the shooting log; Bader has the WHTs", async () => {
+    const portal = fakePortal([]);
+    const [cadet] = await collectPortalData(portal, new Set(["111"]), []);
+    expect(portal.mock.calls.some(([p]) => p.includes("shootingmanagement"))).toBe(false);
+    expect(Object.keys(cadet.data).sort()).toEqual([
+      "classification",
+      "exams",
+      "fieldcraft",
+      "flying",
+      "learning",
+      "unit_history",
     ]);
   });
 

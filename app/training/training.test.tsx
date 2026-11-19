@@ -30,6 +30,7 @@ const TAB_HREFS = {
   Sessions: "/training/sessions",
   "Catch-ups": "/training/catch-ups",
   "Theory progress": "/training/progress",
+  Fieldcraft: "/training/fieldcraft",
   "Tasks & kit": "/training/tasks",
   "QR codes": "/training/qr-codes",
   "Programme links": "/training/links",

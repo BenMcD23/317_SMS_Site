@@ -29,8 +29,6 @@ export type PortalFetch = (path: string) => Promise<{ status: number; body: stri
 export type PortalCadet = { cin: number; data: Record<string, unknown> };
 
 const PER_CADET: Record<string, (webId: string) => string> = {
-  whts: (w) => `shootingmanagement/${w}/whts`,
-  shooting_log: (w) => `shootingmanagement/${w}/shootinglog`,
   fieldcraft: (w) => `fieldcraftmanagement/${w}/completions`,
   classification: (w) => `person/${w}/classification`,
   flying: (w) => `person/${w}/aviation/history`,
@@ -72,10 +70,14 @@ export async function collectPortalData(
   const logError = (what: string, path: string, status: number, detail: string) => {
     if (errors.length < MAX_ERRORS) errors.push({ what, path, status, detail: detail.slice(0, 300) });
   };
+  // Data sets the portal refused (403): the login lacks that permission, so
+  // the rest of the cadets aren't asked for it.
+  const denied = new Set<string>();
   const get = async (raw: string, what: string): Promise<unknown> => {
     const path = apiPath(raw);
     const { status, body } = await fetchPortal(path);
     if (status < 200 || status >= 300) {
+      if (status === 403) denied.add(what);
       logError(what, path, status, body);
       throw new Error(`${what} → ${status || body}`);
     }
@@ -152,22 +154,27 @@ export async function collectPortalData(
   }
 
   let done = 0;
-  return Promise.all(
-    cadets.map(async (c) => {
-      const data: Record<string, unknown> = {};
-      await Promise.all(
-        Object.entries(PER_CADET).map(async ([name, path]) => {
-          data[name] = await get(path(c.webId), name).catch(() => null);
-        })
-      );
-      data.exams = exams && {
-        enrolments: exams.enrolments[c.cin] ?? [],
-        results: exams.results[c.webId] ?? [],
-      };
-      onProgress(++done, cadets.length);
-      return { cin: Number(c.cin), data };
-    })
-  );
+  const readCadet = async (c: { cin: string; webId: string }): Promise<PortalCadet> => {
+    const data: Record<string, unknown> = {};
+    await Promise.all(
+      Object.entries(PER_CADET).map(async ([name, path]) => {
+        data[name] = denied.has(name) ? null : await get(path(c.webId), name).catch(() => null);
+      })
+    );
+    data.exams = exams && {
+      enrolments: exams.enrolments[c.cin] ?? [],
+      results: exams.results[c.webId] ?? [],
+    };
+    onProgress(++done, cadets.length);
+    return { cin: Number(c.cin), data };
+  };
+  // The first cadet alone finds out what this login may read; the rest then
+  // skip it, so a missing permission is one error, not one per cadet.
+  // ponytail: assumes a 403 is about the data set, never the one cadet.
+  const [first, ...rest] = cadets;
+  if (!first) return [];
+  const head = await readCadet(first);
+  return [head, ...(await Promise.all(rest.map(readCadet)))];
 }
 
 // ── Staff: DBS, BPSS and mandatory training ──────────────────────────────────

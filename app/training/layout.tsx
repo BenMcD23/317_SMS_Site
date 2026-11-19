@@ -7,7 +7,7 @@ import { RouteTabs, type RouteTab } from "@/components/route-tabs";
  * Planning what cadets do on a night, and keeping track of what they've done:
  * the night's sessions grouped from the door, classification lessons and
  * exams, practical sessions (leadership tasks, radio, first aid), catch-ups,
- * theory progress, the task bank and kit, the lesson QR codes, and which
+ * theory progress, fieldcraft lessons, the task bank and kit, the lesson QR codes, and which
  * lesson each programme activity is. One area because it's the same job,
  * getting the right cadets onto the right thing, and each part is its own page
  * so it can be bookmarked.
@@ -18,6 +18,7 @@ const TABS: RouteTab[] = [
   { label: "Sessions", href: "/training/sessions" },
   { label: "Catch-ups", href: "/training/catch-ups" },
   { label: "Theory progress", href: "/training/progress" },
+  { label: "Fieldcraft", href: "/training/fieldcraft" },
   { label: "Tasks & kit", href: "/training/tasks" },
   { label: "QR codes", href: "/training/qr-codes" },
   { label: "Programme links", href: "/training/links" },
