@@ -1,5 +1,7 @@
 # 317 SMS — Squadron Management System
 
+test merge
+
 Staff and NCO web app for 317 (Failsworth) Squadron RAFAC: cadet records,
 assessments, stores, comms, and squadron admin. Next.js (App Router) +
 TypeScript + shadcn/ui, talking to the
