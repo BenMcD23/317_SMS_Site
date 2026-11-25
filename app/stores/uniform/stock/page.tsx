@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, FolderPlus, Check, Settings2, Plus, Pencil } from "lucide-react";
+import { Search, FolderPlus, Check, Settings2, Plus, Pencil, ScanBarcode } from "lucide-react";
 import { Button } from "@317/ui-common/components/ui/button";
 import { Badge } from "@317/ui-common/components/ui/badge";
 import { Card, CardContent } from "@317/ui-common/components/ui/card";
@@ -146,6 +147,12 @@ export default function StockPage() {
             <Button variant="outline" size="sm" onClick={() => setAddBoxAreaOpen(true)}>
               <FolderPlus data-icon="inline-start" />
               Add box/area
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/stores/uniform/book-in">
+                <ScanBarcode data-icon="inline-start" />
+                Book in
+              </Link>
             </Button>
             <Button size="sm" onClick={() => setAddStockOpen(true)}>
               <Plus data-icon="inline-start" />

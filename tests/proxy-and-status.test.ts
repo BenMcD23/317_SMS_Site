@@ -57,6 +57,8 @@ describe("middleware proxy", () => {
       "/manifest.webmanifest",
       "/offline.html",
       "/icons/icon-192.png",
+      // The barcode reader's WebAssembly, fetched by the Book in page.
+      "/zxing/zxing_reader.wasm",
     ]) {
       expect(matcher.test(path)).toBe(false);
     }
