@@ -14,8 +14,13 @@ const NCO_ALLOWED_ROUTES = [
   "/nco-comments",
   // Drill progress: NCOs see who to teach next; the API keeps sign-off to staff and SNCOs.
   "/drill",
+  // Parade-night attendance reports. The page is open to every SNCO and NCO,
+  // but the API only answers those staff have put on the recipient list.
+  "/attendance/reports",
   "/settings",
 ];
+// Who gets the reports is staff's call.
+const PARADE_REPORT_SETTINGS = "/attendance/reports/settings";
 const INSPECTION_ROUTE = "/assessments/inspection";
 const MOI_ROUTE = "/assessments/moi";
 
@@ -28,6 +33,7 @@ function under(pathname: string, route: string): boolean {
 export function canAccess(role: string | undefined, pathname: string): boolean {
   if (role === "staff") return true;
   if (under(pathname, MOI_ROUTE)) return false;
+  if (under(pathname, PARADE_REPORT_SETTINGS)) return false;
   if (under(pathname, INSPECTION_ROUTE)) return role === "snco";
   return NCO_ALLOWED_ROUTES.some((route) => under(pathname, route));
 }

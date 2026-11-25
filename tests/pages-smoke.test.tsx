@@ -27,7 +27,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
   usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),
-  useParams: () => ({ id: "1", cin: "1001", box: "A" }),
+  useParams: () => ({ id: "1", cin: "1001", box: "A", date: "2026-11-25" }),
   redirect: vi.fn(),
   notFound: vi.fn(),
 }));
@@ -115,7 +115,7 @@ afterEach(() => {
 async function renderPage(path: string) {
   const { default: Page } = await PAGES[path]();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const params = Promise.resolve({ id: "1", cin: "1001", box: "A" });
+  const params = Promise.resolve({ id: "1", cin: "1001", box: "A", date: "2026-11-25" });
   let result: ReturnType<typeof render> | undefined;
   await act(async () => {
     result = render(

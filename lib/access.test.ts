@@ -22,6 +22,8 @@ describe("canAccess", () => {
     "/drill",
     "/settings",
     "/stats",
+    "/attendance/reports",
+    "/attendance/reports/2026-11-25",
   ])("lets NCOs and SNCOs reach %s", (path) => {
     expect(canAccess("nco", path)).toBe(true);
     expect(canAccess("snco", path)).toBe(true);
@@ -44,6 +46,10 @@ describe("canAccess", () => {
     "/nco-notes",
     "/nco-notes/2100001",
     "/nco-appraisals",
+    // The squadron attendance page carries staff registers; only the reports are theirs.
+    "/attendance",
+    "/attendance/ncos",
+    "/attendance/reports/settings",
   ])("keeps NCOs and SNCOs out of %s", (path) => {
     expect(canAccess("nco", path)).toBe(false);
     expect(canAccess("snco", path)).toBe(false);
@@ -53,6 +59,10 @@ describe("canAccess", () => {
     expect(canAccess("snco", "/assessments/inspection")).toBe(true);
     expect(canAccess("snco", "/assessments/inspection/history")).toBe(true);
     expect(canAccess("nco", "/assessments/inspection")).toBe(false);
+  });
+
+  it("leaves the parade report list to staff", () => {
+    expect(canAccess("staff", "/attendance/reports/settings")).toBe(true);
   });
 
   it("keeps the MOI sheet to staff", () => {

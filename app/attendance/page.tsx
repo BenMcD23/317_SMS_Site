@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarCheck, ChevronRight, ShieldUser, Users, UserCog } from "lucide-react";
+import { CalendarCheck, ChevronRight, FileText, ShieldUser, Users, UserCog } from "lucide-react";
 
 import { TrendBarChart } from "@/components/charts/lazy";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -228,12 +228,20 @@ export default function AttendancePage() {
         title="Attendance"
         description="Turnout per night across the squadron. Select a night to see who was on the register."
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/attendance/ncos">
-              <ShieldUser className="h-4 w-4" />
-              Per NCO
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/attendance/reports">
+                <FileText className="h-4 w-4" />
+                Parade reports
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/attendance/ncos">
+                <ShieldUser className="h-4 w-4" />
+                Per NCO
+              </Link>
+            </Button>
+          </>
         }
       />
 
