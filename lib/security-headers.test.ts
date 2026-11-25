@@ -22,6 +22,12 @@ describe("contentSecurityPolicy", () => {
     expect(directive(contentSecurityPolicy("not a url", false), "connect-src")).toEqual(["'self'"]);
   });
 
+  it("lets WebAssembly compile, for the barcode reader, without allowing eval", () => {
+    const scripts = directive(contentSecurityPolicy(API, false), "script-src");
+    expect(scripts).toContain("'wasm-unsafe-eval'");
+    expect(scripts).not.toContain("'unsafe-eval'");
+  });
+
   it("allows eval and websockets only in dev", () => {
     expect(directive(contentSecurityPolicy(API, false), "script-src")).not.toContain("'unsafe-eval'");
     expect(directive(contentSecurityPolicy(API, true), "script-src")).toContain("'unsafe-eval'");
@@ -58,12 +64,13 @@ describe("securityHeaders", () => {
     );
   });
 
-  it("lets this site ask for the microphone but keeps camera and location off", () => {
-    // `microphone=()` blocks the browser prompt entirely, so voice notes on
-    // /nco-notes could never be allowed.
+  it("lets this site ask for the microphone and camera but keeps location off", () => {
+    // `microphone=()` / `camera=()` block the browser prompt entirely, so
+    // voice notes on /nco-notes and barcode scanning on the Book in page
+    // could never be allowed. Only this site, never a frame of another one.
     const policy = securityHeaders(API, false).find((h) => h.key === "Permissions-Policy")?.value;
     expect(policy).toContain("microphone=(self)");
-    expect(policy).toContain("camera=()");
+    expect(policy).toContain("camera=(self)");
     expect(policy).toContain("geolocation=()");
   });
 });

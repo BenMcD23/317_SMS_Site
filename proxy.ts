@@ -45,6 +45,6 @@ export const config = {
   // The service worker, manifest and offline page are fetched by the browser
   // itself, without the session; behind the login redirect they'd never load.
   matcher: [
-    "/((?!api/|_next/static|_next/image|favicon.ico|sw\\.js$|manifest\\.webmanifest$|offline\\.html$|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|sw\\.js$|manifest\\.webmanifest$|offline\\.html$|.*\\.(?:png|jpg|jpeg|svg|webp|ico|wasm)$).*)",
   ],
 };

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  ScanBarcode,
   Award,
   BadgeCheck,
   Bot,
@@ -273,6 +274,12 @@ export const NAV_SECTIONS: NavSection[] = [
             href: "/stores/uniform/orders",
             icon: ShoppingCart,
             keywords: ["uniform orders", "kitting"],
+          },
+          {
+            label: "Book in",
+            href: "/stores/uniform/book-in",
+            icon: ScanBarcode,
+            keywords: ["scan", "barcode", "stock number", "nsn", "delivery", "receive", "label"],
           },
           {
             label: "Insights",

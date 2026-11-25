@@ -30,7 +30,10 @@ export function contentSecurityPolicy(apiBase: string, isDev: boolean): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     // Next's dev server needs eval for React's debugging; production doesn't.
-    "script-src": ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : [])],
+    // 'wasm-unsafe-eval' lets WebAssembly compile, and nothing else: the Book
+    // in page's barcode reader on iPhones (which have no built-in one) is
+    // compiled from /zxing/zxing_reader.wasm, served from this site.
+    "script-src": ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", ...(isDev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
     // blob:/data: are the signature and gallery previews; the gallery page also
     // shows images straight from the website's GitHub repo.
@@ -68,12 +71,13 @@ export function securityHeaders(apiBase: string, isDev: boolean): Header[] {
     // postMessage, which a stricter Cross-Origin-Opener-Policy would sever, so
     // that header is deliberately not set.
     { key: "Referrer-Policy", value: "no-referrer" },
-    // microphone=(self), not (): the NCO notes page records voice notes, and an
-    // empty allowlist makes the browser refuse getUserMedia without ever showing
-    // a permission prompt, so the user had nothing to click "Allow" on.
+    // microphone=(self) and camera=(self), not (): the NCO notes page records
+    // voice notes and the Book in page scans barcodes, and an empty allowlist
+    // makes the browser refuse getUserMedia without ever showing a permission
+    // prompt, so the user had nothing to click "Allow" on.
     {
       key: "Permissions-Policy",
-      value: "camera=(), microphone=(self), geolocation=(), payment=()",
+      value: "camera=(self), microphone=(self), geolocation=(), payment=()",
     },
     // Browsers ignore HSTS on plain http, so this is harmless on localhost.
     { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },

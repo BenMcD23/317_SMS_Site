@@ -39,6 +39,7 @@ vi.mock("@/lib/reference", async (importOriginal) => {
     useReference: () => ({
       loaded: true,
       itemTypes: ["Beret", "Tie"],
+      stockItemTypes: ["Beret", "Tie", "Polo"],
       noSizeItems: new Set(["Tie"]),
       sizes: { Beret: ["55", "56"] },
       sizingFields: {},
