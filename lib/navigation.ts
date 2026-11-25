@@ -8,6 +8,7 @@ import {
   Calendar,
   CalendarCheck,
   CalendarOff,
+  CalendarRange,
   ChartColumn,
   ChartLine,
   ChartNoAxesColumn,
@@ -97,6 +98,22 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard },
+      // Staff build it; NCOs read it and comment (lib/access.ts).
+      {
+        label: "Programme",
+        href: "/programme",
+        icon: CalendarRange,
+        keywords: [
+          "programme builder",
+          "monthly programme",
+          "parade nights",
+          "sessions",
+          "rooms",
+          "rota",
+          "who's teaching",
+          "comments",
+        ],
+      },
       {
         label: "Squadron Stats",
         href: "/stats",
@@ -330,10 +347,10 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { label: "Text Recipients", href: "/texts/recipients", icon: Contact, keywords: ["phone numbers"] },
       {
-        label: "Programme",
+        label: "Programme from Drive",
         href: "/tools/programme-updater",
         icon: Calendar,
-        keywords: ["website", "publish"],
+        keywords: ["website", "publish", "google doc"],
       },
       { label: "Newsletter", href: "/tools/newsletter-updater", icon: Newspaper, keywords: ["website"] },
       { label: "Gallery", href: "/tools/gallery-updater", icon: Images, keywords: ["website", "photos"] },
@@ -477,6 +494,8 @@ const NCO_TEAM: MobileTab[] = [
   { label: "Space", href: "/assessments/space", icon: Orbit, match: [] },
   { label: "Results", href: "/cadets/assessments", icon: Award, match: [] },
   STATS,
+  // Read and commented on at home, not on parade night, so after the night's pages.
+  { label: "Programme", href: "/programme", icon: CalendarRange, match: [] },
   { label: "Holidays", href: "/nco-holidays", icon: CalendarOff, match: [] },
   { label: "Comments", href: "/nco-comments", icon: MessageSquare, match: [] },
   { label: "Drill", href: "/drill", icon: Footprints, match: [] },
@@ -494,6 +513,7 @@ const MOBILE_TABS: Record<"staff" | "snco" | "nco", MobileTab[]> = {
     { label: "Committee", href: "/committee/requests", icon: ReceiptText, match: [] },
     { label: "Scrapers", href: "/tools/scraper", icon: DatabaseZap, match: [] },
     { label: "Training", href: "/training", icon: GraduationCap, match: [] },
+    { label: "Programme", href: "/programme", icon: CalendarRange, match: [] },
     { label: "Attendance", href: "/attendance", icon: CalendarCheck, match: [] },
     { label: "Marking", href: "/assessments/inspection", icon: ClipboardCheck, match: ["/assessments"] },
   ],

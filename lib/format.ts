@@ -65,3 +65,22 @@ export function timeSince(iso: string | null, now: Date = new Date()): string | 
   if (months < 0) return null;
   return months >= 12 ? `${Math.floor(months / 12)}y ${months % 12}m` : `${months}m`;
 }
+
+/** "Just now", "5 min ago", "3 hours ago", "Yesterday", then "5 Dec": how long
+ *  ago a comment or an edit was, the way Google Docs shows it. */
+export function formatRelative(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "";
+  const then = new Date(iso);
+  const minutes = Math.floor((now.getTime() - then.getTime()) / 60_000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24 && then.getDate() === now.getDate()) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  if (then >= yesterday && then.getDate() === yesterday.getDate()) return "Yesterday";
+  return then.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(then.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
+}
