@@ -113,7 +113,7 @@ describe("the menu", () => {
       "/session-plans"
     );
     expect(within(menu).queryByRole("link", { name: /Catalogue/ })).not.toBeInTheDocument();
-    expect(within(menu).getByRole("region", { name: "Marking Sheets" })).toBeInTheDocument();
+    expect(within(menu).getByRole("region", { name: "Assessments" })).toBeInTheDocument();
   });
 
   it("pins a page to the bar, and unpins it", async () => {

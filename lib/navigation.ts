@@ -177,7 +177,6 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: UserPlus,
         keywords: ["joining form", "new cadets", "3822a", "3822h", "consent", "health declaration", "enrol"],
       },
-      { label: "Assessments", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["results"] },
       { label: "Inspections", href: "/cadets/inspections", icon: Shirt, keywords: ["inspection history"] },
       // Staff-only (see lib/access.ts). Training nights, classification
       // lessons, practical sessions, catch-ups, theory progress, the task
@@ -246,8 +245,14 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Marking Sheets",
+    label: "Assessments",
     items: [
+      {
+        label: "Results",
+        href: "/cadets/assessments",
+        icon: ClipboardCheck,
+        keywords: ["assessments", "results"],
+      },
       { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
