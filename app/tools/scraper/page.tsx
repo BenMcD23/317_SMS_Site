@@ -53,7 +53,7 @@ const SCRAPER_TOOLS = [
     id: "cadet-quali",
     label: "Cadet Records Scraper",
     description:
-      "Updates every cadet from Bader: name, rank, flight, CIN and email, attendance, classification and qualifications. Adds parents' emails from the Next Of Kin report to the OC's parent list, and pushes the qualifications to the Google Sheet.",
+      "Updates every cadet from Bader: name, rank, flight, CIN and email, attendance, classification and qualifications, and the cadet's and their parents' contact details for the Contact Audit. Adds parents' emails from the Next Of Kin report to the OC's parent list, and pushes the qualifications to the Google Sheet.",
   },
   {
     id: "cadet-event",
