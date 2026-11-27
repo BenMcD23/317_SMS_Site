@@ -9,6 +9,7 @@ import {
   OctagonAlert,
   Pencil,
   Plus,
+  Sparkles,
 } from "lucide-react";
 
 import { Button } from "@317/ui-common/components/ui/button";
@@ -300,7 +301,11 @@ function DropCell({
               title={suggestion.reason}
               className="text-muted-foreground hover:text-foreground hover:border-primary/50 flex min-h-8 min-w-0 flex-1 items-center gap-1 rounded-md border border-dashed px-1.5 text-left text-xs"
             >
-              <Lightbulb className="size-3.5 shrink-0" aria-hidden />
+              {suggestion.ai ? (
+                <Sparkles className="text-primary size-3.5 shrink-0" aria-label="AI's pick" role="img" />
+              ) : (
+                <Lightbulb className="size-3.5 shrink-0" aria-hidden />
+              )}
               <span className="truncate">{suggestion.title}</span>
             </button>
           ) : (

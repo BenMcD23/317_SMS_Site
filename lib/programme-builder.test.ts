@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  aiPicks,
+  openGaps,
   bankPayload,
   bankFormFrom,
   categoryColour,
@@ -28,6 +30,7 @@ import {
   type BankItem,
   type Issue,
   type Kind,
+  type Programme,
   type Slot,
 } from "@/lib/programme-builder";
 
@@ -294,5 +297,47 @@ it("counts issues by kind", () => {
     clash: 1,
     warning: 0,
     info: 2,
+  });
+});
+
+describe("the AI draft", () => {
+  const gap = (night_id: number, period: 1 | 2, flight: string, ai = false) => ({
+    night_id,
+    date: "2026-12-02",
+    period,
+    flight,
+    options: [
+      {
+        kind: "bank" as const,
+        bank_item_id: 5,
+        title: "Drill",
+        category: "drill",
+        room_id: null,
+        score: 1,
+        reason: "r",
+        ai,
+      },
+    ],
+  });
+
+  it("offers only the gaps still empty, whole-squadron and all-night sessions included", () => {
+    const programme = {
+      flights: ALL.map((key) => ({ key, label: key, expected: 0 })),
+      nights: [
+        { id: 1, date: "2026-12-02", uniform: null, duty_nco: null, notes: null, slots: [slot(1, ["A"], 1)] },
+        { id: 2, date: "2026-12-04", uniform: null, duty_nco: null, notes: null, slots: [slot(2, [], null)] },
+      ],
+    } as unknown as Programme;
+    const gaps = [gap(1, 1, "A"), gap(1, 1, "B"), gap(1, 2, "A"), gap(2, 1, "C"), gap(99, 1, "A")];
+    expect(openGaps(programme, gaps).map((g) => [g.night_id, g.period, g.flight])).toEqual([
+      [1, 1, "B"],
+      [1, 2, "A"],
+    ]);
+  });
+
+  it("sends only the AI's own picks to be added", () => {
+    expect(aiPicks([gap(1, 1, "A", true), gap(1, 1, "B")])).toEqual([
+      { night_id: 1, period: 1, flight: "A", bank_item_id: 5, slot_id: null },
+    ]);
   });
 });

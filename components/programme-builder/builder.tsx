@@ -47,6 +47,8 @@ import {
   nightLabel,
   parseCellId,
   periodLabel,
+  openGaps,
+  type AiDraft,
   PROGRAMME_KEYS,
   programmeApi,
   sameSpot,
@@ -139,10 +141,30 @@ export function ProgrammeBuilder({ month }: { month: string }) {
     }
     return worst;
   }, [programme]);
-  const suggestionMap = useMemo(
-    () => new Map((suggestions.data ?? []).map((s) => [`${s.night_id}:${s.period}:${s.flight}`, s])),
-    [suggestions.data]
+  // The AI's draft stands in for the usual suggestions until cleared, minus
+  // any gap filled since.
+  const [ai, setAi] = useState<AiDraft | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const shownSuggestions = useMemo(
+    () => (ai && programme ? openGaps(programme, ai.suggestions) : (suggestions.data ?? [])),
+    [ai, programme, suggestions.data]
   );
+  const suggestionMap = useMemo(
+    () => new Map(shownSuggestions.map((s) => [`${s.night_id}:${s.period}:${s.flight}`, s])),
+    [shownSuggestions]
+  );
+  const askAi = async () => {
+    if (!token) return;
+    setAiBusy(true);
+    try {
+      setAi(await programmeApi.aiDraft(token, month));
+      setTab("checks");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't ask the AI.");
+    } finally {
+      setAiBusy(false);
+    }
+  };
   const mentionable: MentionPerson[] = useMemo(
     () =>
       (people.data ?? [])
@@ -450,10 +472,14 @@ export function ProgrammeBuilder({ month }: { month: string }) {
             {tab === "checks" && (
               <ChecksPanel
                 programme={programme}
-                suggestions={canEdit ? (suggestions.data ?? []) : undefined}
+                suggestions={canEdit ? shownSuggestions : undefined}
                 onShow={show}
                 run={run}
                 confirm={confirm}
+                ai={ai}
+                aiBusy={aiBusy}
+                onAiDraft={() => void askAi()}
+                onClearAi={() => setAi(null)}
               />
             )}
             {tab === "history" && <HistoryPanel programme={programme} />}

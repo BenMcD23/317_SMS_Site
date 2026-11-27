@@ -207,6 +207,45 @@ export interface SuggestionOption {
   room_id: number | null;
   score: number;
   reason: string;
+  /** The AI draft's pick for its gap. */
+  ai?: boolean;
+}
+
+/** The AI's pick for each gap (POST /ai-draft); `note` says why when it fell back to the usual suggestions. */
+export interface AiDraft {
+  suggestions: Suggestion[];
+  ai: boolean;
+  picked: number;
+  note: string | null;
+}
+
+/** Gaps still empty in `programme`: a draft from before a change shouldn't offer a filled cell. */
+export function openGaps(programme: Programme, gaps: Suggestion[]): Suggestion[] {
+  const all = programme.flights.map((f) => f.key);
+  return gaps.filter((g) => {
+    const night = programme.nights.find((n) => n.id === g.night_id);
+    return (
+      !!night &&
+      !night.slots.some(
+        (s) =>
+          (s.period === null || s.period === g.period) &&
+          (s.flights.length ? s.flights : all).includes(g.flight)
+      )
+    );
+  });
+}
+
+/** The AI's picks as /fill takes them. */
+export function aiPicks(gaps: Suggestion[]) {
+  return gaps
+    .filter((g) => g.options[0]?.ai)
+    .map((g) => ({
+      night_id: g.night_id,
+      period: g.period,
+      flight: g.flight,
+      bank_item_id: g.options[0].bank_item_id ?? null,
+      slot_id: g.options[0].slot_id ?? null,
+    }));
 }
 
 export interface Suggestion {
@@ -646,6 +685,15 @@ export const programmeApi = {
       `/months/${month}/fill`,
       { method: "POST", body: { cells: cells ?? null } },
       "Couldn't fill the gaps."
+    ),
+  aiDraft: (t: string, month: string) =>
+    call<AiDraft>(t, `/months/${month}/ai-draft`, { method: "POST" }, "Couldn't ask the AI."),
+  fillPicks: (t: string, month: string, picks: ReturnType<typeof aiPicks>) =>
+    call<{ filled: number; programme: Programme }>(
+      t,
+      `/months/${month}/fill`,
+      { method: "POST", body: { picks } },
+      "Couldn't add the suggestions."
     ),
   publish: (t: string, month: string, body: { website: boolean; record: boolean; notify: boolean }) =>
     call<{ website?: { pdf: string }; record?: { nights: number; sessions: number }; programme: Programme }>(

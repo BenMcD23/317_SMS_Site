@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CircleCheck, Info, Lightbulb, OctagonAlert } from "lucide-react";
+import { AlertTriangle, CircleCheck, Info, Lightbulb, OctagonAlert, Sparkles } from "lucide-react";
 
 import { EmptyState } from "@317/ui-common/components/empty-state";
 import { SectionHeading } from "@317/ui-common/components/section-heading";
@@ -9,12 +9,14 @@ import { Button } from "@317/ui-common/components/ui/button";
 import { cn } from "@317/ui-common/lib/utils";
 import { formatRelative } from "@/lib/format";
 import {
+  aiPicks,
   nightLabel,
   periodLabel,
   programmeApi,
   SEVERITY_LABELS,
   type Issue,
   type Programme,
+  type AiDraft,
   type Severity,
   type Suggestion,
   type SuggestionOption,
@@ -41,15 +43,25 @@ export function ChecksPanel({
   onShow,
   run,
   confirm,
+  ai,
+  aiBusy = false,
+  onAiDraft,
+  onClearAi,
 }: {
   programme: Programme;
   /** Undefined for NCOs, who can't change anything. */
   suggestions?: Suggestion[];
+  /** The AI draft being shown in place of the usual suggestions. */
+  ai?: AiDraft | null;
+  aiBusy?: boolean;
+  onAiDraft?: () => void;
+  onClearAi?: () => void;
   onShow: (where: { slotId?: number | null; nightId?: number | null }) => void;
   run: Run;
   confirm: (message: string, action: () => void) => void;
 }) {
   const canEdit = programme.can_edit;
+  const picks = aiPicks(suggestions ?? []);
   return (
     <div className="flex flex-col gap-6">
       {programme.issues.length === 0 ? (
@@ -68,20 +80,54 @@ export function ChecksPanel({
             title="Suggestions for the gaps"
             actions={
               suggestions.length > 0 && (
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    confirm(
-                      `Put the top suggestion in each of the ${suggestions.length} gaps? You can move or remove any of them afterwards.`,
-                      () => void run((t) => programmeApi.fill(t, programme.month), "Gaps filled.")
-                    )
-                  }
-                >
-                  Fill the gaps
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {onAiDraft && (
+                    <Button size="sm" variant="outline" disabled={aiBusy} onClick={onAiDraft}>
+                      <Sparkles /> {aiBusy ? "Thinking…" : ai ? "Ask again" : "Draft with AI"}
+                    </Button>
+                  )}
+                  {picks.length > 0 ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        confirm(
+                          `Add the AI's ${picks.length} pick${picks.length === 1 ? "" : "s"}? You can move or remove any of them afterwards.`,
+                          () =>
+                            void run(
+                              (t) => programmeApi.fillPicks(t, programme.month, picks),
+                              "Added the AI's picks."
+                            ).then((ok) => ok && onClearAi?.())
+                        )
+                      }
+                    >
+                      Add the AI&apos;s {picks.length} pick{picks.length === 1 ? "" : "s"}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        confirm(
+                          `Put the top suggestion in each of the ${suggestions.length} gaps? You can move or remove any of them afterwards.`,
+                          () => void run((t) => programmeApi.fill(t, programme.month), "Gaps filled.")
+                        )
+                      }
+                    >
+                      Fill the gaps
+                    </Button>
+                  )}
+                </div>
               )
             }
           />
+          {ai && (
+            <p className="text-muted-foreground text-sm">
+              {ai.note ??
+                `The AI picked for ${ai.picked} gap${ai.picked === 1 ? "" : "s"}, marked with a sparkle, from past programmes.`}{" "}
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={onClearAi}>
+                Back to the usual suggestions
+              </Button>
+            </p>
+          )}
           {suggestions.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               No gaps, or nothing in the bank that fits one. Add sessions to the bank to get suggestions.
@@ -246,9 +292,13 @@ function OptionLine({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <Lightbulb
-        className={cn("mt-0.5 size-4 shrink-0", primary ? "text-primary" : "text-muted-foreground")}
-      />
+      {option.ai ? (
+        <Sparkles className="text-primary mt-0.5 size-4 shrink-0" aria-label="AI's pick" role="img" />
+      ) : (
+        <Lightbulb
+          className={cn("mt-0.5 size-4 shrink-0", primary ? "text-primary" : "text-muted-foreground")}
+        />
+      )}
       <div className="min-w-0 flex-1">
         <p className={cn("text-sm", primary && "font-medium")}>{option.title}</p>
         <p className="text-muted-foreground text-xs">{option.reason}</p>

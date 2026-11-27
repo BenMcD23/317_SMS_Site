@@ -484,6 +484,63 @@ describe("ProgrammeBuilder for staff", () => {
     });
   });
 
+  it("drafts with AI on request, marks its picks and adds them after asking", async () => {
+    const draft = {
+      ai: true,
+      picked: 1,
+      note: null,
+      suggestions: [
+        {
+          ...SUGGESTIONS[0],
+          options: [
+            { ...SUGGESTIONS[0].options[0], ai: true, reason: "C Flight's basics, as last December" },
+          ],
+        },
+      ],
+    };
+    let call = 0;
+    const fetchMock = api({
+      write: () => (call++ === 0 ? json(draft) : json({ filled: 1, programme: programme() })),
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammeBuilder month="2026-12" />);
+    await user.click(await screen.findByRole("button", { name: "Draft with AI" }));
+    expect(await screen.findByText(/The AI picked for 1 gap/)).toBeInTheDocument();
+    expect(writes(fetchMock)[0]).toEqual({
+      url: "/programme-builder/months/2026-12/ai-draft",
+      method: "POST",
+      body: undefined,
+    });
+    // Its pick is in the empty cell with a sparkle, and in the list with its reason.
+    expect(screen.getAllByRole("img", { name: "AI's pick" }).length).toBeGreaterThan(0);
+    expect(screen.getByText("C Flight's basics, as last December")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add the AI's 1 pick" }));
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() =>
+      expect(writes(fetchMock)[1]).toEqual({
+        url: "/programme-builder/months/2026-12/fill",
+        method: "POST",
+        body: { picks: [{ night_id: 10, period: 2, flight: "C", bank_item_id: 5, slot_id: null }] },
+      })
+    );
+    // Accepted, the usual suggestions come back.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fill the gaps" })).toBeInTheDocument());
+  });
+
+  it("says why when the AI falls back to the usual suggestions", async () => {
+    api({
+      write: () =>
+        json({ ai: false, picked: 0, note: "The AI isn't answering just now.", suggestions: SUGGESTIONS }),
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammeBuilder month="2026-12" />);
+    await user.click(await screen.findByRole("button", { name: "Draft with AI" }));
+    expect(await screen.findByText(/The AI isn't answering just now/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fill the gaps" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Back to the usual suggestions" }));
+    expect(screen.queryByText(/The AI isn't answering/)).not.toBeInTheDocument();
+  });
+
   it("shows the API's own message when a change is refused", async () => {
     api({ write: () => json({ detail: "That room isn't in the list" }, 422) });
     const user = userEvent.setup();
