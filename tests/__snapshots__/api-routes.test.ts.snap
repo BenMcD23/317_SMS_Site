@@ -12,6 +12,7 @@ exports[`app/api route handlers > matches the pinned list of backend routes 1`] 
   "DELETE /api/parade-reports/recipients/[email] -> /parade-reports/recipients/:email",
   "GET /api/parade-reports/settings -> /parade-reports/settings",
   "PUT /api/parade-reports/settings -> /parade-reports/settings",
+  "GET /api/programme/[month]/pdf -> RAW /programme-builder/months/:month/pdf",
   "GET /api/session-plans/[id]/pdf -> RAW /session-plans/:id/pdf",
   "GET /api/staff/[cin]/attendance -> /staff/:cin/attendance",
   "GET /api/staff/users -> /staff",

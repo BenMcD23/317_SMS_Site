@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatDate,
+  formatRelative,
   formatMinutes,
   formatMonth,
   formatShortDate,
@@ -84,5 +85,30 @@ describe("formatMinutes and timeSince", () => {
     expect(timeSince("2026-09-10", now)).toBe("0m");
     expect(timeSince(null, now)).toBeNull();
     expect(timeSince("2027-01-01", now)).toBeNull(); // a future date isn't "time since"
+  });
+});
+
+describe("formatRelative", () => {
+  const now = new Date(2026, 11, 7, 19, 30);
+  const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+
+  it("says just now, minutes, then hours within the day", () => {
+    expect(formatRelative(ago(0), now)).toBe("Just now");
+    expect(formatRelative(ago(5), now)).toBe("5 min ago");
+    expect(formatRelative(ago(60), now)).toBe("1 hour ago");
+    expect(formatRelative(ago(180), now)).toBe("3 hours ago");
+  });
+
+  it("says yesterday for last night, not hours", () => {
+    expect(formatRelative(new Date(2026, 11, 6, 22, 0).toISOString(), now)).toBe("Yesterday");
+  });
+
+  it("gives the date for older, with the year only when it's another year", () => {
+    expect(formatRelative(new Date(2026, 10, 30, 9, 0).toISOString(), now)).toBe("30 Nov");
+    expect(formatRelative(new Date(2025, 10, 30, 9, 0).toISOString(), now)).toBe("30 Nov 2025");
+  });
+
+  it("is empty for a missing time", () => {
+    expect(formatRelative(null, now)).toBe("");
   });
 });

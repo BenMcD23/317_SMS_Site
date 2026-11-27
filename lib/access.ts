@@ -8,6 +8,8 @@ const NCO_ALLOWED_ROUTES = [
   "/assessments",
   "/cadets/assessments",
   "/session-plans",
+  // The month's programme: NCOs read it and comment; the API keeps changes to staff.
+  "/programme",
   // Tonight's door: NCOs tick in cadets without their phone.
   "/check-in",
   "/nco-holidays",
