@@ -251,6 +251,13 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: ["nco notes", "observations", "voice note", "appraisal notes"],
       },
       { label: "Comments", href: "/nco-comments", icon: MessageSquare, keywords: ["nco comments", "notes"] },
+      // SNCOs and NCOs see the link; the API decides whether they're on the list.
+      {
+        label: "Parade Reports",
+        href: "/attendance/reports",
+        icon: CalendarCheck,
+        keywords: ["attendance report", "absent", "register", "who was missing", "parade night"],
+      },
       // Per-NCO attendance isn't listed here; it's reached from the Squadron
       // attendance page's "Per NCO" button.
     ],
