@@ -17,6 +17,7 @@ export const PROGRAMME_KEYS = {
   month: (month: string) => ["programme-builder", "month", month] as const,
   suggestions: (month: string) => ["programme-builder", "suggestions", month] as const,
   bank: ["programme-builder", "bank"] as const,
+  kinds: ["programme-builder", "kinds"] as const,
   bankHistory: ["programme-builder", "bank-history"] as const,
   people: (month: string) => ["programme-builder", "people", month] as const,
 };
@@ -130,6 +131,8 @@ export interface Programme {
   name: string;
   status: ProgrammeStatus;
   notes: string | null;
+  /** The printed programme's "Important Dates". */
+  key_dates: KeyDate[];
   can_edit: boolean;
   updated_at: string;
   updated_by: string | null;
@@ -141,6 +144,21 @@ export interface Programme {
   issues: Issue[];
   comments: Thread[];
   history: { at: string; by: string | null; summary: string }[];
+}
+
+export interface KeyDate {
+  when: string;
+  what: string;
+}
+
+/** A kind of session: the built-in ones (renamed, coloured or hidden) and any staff added. */
+export interface Kind {
+  key: string;
+  label: string;
+  /** Fills the session's cell on the printed programme, and edges it here. */
+  colour: string | null;
+  hidden: boolean;
+  builtin: boolean;
 }
 
 export interface BankItem {
@@ -196,7 +214,11 @@ export interface Suggestion {
 
 // ── labels ────────────────────────────────────────────────────────────────────
 
-/** Must match CATEGORIES in the API's core/programme.py, in its order. */
+/**
+ * The built-in kinds, as the API's CATEGORIES in core/programme.py. The live
+ * list (with staff's renames and additions) is useKinds(); this stands in
+ * until it loads.
+ */
 export const CATEGORIES: { key: string; label: string }[] = [
   { key: "drill", label: "Drill and inspection" },
   { key: "classifications", label: "Classifications" },
@@ -213,8 +235,20 @@ export const CATEGORIES: { key: string; label: string }[] = [
   { key: "other", label: "Other" },
 ];
 
-export function categoryLabel(key: string): string {
-  return CATEGORIES.find((c) => c.key === key)?.label ?? key;
+export const BUILT_IN_KINDS: Kind[] = CATEGORIES.map((c) => ({
+  ...c,
+  colour: null,
+  hidden: false,
+  builtin: true,
+}));
+
+export function categoryLabel(key: string, kinds: Kind[] = BUILT_IN_KINDS): string {
+  return kinds.find((c) => c.key === key)?.label ?? key;
+}
+
+/** The kinds to pick from: the shown ones, plus `current` so an edit never loses a hidden kind. */
+export function pickableKinds(kinds: Kind[], current?: string): Kind[] {
+  return kinds.filter((k) => !k.hidden || k.key === current);
 }
 
 // Five chart hues for thirteen kinds, grouped so neighbours in a month look
@@ -232,9 +266,9 @@ const CATEGORY_HUE: Record<string, string> = {
   leadership: "var(--chart-1)",
 };
 
-/** The left-edge colour of a session: a chart hue, or the border colour for admin and the like. */
-export function categoryColour(key: string): string {
-  return CATEGORY_HUE[key] ?? "var(--muted-foreground)";
+/** The left-edge colour of a session: its kind's own colour, a chart hue, or the border colour for admin and the like. */
+export function categoryColour(key: string, kinds: Kind[] = BUILT_IN_KINDS): string {
+  return kinds.find((k) => k.key === key)?.colour ?? CATEGORY_HUE[key] ?? "var(--muted-foreground)";
 }
 
 /** A parade night's halves. Must match PERIODS in the API's core/programme_builder.py. */
@@ -570,8 +604,8 @@ export const programmeApi = {
     ),
   deleteMonth: (t: string, month: string) =>
     call<{ ok: true }>(t, `/months/${month}`, { method: "DELETE" }, "Couldn't delete the programme."),
-  editMonth: (t: string, month: string, notes: string) =>
-    call<Programme>(t, `/months/${month}`, { method: "PATCH", body: { notes } }, "Couldn't save the notes."),
+  editMonth: (t: string, month: string, body: { notes?: string; key_dates?: KeyDate[] }) =>
+    call<Programme>(t, `/months/${month}`, { method: "PATCH", body }, "Couldn't save it."),
   addNight: (t: string, month: string, v: NightForm) =>
     call<Programme>(
       t,
@@ -636,6 +670,12 @@ export const programmeApi = {
   },
   deleteRoom: (t: string, id: number) =>
     call<{ ok: true }>(t, `/rooms/${id}`, { method: "DELETE" }, "Couldn't delete the room."),
+  saveKind: (t: string, v: { label: string; colour: string | null; hidden: boolean }, key?: string) =>
+    key === undefined
+      ? call<Kind[]>(t, "/kinds", { method: "POST", body: v }, "Couldn't add the kind.")
+      : call<Kind[]>(t, `/kinds/${key}`, { method: "PUT", body: v }, "Couldn't save the kind."),
+  deleteKind: (t: string, key: string) =>
+    call<Kind[]>(t, `/kinds/${key}`, { method: "DELETE" }, "Couldn't delete the kind."),
   comment: (
     t: string,
     month: string,

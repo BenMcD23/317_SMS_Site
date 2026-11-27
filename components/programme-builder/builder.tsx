@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   DragOverlay,
@@ -66,6 +67,7 @@ import { ChecksPanel, HistoryPanel, applySuggestion } from "@/components/program
 import { CommentsPanel, type CommentFocus } from "@/components/programme-builder/comments-panel";
 import type { MentionPerson } from "@/components/programme-builder/comment-composer";
 import {
+  KindsDialog,
   NotesDialog,
   NightDialog,
   PublishDialog,
@@ -73,7 +75,7 @@ import {
 } from "@/components/programme-builder/month-dialogs";
 import { NightGrid, SlotChip, type Cell, type DragData } from "@/components/programme-builder/night-grid";
 import { SlotDetailsDialog, SlotDialog } from "@/components/programme-builder/slot-dialog";
-import { useProgramme } from "@/components/programme-builder/use-programme";
+import { useKinds, useProgramme } from "@/components/programme-builder/use-programme";
 
 type Tab = "comments" | "checks" | "history";
 type SlotEditor = { key: number; slot: Slot | null; start?: Partial<SlotForm>; bankItemId?: number };
@@ -116,6 +118,9 @@ export function ProgrammeBuilder({ month }: { month: string }) {
   const [details, setDetails] = useState<Slot | null>(null);
   const [nightEditor, setNightEditor] = useState<{ key: number; night: Night | null } | null>(null);
   const [roomsOpen, setRoomsOpen] = useState(false);
+  const [kindsOpen, setKindsOpen] = useState(false);
+  const kinds = useKinds();
+  const queryClient = useQueryClient();
   const [publishOpen, setPublishOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [bankOpen, setBankOpen] = useState(false);
@@ -292,7 +297,10 @@ export function ProgrammeBuilder({ month }: { month: string }) {
                       Add a night
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setRoomsOpen(true)}>Rooms</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setNotesOpen(true)}>Programme notes</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setKindsOpen(true)}>Kinds of session</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setNotesOpen(true)}>
+                      Important dates and notes
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
@@ -552,6 +560,16 @@ export function ProgrammeBuilder({ month }: { month: string }) {
           rooms={programme.rooms}
           token={token}
           onChanged={() => refetch()}
+          confirm={confirm}
+        />
+      )}
+      {kindsOpen && token && (
+        <KindsDialog
+          open
+          onOpenChange={setKindsOpen}
+          kinds={kinds}
+          token={token}
+          onChanged={() => queryClient.invalidateQueries({ queryKey: PROGRAMME_KEYS.kinds })}
           confirm={confirm}
         />
       )}

@@ -4,6 +4,7 @@ import {
   bankPayload,
   bankFormFrom,
   categoryColour,
+  categoryLabel,
   cellId,
   columnRuns,
   fromTokens,
@@ -16,6 +17,7 @@ import {
   movedTo,
   nightLabel,
   parseCellId,
+  pickableKinds,
   sameSpot,
   slotFormFrom,
   slotPayload,
@@ -24,6 +26,7 @@ import {
   toTokens,
   whoLabel,
   type Issue,
+  type Kind,
   type Slot,
 } from "@/lib/programme-builder";
 
@@ -66,6 +69,21 @@ describe("labels", () => {
     expect(categoryColour("drill")).toBe("var(--chart-1)");
     expect(categoryColour("admin")).toBe("var(--muted-foreground)");
     expect(categoryColour("something new")).not.toMatch(/destructive|warning|success/);
+  });
+
+  it("uses staff's own kinds: their names, their colours, and hides what they've hidden", () => {
+    const kinds: Kind[] = [
+      { key: "drill", label: "Drill", colour: null, hidden: false, builtin: true },
+      { key: "music", label: "Band", colour: null, hidden: true, builtin: true },
+      { key: "courses", label: "Courses", colour: "#4a86e8", hidden: false, builtin: false },
+    ];
+    expect(categoryLabel("courses", kinds)).toBe("Courses");
+    expect(categoryLabel("gone", kinds)).toBe("gone");
+    expect(categoryColour("courses", kinds)).toBe("#4a86e8");
+    expect(categoryColour("drill", kinds)).toBe("var(--chart-1)");
+    expect(pickableKinds(kinds).map((k) => k.key)).toEqual(["drill", "courses"]);
+    // A session already of a hidden kind keeps it in its picker.
+    expect(pickableKinds(kinds, "music").map((k) => k.key)).toEqual(["drill", "music", "courses"]);
   });
 
   it("takes initials from a rank and name", () => {

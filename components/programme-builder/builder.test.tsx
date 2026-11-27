@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProgrammeBuilder } from "@/components/programme-builder/builder";
-import type { BankItem, Person, Programme, Slot, Suggestion, Thread } from "@/lib/programme-builder";
+import type { BankItem, Kind, Person, Programme, Slot, Suggestion, Thread } from "@/lib/programme-builder";
 import { renderWithQuery } from "@/tests/render-with-query";
 
 const sessions = {
@@ -94,6 +94,7 @@ function programme(over: Partial<Programme> = {}): Programme {
     name: "December 2026 programme",
     status: "draft",
     notes: null,
+    key_dates: [],
     can_edit: true,
     updated_at: "2026-11-25T12:00:00",
     updated_by: "Sam Staff",
@@ -217,6 +218,12 @@ const SUGGESTIONS: Suggestion[] = [
   },
 ];
 
+const KINDS: Kind[] = [
+  { key: "drill", label: "Drill and inspection", colour: null, hidden: false, builtin: true },
+  { key: "music", label: "Band", colour: null, hidden: true, builtin: true },
+  { key: "courses", label: "Courses", colour: "#4a86e8", hidden: false, builtin: false },
+];
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -232,6 +239,7 @@ function api({
     if (url.includes("/programme-builder/months/2026-12"))
       return month instanceof Response ? month : json(month);
     if (url.includes("/programme-builder/bank")) return json(BANK);
+    if (url.includes("/programme-builder/kinds")) return json(KINDS);
     if (url.includes("/programme-builder/people")) return json(PEOPLE);
     if (url.includes("/cadets/theory/lessons")) return json([]);
     return json({ detail: "unexpected" }, 404);
@@ -251,6 +259,10 @@ function writes(fetchMock: ReturnType<typeof api>) {
 }
 
 beforeEach(() => {
+  // Radix's Select needs these, which jsdom lacks.
+  Element.prototype.hasPointerCapture = vi.fn(() => false);
+  Element.prototype.releasePointerCapture = vi.fn();
+  Element.prototype.scrollIntoView = vi.fn();
   session = sessions.staff;
   search = new URLSearchParams();
   toast.success.mockClear();
@@ -364,6 +376,68 @@ describe("ProgrammeBuilder for staff", () => {
     expect(screen.queryByText("No duty NCO on Mon 14 Dec")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Show 1 note" }));
     expect(screen.getByText("No duty NCO on Mon 14 Dec")).toBeInTheDocument();
+  });
+
+  it("offers staff's own kinds in the session form and leaves out hidden ones", async () => {
+    api();
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammeBuilder month="2026-12" />);
+    await user.click(await screen.findByRole("button", { name: "Drill (clash)" }));
+    const dialog = await screen.findByRole("dialog", { name: "Change Drill" });
+    await user.click(within(dialog).getByLabelText("Kind"));
+    expect(await screen.findByRole("option", { name: "Courses" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Band" })).not.toBeInTheDocument();
+  });
+
+  it("adds a kind, hides one and deletes only the squadron's own", async () => {
+    const fetchMock = api({ write: () => json(KINDS) });
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammeBuilder month="2026-12" />);
+    await user.click(await screen.findByRole("button", { name: "More for this programme" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Kinds of session" }));
+    const dialog = await screen.findByRole("dialog", { name: "Kinds of session" });
+    expect(
+      within(dialog).queryByRole("button", { name: "Delete Drill and inspection" })
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Delete Courses" })).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText("New kind"), "Shooting");
+    await user.click(within(dialog).getByRole("button", { name: "Add kind" }));
+    await waitFor(() =>
+      expect(writes(fetchMock)[0]).toEqual({
+        url: "/programme-builder/kinds",
+        method: "POST",
+        body: { label: "Shooting", colour: null, hidden: false },
+      })
+    );
+    await user.click(within(dialog).getByRole("switch", { name: "Drill and inspection shown" }));
+    await waitFor(() =>
+      expect(writes(fetchMock)[1]).toEqual({
+        url: "/programme-builder/kinds/drill",
+        method: "PUT",
+        body: { label: "Drill and inspection", colour: null, hidden: true },
+      })
+    );
+  });
+
+  it("edits the important dates and won't save half a date", async () => {
+    const fetchMock = api();
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammeBuilder month="2026-12" />);
+    await user.click(await screen.findByRole("button", { name: "More for this programme" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Important dates and notes" }));
+    const dialog = await screen.findByRole("dialog", { name: "Important dates and notes" });
+    await user.click(within(dialog).getByRole("button", { name: "Add a date" }));
+    await user.type(within(dialog).getByLabelText("Date 1"), "13th December");
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    await user.type(within(dialog).getByLabelText("What's on 1"), "Carol Service");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(writes(fetchMock)[0]).toEqual({
+        url: "/programme-builder/months/2026-12",
+        method: "PATCH",
+        body: { notes: "", key_dates: [{ when: "13th December", what: "Carol Service" }] },
+      })
+    );
   });
 
   it("shows the API's own message when a change is refused", async () => {

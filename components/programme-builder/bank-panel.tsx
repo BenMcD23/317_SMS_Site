@@ -41,9 +41,9 @@ import { useApiQuery } from "@/lib/use-api-query";
 import {
   bankFormFrom,
   bankSchema,
-  CATEGORIES,
   categoryColour,
   categoryLabel,
+  pickableKinds,
   PROGRAMME_KEYS,
   programmeApi,
   type BankForm,
@@ -52,6 +52,7 @@ import {
   type Room,
 } from "@/lib/programme-builder";
 import type { DragData } from "@/components/programme-builder/night-grid";
+import { useKinds } from "@/components/programme-builder/use-programme";
 
 const ALL = "all";
 const NONE = "none";
@@ -84,6 +85,7 @@ export function BankPanel({
   const [kind, setKind] = useState(ALL);
   const [editing, setEditing] = useState<{ item: BankItem | null; key: number } | null>(null);
   const [importing, setImporting] = useState(false);
+  const kinds = useKinds();
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,9 +93,12 @@ export function BankPanel({
       .filter((i) => i.active || canEdit)
       .filter((i) => kind === ALL || i.category === kind)
       .filter(
-        (i) => !q || i.title.toLowerCase().includes(q) || categoryLabel(i.category).toLowerCase().includes(q)
+        (i) =>
+          !q ||
+          i.title.toLowerCase().includes(q) ||
+          categoryLabel(i.category, kinds).toLowerCase().includes(q)
       );
-  }, [items, search, kind, canEdit]);
+  }, [items, search, kind, canEdit, kinds]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -121,7 +126,7 @@ export function BankPanel({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={ALL}>Every kind</SelectItem>
-          {CATEGORIES.map((c) => (
+          {kinds.map((c) => (
             <SelectItem key={c.key} value={c.key}>
               {c.label}
             </SelectItem>
@@ -204,8 +209,9 @@ function BankRow({
     } satisfies DragData,
     disabled: !canEdit || !item.active,
   });
+  const kinds = useKinds();
   const meta = [
-    categoryLabel(item.category),
+    categoryLabel(item.category, kinds),
     item.whole_night && "all night",
     item.times_run ? `run ${item.times_run}×` : null,
   ]
@@ -215,7 +221,7 @@ function BankRow({
     <li
       ref={setNodeRef}
       {...(canEdit && item.active ? listeners : {})}
-      style={{ borderLeftColor: categoryColour(item.category) }}
+      style={{ borderLeftColor: categoryColour(item.category, kinds) }}
       className={cn(
         "bg-card flex items-center gap-1 rounded-md border border-l-4 pl-2",
         canEdit && item.active && "cursor-grab select-none [-webkit-touch-callout:none]",
@@ -271,6 +277,7 @@ function BankItemDialog({
   const { control, register, handleSubmit, formState } = form;
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { confirm, confirmDialog } = useConfirm();
+  const kinds = useKinds();
   const errorFor = (name: keyof BankForm) =>
     formState.touchedFields[name] || formState.isSubmitted ? formState.errors[name]?.message : undefined;
 
@@ -320,7 +327,7 @@ function BankItemDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map((c) => (
+                      {pickableKinds(kinds, field.value).map((c) => (
                         <SelectItem key={c.key} value={c.key}>
                           {c.label}
                         </SelectItem>
@@ -470,6 +477,7 @@ function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
   const [chosen, setChosen] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const kinds = useKinds();
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
@@ -505,7 +513,7 @@ function BankImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                   <label htmlFor={id} className="min-w-0 flex-1 text-sm">
                     <span className="block truncate">{h.title}</span>
                     <span className="text-muted-foreground block text-xs">
-                      {categoryLabel(h.category)} · {h.times} night{h.times === 1 ? "" : "s"}
+                      {categoryLabel(h.category, kinds)} · {h.times} night{h.times === 1 ? "" : "s"}
                       {h.last_run && `, last ${formatDate(h.last_run)}`}
                     </span>
                   </label>

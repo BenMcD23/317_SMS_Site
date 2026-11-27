@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useApiQuery, useSetApiQueryData } from "@/lib/use-api-query";
-import { PROGRAMME_KEYS, type Programme } from "@/lib/programme-builder";
+import { BUILT_IN_KINDS, PROGRAMME_KEYS, type Kind, type Programme } from "@/lib/programme-builder";
 
 // Often enough that two staff building the same month see each other's
 // changes, and an NCO's comment turns up, without anyone refreshing. React
@@ -52,4 +52,9 @@ export function useProgramme(month: string) {
   );
 
   return { ...query, token, run };
+}
+
+/** Every kind of session, as staff have them; the built-in ones until they load. */
+export function useKinds(): Kind[] {
+  return useApiQuery<Kind[]>(PROGRAMME_KEYS.kinds, "/programme-builder/kinds").data ?? BUILT_IN_KINDS;
 }

@@ -28,10 +28,10 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { lessonName, type CatalogueSubject } from "@/lib/training";
 import {
-  CATEGORIES,
   categoryLabel,
   nightLabel,
   periodLabel,
+  pickableKinds,
   slotFormFrom,
   slotSchema,
   whoLabel,
@@ -41,6 +41,7 @@ import {
   type SlotForm,
 } from "@/lib/programme-builder";
 import { PeoplePicker } from "@/components/programme-builder/people-picker";
+import { useKinds } from "@/components/programme-builder/use-programme";
 
 const NONE = "none";
 
@@ -107,6 +108,7 @@ export function SlotDialog({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [copyTo, setCopyTo] = useState<string[]>([]);
   const [copying, setCopying] = useState(false);
+  const kinds = useKinds();
 
   const night = programme.nights.find((n) => n.id === nightId);
   const busy = useMemo(
@@ -173,7 +175,7 @@ export function SlotDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map((c) => (
+                      {pickableKinds(kinds, field.value).map((c) => (
                         <SelectItem key={c.key} value={c.key}>
                           {c.label}
                         </SelectItem>
@@ -455,6 +457,7 @@ export function SlotDetailsDialog({
   slot: Slot | null;
   onComment: () => void;
 }) {
+  const kinds = useKinds();
   if (!slot) return null;
   const night = programme.nights.find((n) => n.id === slot.night_id);
   const room = programme.rooms.find((r) => r.id === slot.room_id);
@@ -467,7 +470,7 @@ export function SlotDetailsDialog({
         programme.flights.map((f) => f.key)
       ),
     ],
-    ["Kind", categoryLabel(slot.category)],
+    ["Kind", categoryLabel(slot.category, kinds)],
     ["Room", room?.name ?? null],
     ["Running it", [slot.instructor, ...slot.people.map((p) => p.name)].filter(Boolean).join(", ") || null],
     ["Notes", slot.notes],

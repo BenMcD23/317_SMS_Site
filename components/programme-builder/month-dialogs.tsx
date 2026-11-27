@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@317/ui-common/components/ui/alert";
 import { ErrorAlert } from "@317/ui-common/components/error-alert";
@@ -28,6 +28,8 @@ import {
   nightSchema,
   programmeApi,
   roomSchema,
+  type KeyDate,
+  type Kind,
   type Night,
   type NightForm,
   type Programme,
@@ -166,7 +168,7 @@ export function NightDialog({
   );
 }
 
-/** Notes printed at the foot of the programme. */
+/** The important dates and notes printed under the programme. */
 export function NotesDialog({
   open,
   onOpenChange,
@@ -179,21 +181,71 @@ export function NotesDialog({
   run: Run;
 }) {
   const [notes, setNotes] = useState(programme.notes ?? "");
+  const [dates, setDates] = useState<KeyDate[]>(programme.key_dates ?? []);
   const [saving, setSaving] = useState(false);
+  const setDate = (i: number, part: keyof KeyDate, value: string) =>
+    setDates((d) => d.map((row, j) => (j === i ? { ...row, [part]: value } : row)));
+  const filled = dates.filter((d) => d.when.trim() || d.what.trim());
+  const incomplete = filled.some((d) => !d.when.trim() || !d.what.trim());
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent className="sm:max-w-md">
+      <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>Programme notes</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>Important dates and notes</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            Printed under the programme on the PDF and the website.
+            Printed under the programme on the PDF and the website. A new month starts with the
+            squadron&apos;s events from Bader.
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-2 text-sm font-medium">Important dates</legend>
+          {dates.length === 0 && <p className="text-muted-foreground text-sm">None yet.</p>}
+          {dates.map((d, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                aria-label={`Date ${i + 1}`}
+                placeholder="21-22nd March"
+                maxLength={40}
+                className="w-36 shrink-0"
+                value={d.when}
+                onChange={(e) => setDate(i, "when", e.target.value)}
+              />
+              <Input
+                aria-label={`What's on ${i + 1}`}
+                placeholder="Wing Training Weekend"
+                maxLength={120}
+                value={d.what}
+                onChange={(e) => setDate(i, "what", e.target.value)}
+              />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Remove date ${i + 1}`}
+                onClick={() => setDates((all) => all.filter((_, j) => j !== i))}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+          ))}
+          {dates.length < 15 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => setDates((d) => [...d, { when: "", what: "" }])}
+            >
+              <Plus /> Add a date
+            </Button>
+          )}
+          {incomplete && (
+            <p className="text-destructive text-sm">Each date needs both a date and what&apos;s on.</p>
+          )}
+        </fieldset>
         <Field>
           <FieldLabel htmlFor="programme-notes">Notes</FieldLabel>
           <Textarea
             id="programme-notes"
-            rows={4}
+            rows={3}
             maxLength={2000}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -204,15 +256,19 @@ export function NotesDialog({
             Cancel
           </Button>
           <Button
-            disabled={saving}
+            disabled={saving || incomplete}
             onClick={async () => {
               setSaving(true);
-              if (await run((t) => programmeApi.editMonth(t, programme.month, notes), "Notes saved."))
+              const body = {
+                notes,
+                key_dates: filled.map((d) => ({ when: d.when.trim(), what: d.what.trim() })),
+              };
+              if (await run((t) => programmeApi.editMonth(t, programme.month, body), "Saved."))
                 onOpenChange(false);
               setSaving(false);
             }}
           >
-            {saving ? "Saving…" : "Save notes"}
+            {saving ? "Saving…" : "Save"}
           </Button>
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
@@ -477,6 +533,173 @@ export function RoomsDialog({
           </Button>
           <Button type="submit" form="room-form" disabled={formState.isSubmitting}>
             {editing ? "Save room" : "Add room"}
+          </Button>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
+  );
+}
+
+/**
+ * The kinds of session: rename, colour or hide the built-in ones, add the
+ * squadron's own. A colour fills the session's cell on the printed
+ * programme, as the old doc's blue courses. A kind sessions have is hidden
+ * rather than deleted, so no night loses its kind.
+ */
+export function KindsDialog({
+  open,
+  onOpenChange,
+  kinds,
+  token,
+  onChanged,
+  confirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  kinds: Kind[];
+  token: string;
+  onChanged: () => Promise<unknown>;
+  confirm: (message: string, action: () => void) => void;
+}) {
+  const [editing, setEditing] = useState<Kind | null>(null);
+  const [label, setLabel] = useState("");
+  const [colour, setColour] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (kind: Kind | null) => {
+    setEditing(kind);
+    setLabel(kind?.label ?? "");
+    setColour(kind?.colour ?? null);
+    setError(null);
+  };
+
+  const save = async (v: { label: string; colour: string | null; hidden: boolean }, key?: string) => {
+    setError(null);
+    setSaving(true);
+    try {
+      await programmeApi.saveKind(token, v, key);
+      await onChanged();
+      startEdit(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save the kind.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Kinds of session</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            What the bank and the stats group sessions by. A colour fills the session on the printed
+            programme.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+        <ul className="max-h-[45vh] divide-y overflow-y-auto rounded-lg border" aria-label="Kinds">
+          {kinds.map((k) => (
+            <li key={k.key} className="flex items-center gap-2 px-3 py-1.5">
+              <span
+                aria-hidden
+                className="size-4 shrink-0 rounded-sm border"
+                style={{ background: k.colour ?? "transparent" }}
+              />
+              <p
+                className={
+                  k.hidden ? "text-muted-foreground min-w-0 flex-1 text-sm" : "min-w-0 flex-1 text-sm"
+                }
+              >
+                {k.label}
+              </p>
+              <Switch
+                checked={!k.hidden}
+                aria-label={`${k.label} shown`}
+                onCheckedChange={(v) => void save({ label: k.label, colour: k.colour, hidden: !v }, k.key)}
+              />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Edit ${k.label}`}
+                onClick={() => startEdit(k)}
+              >
+                <Pencil />
+              </Button>
+              {!k.builtin && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Delete ${k.label}`}
+                  onClick={() =>
+                    confirm(`Delete ${k.label}?`, async () => {
+                      try {
+                        await programmeApi.deleteKind(token, k.key);
+                        await onChanged();
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "Couldn't delete the kind.");
+                      }
+                    })
+                  }
+                >
+                  <Trash2 />
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <form
+          id="kind-form"
+          className="flex flex-wrap items-end gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (label.trim())
+              void save({ label: label.trim(), colour, hidden: editing?.hidden ?? false }, editing?.key);
+          }}
+        >
+          <Field className="min-w-40 flex-1">
+            <FieldLabel htmlFor="kind-label">{editing ? `Rename ${editing.label}` : "New kind"}</FieldLabel>
+            <Input
+              id="kind-label"
+              autoComplete="off"
+              maxLength={60}
+              placeholder="e.g. Courses"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+          </Field>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="kind-colour">Colour</FieldLabel>
+            <div className="flex items-center gap-2">
+              <input
+                id="kind-colour"
+                type="color"
+                className="h-9 w-12 cursor-pointer rounded-md border bg-transparent"
+                value={colour ?? "#4a86e8"}
+                onChange={(e) => setColour(e.target.value)}
+              />
+              <Label className="text-sm font-normal">
+                <Checkbox
+                  checked={colour === null}
+                  onCheckedChange={(v) => setColour(v === true ? null : "#4a86e8")}
+                />
+                None
+              </Label>
+            </div>
+          </Field>
+        </form>
+        <ErrorAlert message={error} title="Not saved" />
+        <ResponsiveDialogFooter>
+          {editing && (
+            <Button variant="outline" className="sm:mr-auto" onClick={() => startEdit(null)}>
+              Stop editing
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+          <Button type="submit" form="kind-form" disabled={saving || !label.trim()}>
+            {editing ? "Save kind" : "Add kind"}
           </Button>
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>

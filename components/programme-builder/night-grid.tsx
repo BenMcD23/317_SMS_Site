@@ -29,6 +29,7 @@ import {
   type Slot,
   type SuggestionOption,
 } from "@/lib/programme-builder";
+import { useKinds } from "@/components/programme-builder/use-programme";
 
 export type Cell = { nightId: number; row: RowKey; flight: string };
 
@@ -351,6 +352,7 @@ export function SlotChip({
     data: { kind: "slot", slot } satisfies DragData,
     disabled: !canEdit || overlay,
   });
+  const kinds = useKinds();
   const mark = severity ? SEVERITY_ICON[severity] : undefined;
   const who = [slot.instructor, ...slot.people.map((p) => p.name.split(" ").slice(-1)[0])]
     .filter(Boolean)
@@ -360,7 +362,7 @@ export function SlotChip({
     <div
       ref={setNodeRef}
       id={first && !overlay ? `slot-${slot.id}` : undefined}
-      style={{ ...style, borderLeftColor: categoryColour(slot.category) }}
+      style={{ ...style, borderLeftColor: categoryColour(slot.category, kinds) }}
       {...(canEdit && !overlay ? listeners : {})}
       className={cn(
         "bg-card relative z-10 flex min-w-0 scroll-mt-24 flex-col gap-0.5 rounded-md border border-l-4 p-1.5 text-xs",
