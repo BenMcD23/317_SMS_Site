@@ -216,7 +216,7 @@ function NewProgrammeDialog({
               {choice === "record"
                 ? "What the Google Doc import has for the month, ready to change."
                 : choice === "copy"
-                  ? "Week 1 from week 1, week 2 from week 2, and so on."
+                  ? "Each night goes on the nearest night by date, so a month that started halfway through still does."
                   : "Empty nights, ready for sessions from the bank."}
             </FieldDescription>
           </Field>
