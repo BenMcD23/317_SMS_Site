@@ -170,6 +170,7 @@ const BANK: BankItem[] = [
     whole_night: false,
     room_id: null,
     instructor: null,
+    people: [{ key: "staff:3001", name: "Sgt Sarah Hughes" }],
     subject_key: null,
     part: null,
     notes: null,
@@ -438,6 +439,49 @@ describe("ProgrammeBuilder for staff", () => {
         body: { notes: "", key_dates: [{ when: "13th December", what: "Carol Service" }] },
       })
     );
+  });
+
+  it("adds a new session to the bank with a kind made on the spot and no lesson to pick", async () => {
+    let call = 0;
+    // The new kind comes back first, then the bank session.
+    const fetchMock = api({ write: () => json(call++ === 0 ? KINDS : BANK[0]) });
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammeBuilder month="2026-12" />);
+    await user.click(await screen.findByRole("button", { name: "New" }));
+    const dialog = await screen.findByRole("dialog", { name: "New session" });
+    expect(within(dialog).queryByLabelText("Lesson")).not.toBeInTheDocument();
+    expect(within(dialog).getByText("Usually run by")).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText("Name"), "Heartstart");
+    await user.click(within(dialog).getByRole("button", { name: "New kind" }));
+    const kind = await screen.findByRole("dialog", { name: "New kind" });
+    await user.type(within(kind).getByLabelText("Name"), "Courses");
+    await user.click(within(kind).getByRole("button", { name: "Add kind" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "New kind" })).not.toBeInTheDocument());
+    // Back on the session, with the new kind picked.
+    expect(within(dialog).getByLabelText("Kind")).toHaveTextContent("Courses");
+    await user.click(within(dialog).getByRole("button", { name: "Add to bank" }));
+    await waitFor(() => expect(writes(fetchMock)).toHaveLength(2));
+    expect(writes(fetchMock)[1]).toMatchObject({
+      url: "/programme-builder/bank",
+      method: "POST",
+      body: { title: "Heartstart", category: "courses", people: [] },
+    });
+  });
+
+  it("places a bank session with the people who usually run it", async () => {
+    const fetchMock = api();
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammeBuilder month="2026-12" />);
+    expect(await screen.findByText(/Sgt Sarah Hughes/, { selector: "span" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Place Volleyball" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /^Add/ }));
+    await waitFor(() => expect(writes(fetchMock)).toHaveLength(1));
+    expect(writes(fetchMock)[0].body).toMatchObject({
+      title: "Volleyball",
+      bank_item_id: 5,
+      people: ["staff:3001"],
+    });
   });
 
   it("shows the API's own message when a change is refused", async () => {

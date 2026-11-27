@@ -25,6 +25,7 @@ import {
   splitBody,
   toTokens,
   whoLabel,
+  type BankItem,
   type Issue,
   type Kind,
   type Slot,
@@ -259,6 +260,17 @@ describe("forms", () => {
       part: 2,
       notes: "Bring maps",
     });
+  });
+
+  it("keeps who usually runs a bank session through the form", () => {
+    const item = { ...bankPayload(bankFormFrom(null)), people: [{ key: "staff:3001", name: "Sgt H" }] };
+    const form = bankFormFrom({ ...item, id: 1, title: "Drill", times_run: 0, last_run: null } as BankItem);
+    expect(bankPayload(form).people).toEqual(["staff:3001"]);
+  });
+
+  it("copes with a bank session from an older API that has no people", () => {
+    const old = { ...bankPayload(bankFormFrom(null)), id: 1, title: "Drill", times_run: 0, last_run: null };
+    expect(bankFormFrom(old as unknown as BankItem).people).toEqual([]);
   });
 
   it("leaves a bank lesson out when it has no number", () => {

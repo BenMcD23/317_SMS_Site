@@ -26,7 +26,6 @@ import {
 import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { lessonName, type CatalogueSubject } from "@/lib/training";
 import {
   categoryLabel,
   nightLabel,
@@ -42,6 +41,7 @@ import {
 } from "@/lib/programme-builder";
 import { PeoplePicker } from "@/components/programme-builder/people-picker";
 import { useKinds } from "@/components/programme-builder/use-programme";
+import { NewKindDialog, NewLink, NewRoomDialog } from "@/components/programme-builder/month-dialogs";
 
 const NONE = "none";
 
@@ -77,7 +77,6 @@ export function SlotDialog({
   slot,
   start,
   people,
-  subjects,
   onSave,
   onDelete,
   onCopy,
@@ -91,7 +90,6 @@ export function SlotDialog({
   /** Where a new session goes, and anything from the bank. */
   start?: Partial<SlotForm>;
   people: Person[];
-  subjects: CatalogueSubject[];
   onSave: (values: SlotForm) => Promise<void>;
   onDelete?: () => void;
   onCopy?: (nightIds: number[]) => Promise<boolean>;
@@ -109,6 +107,7 @@ export function SlotDialog({
   const [copyTo, setCopyTo] = useState<string[]>([]);
   const [copying, setCopying] = useState(false);
   const kinds = useKinds();
+  const [adding, setAdding] = useState<"kind" | "room" | null>(null);
 
   const night = programme.nights.find((n) => n.id === nightId);
   const busy = useMemo(
@@ -182,6 +181,12 @@ export function SlotDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <NewLink onClick={() => setAdding("kind")}>New kind</NewLink>
+                  <NewKindDialog
+                    open={adding === "kind"}
+                    onOpenChange={(o) => !o && setAdding(null)}
+                    onCreated={field.onChange}
+                  />
                 </Field>
               )}
             />
@@ -293,6 +298,12 @@ export function SlotDialog({
                         ))}
                     </SelectContent>
                   </Select>
+                  <NewLink onClick={() => setAdding("room")}>New room</NewLink>
+                  <NewRoomDialog
+                    open={adding === "room"}
+                    onOpenChange={(o) => !o && setAdding(null)}
+                    onCreated={(id) => field.onChange(String(id))}
+                  />
                 </Field>
               )}
             />
@@ -326,35 +337,6 @@ export function SlotDialog({
                   Staff and NCOs running it, or cadets taken out of their flight for it.
                 </FieldDescription>
                 <FieldError>{errorFor("people")}</FieldError>
-              </Field>
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="lesson"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor="slot-lesson">Lesson</FieldLabel>
-                <Select
-                  value={field.value || NONE}
-                  onValueChange={(v) => field.onChange(v === NONE ? "" : v)}
-                >
-                  <SelectTrigger id="slot-lesson" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Not a lesson</SelectItem>
-                    {subjects.flatMap((s) =>
-                      Array.from({ length: s.parts }, (_, i) => (
-                        <SelectItem key={`${s.key}:${i + 1}`} value={`${s.key}:${i + 1}`}>
-                          {lessonName(s.name, i + 1, s.parts)}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <FieldDescription>So the checks can keep a subject&apos;s lessons in order.</FieldDescription>
               </Field>
             )}
           />

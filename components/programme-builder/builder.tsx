@@ -40,8 +40,6 @@ import { cn } from "@317/ui-common/lib/utils";
 import { useConfirm } from "@/components/confirm-dialog";
 import { CountTabs } from "@/components/count-tabs";
 import { formatRelative } from "@/lib/format";
-import { THEORY_KEYS } from "@/lib/theory";
-import type { CatalogueSubject } from "@/lib/training";
 import { useApiQuery } from "@/lib/use-api-query";
 import {
   issueCounts,
@@ -101,9 +99,6 @@ export function ProgrammeBuilder({ month }: { month: string }) {
     PROGRAMME_KEYS.people(month),
     `/programme-builder/people?month=${month}`
   );
-  const subjects = useApiQuery<CatalogueSubject[]>(THEORY_KEYS.subjects, "/cadets/theory/lessons", {
-    enabled: canEdit,
-  });
   const suggestions = useApiQuery<Suggestion[]>(
     PROGRAMME_KEYS.suggestions(month),
     `/programme-builder/months/${month}/suggestions`,
@@ -234,6 +229,7 @@ export function ProgrammeBuilder({ month }: { month: string }) {
         period: item.whole_night ? "all" : "1",
         roomId: item.room_id ? String(item.room_id) : "",
         instructor: item.instructor ?? "",
+        people: (item.people ?? []).map((p) => p.key),
         lesson: item.subject_key && item.part ? `${item.subject_key}:${item.part}` : "",
       },
     });
@@ -259,7 +255,7 @@ export function ProgrammeBuilder({ month }: { month: string }) {
       error={bank.error?.message ?? null}
       canEdit={canEdit}
       rooms={programme.rooms}
-      subjects={subjects.data ?? []}
+      people={people.data ?? []}
       onPlace={placeFromBank}
     />
   );
@@ -495,7 +491,6 @@ export function ProgrammeBuilder({ month }: { month: string }) {
           slot={editor.slot}
           start={editor.start}
           people={people.data ?? []}
-          subjects={subjects.data ?? []}
           onSave={async (values) => {
             const body = slotPayload(values);
             const ok = await run(

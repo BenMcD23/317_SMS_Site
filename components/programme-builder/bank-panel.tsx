@@ -36,7 +36,6 @@ import { ListSkeleton } from "@/components/list-skeleton";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { formatDate } from "@/lib/format";
-import { lessonName, type CatalogueSubject } from "@/lib/training";
 import { useApiQuery } from "@/lib/use-api-query";
 import {
   bankFormFrom,
@@ -49,10 +48,15 @@ import {
   type BankForm,
   type BankItem,
   type HistoryActivity,
+  type Person,
   type Room,
 } from "@/lib/programme-builder";
 import type { DragData } from "@/components/programme-builder/night-grid";
 import { useKinds } from "@/components/programme-builder/use-programme";
+import { NewKindDialog, NewLink, NewRoomDialog } from "@/components/programme-builder/month-dialogs";
+import { PeoplePicker } from "@/components/programme-builder/people-picker";
+
+const NOBODY_BUSY = new Map<string, string>();
 
 const ALL = "all";
 const NONE = "none";
@@ -69,7 +73,7 @@ export function BankPanel({
   error,
   canEdit,
   rooms,
-  subjects,
+  people,
   onPlace,
 }: {
   items: BankItem[] | undefined;
@@ -77,7 +81,8 @@ export function BankPanel({
   error: string | null;
   canEdit: boolean;
   rooms: Room[];
-  subjects: CatalogueSubject[];
+  /** Who can run a session: staff and NCOs are offered. */
+  people: Person[];
   /** Open the add-session form with this bank session in it. */
   onPlace: (item: BankItem) => void;
 }) {
@@ -178,7 +183,7 @@ export function BankPanel({
           onOpenChange={(o) => !o && setEditing(null)}
           item={editing.item}
           rooms={rooms}
-          subjects={subjects}
+          people={people}
           onDone={() => setEditing(null)}
         />
       )}
@@ -212,6 +217,7 @@ function BankRow({
   const kinds = useKinds();
   const meta = [
     categoryLabel(item.category, kinds),
+    [item.instructor, ...(item.people ?? []).map((p) => p.name)].filter(Boolean).join(", "),
     item.whole_night && "all night",
     item.times_run ? `run ${item.times_run}×` : null,
   ]
@@ -257,14 +263,14 @@ function BankItemDialog({
   onOpenChange,
   item,
   rooms,
-  subjects,
+  people,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: BankItem | null;
   rooms: Room[];
-  subjects: CatalogueSubject[];
+  people: Person[];
   onDone: () => void;
 }) {
   const { data: session } = useSession();
@@ -277,7 +283,9 @@ function BankItemDialog({
   const { control, register, handleSubmit, formState } = form;
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { confirm, confirmDialog } = useConfirm();
+  const runners = people.filter((p) => p.kind !== "cadet");
   const kinds = useKinds();
+  const [adding, setAdding] = useState<"kind" | "room" | null>(null);
   const errorFor = (name: keyof BankForm) =>
     formState.touchedFields[name] || formState.isSubmitted ? formState.errors[name]?.message : undefined;
 
@@ -298,7 +306,7 @@ function BankItemDialog({
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
       <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>{item ? `Edit ${item.title}` : "New bank session"}</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>{item ? `Edit ${item.title}` : "New session"}</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
             What a session brings with it when it&apos;s dropped on a night. Changing it here never changes a
             programme it&apos;s already on.
@@ -334,6 +342,12 @@ function BankItemDialog({
                       ))}
                     </SelectContent>
                   </Select>
+                  <NewLink onClick={() => setAdding("kind")}>New kind</NewLink>
+                  <NewKindDialog
+                    open={adding === "kind"}
+                    onOpenChange={(o) => !o && setAdding(null)}
+                    onCreated={field.onChange}
+                  />
                 </Field>
               )}
             />
@@ -352,55 +366,56 @@ function BankItemDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>None</SelectItem>
-                      {rooms.map((r) => (
-                        <SelectItem key={r.id} value={String(r.id)}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
+                      {rooms
+                        .filter((r) => r.active || String(r.id) === field.value)
+                        .map((r) => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            {r.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
+                  <NewLink onClick={() => setAdding("room")}>New room</NewLink>
+                  <NewRoomDialog
+                    open={adding === "room"}
+                    onOpenChange={(o) => !o && setAdding(null)}
+                    onCreated={(id) => field.onChange(String(id))}
+                  />
                 </Field>
               )}
             />
           </div>
+          <Controller
+            control={control}
+            name="people"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel htmlFor="bank-people">Usually run by</FieldLabel>
+                <PeoplePicker
+                  id="bank-people"
+                  people={runners}
+                  value={field.value}
+                  onChange={field.onChange}
+                  date={null}
+                  busy={NOBODY_BUSY}
+                />
+                <FieldDescription>
+                  Put on the session wherever it&apos;s placed, so the checks see if they&apos;re away or
+                  double-booked.
+                </FieldDescription>
+              </Field>
+            )}
+          />
           <Field>
-            <FieldLabel htmlFor="bank-instructor">Usually run by</FieldLabel>
+            <FieldLabel htmlFor="bank-instructor">Or someone not on the roster</FieldLabel>
             <Input
               id="bank-instructor"
               autoComplete="off"
-              placeholder="e.g. Sgt Hughes"
+              placeholder="e.g. Flight NCOs, or a guest"
               {...register("instructor")}
             />
             <FieldError>{errorFor("instructor")}</FieldError>
           </Field>
-          <Controller
-            control={control}
-            name="lesson"
-            render={({ field }) => (
-              <Field>
-                <FieldLabel htmlFor="bank-lesson">Lesson</FieldLabel>
-                <Select
-                  value={field.value || NONE}
-                  onValueChange={(v) => field.onChange(v === NONE ? "" : v)}
-                >
-                  <SelectTrigger id="bank-lesson" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Not a lesson</SelectItem>
-                    {subjects.flatMap((s) =>
-                      Array.from({ length: s.parts }, (_, i) => (
-                        <SelectItem key={`${s.key}:${i + 1}`} value={`${s.key}:${i + 1}`}>
-                          {lessonName(s.name, i + 1, s.parts)}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                <FieldDescription>Suggestions then offer lesson 2 only after lesson 1.</FieldDescription>
-              </Field>
-            )}
-          />
           <Field>
             <FieldLabel htmlFor="bank-notes">Notes</FieldLabel>
             <Textarea id="bank-notes" rows={2} {...register("notes")} />

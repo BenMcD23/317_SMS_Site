@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -23,6 +25,7 @@ import { Textarea } from "@317/ui-common/components/ui/textarea";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import {
+  PROGRAMME_KEYS,
   issueCounts,
   nightLabel,
   nightSchema,
@@ -704,5 +707,197 @@ export function KindsDialog({
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
+  );
+}
+
+/**
+ * Add a kind from inside a session form: a name and a colour, then back to
+ * the form with the new kind picked.
+ */
+export function NewKindDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (key: string) => void;
+}) {
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const [label, setLabel] = useState("");
+  const [colour, setColour] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setError(null);
+    setSaving(true);
+    try {
+      const kinds = await programmeApi.saveKind(session!.id_token!, {
+        label: label.trim(),
+        colour,
+        hidden: false,
+      });
+      queryClient.setQueryData(PROGRAMME_KEYS.kinds, kinds);
+      const made = kinds.find((k) => k.label.toLowerCase() === label.trim().toLowerCase());
+      if (made) onCreated(made.key);
+      onOpenChange(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add the kind.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-sm">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>New kind</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            A colour fills its sessions on the printed programme. Change or hide kinds later from the menu.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+        <form
+          id="new-kind-form"
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (label.trim()) void save();
+          }}
+        >
+          <Field>
+            <FieldLabel htmlFor="new-kind-label">Name</FieldLabel>
+            <Input
+              id="new-kind-label"
+              autoComplete="off"
+              maxLength={60}
+              placeholder="e.g. Courses"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="new-kind-colour">Colour</FieldLabel>
+            <div className="flex items-center gap-3">
+              <input
+                id="new-kind-colour"
+                type="color"
+                className="h-9 w-12 cursor-pointer rounded-md border bg-transparent"
+                value={colour ?? "#4a86e8"}
+                onChange={(e) => setColour(e.target.value)}
+              />
+              <Label className="text-sm font-normal">
+                <Checkbox
+                  checked={colour === null}
+                  onCheckedChange={(v) => setColour(v === true ? null : "#4a86e8")}
+                />
+                None
+              </Label>
+            </div>
+          </Field>
+        </form>
+        <ErrorAlert message={error} title="Not added" />
+        <ResponsiveDialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="new-kind-form" disabled={saving || !label.trim()}>
+            {saving ? "Adding…" : "Add kind"}
+          </Button>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
+  );
+}
+
+/** Add a room from inside a session form, then back to the form with it picked. */
+export function NewRoomDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (id: number) => void;
+}) {
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const form = useForm<RoomForm>({
+    resolver: zodResolver(roomSchema),
+    defaultValues: { name: "", capacity: "", notes: "" },
+    mode: "onTouched",
+  });
+  const { register, handleSubmit, formState } = form;
+  const errorFor = (name: keyof RoomForm) =>
+    formState.touchedFields[name] || formState.isSubmitted ? formState.errors[name]?.message : undefined;
+
+  const submit = handleSubmit(async (values) => {
+    setError(null);
+    try {
+      const room = await programmeApi.saveRoom(session!.id_token!, values);
+      // The month carries its rooms: refetch it so the new one is in the list.
+      await queryClient.invalidateQueries({ queryKey: ["programme-builder", "month"] });
+      onCreated(room.id);
+      onOpenChange(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add the room.");
+    }
+  });
+
+  return (
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-sm">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>New room</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            How many it holds lets the checks say when it&apos;s too small.
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+        <form id="new-room-form" onSubmit={submit} className="grid gap-3 sm:grid-cols-[1fr_6rem]" noValidate>
+          <Field data-invalid={!!errorFor("name") || undefined}>
+            <FieldLabel htmlFor="new-room-name">Name</FieldLabel>
+            <Input id="new-room-name" autoComplete="off" placeholder="e.g. Range" {...register("name")} />
+            <FieldError>{errorFor("name")}</FieldError>
+          </Field>
+          <Field data-invalid={!!errorFor("capacity") || undefined}>
+            <FieldLabel htmlFor="new-room-capacity">Holds</FieldLabel>
+            <Input
+              id="new-room-capacity"
+              inputMode="numeric"
+              placeholder="e.g. 20"
+              {...register("capacity")}
+            />
+            <FieldError>{errorFor("capacity")}</FieldError>
+          </Field>
+        </form>
+        <ErrorAlert message={error} title="Not added" />
+        <ResponsiveDialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="new-room-form" disabled={formState.isSubmitting}>
+            {formState.isSubmitting ? "Adding…" : "Add room"}
+          </Button>
+        </ResponsiveDialogFooter>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
+  );
+}
+
+/** The small "+ New kind" / "+ New room" link under a picker. */
+export function NewLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button
+      type="button"
+      variant="link"
+      size="sm"
+      className="h-auto self-start p-0 text-xs"
+      onClick={onClick}
+    >
+      <Plus className="size-3" /> {children}
+    </Button>
   );
 }

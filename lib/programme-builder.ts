@@ -168,6 +168,9 @@ export interface BankItem {
   whole_night: boolean;
   room_id: number | null;
   instructor: string | null;
+  /** Staff and NCOs who usually run it: they go on the session when it's placed. */
+  /** Missing from an API older than this page. */
+  people?: PersonRef[];
   subject_key: string | null;
   part: number | null;
   notes: string | null;
@@ -227,6 +230,7 @@ export const CATEGORIES: { key: string; label: string }[] = [
   { key: "first_aid", label: "First aid" },
   { key: "stem", label: "STEM and aviation" },
   { key: "sport", label: "Sport and fitness" },
+  { key: "shooting", label: "Shooting" },
   { key: "dofe", label: "Duke of Edinburgh" },
   { key: "music", label: "Band" },
   { key: "leadership", label: "Leadership and NCOs" },
@@ -251,7 +255,7 @@ export function pickableKinds(kinds: Kind[], current?: string): Kind[] {
   return kinds.filter((k) => !k.hidden || k.key === current);
 }
 
-// Five chart hues for thirteen kinds, grouped so neighbours in a month look
+// Five chart hues for fourteen kinds, grouped so neighbours in a month look
 // different. Never the status colours: a kind of night is never "wrong".
 const CATEGORY_HUE: Record<string, string> = {
   drill: "var(--chart-1)",
@@ -261,6 +265,7 @@ const CATEGORY_HUE: Record<string, string> = {
   first_aid: "var(--chart-3)",
   stem: "var(--chart-5)",
   sport: "var(--chart-4)",
+  shooting: "var(--chart-3)",
   dofe: "var(--chart-4)",
   music: "var(--chart-5)",
   leadership: "var(--chart-1)",
@@ -532,6 +537,7 @@ export const bankSchema = z.object({
   wholeNight: z.boolean(),
   roomId: z.string(),
   instructor: text(200),
+  people: z.array(z.string()),
   lesson: z.string(),
   notes: text(1000),
   active: z.boolean(),
@@ -545,6 +551,7 @@ export function bankFormFrom(item: BankItem | null): BankForm {
     wholeNight: item?.whole_night ?? false,
     roomId: item?.room_id ? String(item.room_id) : "",
     instructor: item?.instructor ?? "",
+    people: item?.people?.map((p) => p.key) ?? [],
     lesson: item?.subject_key && item.part ? `${item.subject_key}:${item.part}` : "",
     notes: item?.notes ?? "",
     active: item?.active ?? true,
@@ -558,6 +565,7 @@ export function bankPayload(v: BankForm) {
     whole_night: v.wholeNight,
     room_id: v.roomId ? Number(v.roomId) : null,
     instructor: v.instructor.trim() || null,
+    people: v.people,
     ...lessonParts(v.lesson),
     notes: v.notes.trim() || null,
     active: v.active,
