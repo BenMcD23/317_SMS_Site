@@ -169,7 +169,8 @@ function NewProgrammeDialog({
   const key = toKey(month);
   const inRecord = list.record_months.includes(key);
   const [start, setStart] = useState<"empty" | "record" | "copy">("empty");
-  const [copyFrom, setCopyFrom] = useState(list.programmes[0]?.month ?? "");
+  const copyable = list.copy_months ?? list.programmes.map((p) => p.month);
+  const [copyFrom, setCopyFrom] = useState(copyable[0] ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const exists = built.has(key);
@@ -205,7 +206,7 @@ function NewProgrammeDialog({
                   The imported doc
                 </ToggleGroupItem>
               )}
-              {list.programmes.length > 0 && (
+              {copyable.length > 0 && (
                 <ToggleGroupItem value="copy" className="px-3">
                   Another month
                 </ToggleGroupItem>
@@ -227,9 +228,10 @@ function NewProgrammeDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {list.programmes.map((p) => (
-                    <SelectItem key={p.month} value={p.month}>
-                      {monthName(p.month)}
+                  {copyable.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {monthName(m)}
+                      {built.has(m) ? "" : " (old doc)"}
                     </SelectItem>
                   ))}
                 </SelectContent>

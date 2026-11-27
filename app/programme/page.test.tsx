@@ -51,6 +51,7 @@ const LIST: MonthList = {
     },
   ],
   record_months: ["2027-01"],
+  copy_months: ["2026-12", "2026-11", "2024-03"],
   parade_weekdays: [0],
   next_month: "2027-01",
 };
@@ -68,6 +69,10 @@ function api(list: MonthList | Response = LIST, create: () => Response = () => j
 }
 
 beforeEach(() => {
+  // Radix's Select needs these, which jsdom lacks.
+  Element.prototype.hasPointerCapture = vi.fn(() => false);
+  Element.prototype.releasePointerCapture = vi.fn();
+  Element.prototype.scrollIntoView = vi.fn();
   session = sessions.staff;
   router.push.mockClear();
 });
@@ -96,6 +101,25 @@ describe("Programme list", () => {
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/programme/2027-01"));
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
     expect(JSON.parse(String(post[1]!.body))).toEqual({ month: "2027-01", start: "record", copy_from: null });
+  });
+
+  it("copies an old doc's month that was never built", async () => {
+    const fetchMock = api();
+    const user = userEvent.setup();
+    renderWithQuery(<ProgrammePage />);
+    await user.click(await screen.findByRole("button", { name: "New programme" }));
+    const dialog = await screen.findByRole("dialog", { name: "New programme" });
+    await user.click(within(dialog).getByRole("radio", { name: "Another month" }));
+    await user.click(within(dialog).getByLabelText("Copy"));
+    await user.click(await screen.findByRole("option", { name: "March 2024 (old doc)" }));
+    await user.click(within(dialog).getByRole("button", { name: "Start January 2027" }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/programme/2027-01"));
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
+    expect(JSON.parse(String(post[1]!.body))).toEqual({
+      month: "2027-01",
+      start: "copy",
+      copy_from: "2024-03",
+    });
   });
 
   it("won't start a month that already has one", async () => {

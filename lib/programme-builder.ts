@@ -43,6 +43,8 @@ export interface MonthSummary {
 export interface MonthList {
   programmes: MonthSummary[];
   record_months: string[];
+  /** Every month a new one can copy, built or only in the record (old docs). Missing from an older API. */
+  copy_months?: string[];
   parade_weekdays: number[];
   next_month: string | null;
 }
