@@ -39,6 +39,7 @@ import {
   Shirt,
   ScanLine,
   ShieldCheck,
+  BookUser,
   ShieldUser,
   ShoppingCart,
   Star,
@@ -234,6 +235,13 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/cadets/audit",
         icon: ShieldCheck,
         keywords: ["qualifications", "medical", "dietary", "wht", "weapon handling", "l98a2", "scorpion"],
+      },
+      // Staff-only (see lib/access.ts): every parent's phone and email.
+      {
+        label: "Contact Audit",
+        href: "/cadets/contact-audit",
+        icon: BookUser,
+        keywords: ["parents", "next of kin", "phone numbers", "emails", "contact details", "guardian"],
       },
     ],
   },
