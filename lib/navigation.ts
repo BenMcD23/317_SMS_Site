@@ -247,7 +247,12 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Assessments",
     items: [
-      { label: "Results", href: "/cadets/assessments", icon: ClipboardCheck, keywords: ["assessments", "results"] },
+      {
+        label: "Results",
+        href: "/cadets/assessments",
+        icon: ClipboardCheck,
+        keywords: ["assessments", "results"],
+      },
       { label: "Inspection", href: "/assessments/inspection", icon: Shirt },
       { label: "Leadership", href: "/assessments/leadership", icon: Star },
       { label: "Radio", href: "/assessments/radio", icon: Radio },
