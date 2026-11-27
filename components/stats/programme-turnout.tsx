@@ -15,7 +15,6 @@ import {
 } from "recharts";
 import { CalendarRange } from "lucide-react";
 
-import { DataTable, dataTableColumns } from "@/components/data-table";
 import { EmptyState } from "@317/ui-common/components/empty-state";
 import { ErrorAlert } from "@317/ui-common/components/error-alert";
 import { SectionHeading } from "@317/ui-common/components/section-heading";
@@ -34,7 +33,6 @@ import {
   kindsByTurnout,
   overallRate,
   sessionLines,
-  type ProgrammeActivity,
   type ProgrammeNightTurnout,
   type ProgrammeStats,
 } from "@/lib/programme";
@@ -51,33 +49,10 @@ const TOOLTIP_STYLE = {
 const AXIS = { tickLine: false, axisLine: false, stroke: "var(--muted-foreground)", fontSize: 11 } as const;
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? "—" : `${v}%`);
 
-const col = dataTableColumns<ProgrammeActivity>();
-const activityColumns = col.columns([
-  col.accessor("name", {
-    header: "Activity",
-    sortFn: "text",
-    // Table cells don't wrap by default; a long name would push Turnout off a phone.
-    cell: ({ getValue }) => <span className="whitespace-normal">{getValue()}</span>,
-  }),
-  col.accessor("label", {
-    header: "Kind",
-    sortFn: "text",
-    cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span>,
-  }),
-  col.accessor("times", { header: "Nights", sortFn: "basic" }),
-  col.accessor((a) => a.rate ?? -1, {
-    id: "rate",
-    header: "Turnout",
-    sortFn: "basic",
-    cell: ({ row }) => <span className="tabular-nums">{pct(row.original.rate)}</span>,
-  }),
-]);
-
 /**
  * The stats page's programme section: turnout set against what the
  * programme said each flight was doing, from /programme/stats. Answers
- * "do cadets skip certain nights?" by kind of night, by activity, and night
- * by night. It follows the page's time range; the flight filter doesn't
+ * "do cadets skip certain nights?" by kind of night and night by night. It follows the page's time range; the flight filter doesn't
  * apply, as each flight's turnout is already counted against its own
  * sessions.
  */
@@ -241,27 +216,6 @@ function ProgrammeCharts({ stats }: { stats: ProgrammeStats }) {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">By activity</CardTitle>
-          <CardDescription>Activities that ran on two or more nights, lowest turnout first.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {stats.activities.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No activity ran more than once in this period.</p>
-          ) : (
-            <DataTable
-              label="Turnout by activity"
-              data={stats.activities}
-              columns={activityColumns}
-              rowKey={(a) => a.name}
-              initialSort={{ id: "rate" }}
-              columnClassName={{ label: "hidden sm:table-cell", times: "hidden sm:table-cell" }}
-            />
-          )}
-        </CardContent>
-      </Card>
     </>
   );
 }

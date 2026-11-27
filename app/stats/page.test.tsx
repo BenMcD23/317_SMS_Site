@@ -585,6 +585,10 @@ describe("classification funnel", () => {
   it("shows each step's count, share of the step before, and typical time", async () => {
     stubApi({ "/stats/funnel": [funnel] });
     await renderStats();
+    // 20 reached Junior, 9 reached First Class: 11 are Junior and nothing higher.
+    expect(
+      screen.getByRole("button", { name: "Junior Cadet: 11 at this level — show these cadets" })
+    ).toBeTruthy();
     expect(screen.getByText("45% of the step before · typically 10 weeks (3 timed)")).toBeTruthy();
   });
 
@@ -594,19 +598,19 @@ describe("classification funnel", () => {
     expect(requested(fetch, "/stats/funnel?flight=B")).toBe(true);
   });
 
-  it("clicking a step lists everyone who reached it", async () => {
+  it("clicking a step lists the cadets whose highest classification it is", async () => {
     const fetch = stubApi({ "/stats/funnel": [funnel], "/stats/cadets": [drillBody] });
     await renderStats();
     // Nobody to list for an empty step.
     expect(
       screen
-        .getByRole("button", { name: "Leading Cadet: 0 reached — show these cadets" })
+        .getByRole("button", { name: "Leading Cadet: 0 at this level — show these cadets" })
         .hasAttribute("disabled")
     ).toBe(true);
     await act(async () =>
-      screen.getByRole("button", { name: "First Class Cadet: 9 reached — show these cadets" }).click()
+      screen.getByRole("button", { name: "First Class Cadet: 9 at this level — show these cadets" }).click()
     );
-    expect(requested(fetch, "/stats/cadets?min_classification=First+Class+Cadet")).toBe(true);
+    expect(requested(fetch, "/stats/cadets?classification=First+Class+Cadet")).toBe(true);
   });
 
   it("an error body doesn't crash the page", async () => {

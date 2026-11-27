@@ -37,13 +37,16 @@ export function ClassificationFunnel({
 }) {
   const steps = funnel?.steps ?? [];
   const top = steps[0]?.reached ?? 0;
+  // The API's `reached` is cumulative (everyone at or above a step); each
+  // cadet is shown once, at their highest classification, so subtract the next.
+  const at = (i: number) => (steps[i]?.reached ?? 0) - (steps[i + 1]?.reached ?? 0);
   const anyTimed = steps.some((s) => s.median_days_from_previous !== null);
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Classification funnel</CardTitle>
         <CardDescription>
-          Cadets on strength who have reached each step
+          Cadets on strength, each at their highest classification
           {anyTimed && ", and the typical time from the step before"}
         </CardDescription>
         <CardAction>
@@ -51,9 +54,10 @@ export function ClassificationFunnel({
             filename="classification-funnel.csv"
             label="Download the funnel as CSV"
             rows={() =>
-              steps.map((s) => ({
+              steps.map((s, i) => ({
                 step: s.name,
-                reached: s.reached,
+                "at this level": at(i),
+                "reached (this step or higher)": s.reached,
                 "% of previous": s.pct_of_previous,
                 "median days from previous": s.median_days_from_previous,
                 "cadets timed": s.timed_cadets,
@@ -73,23 +77,23 @@ export function ClassificationFunnel({
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <button
                     type="button"
-                    disabled={!onDrill || s.reached === 0}
+                    disabled={!onDrill || at(i) === 0}
                     className="group flex items-center gap-2 text-left disabled:cursor-default"
-                    aria-label={`${s.name}: ${s.reached} reached — show these cadets`}
+                    aria-label={`${s.name}: ${at(i)} at this level — show these cadets`}
                     onClick={() =>
                       onDrill?.(
-                        { min_classification: s.name, ...(flight ? { flight } : {}) },
-                        `Reached ${s.name}`
+                        { classification: s.name, ...(flight ? { flight } : {}) },
+                        `Highest classification ${s.name}`
                       )
                     }
                   >
                     <span className="bg-muted h-4 flex-1 overflow-hidden rounded">
                       <span
                         className="bg-chart-1 group-enabled:group-hover:bg-chart-1/80 block h-full rounded"
-                        style={{ width: `${(s.reached / top) * 100}%` }}
+                        style={{ width: `${(at(i) / top) * 100}%` }}
                       />
                     </span>
-                    <span className="w-8 text-right text-xs font-medium tabular-nums">{s.reached}</span>
+                    <span className="w-8 text-right text-xs font-medium tabular-nums">{at(i)}</span>
                   </button>
                   {i > 0 && (
                     <span className="text-muted-foreground text-xs">
