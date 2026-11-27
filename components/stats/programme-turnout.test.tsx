@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, screen, within } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProgrammeTurnout } from "@/components/stats/programme-turnout";
@@ -71,19 +71,13 @@ beforeEach(() => {
 });
 
 describe("ProgrammeTurnout", () => {
-  it("shows turnout by kind of night, night by night and by activity, lowest first", async () => {
+  it("shows turnout by kind of night, and night by night", async () => {
     stub(200, STATS);
     await show();
     expect(await screen.findByText("By kind of night")).toBeInTheDocument();
     expect(screen.getByText(/turnout across every night \(75%\)/)).toBeInTheDocument();
     expect(screen.getByText("Night by night")).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: "Turnout by activity" });
-    const rows = within(table).getAllByRole("row").slice(1);
-    expect(rows.map((r) => r.textContent)).toEqual([
-      expect.stringContaining("Map Reading 2"),
-      expect.stringContaining("Volleyball"),
-    ]);
-    expect(rows[0]).toHaveTextContent("55%");
+    expect(screen.queryByText("By activity")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Download turnout by kind of night as CSV" })
     ).toBeInTheDocument();
@@ -102,12 +96,6 @@ describe("ProgrammeTurnout", () => {
     await show();
     expect(await screen.findByText("No programme for this period")).toBeInTheDocument();
     expect(screen.queryByText("By kind of night")).not.toBeInTheDocument();
-  });
-
-  it("with no activity run twice, says so instead of an empty table", async () => {
-    stub(200, { ...STATS, activities: [] });
-    await show();
-    expect(await screen.findByText("No activity ran more than once in this period.")).toBeInTheDocument();
   });
 
   it("a failure shows its reason", async () => {
